@@ -34,6 +34,7 @@ public class Product extends Tag {
     public static final Product glacier = new Product("glacier");
     public static final Product monitor = new Product("monitor");
     public static final Product rds = new Product("rds");
+    public static final Product rds_instance = new Product("rds_instance");
     public static final Product redshift = new Product("redshift");
     public static final Product route53 = new Product("route53");
     public static final Product s3 = new Product("s3");

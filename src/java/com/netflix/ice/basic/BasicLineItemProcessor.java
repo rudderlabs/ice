@@ -395,14 +395,21 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
             else
                 operation = Operation.ondemandInstances;
-            os = getInstanceOs(operationStr);
+            os = getInstanceOs(product, operationStr);
         }
         else if (usageTypeStr.startsWith("Node") && operationStr.startsWith("RunComputeNode")) {
             index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             operation = getOperation(operationStr, reservationUsage, null);
-            os = getInstanceOs(operationStr);
+            os = getInstanceOs(product, operationStr);
+        }
+        else if ((usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
+            index = usageTypeStr.indexOf(":");
+            usageTypeStr = usageTypeStr.substring(index+1) + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");            
+
+            operation = getOperation(operationStr, reservationUsage, null);
+            os = getInstanceOs(product, operationStr);
         }
         else if (usageTypeStr.startsWith("HeavyUsage") || usageTypeStr.startsWith("MediumUsage") || usageTypeStr.startsWith("LightUsage")) {
             index = usageTypeStr.indexOf(":");
@@ -417,7 +424,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
 
             operation = getOperation(operationStr, reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization.get(offeringType));
-            os = getInstanceOs(operationStr);
+            os = getInstanceOs(product, operationStr);
         }
 
         if (usageTypeStr.equals("Unknown") || usageTypeStr.equals("Not Applicable")) {
@@ -438,6 +445,16 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
         }
 
+        if (product == Product.rds && operation instanceof Operation.ReservationOperation) {
+            product = Product.rds_instance;
+            if (operation instanceof Operation.ReservationOperation) {
+                if (os != InstanceOs.linux) {
+                    usageTypeStr = usageTypeStr + "." + os;
+                    operation = operation.name.startsWith("ReservedInstances") ? operation : Operation.ondemandInstances;
+                }
+            }
+        }
+
         if (usageType == null) {
             usageType = UsageType.getUsageType(usageTypeStr, operation, description);
         }
@@ -445,10 +462,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return new ReformedMetaData(region, product, operation, usageType);
     }
 
-    private InstanceOs getInstanceOs(String operationStr) {
+    private InstanceOs getInstanceOs(Product product, String operationStr) {
         int index = operationStr.indexOf(":");
         String osStr = index > 0 ? operationStr.substring(index) : "";
-        return InstanceOs.withCode(osStr);
+        return InstanceOs.withCode(product, osStr);
     }
 
     private Operation getOperation(String operationStr, boolean reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
@@ -456,6 +473,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return (reservationUsage ? Operation.getReservedInstances(utilization) : Operation.ondemandInstances);
         else if (operationStr.startsWith("RunComputeNode"))
             return (reservationUsage ? Operation.reservedInstances : Operation.ondemandInstances);
+        else if (operationStr.startsWith("CreateDBInstance"))
+        	return (reservationUsage ? Operation.reservedInstances : Operation.ondemandInstances);
         else
             return null;
     }

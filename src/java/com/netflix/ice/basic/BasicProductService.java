@@ -46,6 +46,7 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct emr = new BasicProduct(Product.emr, "Elastic MapReduce");
     public static final BasicProduct glacier = new BasicProduct(Product.glacier, "Glacier");
     public static final BasicProduct rds = new BasicProduct(Product.rds, "RDS Service");
+    public static final BasicProduct rds_instance = new BasicProduct(Product.rds_instance, "rds_instance");
     public static final BasicProduct redshift = new BasicProduct(Product.redshift, "Redshift");
     public static final BasicProduct route53 = new BasicProduct(Product.route53, "Route 53");
     public static final BasicProduct s3 = new BasicProduct(Product.s3, "Simple Storage Service");
@@ -58,7 +59,7 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct vpc = new BasicProduct(Product.vpc, "Virtual Private Cloud");
     public static final BasicProduct monitor = new BasicProduct(Product.monitor, "monitor");
 
-    private static BasicProduct[] products = new BasicProduct[]{cloudfront, cloudhsm, cloudwatch, data_pipeline, data_transfer, direct_connect, dynamodb, ebs, ec2, ec2_instance, eip, elasticache, emr, glacier, rds, redshift, route53, s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc};
+    private static BasicProduct[] products = new BasicProduct[]{cloudfront, cloudhsm, cloudwatch, data_pipeline, data_transfer, direct_connect, dynamodb, ebs, ec2, ec2_instance, eip, elasticache, emr, glacier, rds, rds_instance, redshift, route53, s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc};
 
     static {
         for (BasicProduct product: products) {

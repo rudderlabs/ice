@@ -39,7 +39,7 @@ import com.netflix.ice.tag.Region;
  */
 public class EddaResourceService extends ResourceService {
 	private static final ArrayList<Product> EC2_PRODUCTS = Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs);
-	//private static final ArrayList<Product> RDS_PRODUCTS = Lists.newArrayList(Product.rds);
+	//private static final ArrayList<Product> RDS_PRODUCTS = Lists.newArrayList(Product.rds, Product.rds_instance);
 	//private static final ArrayList<Product> S3_PRODUCTS = Lists.newArrayList(Product.s3);
 
 	private final static Logger logger = LoggerFactory.getLogger(EddaResourceService.class);

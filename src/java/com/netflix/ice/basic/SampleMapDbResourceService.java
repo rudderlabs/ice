@@ -39,7 +39,7 @@ public class SampleMapDbResourceService extends ResourceService {
     private static final Logger logger = LoggerFactory.getLogger(SampleMapDbResourceService.class);
     private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
             Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs),
-            Lists.newArrayList(Product.rds),
+            Lists.newArrayList(Product.rds, Product.rds_instance),
             Lists.newArrayList(Product.s3));
     MapDb instanceDb;
     ProcessorConfig config;
@@ -65,7 +65,7 @@ public class SampleMapDbResourceService extends ResourceService {
         if (product == Product.ec2 || product == Product.ec2_instance || product == Product.ebs || product == Product.cloudwatch) {
             return getEc2Resource(account, region, resourceId, lineItem, millisStart);
         }
-        else if (product == Product.rds) {
+        else if (product == Product.rds || product == Product.rds_instance) {
             return getRdsResource(account, region, resourceId, lineItem, millisStart);
         }
         else if (product == Product.s3) {
