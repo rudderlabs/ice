@@ -253,8 +253,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (product != Product.monitor) {
                 Map<TagGroup, Double> usages = usageData.getData(i);
                 Map<TagGroup, Double> costs = costData.getData(i);
-
-                addValue(usages, tagGroup, usageValue,  config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
+                
+                // Redshift has cost as a monthly charge, but usage appears hourly so
+                // so unlike EC2, we have to process the monthly line item to capture the cost
+                if (!(product == Product.redshift && result == Result.monthly)) {
+                	addValue(usages, tagGroup, usageValue,  config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
+                }
                 addValue(costs, tagGroup, costValue, config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
             }
             else {
