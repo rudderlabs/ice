@@ -18,33 +18,29 @@
 package com.netflix.ice.tag;
 
 public enum InstanceOs {
-    linux(Product.ec2,"", "", "Linux/UNIX"),
-    sqlserverweb(Product.ec2,".sqlserverweb", ":0202", "Windows with SQL Server Web"),
-    sqlserverstd(Product.ec2,".sqlserverstd", ":0006", "Windows with SQL Server Standard"),
-    sles(Product.ec2,".sles", ":000g", "SUSE Linux"),
-    rhel(Product.ec2,".rhel", ":0010", "Red Hat Enterprise Linux"),
-    rhbl(Product.ec2,".rhbl", ":00g0", "Red Hat BYOL Linux"),
-    windows(Product.ec2,".windows", ":0002", "Windows"),
-    dw(Product.redshift,".dw", ":0001", "redshift"),
-    mysql(Product.rds,"", ":0002", "RDS running MySQL = BYOL"),
-    sqlserver(Product.rds,"", ":0012", "RDS running SQL Server SE (LI)"),
-    others(null,".others", ":others", "others");
+    linux("", "", "Linux/UNIX"),
+    sqlserverweb(".sqlserverweb", ":0202", "Windows with SQL Server Web"),
+    sqlserverstd(".sqlserverstd", ":0006", "Windows with SQL Server Standard"),
+    sles(".sles", ":000g", "SUSE Linux"),
+    rhel(".rhel", ":0010", "Red Hat Enterprise Linux"),
+    rhbl(".rhbl", ":00g0", "Red Hat BYOL Linux"),
+    windows(".windows", ":0002", "Windows"),
+    dw(".dw", ":0001", "redshift"),
+    others(".others", ":others", "others");
 
-    public final Product product;
     public final String usageType;
     public final String code;
     public final String description;
 
-    InstanceOs(Product product, String usageType, String code, String description) {
-    	this.product = product;
+    InstanceOs(String usageType, String code, String description) {
         this.usageType = usageType;
         this.code = code.toLowerCase();
         this.description = description.toLowerCase();
     }
 
-    public static InstanceOs withCode(Product product, String code) {
+    public static InstanceOs withCode(String code) {
         for (InstanceOs os: InstanceOs.values()) {
-            if (product == os.product && code.toLowerCase().equals(os.code))
+            if (code.toLowerCase().equals(os.code))
                 return os;
         }
         return others;
