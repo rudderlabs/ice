@@ -237,7 +237,7 @@ public class Ec2InstanceReservationPrice {
 
         static final Map<String, String> reservationTypeMap = new HashMap<String, String>();
         static {
-            reservationTypeMap.put("ALL", "HEAVY");
+            reservationTypeMap.put("ALL", "FIXED");
             reservationTypeMap.put("PARTIAL", "HEAVY");
             reservationTypeMap.put("NO", "HEAVY");
         }
