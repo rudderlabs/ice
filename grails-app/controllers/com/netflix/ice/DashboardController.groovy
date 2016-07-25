@@ -47,6 +47,7 @@ import com.netflix.ice.common.AwsUtils
 class DashboardController {
     private static ReaderConfig config = ReaderConfig.getInstance();
     private static Managers managers = config == null ? null : config.managers;
+    private static DateTimeFormatter dateFormatterForDownload = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd hha").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dayFormatter = DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC);
 
@@ -287,7 +288,7 @@ class DashboardController {
 
         ConsolidateType consolidateType = ConsolidateType.valueOf(query.getString("consolidate"));
         for (int timeIndex = 0; timeIndex < num; timeIndex++) {
-            record[0] = dateFormatter.print(start);
+            record[0] = dateFormatterForDownload.print(start);
             index = 1;
             for (Map.Entry entry: result.data) {
                 double[] values = entry.getValue();
