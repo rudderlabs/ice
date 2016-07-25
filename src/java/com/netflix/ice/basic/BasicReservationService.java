@@ -281,8 +281,8 @@ public class BasicReservationService extends Poller implements ReservationServic
 
     public static class Reservation {
         final int count;
-        final long start;
-        final long end;
+        final long start; // Reservation start time rounded down to starting hour mark where it takes effect
+        final long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
         final ReservationUtilization utilization;
         final float fixedPrice;
         final float usagePrice;
@@ -400,6 +400,15 @@ public class BasicReservationService extends Poller implements ReservationServic
 
         return new ReservationInfo(count, upfrontAmortized, houlyCost);
     }
+    
+    private long getEffectiveReservationTime(Date d) {
+    	Calendar c = new GregorianCalendar();
+    	c.setTime(d);
+    	c.set(Calendar.MINUTE, 0);
+    	c.set(Calendar.SECOND, 0);
+    	c.set(Calendar.MILLISECOND, 0);
+    	return c.getTime().getTime();
+    }
 
     public void updateEc2Reservations(Map<String, ReservedInstances> reservationsFromApi) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
@@ -419,10 +428,14 @@ public class BasicReservationService extends Poller implements ReservationServic
                 logger.error("Not able to find zone for reserved instances " + reservedInstances.getAvailabilityZone());
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
-            long endTime = Math.min(reservedInstances.getEnd().getTime(), reservedInstances.getStart().getTime() + reservedInstances.getDuration() * 1000);
+            // AWS reservations start at the beginning of the hour in which the reservation was purchased.
+            // Likewise, they end at the start of the hour as well.
+            long startTime = getEffectiveReservationTime(reservedInstances.getStart());
+            long endTime = getEffectiveReservationTime(reservedInstances.getEnd());
+            endTime = Math.min(endTime, startTime + reservedInstances.getDuration() * 1000);
             if (endTime <= config.startDate.getMillis())
                 continue;
-            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), reservedInstances.getStart().getTime(), endTime, utilization, reservedInstances.getFixedPrice(), reservedInstances.getUsagePrice());
+            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, reservedInstances.getFixedPrice(), reservedInstances.getUsagePrice());
 
             String osStr = reservedInstances.getProductDescription();
             InstanceOs os = InstanceOs.withDescription(osStr);
