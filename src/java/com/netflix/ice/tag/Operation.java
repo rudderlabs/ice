@@ -64,10 +64,18 @@ public class Operation extends Tag {
     public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("UnusedInstancesFixed", 24);
     public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("UpfrontAmortizedFixed", 25);
 
+    public static final ReservationOperation reservedInstancesHeavyPartial = new ReservationOperation("ReservedInstancesHeavyPartial", 26);
+    public static final ReservationOperation bonusReservedInstancesHeavyPartial = new ReservationOperation("BonusReservedInstancesHeavyPartial", 27);
+    public static final ReservationOperation borrowedInstancesHeavyPartial = new ReservationOperation("BorrowedInstancesHeavyPartial", 28);
+    public static final ReservationOperation lentInstancesHeavyPartial = new ReservationOperation("LentInstancesHeavyPartial", 29);
+    public static final ReservationOperation unusedInstancesHeavyPartial = new ReservationOperation("UnusedInstancesHeavyPartial", 30);
+    public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("UpfrontAmortizedHeavyPartial", 31);
+
     public static ReservationOperation getReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return reservedInstancesFixed;
             case HEAVY: return reservedInstancesHeavy;
+            case HEAVY_PARTIAL: return reservedInstancesHeavyPartial;
             case MEDIUM: return reservedInstancesMedium;
             case LIGHT: return reservedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
@@ -78,6 +86,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return bonusReservedInstancesFixed;
             case HEAVY: return bonusReservedInstancesHeavy;
+            case HEAVY_PARTIAL: return bonusReservedInstancesHeavyPartial;
             case MEDIUM: return bonusReservedInstancesMedium;
             case LIGHT: return bonusReservedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
@@ -88,6 +97,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return borrowedInstancesFixed;
             case HEAVY: return borrowedInstancesHeavy;
+            case HEAVY_PARTIAL: return borrowedInstancesHeavyPartial;
             case MEDIUM: return borrowedInstancesMedium;
             case LIGHT: return borrowedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
@@ -95,13 +105,14 @@ public class Operation extends Tag {
     }
 
     public static List<ReservationOperation> getLentInstances() {
-        return Lists.newArrayList(lentInstancesFixed, lentInstancesHeavy, lentInstancesMedium, lentInstancesLight);
+        return Lists.newArrayList(lentInstancesFixed, lentInstancesHeavy, lentInstancesHeavyPartial, lentInstancesMedium, lentInstancesLight);
     }
 
     public static ReservationOperation getLentInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return lentInstancesFixed;
             case HEAVY: return lentInstancesHeavy;
+            case HEAVY_PARTIAL: return lentInstancesHeavyPartial;
             case MEDIUM: return lentInstancesMedium;
             case LIGHT: return lentInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
@@ -112,6 +123,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return unusedInstancesFixed;
             case HEAVY: return unusedInstancesHeavy;
+            case HEAVY_PARTIAL: return unusedInstancesHeavyPartial;
             case MEDIUM: return unusedInstancesMedium;
             case LIGHT: return unusedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
@@ -122,6 +134,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return upfrontAmortizedFixed;
             case HEAVY: return upfrontAmortizedHeavy;
+            case HEAVY_PARTIAL: return upfrontAmortizedHeavyPartial;
             case MEDIUM: return upfrontAmortizedMedium;
             case LIGHT: return upfrontAmortizedLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);

@@ -30,8 +30,9 @@ import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.*;
 import com.netflix.ice.tag.Region;
+
 import org.apache.commons.lang.StringUtils;
-import org.joda.time.DateMidnight;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +48,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     protected ReservationPeriod term;
     protected ReservationUtilization defaultUtilization;
     protected Map<ReservationUtilization, File> files;
-    protected Long futureMillis = new DateMidnight().withYearOfCentury(99).getMillis();
+    protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
 
     protected static Map<String, String> instanceTypes = Maps.newHashMap();
     protected static Map<String, String> instanceSizes = Maps.newHashMap();
@@ -125,7 +126,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                 }
             }
         }
-
+        
         start(3600, 3600*24, true);
     }
 
@@ -136,7 +137,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     }
 
     private void pollAPI() throws Exception {
-        long currentTime = new DateMidnight().getMillis();
+        long currentTime = new DateTime().withTimeAtStartOfDay().getMillis();
 
         DescribeReservedInstancesOfferingsRequest req =  new DescribeReservedInstancesOfferingsRequest()
                 .withFilters(new com.amazonaws.services.ec2.model.Filter().withName("marketplace").withValues("false"));
@@ -339,7 +340,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         double tier = getEc2Tier(time);
 
         double upfrontAmortized = 0;
-        double houlyCost = 0;
+        double hourlyCost = 0;
 
         int count = 0;
         if (this.reservations.get(utilization).containsKey(tagGroup)) {
@@ -350,7 +351,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                     Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
                     if (ec2Price != null) { // remove this...
                         upfrontAmortized += reservation.count * ec2Price.upfrontPrice.getPrice(reservation.start).getUpfrontAmortized(reservation.start, term, tier);
-                        houlyCost += reservation.count * ec2Price.hourlyPrice.getPrice(reservation.start).getPrice(tier);
+                        hourlyCost += reservation.count * ec2Price.hourlyPrice.getPrice(reservation.start).getPrice(tier);
                     }
                     else {
                         logger.error("Not able to find reservation price for " + key);
@@ -364,15 +365,15 @@ public class BasicReservationService extends Poller implements ReservationServic
             Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
             if (ec2Price != null) { // remove this...
                 upfrontAmortized = ec2Price.upfrontPrice.getPrice(null).getUpfrontAmortized(time, term, tier);
-                houlyCost = ec2Price.hourlyPrice.getPrice(null).getPrice(tier);
+                hourlyCost = ec2Price.hourlyPrice.getPrice(null).getPrice(tier);
             }
         }
         else {
             upfrontAmortized = upfrontAmortized / count;
-            houlyCost = houlyCost / count;
+            hourlyCost = hourlyCost / count;
         }
-
-        return new ReservationInfo(count, upfrontAmortized, houlyCost);
+        
+        return new ReservationInfo(count, upfrontAmortized, hourlyCost);
     }
 
     private ReservationInfo getFixedReservation(
@@ -380,7 +381,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             TagGroup tagGroup) {
 
         double upfrontAmortized = 0;
-        double houlyCost = 0;
+        double hourlyCost = 0;
 
         int count = 0;
         if (this.reservations.get(ReservationUtilization.FIXED).containsKey(tagGroup)) {
@@ -388,17 +389,17 @@ public class BasicReservationService extends Poller implements ReservationServic
                 if (time >= reservation.start && time < reservation.end) {
                     count += reservation.count;
                     upfrontAmortized += reservation.count * reservation.fixedPrice / ((reservation.end - reservation.start) / AwsUtils.hourMillis);
-                    houlyCost += reservation.count * reservation.usagePrice;
+                    hourlyCost += reservation.count * reservation.usagePrice;
                 }
             }
         }
 
         if (count > 0) {
             upfrontAmortized = upfrontAmortized / count;
-            houlyCost = houlyCost / count;
+            hourlyCost = hourlyCost / count;
         }
 
-        return new ReservationInfo(count, upfrontAmortized, houlyCost);
+        return new ReservationInfo(count, upfrontAmortized, hourlyCost);
     }
     
     private long getEffectiveReservationTime(Date d) {

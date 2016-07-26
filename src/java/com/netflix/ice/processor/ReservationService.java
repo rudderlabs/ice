@@ -81,8 +81,8 @@ public interface ReservationService {
 
     public static class ReservationInfo {
         public final int capacity;
-        public final double upfrontAmortized;
-        public final double reservationHourlyCost;
+        public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
+        public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
         public ReservationInfo (int capacity, double upfrontAmortized, double reservationHourlyCost) {
             this.capacity = capacity;
