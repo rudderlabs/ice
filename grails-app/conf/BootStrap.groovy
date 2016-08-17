@@ -110,8 +110,9 @@ class BootStrap {
             Map<Account, List<Account>> reservationAccounts = Maps.newHashMap();
             Map<Account, String> reservationAccessRoles = Maps.newHashMap();
             Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
+			Map<Account, Set<String>> reservationProducts = Maps.newHashMap();
             for (String name: prop.stringPropertyNames()) {
-                if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {
+                if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId") && !name.endsWith(".products")) {
                     String accountName = name.substring("ice.owneraccount.".length());
                     String[] childen = prop.getProperty(name).split(",");
                     List<Account> childAccouns = Lists.newArrayList();
@@ -127,11 +128,18 @@ class BootStrap {
 
                     String externalId = prop.getProperty(name + ".externalId", "");
                     reservationAccessExternalIds.put(accounts.get(accountName), externalId);
+					
+					String[] products = prop.getProperty(name + ".products", "").split(",");
+					Set<String> productSet = new HashSet<String>();
+					for (String product: products) {
+						productSet.add(product);
+					}
+					reservationProducts.put(accounts.get(accountName), productSet);
                 }
             }
 
             BasicAccountService accountService = new BasicAccountService(Lists.newArrayList(accounts.values()), reservationAccounts,
-                    reservationAccessRoles, reservationAccessExternalIds);
+                    reservationAccessRoles, reservationAccessExternalIds, reservationProducts);
             Properties properties = new Properties();
             if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MILLIS)))
                 properties.setProperty(IceOptions.START_MILLIS, prop.getProperty(IceOptions.START_MILLIS));

@@ -20,11 +20,13 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Zone;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class BasicAccountService implements AccountService {
 
@@ -35,12 +37,15 @@ public class BasicAccountService implements AccountService {
     private Map<Account, List<Account>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
+    private Map<Account, Set<String>> reservationProducts = Maps.newHashMap();
 
     public BasicAccountService(List<Account> accounts, Map<Account, List<Account>> reservationAccounts,
-                               Map<Account, String> reservationAccessRoles, Map<Account, String> reservationAccessExternalIds) {
+                               Map<Account, String> reservationAccessRoles, Map<Account, String> reservationAccessExternalIds,
+                               Map<Account, Set<String>> reservationProducts) {
         this.reservationAccounts = reservationAccounts;
         this.reservationAccessRoles = reservationAccessRoles;
         this.reservationAccessExternalIds = reservationAccessExternalIds;
+        this.reservationProducts = reservationProducts;
         for (Account account: accounts) {
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
@@ -91,6 +96,10 @@ public class BasicAccountService implements AccountService {
 
     public Map<Account, String> getReservationAccessExternalIds() {
         return reservationAccessExternalIds;
+    }
+
+    public Map<Account, Set<String>> getReservationProducts() {
+        return reservationProducts;
     }
 
     public boolean externalMappingExist(Account account, Zone zone) {

@@ -46,9 +46,14 @@ public enum InstanceOs {
         return others;
     }
 
+    /**
+     * withDescription() returns the InstanceOs value based on the product description in a
+     * EC2 ReservedInstance object.
+     */
     public static InstanceOs withDescription(String description) {
+    	String descLC = description.toLowerCase();
         for (InstanceOs os: InstanceOs.values()) {
-            if (description.toLowerCase().startsWith(os.description))
+            if (descLC.startsWith(os.description.toLowerCase()))
                 return os;
         }
         return others;

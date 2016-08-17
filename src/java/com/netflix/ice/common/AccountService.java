@@ -22,6 +22,7 @@ import com.netflix.ice.tag.Zone;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface AccountService {
     /**
@@ -59,12 +60,19 @@ public interface AccountService {
     Map<Account, String> getReservationAccessRoles();
 
     /**
-     * If you don't need to poll reservation capacity through ec2 API for other accounts, ir if you don't use external ids,
+     * If you don't need to poll reservation capacity through ec2 API for other accounts, or if you don't use external ids,
      * you can return an empty map.
      * @return Map of account access external ids. The keys are reservation owner accounts,
      * the values are external ids to call ec2 describeReservedInstances on each reservation owner account.
      */
     Map<Account, String> getReservationAccessExternalIds();
+
+    /**
+     * Get a map of accounts containing the products that each holds reservations for.
+     * @return Map of account products with reservations. The keys are reservation owner accounts,
+     * the values are product names for which the account holds reservations.
+     */
+    Map<Account, Set<String>> getReservationProducts();
 
     /**
      * @param account

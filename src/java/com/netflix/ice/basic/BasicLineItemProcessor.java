@@ -18,11 +18,12 @@
 package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.tag.*;
+
 import org.apache.commons.lang.StringUtils;
-import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -137,6 +138,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (product == Product.redshift) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);
+            //logger.info("Process Redshift " + operation + " " + costValue + " returned: " + result);
         }
         else if (product == Product.data_transfer) {
             result = processDataTranfer(processDelayed, usageType);
@@ -165,8 +167,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         ReadWriteData costDataOfProduct = costDataByProduct.get(product);
 
         if (result == Result.daily) {
-            DateMidnight dm = new DateMidnight(millisStart, DateTimeZone.UTC);
-            millisStart = dm.getMillis();
+            millisStart = new DateTime(millisStart).withTimeAtStartOfDay().getMillis();
             startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
             endIndex = startIndex + 24;
         }
@@ -257,8 +258,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 // Redshift has cost as a monthly charge, but usage appears hourly so
                 // so unlike EC2, we have to process the monthly line item to capture the cost
                 if (!(product == Product.redshift && result == Result.monthly)) {
+                	//if (product == Product.redshift)
+                	//	logger.info("Add usage value for Redshift: " + usageValue + ", " + tagGroup);
                 	addValue(usages, tagGroup, usageValue,  config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
                 }
+            	//if (product == Product.redshift && costValue > 0)
+            	//	logger.info("[" + i + "] Add cost value for Redshift: " + costValue + ", " + tagGroup);
+
                 addValue(costs, tagGroup, costValue, config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
             }
             else {
@@ -387,6 +393,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (usageTypeStr.startsWith("CW:"))
             product = Product.cloudwatch;
         else if (usageTypeStr.startsWith("BoxUsage") && operationStr.startsWith("RunInstances")) {
+        	// Line item for hourly "All Upfront" or "On-Demand" EC2 instance usage
             index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
@@ -399,20 +406,34 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             os = getInstanceOs(operationStr);
         }
         else if (usageTypeStr.startsWith("Node") && operationStr.startsWith("RunComputeNode")) {
-            index = usageTypeStr.indexOf(":");
-            usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
-
-            operation = getOperation(operationStr, reservationUsage, null);
+        	// Line item for hourly Redshift instance usage both On-Demand and Reserved.
+            usageTypeStr = currentRedshiftUsageType(usageTypeStr.split(":")[1]);
+            
+        	// Both Fixed and Heavy (and probably HeavyPartial - don't have an example) apply cost monthly,
+        	// so can't tell them apart without looking at the description. Examples:
+        	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
+        	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
+            if (reservationUsage && product == Product.redshift && cost == 0 && description.contains(" 0.0 per"))
+            	operation = Operation.reservedInstancesFixed;
+            else if (reservationUsage && product == Product.redshift)
+                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+            else
+            	operation = Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
         }
         else if ((usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
-            index = usageTypeStr.indexOf(":");
-            usageTypeStr = usageTypeStr.substring(index+1) + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");            
-
-            operation = getOperation(operationStr, reservationUsage, null);
+        	// Line item for hourly RDS instance usage - both On-Demand and Reserved
+            usageTypeStr = usageTypeStr.split(":")[1] + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");            
+            if (reservationUsage && product == Product.rds && cost == 0)
+            	operation = Operation.reservedInstancesFixed;
+            else if (reservationUsage && product == Product.rds)
+                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+            else
+            	operation = Operation.ondemandInstances;
             db = getInstanceDb(operationStr);
         }
         else if (usageTypeStr.startsWith("HeavyUsage") || usageTypeStr.startsWith("MediumUsage") || usageTypeStr.startsWith("LightUsage")) {
+        	// Line item for hourly "No Upfront" EC2 or monthly "No Upfront" for Redshift (and possibly RDS?)
             index = usageTypeStr.indexOf(":");
             String offeringType;
             if (index < 0) {
@@ -422,6 +443,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             else {
                 offeringType = usageTypeStr;
                 usageTypeStr = usageTypeStr.substring(index+1);
+                if (product == Product.redshift) {
+                	usageTypeStr = currentRedshiftUsageType(usageTypeStr);
+                }
+
             }
 
             operation = getOperation(operationStr, reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization.get(offeringType));
@@ -474,14 +499,28 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
 
     private Operation getOperation(String operationStr, boolean reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
-        if (operationStr.startsWith("RunInstances"))
+        if (operationStr.startsWith("RunInstances") ||
+        		operationStr.startsWith("RunComputeNode") ||
+        		operationStr.startsWith("CreateDBInstance")) {
             return (reservationUsage ? Operation.getReservedInstances(utilization) : Operation.ondemandInstances);
-        else if (operationStr.startsWith("RunComputeNode"))
-            return (reservationUsage ? Operation.reservedInstances : Operation.ondemandInstances);
-        else if (operationStr.startsWith("CreateDBInstance"))
-        	return (reservationUsage ? Operation.reservedInstances : Operation.ondemandInstances);
-        else
-            return null;
+        }
+        return null;
+    }
+    
+    private static final Map<String, String> redshiftUsageTypeMap = Maps.newHashMap();
+    static {
+    	redshiftUsageTypeMap.put("dw.hs1.xlarge", "ds1.xlarge");
+    	redshiftUsageTypeMap.put("dw1.xlarge", "ds1.xlarge");
+    	redshiftUsageTypeMap.put("dw.hs1.8xlarge", "ds1.8xlarge");
+    	redshiftUsageTypeMap.put("dw1.8xlarge", "ds1.8xlarge");
+    	redshiftUsageTypeMap.put("dw2.large", "dc1.large");
+    	redshiftUsageTypeMap.put("dw2.8xlarge", "dc1.8xlarge");
+    }
+
+    private String currentRedshiftUsageType(String usageType) {
+    	if (redshiftUsageTypeMap.containsKey(usageType))
+    		return redshiftUsageTypeMap.get(usageType);
+    	return usageType;
     }
 
     private static class ReformedMetaData{

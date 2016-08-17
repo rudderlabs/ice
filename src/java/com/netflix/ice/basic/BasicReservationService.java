@@ -26,6 +26,7 @@ import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.*;
+import com.netflix.ice.processor.CanonicalReservedInstances;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.*;
@@ -33,6 +34,8 @@ import com.netflix.ice.tag.Region;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,7 +182,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                         hasNewPrice = setPrice(utilization, currentTime, Zone.getZone(offer.getAvailabilityZone()).region, usageType,
                                 offer.getFixedPrice(), hourly) || hasNewPrice;
 
-                        logger.info("Setting RI price for " + Zone.getZone(offer.getAvailabilityZone()).region + " " + utilization + " " + usageType + " " + offer.getFixedPrice() + " " + hourly);
+                        //logger.info("Setting RI price for " + Zone.getZone(offer.getAvailabilityZone()).region + " " + utilization + " " + usageType + " " + offer.getFixedPrice() + " " + hourly);
                     }
                 }
             } while (!StringUtils.isEmpty(token));
@@ -285,16 +288,16 @@ public class BasicReservationService extends Poller implements ReservationServic
         final long start; // Reservation start time rounded down to starting hour mark where it takes effect
         final long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
         final ReservationUtilization utilization;
-        final float fixedPrice;
-        final float usagePrice;
+        final double fixedPrice;
+        final double usagePrice; // usage price plus the recurring hourly charge
 
         public Reservation(
                 int count,
                 long start,
                 long end,
                 ReservationUtilization utilization,
-                float fixedPrice,
-                float usagePrice) {
+                double fixedPrice,
+                double usagePrice) {
             this.count = count;
             this.start = start;
             this.end = end;
@@ -328,7 +331,58 @@ public class BasicReservationService extends Poller implements ReservationServic
         return ec2Price.hourlyPrice.getPrice(null).getPrice(tier) +
                ec2Price.upfrontPrice.getPrice(null).getUpfrontAmortized(time, term, tier);
     }
+    
+    public ReservationInfo getReservation(
+        long time,
+        TagGroup tagGroup,
+        ReservationUtilization utilization) {
 
+	    double tier = getEc2Tier(time);
+	
+	    double upfrontAmortized = 0;
+	    double hourlyCost = 0;
+	
+	    int count = 0;
+	    if (this.reservations.get(utilization).containsKey(tagGroup)) {
+	        for (Reservation reservation : this.reservations.get(utilization).get(tagGroup)) {
+	            if (time >= reservation.start && time < reservation.end) {
+	                count += reservation.count;
+	
+	                upfrontAmortized += reservation.count * reservation.fixedPrice / ((reservation.end - reservation.start) / AwsUtils.hourMillis);
+	                hourlyCost += reservation.count * reservation.usagePrice;
+	            }
+	        }
+	    }
+	    else {
+	        logger.error("Not able to find " + utilization.name() + " reservation " + " for " + tagGroup);
+	    }
+	    
+	    if (count == 0) {
+	    	// Either we didn't find the reservation, or there is no longer an active reservation
+	    	// for this usage. Pull the prices from the pricelist.
+	        if (tagGroup.product == Product.ec2_instance) {
+		        Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
+		        Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
+		        if (ec2Price != null) { // remove this...
+		            upfrontAmortized = ec2Price.upfrontPrice.getPrice(null).getUpfrontAmortized(time, term, tier);
+		            hourlyCost = ec2Price.hourlyPrice.getPrice(null).getPrice(tier);
+		        }
+		        else {
+		        	// We get here if we're looking up a price for a long retired reservation such as for a "Light Utilization"
+		        	// which is no longer offered.
+		            //logger.error("Not able to find EC2 reservation price for " + utilization.name() + " " + key);
+		        }
+	    	}
+	    }
+	    else {
+	        upfrontAmortized = upfrontAmortized / count;
+	        hourlyCost = hourlyCost / count;
+	    }
+	    
+	    return new ReservationInfo(count, upfrontAmortized, hourlyCost);
+	}
+
+    /*
     public ReservationInfo getReservation(
             long time,
             TagGroup tagGroup,
@@ -393,6 +447,9 @@ public class BasicReservationService extends Poller implements ReservationServic
                 }
             }
         }
+        else {
+        	logger.info("No fixed reservation for TagGroup: " + tagGroup.toString());
+        }
 
         if (count > 0) {
             upfrontAmortized = upfrontAmortized / count;
@@ -401,6 +458,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 
         return new ReservationInfo(count, upfrontAmortized, hourlyCost);
     }
+    */
     
     private long getEffectiveReservationTime(Date d) {
     	Calendar c = new GregorianCalendar();
@@ -411,22 +469,19 @@ public class BasicReservationService extends Poller implements ReservationServic
     	return c.getTime().getTime();
     }
 
-    public void updateEc2Reservations(Map<String, ReservedInstances> reservationsFromApi) {
+    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
 
         for (String key: reservationsFromApi.keySet()) {
-            ReservedInstances reservedInstances = reservationsFromApi.get(key);
+            CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
             if (reservedInstances.getInstanceCount() <= 0)
                 continue;
 
             String accountId = key.substring(0, key.indexOf(","));
             Account account = config.accountService.getAccountById(accountId);
-            Zone zone = Zone.getZone(reservedInstances.getAvailabilityZone());
-            if (zone == null)
-                logger.error("Not able to find zone for reserved instances " + reservedInstances.getAvailabilityZone());
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
             // AWS reservations start at the beginning of the hour in which the reservation was purchased.
@@ -436,14 +491,36 @@ public class BasicReservationService extends Poller implements ReservationServic
             endTime = Math.min(endTime, startTime + reservedInstances.getDuration() * 1000);
             if (endTime <= config.startDate.getMillis())
                 continue;
-            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, reservedInstances.getFixedPrice(), reservedInstances.getUsagePrice());
+            
+            // usage price is the sum of the usage price and the recurring hourly charge
+            double usagePrice = reservedInstances.getUsagePrice() + reservedInstances.getRecurringHourlyCharges();
+            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, reservedInstances.getFixedPrice(), usagePrice);
 
-            String osStr = reservedInstances.getProductDescription();
-            InstanceOs os = InstanceOs.withDescription(osStr);
+            UsageType usageType;
+            Product product;
+            Zone zone = null;
+            Region region = Region.getRegionByName(reservedInstances.getRegion());
+            
+            if (reservedInstances.isEC2()) {
+                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
+                if (zone == null)
+                    logger.error("Not able to find zone for EC2 reserved instances " + reservedInstances.getAvailabilityZone());
+                String osStr = reservedInstances.getProductDescription();
+                InstanceOs os = InstanceOs.withDescription(osStr);
+                usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
+                product = Product.ec2_instance;
+            }
+            else if (reservedInstances.isRDS()) {
+            	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
+            	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + db.usageType, "hours");
+            	product = Product.rds_instance;
+            }
+            else {
+            	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
+            	product = Product.redshift;
+            }
 
-            UsageType usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
-
-            TagGroup reservationKey = new TagGroup(account, zone.region, zone, Product.ec2_instance, Operation.getReservedInstances(utilization), usageType, null);
+            TagGroup reservationKey = new TagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);
 
             List<Reservation> reservations = reservationMap.get(utilization).get(reservationKey);
             if (reservations == null) {
@@ -452,6 +529,8 @@ public class BasicReservationService extends Poller implements ReservationServic
             else {
                 reservations.add(reservation);
             }
+            //logger.info("Add reservation " + utilization.name() + " for key " + reservationKey.toString());
+
         }
 
         this.reservations = reservationMap;

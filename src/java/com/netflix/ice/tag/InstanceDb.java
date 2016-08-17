@@ -1,21 +1,24 @@
 package com.netflix.ice.tag;
 
 public enum InstanceDb {
-    aurora("", ":0016", "RDS running Amazon Aurora"),
-    mariadb("", ":0018", "RDS running MariaDB (LI)"),
-    mysql("", ":0002", "RDS running MySQL (BYOL)"),
-    oraclestd1byol("", ":0003", "RDS running Oracle Standard One (BYOL)"),
-    oraclestdbyol("", ":0004", "RDS running Oracle Standard (BYOL)"),
-    oracleentbyol("", ":0005", "RDS running Oracle Enterprise (BYOL)"),
-    oraclestd1li("", ":0006", "RDS running Oracle Standard One (LI)"),
-    oraclestd2byol("", ":0019", "RDS running Oracle Standard Two (BYOL)"),
-    postgresql("", ":0014", "RDS running PostgreSQL (BYOL)"),
-    sqlserverstdbyol("", ":0008", "RDS running SQL Server Standard (BYOL)"),
-    sqlserverentbyol("", ":0009", "RDS running SQL Server Enterprise (BYOL)"),
-    sqlserverexpli("", ":0010", "RDS running SQL Server Express (LI)"),
-    sqlserverwebli("", ":0011", "RDS running SQL Server Web (LI)"),
-    sqlserverstdli("", ":0012", "RDS running SQL Server Standard (LI)"),
-    sqlserverentli("", ":0015", "RDS running SQL Server Enterprise (LI)"),
+	// I have no idea what description fields are used for reservations other than mysql which is the
+	// only one we're making reservations for at present.  jmr 8/11/16
+	
+    aurora(".aurora", ":0016", "aurora"), // "RDS running Amazon Aurora"
+    mariadb(".mariadb", ":0018", "mariadb"), // "RDS running MariaDB (LI)"
+    mysql(".mysql", ":0002", "mysql"), // "RDS running MySQL (BYOL)"
+    oraclestd1byol(".oraclestd1byol", ":0003", "oraclestd1byol"), // "RDS running Oracle Standard One (BYOL)"
+    oraclestdbyol(".oraclestdbyol", ":0004", "oraclestdbyol"), // "RDS running Oracle Standard (BYOL)"
+    oracleentbyol(".oracleentbyol", ":0005", "oracleentbyol"), // "RDS running Oracle Enterprise (BYOL)"
+    oraclestd1li(".oraclestd1li", ":0006", "oraclestd1li"), // "RDS running Oracle Standard One (LI)"
+    oraclestd2byol(".oraclestd2byol", ":0019", "oraclestd2byol"), // "RDS running Oracle Standard Two (BYOL)"
+    postgresql(".postgresql", ":0014", "postgresql"), // "RDS running PostgreSQL (BYOL)"
+    sqlserverstdbyol(".sqlserverstdbyol", ":0008", "sqlserverstdbyol"), // "RDS running SQL Server Standard (BYOL)"
+    sqlserverentbyol(".sqlserverentbyol", ":0009", "sqlserverentbyol"), // "RDS running SQL Server Enterprise (BYOL)"
+    sqlserverexpli(".sqlserverexpli", ":0010", "sqlserverexpli"), // "RDS running SQL Server Express (LI)"
+    sqlserverwebli(".sqlserverwebli", ":0011", "sqlserverwebli"), // "RDS running SQL Server Web (LI)"
+    sqlserverstdli(".sqlserverstdli", ":0012", "sqlserverstdli"), // "RDS running SQL Server Standard (LI)"
+    sqlserverentli(".sqlserverentli", ":0015", "sqlserverentli"), // "RDS running SQL Server Enterprise (LI)"
     others(".others", ":others", "others");
 
     public final String usageType;
@@ -36,9 +39,14 @@ public enum InstanceDb {
         return others;
     }
 
+    /**
+     * withDescription() returns the InstanceDb value based on the product description in an
+     * RDS ReservedDBInstance object.
+     */
     public static InstanceDb withDescription(String description) {
+    	String descLC = description.toLowerCase();
         for (InstanceDb db: InstanceDb.values()) {
-            if (description.toLowerCase().startsWith(db.description))
+            if (descLC.toLowerCase().startsWith(db.description.toLowerCase()))
                 return db;
         }
         return others;

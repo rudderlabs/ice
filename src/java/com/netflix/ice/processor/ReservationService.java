@@ -76,7 +76,7 @@ public interface ReservationService {
      * Called by ReservationCapacityPoller to update reservations.
      * @param reservations
      */
-    void updateEc2Reservations(Map<String, ReservedInstances> reservations);
+    void updateReservations(Map<String, CanonicalReservedInstances> reservations);
 
 
     public static class ReservationInfo {

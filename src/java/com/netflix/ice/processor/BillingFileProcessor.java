@@ -30,7 +30,10 @@ import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
@@ -54,6 +57,12 @@ public class BillingFileProcessor extends Poller {
     private Long startMilli;
     private Long endMilli;
     private boolean processingMonitor;
+    /**
+     * The usageDataByProduct map holds both the usage data for each
+     * individual product (if ResourceService is enabled) and a "null"
+     * key entry for aggregated data for "all" services.
+     * i.e. the null key means "all"
+     */
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
     private Double ondemandThreshold;
@@ -223,10 +232,23 @@ public class BillingFileProcessor extends Poller {
                 logger.info("cut hours to " + hours);
                 cutData(hours);
             }
-
+            
+            
+            
+            /***** Debugging */
+//            ReadWriteData costData = costDataByProduct.get(null);
+//            Map<TagGroup, Double> costMap = costData.getData(0);
+//            TagGroup redshiftHeavyTagGroup = new TagGroup(config.accountService.getAccountByName("IntegralReach"), Region.US_EAST_1, null, Product.redshift, Operation.reservedInstancesHeavy, UsageType.getUsageType("dc1.8xlarge", Operation.reservedInstancesHeavy, ""), null);
+//            Double used = costMap.get(redshiftHeavyTagGroup);
+//            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " before reservation processing");
+            
             // now get reservation capacity to calculate upfront and un-used cost
             for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values())
                 processReservations(utilization);
+
+            /***** Debugging */
+//            used = costMap.get(redshiftHeavyTagGroup);
+//            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " after reservation processing");
 
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
@@ -312,6 +334,9 @@ public class BillingFileProcessor extends Poller {
         ReadWriteData usageData = usageDataByProduct.get(null);
         ReadWriteData costData = costDataByProduct.get(null);
 
+        // This first block of code could be factored out as it only needs to be called
+        // once to build the maps as it isn't dependent on utilization. In fact it
+        // should only be called when this class is initialized. -jroth
         Map<Account, List<Account>> reservationAccounts = config.accountService.getReservationAccounts();
         Set<Account> reservationOwners = reservationAccounts.keySet();
         Map<Account, List<Account>> reservationBorrowers = Maps.newHashMap();
@@ -328,18 +353,24 @@ public class BillingFileProcessor extends Poller {
                 from.add(account);
             }
         }
+        
 
         // first mark owner accounts
         Set<TagGroup> toMarkOwners = Sets.newTreeSet();
         for (TagGroup tagGroup: config.reservationService.getTagGroups(utilization)) {
+        	// For each of the reservation tag groups...
 
             for (int i = 0; i < usageData.getNum(); i++) {
+            	// For each hour of usage...
 
                 Map<TagGroup, Double> usageMap = usageData.getData(i);
                 Map<TagGroup, Double> costMap = costData.getData(i);
 
+                // Do we have any usage from the current reservation?
                 Double existing = usageMap.get(tagGroup);
                 double value = existing == null ? 0 : existing;
+                
+                // Get the reservation info for the utilization and tagGroup in the current hour
                 ReservationService.ReservationInfo reservation = config.reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
                 double reservedUsed = Math.min(value, reservation.capacity);
                 double reservedUnused = reservation.capacity - reservedUsed;
@@ -347,7 +378,12 @@ public class BillingFileProcessor extends Poller {
 
                 if (reservedUsed > 0 || existing != null) {
                     usageMap.put(tagGroup, reservedUsed);
-                    costMap.put(tagGroup, reservedUsed * reservation.reservationHourlyCost);
+                    // This is overwriting the lineitem costs in favor of the reservation cost if there's an
+                    // active reservations, else it's using the price lists for cost. Should probably only
+                    // update the price if there's an active reservation with a given price (or maybe just
+                    // keep the price from the line item. At any rate, don't update if the reservation cost is 0. -jroth
+                    if (reservation.reservationHourlyCost > 0)
+                    	costMap.put(tagGroup, reservedUsed * reservation.reservationHourlyCost);
                 }
 
                 if (reservedUnused > 0) {

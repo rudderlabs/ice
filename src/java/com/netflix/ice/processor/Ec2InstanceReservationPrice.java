@@ -246,6 +246,7 @@ public class Ec2InstanceReservationPrice {
         public static ReservationUtilization get(String offeringType) {
             int idx = offeringType.indexOf(" ");
             if (idx > 0) {
+            	// We've been called with a reservationInstance record offering type field
                 offeringType = offeringType.substring(0, idx).toUpperCase();
                 String mappedValue = reservationTypeMap.get(offeringType);
                 if (mappedValue != null)
@@ -253,6 +254,7 @@ public class Ec2InstanceReservationPrice {
                 return valueOf(offeringType);
             }
             else {
+            	// We've been called with a billing report line item usage type field
                 for (ReservationUtilization utilization: values()) {
                     if (offeringType.toUpperCase().startsWith(utilization.name()))
                         return utilization;
