@@ -31,20 +31,29 @@ public class BasicProductService implements ProductService {
     private static ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
 
+    public static final BasicProduct api_gateway = new BasicProduct(Product.api_gateway, "API Gateway");
     public static final BasicProduct cloudfront = new BasicProduct(Product.cloudfront, "CloudFront");
     public static final BasicProduct cloudhsm = new BasicProduct(Product.cloudhsm, "CloudHSM");
-    public static final BasicProduct cloudwatch = new BasicProduct(Product.cloudwatch, "CloudWatch");
+    public static final BasicProduct cloudtrail = new BasicProduct(Product.cloudtrail, "CloudTrail");
+    public static final BasicProduct cloudwatch = new BasicProduct(Product.cloudwatch, "AmazonCloudWatch");
+    public static final BasicProduct config = new BasicProduct(Product.config, "Config");
     public static final BasicProduct data_pipeline = new BasicProduct(Product.data_pipeline, "Data Pipeline");
     public static final BasicProduct data_transfer = new BasicProduct(Product.data_transfer, "Data Transfer");
     public static final BasicProduct direct_connect = new BasicProduct(Product.direct_connect, "Direct Connect");
+    public static final BasicProduct dms = new BasicProduct(Product.dms, "Database Migration Service");
+    public static final BasicProduct ds = new BasicProduct(Product.ds, "Directory Service");
     public static final BasicProduct dynamodb = new BasicProduct(Product.dynamodb, "DynamoDB");
     public static final BasicProduct ebs = new BasicProduct(Product.ebs, "ebs");
     public static final BasicProduct ec2 = new BasicProduct(Product.ec2, "Elastic Compute Cloud");
+    public static final BasicProduct ec2_cloudwatch = new BasicProduct(Product.ec2_cloudwatch, "CloudWatch");
     public static final BasicProduct ec2_instance = new BasicProduct(Product.ec2_instance, "ec2_instance");
+    public static final BasicProduct ecr = new BasicProduct(Product.ecr, "EC2 Container Registry (ECR)");
     public static final BasicProduct eip = new BasicProduct(Product.eip, "eip");
     public static final BasicProduct elasticache = new BasicProduct(Product.elasticache, "ElastiCache");
     public static final BasicProduct emr = new BasicProduct(Product.emr, "Elastic MapReduce");
     public static final BasicProduct glacier = new BasicProduct(Product.glacier, "Glacier");
+    public static final BasicProduct kms = new BasicProduct(Product.kms, "Key Management Service");
+    public static final BasicProduct lambda = new BasicProduct(Product.lambda, "Lambda");
     public static final BasicProduct rds = new BasicProduct(Product.rds, "RDS Service");
     public static final BasicProduct rds_instance = new BasicProduct(Product.rds_instance, "rds_instance");
     public static final BasicProduct redshift = new BasicProduct(Product.redshift, "Redshift");
@@ -57,9 +66,16 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct storage_gateway = new BasicProduct(Product.storage_gateway, "Storage Gateway");
     public static final BasicProduct sws = new BasicProduct(Product.sws, "Simple Workflow Service");
     public static final BasicProduct vpc = new BasicProduct(Product.vpc, "Virtual Private Cloud");
+    public static final BasicProduct workspaces = new BasicProduct(Product.workspaces, "WorkSpaces");
     public static final BasicProduct monitor = new BasicProduct(Product.monitor, "monitor");
 
-    private static BasicProduct[] products = new BasicProduct[]{cloudfront, cloudhsm, cloudwatch, data_pipeline, data_transfer, direct_connect, dynamodb, ebs, ec2, ec2_instance, eip, elasticache, emr, glacier, rds, rds_instance, redshift, route53, s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc};
+    private static BasicProduct[] products = new BasicProduct[]{
+    	api_gateway, cloudfront, cloudhsm, cloudtrail, config,
+    	data_pipeline, data_transfer, direct_connect, dms, ds, dynamodb, 
+    	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, eip, elasticache, emr, 
+    	glacier, kms, lambda, rds, rds_instance, redshift, route53, 
+    	s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc, workspaces
+    	};
 
     static {
         for (BasicProduct product: products) {
@@ -67,6 +83,8 @@ public class BasicProductService implements ProductService {
             productsByAwsName.put("Amazon " + product.awsName, product.product);
             productsByName.put(product.product.name, product.product);
         }
+        productsByAwsName.put(cloudwatch.awsName, cloudwatch.product);
+        productsByName.put(cloudwatch.product.name, cloudwatch.product);
         productsByAwsName.put(monitor.awsName, monitor.product);
         productsByName.put(monitor.product.name, monitor.product);
     }

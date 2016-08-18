@@ -237,6 +237,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
         }
 
+        // Does the following code need to check for Product.cloudwatch in addition to Product.monitor?
+        // I have a suspicion that Amazon renamed the service. -jroth
         if (config.randomizer != null && product == Product.monitor)
             return result;
 
@@ -391,8 +393,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (usageTypeStr.startsWith("EBSOptimized:"))
             product = Product.ebs;
         else if (usageTypeStr.startsWith("CW:"))
-            product = Product.cloudwatch;
-        else if (usageTypeStr.startsWith("BoxUsage") && operationStr.startsWith("RunInstances")) {
+            product = Product.ec2_cloudwatch;
+        else if ((usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront" or "On-Demand" EC2 instance usage
             index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);

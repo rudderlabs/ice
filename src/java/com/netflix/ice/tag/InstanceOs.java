@@ -26,6 +26,7 @@ public enum InstanceOs {
     rhbl(".rhbl", ":00g0", "Red Hat BYOL Linux"),
     windows(".windows", ":0002", "Windows"),
     dw(".dw", ":0001", "redshift"),
+    spot(".spot", ":S0000", ""), // Linux/UNIX Spot Instance - Number is the Zone # (Haven't seen example for windows yet -jroth)
     others(".others", ":others", "others");
 
     public final String usageType;
@@ -43,6 +44,9 @@ public enum InstanceOs {
             if (code.toLowerCase().equals(os.code))
                 return os;
         }
+        if (code.startsWith(":S"))
+        	return spot;
+        
         return others;
     }
 

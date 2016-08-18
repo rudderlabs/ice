@@ -18,20 +18,29 @@
 package com.netflix.ice.tag;
 
 public class Product extends Tag {
+    public static final Product api_gateway = new Product("api_gateway");
     public static final Product cloudfront = new Product("cloudfront");
     public static final Product cloudhsm = new Product("cloudhsm");
+    public static final Product cloudtrail = new Product("cloudtrail");
     public static final Product cloudwatch = new Product("cloudwatch");
+    public static final Product config = new Product("config");
     public static final Product data_pipeline = new Product("data_pipeline");
     public static final Product data_transfer = new Product("data_transfer");
     public static final Product direct_connect = new Product("direct_connect");
+    public static final Product dms = new Product("dms");
+    public static final Product ds = new Product("ds");
     public static final Product dynamodb = new Product("dynamodb");
     public static final Product ebs = new Product("ebs");
     public static final Product ec2 = new Product("ec2");
+    public static final Product ec2_cloudwatch = new Product("ec2_cloudwatch");
     public static final Product ec2_instance = new Product("ec2_instance");
+    public static final Product ecr = new Product("ecr");
     public static final Product eip = new Product("eip");
     public static final Product elasticache = new Product("elasticache");
     public static final Product emr = new Product("emr");
     public static final Product glacier = new Product("glacier");
+    public static final Product kms = new Product("kms");
+    public static final Product lambda = new Product("lambda");
     public static final Product monitor = new Product("monitor");
     public static final Product rds = new Product("rds");
     public static final Product rds_instance = new Product("rds_instance");
@@ -45,6 +54,7 @@ public class Product extends Tag {
     public static final Product storage_gateway = new Product("storage_gateway");
     public static final Product sws = new Product("sws");
     public static final Product vpc = new Product("vpc");
+    public static final Product workspaces = new Product("workspaces");
 
     public Product (String name) {
         super(name);
