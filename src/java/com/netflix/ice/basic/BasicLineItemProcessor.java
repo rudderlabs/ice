@@ -210,7 +210,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (config.useCostForResourceGroup.equals("modeled") && product == Product.ec2_instance)
                 operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
 
-            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation) {
+            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation && !usageType.name.endsWith(InstanceOs.spot.name())) {
                 UsageType usageTypeForPrice = usageType;
                 if (usageType.name.endsWith(InstanceOs.others.name())) {
                     usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);

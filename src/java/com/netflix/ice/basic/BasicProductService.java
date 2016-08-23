@@ -40,8 +40,8 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct data_pipeline = new BasicProduct(Product.data_pipeline, "Data Pipeline");
     public static final BasicProduct data_transfer = new BasicProduct(Product.data_transfer, "Data Transfer");
     public static final BasicProduct direct_connect = new BasicProduct(Product.direct_connect, "Direct Connect");
-    public static final BasicProduct dms = new BasicProduct(Product.dms, "Database Migration Service");
-    public static final BasicProduct ds = new BasicProduct(Product.ds, "Directory Service");
+    public static final BasicProduct database_migration = new BasicProduct(Product.database_migration, "Database Migration Service");
+    public static final BasicProduct directory = new BasicProduct(Product.directory, "Directory Service");
     public static final BasicProduct dynamodb = new BasicProduct(Product.dynamodb, "DynamoDB");
     public static final BasicProduct ebs = new BasicProduct(Product.ebs, "ebs");
     public static final BasicProduct ec2 = new BasicProduct(Product.ec2, "Elastic Compute Cloud");
@@ -52,6 +52,7 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct elasticache = new BasicProduct(Product.elasticache, "ElastiCache");
     public static final BasicProduct emr = new BasicProduct(Product.emr, "Elastic MapReduce");
     public static final BasicProduct glacier = new BasicProduct(Product.glacier, "Glacier");
+    public static final BasicProduct kinesis_firehose = new BasicProduct(Product.kinesis_firehose, "Kinesis Firehose");
     public static final BasicProduct kms = new BasicProduct(Product.kms, "Key Management Service");
     public static final BasicProduct lambda = new BasicProduct(Product.lambda, "Lambda");
     public static final BasicProduct rds = new BasicProduct(Product.rds, "RDS Service");
@@ -71,9 +72,9 @@ public class BasicProductService implements ProductService {
 
     private static BasicProduct[] products = new BasicProduct[]{
     	api_gateway, cloudfront, cloudhsm, cloudtrail, config,
-    	data_pipeline, data_transfer, direct_connect, dms, ds, dynamodb, 
+    	data_pipeline, data_transfer, direct_connect, database_migration, directory, dynamodb, 
     	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, eip, elasticache, emr, 
-    	glacier, kms, lambda, rds, rds_instance, redshift, route53, 
+    	glacier, kinesis_firehose, kms, lambda, rds, rds_instance, redshift, route53, 
     	s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc, workspaces
     	};
 

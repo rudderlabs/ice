@@ -27,8 +27,8 @@ public class Product extends Tag {
     public static final Product data_pipeline = new Product("data_pipeline");
     public static final Product data_transfer = new Product("data_transfer");
     public static final Product direct_connect = new Product("direct_connect");
-    public static final Product dms = new Product("dms");
-    public static final Product ds = new Product("ds");
+    public static final Product database_migration = new Product("database_migration");
+    public static final Product directory = new Product("directory");
     public static final Product dynamodb = new Product("dynamodb");
     public static final Product ebs = new Product("ebs");
     public static final Product ec2 = new Product("ec2");
@@ -39,6 +39,7 @@ public class Product extends Tag {
     public static final Product elasticache = new Product("elasticache");
     public static final Product emr = new Product("emr");
     public static final Product glacier = new Product("glacier");
+    public static final Product kinesis_firehose = new Product("kinesis_firehose");
     public static final Product kms = new Product("kms");
     public static final Product lambda = new Product("lambda");
     public static final Product monitor = new Product("monitor");

@@ -34,46 +34,7 @@ public class Operation extends Tag {
     private static ConcurrentMap<String, Operation> operations = Maps.newConcurrentMap();
 
     public static final ReservationOperation ondemandInstances = new ReservationOperation("OndemandInstances", 0);
-    public static final ReservationOperation reservedInstances = new ReservationOperation("ReservedInstances", 1);
 
-    public static final ReservationOperation reservedInstancesLight = new ReservationOperation("ReservedInstancesLight", 2);
-    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("BonusReservedInstancesLight", 3);
-    public static final ReservationOperation borrowedInstancesLight = new ReservationOperation("BorrowedInstancesLight", 4);
-    public static final ReservationOperation lentInstancesLight = new ReservationOperation("LentInstancesLight", 5);
-    public static final ReservationOperation unusedInstancesLight = new ReservationOperation("UnusedInstancesLight", 6);
-    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("UpfrontAmortizedLight", 7);
-
-    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation("ReservedInstancesMedium", 8);
-    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation("BonusReservedInstancesMedium", 9);
-    public static final ReservationOperation borrowedInstancesMedium = new ReservationOperation("BorrowedInstancesMedium", 10);
-    public static final ReservationOperation lentInstancesMedium = new ReservationOperation("LentInstancesMedium", 11);
-    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation("UnusedInstancesMedium", 12);
-    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation("UpfrontAmortizedMedium", 13);
-
-    public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation("ReservedInstancesHeavy", 14);
-    public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation("BonusReservedInstancesHeavy", 15);
-    public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation("BorrowedInstancesHeavy", 16);
-    public static final ReservationOperation lentInstancesHeavy = new ReservationOperation("LentInstancesHeavy", 17);
-    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("UnusedInstancesHeavy", 18);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("UpfrontAmortizedHeavy", 19);
-
-    public static final ReservationOperation reservedInstancesFixed = new ReservationOperation("ReservedInstancesFixed", 20);
-    public static final ReservationOperation bonusReservedInstancesFixed = new ReservationOperation("BonusReservedInstancesFixed", 21);
-    public static final ReservationOperation borrowedInstancesFixed = new ReservationOperation("BorrowedInstancesFixed", 22);
-    public static final ReservationOperation lentInstancesFixed = new ReservationOperation("LentInstancesFixed", 23);
-    public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("UnusedInstancesFixed", 24);
-    public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("UpfrontAmortizedFixed", 25);
-
-    public static final ReservationOperation reservedInstancesHeavyPartial = new ReservationOperation("ReservedInstancesHeavyPartial", 26);
-    public static final ReservationOperation bonusReservedInstancesHeavyPartial = new ReservationOperation("BonusReservedInstancesHeavyPartial", 27);
-    public static final ReservationOperation borrowedInstancesHeavyPartial = new ReservationOperation("BorrowedInstancesHeavyPartial", 28);
-    public static final ReservationOperation lentInstancesHeavyPartial = new ReservationOperation("LentInstancesHeavyPartial", 29);
-    public static final ReservationOperation unusedInstancesHeavyPartial = new ReservationOperation("UnusedInstancesHeavyPartial", 30);
-    public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("UpfrontAmortizedHeavyPartial", 31);
-
-    /*
-     * Future renaming
-     * 
     // Light and Medium reservations types no longer exist as of 2014
     public static final ReservationOperation reservedInstancesLight = new ReservationOperation("ReservedInstancesLight", 2);
     public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("BonusReservedInstancesLight", 3);
@@ -95,26 +56,21 @@ public class Operation extends Tag {
     public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation("BorrowedInstancesNoUpfront", 16);
     public static final ReservationOperation lentInstancesHeavy = new ReservationOperation("LentInstancesNoUpfront", 17);
     public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("UnusedInstancesNoUpfront", 18);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("UpfrontAmortizedNoUpfront", 19);
+    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("AmortizedNoUpfront", 19);
 
     public static final ReservationOperation reservedInstancesFixed = new ReservationOperation("ReservedInstancesAllUpfront", 20);
     public static final ReservationOperation bonusReservedInstancesFixed = new ReservationOperation("BonusReservedInstancesAllUpfront", 21);
     public static final ReservationOperation borrowedInstancesFixed = new ReservationOperation("BorrowedInstancesAllUpfront", 22);
     public static final ReservationOperation lentInstancesFixed = new ReservationOperation("LentInstancesAllUpfront", 23);
     public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("UnusedInstancesAllUpfront", 24);
-    public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("UpfrontAmortizedAllUpfront", 25);
+    public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("AmortizedAllUpfront", 25);
 
     public static final ReservationOperation reservedInstancesHeavyPartial = new ReservationOperation("ReservedInstancesPartialUpfront", 26);
     public static final ReservationOperation bonusReservedInstancesHeavyPartial = new ReservationOperation("BonusReservedInstancesPartialUpfront", 27);
     public static final ReservationOperation borrowedInstancesHeavyPartial = new ReservationOperation("BorrowedInstancesPartialUpfront", 28);
     public static final ReservationOperation lentInstancesHeavyPartial = new ReservationOperation("LentInstancesPartialUpfront", 29);
     public static final ReservationOperation unusedInstancesHeavyPartial = new ReservationOperation("UnusedInstancesPartialUpfront", 30);
-    public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("UpfrontAmortizedPartialUpfront", 31);
-     * 
-     * 
-     */
-    
-    
+    public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("AmortizedPartialUpfront", 31);    
     
     public static ReservationOperation getReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {

@@ -150,6 +150,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 
         for (Region region: Region.getAllRegions()) {
             ec2Client.setEndpoint("ec2." + region.name + ".amazonaws.com");
+            logger.info("Setting RI prices for " + region.name);
             do {
                 if (!StringUtils.isEmpty(token))
                     req.setNextToken(token);
