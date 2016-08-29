@@ -97,9 +97,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     public Result process(long startMilli, boolean processDelayed, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate) {
         if (StringUtils.isEmpty(items[accountIdIndex]) ||
             StringUtils.isEmpty(items[productIndex]) ||
-            StringUtils.isEmpty(items[usageTypeIndex]) ||
-            StringUtils.isEmpty(items[operationIndex]) ||
-            StringUtils.isEmpty(items[usageQuantityIndex]) ||
             StringUtils.isEmpty(items[costIndex]))
             return Result.ignore;
 
@@ -107,7 +104,17 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (account == null)
             return Result.ignore;
 
-        double usageValue = Double.parseDouble(items[usageQuantityIndex]);
+        Product product = config.productService.getProductByAwsName(items[productIndex]);
+        double usageValue = 0.0;
+        if (product != Product.support) {
+        	if (StringUtils.isEmpty(items[usageTypeIndex]) ||
+                StringUtils.isEmpty(items[operationIndex]) ||
+                StringUtils.isEmpty(items[usageQuantityIndex])) {
+        		return Result.ignore;
+        	}
+            usageValue = Double.parseDouble(items[usageQuantityIndex]);
+        }
+
         double costValue = Double.parseDouble(items[costIndex]);
 
         long millisStart;
@@ -121,7 +128,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             millisEnd = amazonBillingDateFormat2.parseMillis(items[endTimeIndex]);
         }
 
-        Product product = config.productService.getProductByAwsName(items[productIndex]);
         boolean reservationUsage = "Y".equals(items[reservedIndex]);
         ReformedMetaData reformedMetaData = reform(millisStart, config, product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
         product = reformedMetaData.product;
@@ -151,6 +157,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (product == Product.rds) {
             result = processRds(usageType);
+        }
+        else if (product == Product.support) {
+        	result = Result.monthly;
+        	logger.info("Support lineitem: " + costValue);
         }
 
         if (result == Result.ignore || result == Result.delay)
@@ -455,7 +465,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             os = getInstanceOs(operationStr);
         }
 
-        if (usageTypeStr.equals("Unknown") || usageTypeStr.equals("Not Applicable")) {
+        // Usage type string is empty for Support recurring fees.
+        if (usageTypeStr.equals("Unknown") || usageTypeStr.equals("Not Applicable") || usageTypeStr.isEmpty()) {
             usageTypeStr = product.name;
         }
 

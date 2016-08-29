@@ -53,6 +53,7 @@ public class Product extends Tag {
     public static final Product sns = new Product("sns");
     public static final Product sqs = new Product("sqs");
     public static final Product storage_gateway = new Product("storage_gateway");
+    public static final Product support = new Product("support");
     public static final Product sws = new Product("sws");
     public static final Product vpc = new Product("vpc");
     public static final Product workspaces = new Product("workspaces");

@@ -143,7 +143,10 @@ public class Operation extends Tag {
     }
 
     public static Operation getOperation(String name) {
-
+    	if (name.isEmpty()) {
+    		// Support entries don't have an operation field
+    		name = "None";
+    	}
         Operation operation = operations.get(name);
         if (operation == null) {
             operations.putIfAbsent(name, new Operation(name));

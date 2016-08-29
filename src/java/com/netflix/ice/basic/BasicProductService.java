@@ -65,6 +65,7 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct sns = new BasicProduct(Product.sns, "Simple Notification Service");
     public static final BasicProduct sqs = new BasicProduct(Product.sqs, "Simple Queue Service");
     public static final BasicProduct storage_gateway = new BasicProduct(Product.storage_gateway, "Storage Gateway");
+    public static final BasicProduct support = new BasicProduct(Product.support, "Support (Business)");
     public static final BasicProduct sws = new BasicProduct(Product.sws, "Simple Workflow Service");
     public static final BasicProduct vpc = new BasicProduct(Product.vpc, "Virtual Private Cloud");
     public static final BasicProduct workspaces = new BasicProduct(Product.workspaces, "WorkSpaces");
@@ -75,7 +76,7 @@ public class BasicProductService implements ProductService {
     	data_pipeline, data_transfer, direct_connect, database_migration, directory, dynamodb, 
     	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, eip, elasticache, emr, 
     	glacier, kinesis_firehose, kms, lambda, rds, rds_instance, redshift, route53, 
-    	s3, simpledb, ses, sns, sqs, storage_gateway, sws, vpc, workspaces
+    	s3, simpledb, ses, sns, sqs, storage_gateway, support, sws, vpc, workspaces
     	};
 
     static {
