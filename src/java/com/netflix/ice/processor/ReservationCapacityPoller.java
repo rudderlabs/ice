@@ -63,6 +63,8 @@ public class ReservationCapacityPoller extends Poller {
         for (Entry<Account, Set<String>> entry: config.accountService.getReservationProducts().entrySet()) {
             Account account = entry.getKey();
             Set<String> products = entry.getValue();
+            logger.info("Get reservations for account: " + account.name);
+            
         	try {
                 String assumeRole = config.accountService.getReservationAccessRoles().get(account);
                 AWSSessionCredentials sessionCredentials = null;

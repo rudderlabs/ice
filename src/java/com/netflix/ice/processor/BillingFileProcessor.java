@@ -446,6 +446,8 @@ public class BillingFileProcessor extends Poller {
         for (Product product: costDataByProduct.keySet()) {
             TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.name);
             writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
+            // Debugging file output
+            //writer.outputCsv(config.localDir + "/csv");
         }
 
         logger.info("archiving summary data...");

@@ -80,6 +80,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         resourceIndex = 21 + (withTags ? 0 : -1) + (hasBlendedCost ? 0 : -2);
 
         this.header = Lists.newArrayList(header);
+        
+        if (processorConfig.resourceService != null) {
+        	processorConfig.resourceService.initHeader(this.header);
+        }
     }
 
     public List<String> getHeader() {
@@ -160,7 +164,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (product == Product.support) {
         	result = Result.monthly;
-        	logger.info("Support lineitem: " + costValue);
+        	//logger.info("Support lineitem: " + costValue);
         }
 
         if (result == Result.ignore || result == Result.delay)

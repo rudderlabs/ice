@@ -19,6 +19,7 @@ package com.netflix.ice.processor;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.netflix.ice.common.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,8 @@ public class ProcessorConfig extends Config {
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
 
-        customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
+        // Tags initialization
+        customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
         useBlended = properties.getProperty(IceOptions.USE_BLENDED) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.USE_BLENDED));
 
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");

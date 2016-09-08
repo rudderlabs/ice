@@ -69,4 +69,9 @@ public abstract class ResourceService {
      * Commit resource mappings. This method will be called at the end of billing file processing to commit your mappings.
      */
     abstract public void commit();
+    
+    /**
+     * Initialize the billing file user tags from the header
+     */
+    abstract public void initHeader(List<String> header);
 }

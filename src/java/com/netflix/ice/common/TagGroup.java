@@ -20,7 +20,11 @@ package com.netflix.ice.common;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.tag.*;
+
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -183,5 +187,40 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
             return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         }
+        
+        // Serialize to CSV for general debugging
+        public static void serializeTagGroupsCsv(DataOutput out, TreeMap<Long, Collection<TagGroup>> tagGroups) throws IOException {
+            out.writeChars("Month,Account,Region,Zone,Product,Operation,UsageType,UsageTypeUnit,ResourceGroup\n");
+            DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC);
+
+            for (Long monthMilli: tagGroups.keySet()) {
+                Collection<TagGroup> keys = tagGroups.get(monthMilli);
+                for (TagGroup tagGroup: keys) {
+                	StringBuilder sb = new StringBuilder(256);
+                	sb.append(dateFormatter.print(monthMilli));
+                	sb.append(",");
+                	sb.append(tagGroup.account.toString());
+                	sb.append(",");
+                	sb.append(tagGroup.region.toString());
+                	sb.append(",");
+                	sb.append(tagGroup.zone == null ? "" : tagGroup.zone.toString());
+                	sb.append(",");
+                	sb.append(tagGroup.product.toString());
+                	sb.append(",");
+                	sb.append(tagGroup.operation.toString());
+                	sb.append(",");
+                	sb.append(tagGroup.usageType.name);
+                	sb.append(",");
+                	sb.append(tagGroup.usageType.unit);
+                	sb.append(",");
+                    sb.append(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
+                    sb.append("\n");
+                    
+                	out.writeChars(sb.toString());
+                }
+            }
+        }
+
+
     }
 }

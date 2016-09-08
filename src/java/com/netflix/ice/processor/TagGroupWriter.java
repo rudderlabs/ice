@@ -68,10 +68,22 @@ public class TagGroupWriter {
         finally {
             out.close();
         }
-
+        
         logger.info(dbName + " uploading to s3...");
         AwsUtils.upload(config.workS3BucketName, config.workS3BucketPrefix, config.localDir, dbName);
         logger.info(dbName + " uploading done.");
     }
+    
+    // Output file to CSV for general debugging
+    void outputCsv(String dir) throws IOException {
+        File csvFile = new File(dir, dbName + ".csv");
+        DataOutputStream out = new DataOutputStream(new FileOutputStream(csvFile));
+        try {
+            TagGroup.Serializer.serializeTagGroupsCsv(out, this.tagGroups);
+        }
+        finally {
+            out.close();
+        }
+	}
 }
 

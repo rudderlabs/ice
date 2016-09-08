@@ -1,50 +1,130 @@
 package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.ProcessorConfig;
-import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+
 import org.apache.commons.lang.StringUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class BasicResourceService extends ResourceService {
 
     private ProcessorConfig processorConfig;
+    
+    @SuppressWarnings("unchecked")
+    private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
+            Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs),
+            Lists.newArrayList(Product.rds, Product.rds_instance),
+            Lists.newArrayList(Product.redshift),
+            Lists.newArrayList(Product.s3));
 
-    @Override
+    
+    private final Map<String, List<String>> tagKeys;
+    // Map of tag values to canonical name. All keys are lower case.
+    private final Map<String, String> tagValuesInverted;
+    
+    // Map containing the lineItem column indecies that match the canonical tag keys specified by CustomTags
+    // Key is the Custom Tag name (without the "user:" prefix). First index in the list is always the exact
+    // custom tag name match if present.
+    private Map<String, List<Integer>> tagIndecies;
+    
+    private static final String USER_TAG_PREFIX = "user:";
+
+    public BasicResourceService(Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues) {
+		super();
+		this.tagKeys = tagKeys;
+		this.tagValuesInverted = Maps.newHashMap();
+		for (Entry<String, List<String>> entry: tagValues.entrySet()) {			
+			for (String val: entry.getValue()) {
+				this.tagValuesInverted.put(val.toLowerCase(), entry.getKey());
+			}
+		}
+	}
+
+	@Override
     public void init() {
         processorConfig = ProcessorConfig.getInstance();
     }
 
     @Override
     public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart) {
-        List<String> header = processorConfig.lineItemProcessor.getHeader();
-
+        // Build the resource group name based on the values of the custom tags
         String result = "";
         for (String tag: processorConfig.customTags) {
-            int index = header.indexOf(tag);
-            if (index > 0 && lineItem.length > index && !StringUtils.isEmpty(lineItem[index]))
-                result = StringUtils.isEmpty(result) ? lineItem[index] : result + "_" + lineItem[index];
+        	// Grab the first non-empty value for each custom tag
+        	for (int index: tagIndecies.get(tag)) {
+        		if (lineItem.length > index && !StringUtils.isEmpty(lineItem[index])) {
+        			String val = lineItem[index];
+        			if (tagValuesInverted.containsKey(val.toLowerCase())) {
+        				val = tagValuesInverted.get(val.toLowerCase());
+        			}
+                    result = StringUtils.isEmpty(result) ? val : result + "_" + val;
+        			break;
+        		}
+        	}
         }
 
+        // If we didn't find any of the custom tags, default to the product name
         return StringUtils.isEmpty(result) ? product.name : result;
     }
 
     @Override
     public List<List<Product>> getProductsWithResources() {
-        List<List<Product>> result = Lists.newArrayList();
-        for (Product product: ReaderConfig.getInstance().productService.getProducts()) {
-            result.add(Lists.<Product>newArrayList(product));
-        }
-        return result;
+        return productsWithResources;
+        
+//        List<List<Product>> result = Lists.newArrayList();
+//        for (Product product: ReaderConfig.getInstance().productService.getProducts()) {
+//            result.add(Lists.<Product>newArrayList(product));
+//        }
+//        return result;
     }
 
     @Override
     public void commit() {
 
+    }
+    
+    @Override
+    public void initHeader(List<String> header) {
+    	tagIndecies = Maps.newHashMap();
+    	for (String tag: processorConfig.customTags) {
+    		String fullTag = USER_TAG_PREFIX + tag;
+    		List<Integer> indecies = Lists.newArrayList();
+    		tagIndecies.put(tag, indecies);
+    		
+    		// First check the preferred key name
+    		int index = header.indexOf(fullTag);
+    		if (index > 0) {
+    			indecies.add(index);
+    		}
+    		// Look for alternate cases
+            int startIndex = processorConfig.lineItemProcessor.getUserTagStartIndex();
+            for (int i = startIndex; i < header.size(); i++) {
+            	if (i == index) {
+            		continue;	// skip the exact match we handled above
+            	}
+            	if (fullTag.equalsIgnoreCase(header.get(i))) {
+            		indecies.add(i);
+            	}
+            }
+            // Look for aliases
+            if (tagKeys.containsKey(tag)) {
+            	for (String alias: tagKeys.get(tag)) {
+            		String fullAlias = USER_TAG_PREFIX + alias;
+                    for (int i = startIndex; i < header.size(); i++) {
+                    	if (fullAlias.equalsIgnoreCase(header.get(i))) {
+                    		indecies.add(i);
+                    	}
+                    }
+            	}
+            }
+    	}
     }
 }

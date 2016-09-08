@@ -115,13 +115,13 @@ class BootStrap {
                 if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId") && !name.endsWith(".products")) {
                     String accountName = name.substring("ice.owneraccount.".length());
                     String[] childen = prop.getProperty(name).split(",");
-                    List<Account> childAccouns = Lists.newArrayList();
+                    List<Account> childAccounts = Lists.newArrayList();
                     for (String child: childen) {
                         Account childAccount = accounts.get(child);
                         if (childAccount != null)
-                            childAccouns.add(childAccount);
+                            childAccounts.add(childAccount);
                     }
-                    reservationAccounts.put(accounts.get(accountName), childAccouns);
+                    reservationAccounts.put(accounts.get(accountName), childAccounts);
 
                     String role = prop.getProperty(name + ".role", "");
                     reservationAccessRoles.put(accounts.get(accountName), role);
@@ -147,7 +147,33 @@ class BootStrap {
                 properties.setProperty(IceOptions.START_MILLIS, "" + new DateTime(DateTimeZone.UTC).withMillisOfDay(0).withDayOfMonth(1).getMillis());
             properties.setProperty(IceOptions.WORK_S3_BUCKET_NAME, prop.getProperty(IceOptions.WORK_S3_BUCKET_NAME));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
+			
+			// Resource Tagging stuff
             properties.setProperty(IceOptions.CUSTOM_TAGS, prop.getProperty(IceOptions.CUSTOM_TAGS, ""));
+			Map<String, List<String>> tagKeys = Maps.newHashMap();
+			for (String name: prop.stringPropertyNames()) {
+				if (name.startsWith("ice.tagKey.")) {
+					String key = name.substring("ice.tagKey.".length());
+					String[] aliases = prop.getProperty(name).split(",");
+					List<String> aliasList = Lists.newArrayList();
+					for (String alias: aliases) {
+						aliasList.add(alias);
+					}
+					tagKeys.put(key, aliasList);
+				}
+			}
+			Map<String, List<String>> tagValues = Maps.newHashMap();
+			for (String name: prop.stringPropertyNames()) {
+				if (name.startsWith("ice.tagValue.")) {
+					String value = name.substring("ice.tagValue.".length());
+					String[] aliases = prop.getProperty(name).split(",");
+					List<String> aliasList = Lists.newArrayList();
+					for (String alias: aliases) {
+						aliasList.add(alias);
+					}
+					tagValues.put(value, aliasList);
+				}
+			}
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 
@@ -180,7 +206,7 @@ class BootStrap {
                 Ec2InstanceReservationPrice.ReservationUtilization reservationUtilization =
                     Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty("ice.reservationUtilization", "HEAVY"));
 
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService();
+                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(tagKeys, tagValues);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 
@@ -207,7 +233,7 @@ class BootStrap {
                 if (prop.getProperty(IceOptions.HIGHSTOCK_URL) != null)
                     properties.setProperty(IceOptions.HIGHSTOCK_URL, prop.getProperty(IceOptions.HIGHSTOCK_URL));
 
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService();
+                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(tagKeys, tagValues);
                 ApplicationGroupService applicationGroupService = new BasicS3ApplicationGroupService();
                 ProductService productService = new BasicProductService();
                 BasicWeeklyCostEmailService weeklyEmailService = null;
