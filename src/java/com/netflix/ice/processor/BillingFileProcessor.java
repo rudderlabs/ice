@@ -65,6 +65,7 @@ public class BillingFileProcessor extends Poller {
      */
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
+    private Instances instances;
     private Double ondemandThreshold;
     private String fromEmail;
     private String alertEmails;
@@ -459,8 +460,16 @@ public class BillingFileProcessor extends Poller {
 
         archiveHourly(usageDataByProduct, "usage_");
         archiveHourly(costDataByProduct, "cost_");
-
+        
+        logger.info("archiving instance data...");
+        archiveInstances();
+        
         logger.info("archiving data done.");
+    }
+    
+    private void archiveInstances() throws Exception {
+        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
+        instances.archive(config, "instances_" + AwsUtils.monthDateFormat.print(monthDateTime)); 	
     }
 
     private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix) throws Exception {
@@ -559,6 +568,7 @@ public class BillingFileProcessor extends Poller {
         costDataByProduct = new HashMap<Product, ReadWriteData>();
         usageDataByProduct.put(null, new ReadWriteData());
         costDataByProduct.put(null, new ReadWriteData());
+        instances = new Instances();
     }
 
     private void processBillingZipFile(File file, boolean withTags) throws IOException {
@@ -645,7 +655,7 @@ public class BillingFileProcessor extends Poller {
 
     private void processOneLine(List<String[]> delayedItems, String[] items) {
 
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, config, items, usageDataByProduct, costDataByProduct, ondemandRate);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, config, items, usageDataByProduct, costDataByProduct, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(items);

@@ -36,7 +36,7 @@ public interface LineItemProcessor {
     List<String> getHeader();
     int getUserTagStartIndex();
     long getEndMillis(String[] items);
-    Result process(long startMilli, boolean processAll, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate);
+    Result process(long startMilli, boolean processAll, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances);
 
     public static enum Result {
         delay,

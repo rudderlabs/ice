@@ -98,7 +98,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return amazonBillingDateFormat.parseMillis(items[endTimeIndex]);
     }
 
-    public Result process(long startMilli, boolean processDelayed, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate) {
+    public Result process(long startMilli, boolean processDelayed, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances) {
         if (StringUtils.isEmpty(items[accountIdIndex]) ||
             StringUtils.isEmpty(items[productIndex]) ||
             StringUtils.isEmpty(items[costIndex]))
@@ -136,7 +136,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         ReformedMetaData reformedMetaData = reform(millisStart, config, product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
         product = reformedMetaData.product;
         Operation operation = reformedMetaData.operation;
-        UsageType usageType = reformedMetaData.usageType;
+        final UsageType usageType = reformedMetaData.usageType;
         Zone zone = Zone.getZone(items[zoneIndex], reformedMetaData.region);
 
         int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
@@ -145,6 +145,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         Result result = Result.hourly;
         if (product == Product.ec2_instance) {
             result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
+            instances.add(items[resourceIndex], usageType.toString(), getUserTagsString(items));
         }
         else if (product == Product.redshift) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);
@@ -551,5 +552,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             this.operation = operation;
             this.usageType = usageType;
         }
+    }
+    
+    private String getUserTagsString(String[] lineItem) {
+    	StringBuilder sb = new StringBuilder();
+    	boolean first = true;
+    	for (int i = resourceIndex + 1; i < lineItem.length; i++) {
+    		if (lineItem[i].isEmpty()) {
+    			continue;
+    		}
+    		sb.append((first ? "" : "|") + header.get(i).substring("user:".length()) + "=" + lineItem[i]);
+    		first = false;
+    	}
+    	return sb.toString();
     }
 }
