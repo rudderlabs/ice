@@ -125,7 +125,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                     }
                 }
                 catch (Exception e) {
-                    throw new RuntimeException("failed to load reservation prices " + e.getMessage());
+                    throw new RuntimeException("failed to load reservation prices for " + utilization.name() + ", " + e.getMessage());
                 }
             }
         }

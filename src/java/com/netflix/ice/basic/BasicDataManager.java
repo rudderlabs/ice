@@ -26,6 +26,8 @@ import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UsageType;
+
 import org.joda.time.*;
 
 import java.io.DataInputStream;
@@ -173,7 +175,7 @@ public class BasicDataManager extends Poller implements DataManager {
         return result;
     }
 
-    private double[] getData(Interval interval, TagLists tagLists) throws ExecutionException {
+    private double[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
         DateTime start = config.startDate;
         DateTime end = config.startDate;
 
@@ -247,17 +249,20 @@ public class BasicDataManager extends Poller implements DataManager {
                 }
             }
 
-            List<Integer> columeIndexs = Lists.newArrayList();
-            int columeIndex = 0;
+            List<Integer> columnIndecies = Lists.newArrayList();
+            List<UsageType> usageTypes = Lists.newArrayList();
+            int columnIndex = 0;
             for (TagGroup tagGroup: data.getTagGroups()) {
-                if (tagLists.contains(tagGroup))
-                    columeIndexs.add(columeIndex);
-                columeIndex++;
+                if (tagLists.contains(tagGroup)) {
+                	columnIndecies.add(columnIndex);
+                    usageTypes.add(tagGroup.usageType);
+                }
+                columnIndex++;
             }
             while (resultIndex < num && fromIndex < data.getNum()) {
                 double[] fromData = data.getData(fromIndex++);
-                for (Integer cIndex: columeIndexs)
-                    result[resultIndex] += fromData[cIndex];
+                for (int i = 0; i < columnIndecies.size(); i++)
+                    result[resultIndex] += adjustForUsageUnit(usageUnit, usageTypes.get(i), fromData[columnIndecies.get(i)]);
                 resultIndex++;
             }
 
@@ -269,8 +274,26 @@ public class BasicDataManager extends Poller implements DataManager {
                 break;
         }
         while (start.isBefore(end));
-
+        
         return result;
+    }
+    
+    private double adjustForUsageUnit(UsageUnit usageUnit, UsageType usageType, double value) {
+    	double multiplier = 1.0;
+    	
+    	switch (usageUnit) {
+    	default:
+    		return value;
+    	
+    	case ECUs:
+    		multiplier = InstanceMetrics.getECU(usageType);
+    		break;
+    		
+    	case vCPUs:
+    		multiplier = InstanceMetrics.getVCpu(usageType);
+    		break;
+    	}
+    	return value * multiplier;    		
     }
 
     private void addData(double[] from, double[] to) {
@@ -278,7 +301,7 @@ public class BasicDataManager extends Poller implements DataManager {
             to[i] += from[i];
     }
 
-    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation) {
+    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit) {
 
         Map<Tag, TagLists> tagListsMap;
 
@@ -294,7 +317,7 @@ public class BasicDataManager extends Poller implements DataManager {
 
         for (Tag tag: tagListsMap.keySet()) {
             try {
-                double[] data = getData(interval, tagListsMap.get(tag));
+                double[] data = getData(interval, tagListsMap.get(tag), usageUnit);
                 result.put(tag, data);
                 if (aggregate != AggregateType.none && tagListsMap.size() > 1) {
                     if (aggregated == null)

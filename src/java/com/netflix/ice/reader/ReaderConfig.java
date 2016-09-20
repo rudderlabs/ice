@@ -121,8 +121,8 @@ public class ReaderConfig extends Config {
             if (interval == null)
                 continue;
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType);
-                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType);
+                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Dollar);
+                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
             }
         }
 
@@ -138,7 +138,7 @@ public class ReaderConfig extends Config {
             instance.costEmailService.shutdown();
     }
 
-    private void readData(Product product, DataManager dataManager, Interval interval, ConsolidateType consolidateType) {
+    private void readData(Product product, DataManager dataManager, Interval interval, ConsolidateType consolidateType, UsageUnit usageUnit) {
         if (consolidateType == ConsolidateType.hourly) {
             DateTime start = interval.getStart().withDayOfMonth(1).withMillisOfDay(0);
             do {
@@ -157,7 +157,7 @@ public class ReaderConfig extends Config {
             while (start.isBefore(interval.getEnd()));
         }
         else {
-            dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false);
+            dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit);
         }
     }
 }

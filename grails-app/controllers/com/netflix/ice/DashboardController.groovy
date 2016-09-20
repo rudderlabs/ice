@@ -380,6 +380,8 @@ class DashboardController {
 
     def reservation = {}
 
+    def utilization = {}
+
     def breakdown = {}
 
     def editappgroup = {}
@@ -397,6 +399,10 @@ class DashboardController {
         boolean breakdown = query.getBoolean("breakdown");
         boolean showsps = query.getBoolean("showsps");
         boolean factorsps = query.getBoolean("factorsps");
+		UsageUnit usageUnit = UsageUnit.Dollar;
+		if (!isCost) {
+			usageUnit = UsageUnit.valueOf(query.getString("usageUnit"));
+		}
         AggregateType aggregate = AggregateType.valueOf(query.getString("aggregate"));
         List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
         List<Region> regions = Region.getRegions(listParams(query, "region"));
@@ -409,6 +415,7 @@ class DashboardController {
         ConsolidateType consolidateType = ConsolidateType.valueOf(query.getString("consolidate"));
         ApplicationGroup appgroup = query.has("appgroup") ? new ApplicationGroup(query.getString("appgroup")) : null;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
+        boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
         if (showZones && (zones == null || zones.size() == 0)) {
@@ -441,6 +448,11 @@ class DashboardController {
             }
         }
         interval = roundInterval(interval, consolidateType);
+		
+		if (elasticity) {
+			// elasticity is computed per day based on hourly data
+			consolidateType = ConsolidateType.hourly;
+		}
 
         Map<Tag, double[]> data;
         if (groupBy == TagType.ApplicationGroup) {
@@ -481,7 +493,8 @@ class DashboardController {
                         new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroupsOfProduct),
                         null,
                         aggregate,
-                        forReservation
+                        forReservation,
+						usageUnit
                     );
 
                     Map<Tag, double[]> tmp = Maps.newHashMap();
@@ -533,7 +546,8 @@ class DashboardController {
                     new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroups),
                     groupBy,
                     aggregate,
-                    forReservation
+                    forReservation,
+					usageUnit
                 );
                 
                 if (groupBy == TagType.Product && dataOfProduct.size() > 0) {
@@ -552,12 +566,22 @@ class DashboardController {
                 new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups),
                 groupBy,
                 aggregate,
-                forReservation
+                forReservation,
+				usageUnit
             );
         }
-        def stats = getStats(data);
-        if (aggregate == AggregateType.stats && data.size() > 1)
-            data.remove(Tag.aggregated);
+		
+		def stats = [:];
+		if (elasticity) {
+			// consolidate the data to daily
+			data = reduceToDailyElasticity(data, stats);
+		}
+		else {
+	        stats = getStats(data);
+		}
+		
+		if (aggregate == AggregateType.stats && data.size() > 1)
+			data.remove(Tag.aggregated);
 
         def result = [status: 200, start: interval.getStartMillis(), data: data, stats: stats, groupBy: groupBy == null ? "None" : groupBy.name()]
         if (breakdown && data.size() > 0 && data.values().iterator().next().length > 0) {
@@ -636,7 +660,11 @@ class DashboardController {
             }
         }
 
-        if (consolidateType != ConsolidateType.monthly) {
+		if (elasticity) {
+			// elasticity data is always daily
+			result.interval = ConsolidateType.daily.millis;
+		}
+		else if (consolidateType != ConsolidateType.monthly) {
             result.interval = consolidateType.millis;
         }
         else {
@@ -660,7 +688,54 @@ class DashboardController {
             }
         }
     }
-
+	
+	private Map<Tag, double[]> reduceToDailyElasticity(Map<Tag, double[]> data, Map<Tag, Map> stats) {
+		// Run through the hourly data reducing to a daily elasticity value
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			Tag tag = entry.getKey();
+			def days = entry.getValue().length / 24;
+			double[] dailyDataForKey = new double[days];
+			def hourIndex = 0;
+			def dayIndex = 0;
+			double dailyMin = 1000000000; // arbitrary large number
+			double dailyMax = 0;
+			double avgDailyMin = 0;
+			double avgDailyMax = 0;
+  
+			for (double v: entry.getValue()) {
+				if (v < dailyMin) {
+					dailyMin = v;
+				}
+				if (v > dailyMax) {
+					dailyMax = v;
+				}
+				hourIndex++;
+				if (hourIndex == 24) {
+					double elasticity = 1;
+					if (dailyMax > 0)
+						elasticity = 1 - dailyMin / dailyMax;
+					dailyDataForKey[dayIndex++] = elasticity * 100;
+					avgDailyMin += dailyMin;
+					avgDailyMax += dailyMax;
+					
+					// reset accumlators for next day
+					dailyMin = 1000000000;
+					dailyMax = 0;
+					hourIndex = 0;
+				}
+			}
+			avgDailyMin /= days;
+			avgDailyMax /= days;
+			result.put(tag, dailyDataForKey);
+			double elasticity = 1;
+			if (avgDailyMax > 0)
+				elasticity = 1 - avgDailyMin / avgDailyMax;
+			stats[tag] = [avgDailyMin: avgDailyMin, avgDailyMax: avgDailyMax, elasticity: elasticity * 100];
+		}
+		return result;
+	}
+		
     private Map<Tag, Map> getStats(Map<Tag, double[]> data) {
         def result = [:];
 
@@ -668,17 +743,23 @@ class DashboardController {
             Tag tag = entry.getKey();
             double[] values = entry.getValue();
             double max = 0;
+			double min = 0;
             double total = 0;
 
             if (values.length == 0)
                 continue;
 
+			// Set the first min
+			min = values[0];
+			
             for (double v: values) {
                 if (v > max)
                     max = v;
+				if (v < min)
+					min = v;
                 total += v;
             }
-            result[tag] = [max: max, total: total, average: total / values.length];
+            result[tag] = [min: min, max: max, total: total, average: total / values.length];
         }
 
         return result;

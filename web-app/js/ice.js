@@ -106,7 +106,7 @@ ice.factory('highchart', function() {
     }
   };
 
-  var setupHcData = function(result, plotType, showsps) {
+  var setupHcData = function(result, plotType, showsps, elasticity) {
 
     Highcharts.setOptions({
         global: {
@@ -119,10 +119,16 @@ ice.factory('highchart', function() {
     for (i in result.data) {
       var data = result.data[i].data;
       var hasData = false;
-      for (j in data) {
-        data[j] = parseFloat(data[j].toFixed(2));
-        if (data[j] !== 0)
-          hasData = true;
+      if (elasticity) {
+    	  // Don't filter out series with all zeros
+    	  hasData = true;
+      }
+      else {
+	    for (j in data) {
+	      data[j] = parseFloat(data[j].toFixed(2));
+	      if (data[j] !== 0)
+	        hasData = true;
+	    }
       }
 
       if (hasData) {
@@ -158,8 +164,8 @@ ice.factory('highchart', function() {
     }
   }
 
-  var setupYAxis = function(isCost, showsps, factorsps) {
-    var yAxis = {title:{text: (isCost ? 'Cost' : 'Usage') + " per " + (factorsps ? metricunitname : consolidate)}, min: 0, lineWidth: 2};
+  var setupYAxis = function(isCost, usageUnit, showsps, factorsps, elasticity) {
+    var yAxis = {title:{text: (elasticity ? "% Elasticity" : (isCost ? 'Cost' : 'Usage (' + usageUnit + ')')) + " per " + (factorsps ? metricunitname : consolidate)}, min: 0, lineWidth: 2};
     if (isCost)
       yAxis.labels = {
         formatter: function() {
@@ -190,13 +196,13 @@ ice.factory('highchart', function() {
       return Highcharts.dateFormat('%Y-%m-%d', time);
     },
 
-    drawGraph: function(result, $scope, legendEnabled) {
+    drawGraph: function(result, $scope, legendEnabled, elasticity) {
       consolidate = $scope.consolidate === 'daily' ? 'day' : $scope.consolidate.substr(0, $scope.consolidate.length-2);
       currencySign = $scope.usage_cost === 'cost' ? ($scope.factorsps ? factoredCostCurrencySign : global_currencySign) : "";
       hc_options.legend.enabled = legendEnabled;
 
-      setupHcData(result, $scope.plotType, $scope.showsps);
-      setupYAxis($scope.usage_cost === 'cost', $scope.showsps, $scope.factorsps);
+      setupHcData(result, $scope.plotType, $scope.showsps, elasticity);
+      setupYAxis($scope.usage_cost === 'cost', $scope.usageUnit, $scope.showsps, $scope.factorsps, elasticity);
       showsps = $scope.showsps;
       factorsps = $scope.factorsps;
 
@@ -678,6 +684,7 @@ ice.factory('usage_db', function($window, $http, $filter) {
         params = {};
       params = jQuery.extend({
             isCost: $scope.usage_cost === "cost",
+            usageUnit: $scope.usageUnit,
             aggregate: "stats",
             groupBy: $scope.groupBy.name,
             consolidate: $scope.consolidate,
@@ -877,6 +884,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
   var predefinedQuery = {operation: reservationOps.join(",")};
   $scope.legends = [];
   $scope.usage_cost = "cost";
+  $scope.usageUnit = "Instances";
   $scope.groupBys = [
     {name: "Account"},
     {name: "Region"},
@@ -1004,6 +1012,148 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
   jQuery('#start').datetimepicker().val($scope.start);
 }
 
+function utilizationCtrl($scope, $location, usage_db, highchart) {
+
+  var utilizationOps = [
+    "OndemandInstances",
+    "ReservedInstancesAllUpfront",
+    "ReservedInstancesNoUpfront",
+    "ReservedInstancesPartialUpfront"];
+
+  var predefinedQuery = {operation: utilizationOps.join(",")};
+  $scope.legends = [];
+  $scope.usage_cost = "usage";
+  $scope.usageUnit = "ECUs";
+  $scope.groupBys = [
+    {name: "Account"},
+    {name: "Region"},
+    {name: "Zone"},
+    {name: "Product"},
+    {name: "Operation"},
+    {name: "UsageType"}
+  ];
+  $scope.showsps = false;
+  $scope.factorsps = false;
+  $scope.groupBy = $scope.groupBys[0];
+  $scope.consolidate = "daily";
+  $scope.showZones = false;
+  $scope.plotType = 'line';
+  $scope.end = new Date();
+  $scope.start = new Date();
+  var startMonth = $scope.end.getUTCMonth() - 1;
+  var startYear = $scope.end.getUTCFullYear();
+  if (startMonth < 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+  $scope.start.setUTCFullYear(startYear);
+  $scope.start.setUTCMonth(startMonth);
+  $scope.start.setUTCDate(1);
+  $scope.start.setUTCHours(0);
+
+  $scope.end.setUTCHours(0);
+  $scope.start.setUTCHours(0);
+  $scope.end = highchart.dateFormat($scope.end); //$filter('date')($scope.end, "y-MM-dd hha");
+  $scope.start = highchart.dateFormat($scope.start); //$filter('date')($scope.start, "y-MM-dd hha");
+
+  $scope.updateUrl = function() {
+    $scope.end = jQuery('#end').datetimepicker().val();
+    $scope.start = jQuery('#start').datetimepicker().val();
+    var params = {
+      usage_cost: $scope.usage_cost,
+      start: $scope.start,
+      end: $scope.end,
+      groupBy: $scope.groupBy.name,
+      showZones: "" + $scope.showZones,
+      consolidate: $scope.consolidate,
+      plotType: "line",
+      showsps: "" + $scope.showsps,
+      factorsps: "" + $scope.factorsps,
+      account: {selected: $scope.selected_accounts, from: $scope.accounts},
+      product: {selected: $scope.selected_products, from: $scope.products},
+      operation: {selected: $scope.selected_operations, from: $scope.operations},
+      usageType: {selected: $scope.selected_usageTypes, from: $scope.usageTypes}
+    };
+    if ($scope.showZones)
+      params.zone = {selected: $scope.selected_zones, from: $scope.zones};
+    else
+      params.region = {selected: $scope.selected_regions, from: $scope.regions};
+    usage_db.updateUrl($location, params);
+  }
+
+  $scope.download = function() {
+    var query = {operation: utilizationOps.join(","), forReservation: true, elasticity: true};
+    if ($scope.showZones)
+       query.showZones = true;
+    usage_db.getData($scope, null, query, true);
+  }
+
+  $scope.getData = function() {
+    $scope.loading = true;
+    var query = {operation: utilizationOps.join(","), forReservation: true, elasticity: true};
+    if ($scope.showZones)
+       query.showZones = true;
+   
+    usage_db.getData($scope, function(result){
+      var dailyData = [];
+      for (var key in result.data) {
+    	  dailyData.push({name: key, data: result.data[key]});
+      }
+      result.data = dailyData;
+      $scope.legends = [];
+      $scope.stats = result.stats;
+      highchart.drawGraph(result, $scope, false, true);
+
+      $scope.legendPrecision = 0;
+      $scope.legendName = $scope.groupBy.name;
+      $scope.legend_usage_cost = $scope.usage_cost;
+    }, query);
+  }
+
+  $scope.productsChanged = function() {
+    updateOperations();
+    updateUsageTypes();
+  }
+
+  var updateOperations = function() {
+    var query = jQuery.extend({usage_cost: $scope.usage_cost, forReservation: true}, predefinedQuery);
+    usage_db.addParams(query, "product", $scope.products, $scope.selected_products, $scope.selected__products);
+    usage_db.getOperations($scope, null, query);
+  }
+
+  var updateUsageTypes = function() {
+    var query = jQuery.extend({usage_cost: $scope.usage_cost}, predefinedQuery);
+    usage_db.addParams(query, "product", $scope.products, $scope.selected_products, $scope.selected__products);
+    usage_db.getUsageTypes($scope, null, query);
+  }
+
+  usage_db.getParams($location.hash(), $scope);
+
+  usage_db.getAccounts($scope, null, {});
+  if ($scope.showZones)
+    usage_db.getZones($scope, null, {});
+  else
+    usage_db.getRegions($scope, null, {});
+
+  var query = $scope.showZones ? jQuery.extend({showZones: true}, predefinedQuery) : predefinedQuery;
+  usage_db.getProducts($scope, function() {
+    updateOperations();
+    updateUsageTypes();
+  }, query);
+
+  $scope.getData();
+
+  jQuery("#start, #end" ).datetimepicker({
+      showTime: false,
+      showMinute: false,
+      ampm: true,
+      timeFormat: 'hhTT',
+      dateFormat: 'yy-mm-dd'
+    });
+  jQuery('#end').datetimepicker().val($scope.end);
+  jQuery('#start').datetimepicker().val($scope.start);
+}
+
 function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.showsps = false;
@@ -1012,6 +1162,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.plotType = "area";
   $scope.legends = [];
   $scope.usage_cost = "cost";
+  $scope.usageUnit = "Instances";
   $scope.groupBys = [
     {name: "None"},
     {name: "Account"},
@@ -1185,6 +1336,7 @@ function appgroupCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.plotType = "area";
   $scope.legends = [];
   $scope.usage_cost = "cost";
+  $scope.usageUnit = "Instances";
   $scope.groupBys = [
     {name: "Account"},
     {name: "Region"},
@@ -1493,6 +1645,7 @@ function breakdownCtrl($scope, $location, $http, usage_db, highchart) {
 function summaryCtrl($scope, $location, usage_db, highchart) {
 
   $scope.usage_cost = "cost";
+  $scope.usageUnit = "Instances";
   $scope.groupBys = [
         {name: "Account"},
         {name: "Region"},

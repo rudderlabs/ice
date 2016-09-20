@@ -45,6 +45,11 @@
       <td nowrap="">
         <input type="radio" ng-model="usage_cost" value="cost" id="radio_cost"> <label for="radio_cost" style="cursor: pointer">Cost</label>&nbsp;&nbsp;
         <input type="radio" ng-model="usage_cost" value="usage" id="radio_usage"> <label for="radio_usage" style="cursor: pointer">Usage</label>
+        <select ng-model="usageUnit">
+          <option>Instances</option>
+          <option>ECUs</option>
+          <option>vCPUs</option>
+        </select>
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>
         </div>
@@ -125,6 +130,7 @@
               <th ng-click="order(legends, 'total', true)">Total</th>
               <th ng-click="order(legends, 'max', true)">Max</th>
               <th ng-click="order(legends, 'average', true)">Average</th>
+              <th ng-click="order(legends, 'min', true)">Min</th>
             </tr>
             </thead>
             <tbody>
@@ -133,6 +139,7 @@
               <td><span ng-show="legend_usage_cost == 'cost'">{{currencySign}} </span>{{legend.stats.total | number:legendPrecision}}</td>
               <td><span ng-show="legend_usage_cost == 'cost'">{{currencySign}} </span>{{legend.stats.max | number:legendPrecision}}</td>
               <td><span ng-show="legend_usage_cost == 'cost'">{{currencySign}} </span>{{legend.stats.average | number:legendPrecision}}</td>
+              <td><span ng-show="legend_usage_cost == 'cost'">{{currencySign}} </span>{{legend.stats.min | number:legendPrecision}}</td>
             </tr>
             </tbody>
           </table>

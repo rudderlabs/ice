@@ -58,6 +58,13 @@
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'reservation')}#showZones=true&{{getTimeParams()}}" ng-click="reload()">Reservations By Zone</a></li>
       </ul>
     </li>
+    <li class="menuButton dropdown">
+      <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'utilization')}#{{getTimeParams()}}" ng-click="reload()">Utilization</a>
+      <ul>
+        <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'utilization')}#{{getTimeParams()}}" ng-click="reload()">Utilization By Region</a></li>
+        <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'utilization')}#showZones=true&{{getTimeParams()}}" ng-click="reload()">Utilization By Zone</a></li>
+      </ul>
+    </li>
     <g:if test="${ReaderConfig.getInstance().resourceService != null}">
     <li class="menuButton dropdown">
       <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'breakdown')}#groupBy=ApplicationGroup&{{getTimeParams()}}" ng-click="reload()">Breakdown</a>
