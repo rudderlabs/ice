@@ -35,6 +35,7 @@ public class Product extends Tag {
     public static final Product ec2_cloudwatch = new Product("ec2_cloudwatch");
     public static final Product ec2_instance = new Product("ec2_instance");
     public static final Product ecr = new Product("ecr");
+    public static final Product efs = new Product("efs");
     public static final Product eip = new Product("eip");
     public static final Product elasticache = new Product("elasticache");
     public static final Product emr = new Product("emr");
@@ -56,6 +57,7 @@ public class Product extends Tag {
     public static final Product support = new Product("support");
     public static final Product sws = new Product("sws");
     public static final Product vpc = new Product("vpc");
+    public static final Product waf = new Product("waf");
     public static final Product workspaces = new Product("workspaces");
 
     public Product (String name) {

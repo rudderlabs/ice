@@ -48,6 +48,7 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct ec2_cloudwatch = new BasicProduct(Product.ec2_cloudwatch, "CloudWatch");
     public static final BasicProduct ec2_instance = new BasicProduct(Product.ec2_instance, "ec2_instance");
     public static final BasicProduct ecr = new BasicProduct(Product.ecr, "EC2 Container Registry (ECR)");
+    public static final BasicProduct efs = new BasicProduct(Product.efs, "Elastic File System");
     public static final BasicProduct eip = new BasicProduct(Product.eip, "eip");
     public static final BasicProduct elasticache = new BasicProduct(Product.elasticache, "ElastiCache");
     public static final BasicProduct emr = new BasicProduct(Product.emr, "Elastic MapReduce");
@@ -68,15 +69,16 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct support = new BasicProduct(Product.support, "Support (Business)");
     public static final BasicProduct sws = new BasicProduct(Product.sws, "Simple Workflow Service");
     public static final BasicProduct vpc = new BasicProduct(Product.vpc, "Virtual Private Cloud");
+    public static final BasicProduct waf = new BasicProduct(Product.waf, "WAF");
     public static final BasicProduct workspaces = new BasicProduct(Product.workspaces, "WorkSpaces");
     public static final BasicProduct monitor = new BasicProduct(Product.monitor, "monitor");
 
     private static BasicProduct[] products = new BasicProduct[]{
     	api_gateway, cloudfront, cloudhsm, cloudtrail, config,
     	data_pipeline, data_transfer, direct_connect, database_migration, directory, dynamodb, 
-    	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, eip, elasticache, emr, 
+    	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, efs, eip, elasticache, emr, 
     	glacier, kinesis_firehose, kms, lambda, rds, rds_instance, redshift, route53, 
-    	s3, simpledb, ses, sns, sqs, storage_gateway, support, sws, vpc, workspaces
+    	s3, simpledb, ses, sns, sqs, storage_gateway, support, sws, vpc, waf, workspaces
     	};
 
     static {

@@ -19,6 +19,7 @@ package com.netflix.ice.processor;
 
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.TagGroup;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,9 @@ public class DataWriter {
             DataInputStream in = new DataInputStream(new FileInputStream(file));
             try {
                 data = ReadWriteData.Serializer.deserialize(in);
+            }
+            catch (Exception e) {
+                throw new RuntimeException("DataWriter: failed to load " + name + ", " + e.getMessage());
             }
             finally {
                 in.close();
