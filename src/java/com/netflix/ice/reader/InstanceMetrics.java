@@ -38,6 +38,7 @@ public class InstanceMetrics {
     	new Metrics("m4.2xlarge",	8,		26),
     	new Metrics("m4.4xlarge",	16,		53.5),
     	new Metrics("m4.10xlarge",	40,		124.5),
+    	new Metrics("m4.16xlarge",	64,		188),
 
     	new Metrics("c1.medium",	2,		5),
     	new Metrics("c1.xlarge",	8,		20),
@@ -59,7 +60,12 @@ public class InstanceMetrics {
     	
     	new Metrics("g2.2xlarge",	8,		26),
     	new Metrics("g2.8xlarge",	32,		104),
+    	
+    	new Metrics("p2.xlarge",	4,		12),
+    	new Metrics("p2.8xlarge",	32,		94),
+    	new Metrics("p2.16xlarge",	64,		188),
 
+    	new Metrics("x1.16xlarge",	64,		174.5),
     	new Metrics("x1.32xlarge",	128,	349),
     	
     	new Metrics("r3.large",		2,		6.5),

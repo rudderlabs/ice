@@ -391,6 +391,9 @@ public class BillingFileProcessor extends Poller {
                     TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
                     usageMap.put(unusedTagGroup, reservedUnused);
                     costMap.put(unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
+//                    if (reservedUnused > 0) {
+//                    	logger.info("**** Unused instances **** hour: " + i + ", used: " + reservedUsed + ", tag: " + unusedTagGroup);
+//                    }
                 }
 
                 if (bonusReserved > 0) {

@@ -30,6 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * ReadWriteData is a list of maps that hold usage and cost data for AWS products.
+ * The list index is the hour in the month for the instance data.
+ * The map keys are a TagGroup which is the unique combination of Tags associated with
+ * the cost or usage number stored as the value in the map.
+ */
 public class ReadWriteData {
     private List<Map<TagGroup, Double>> data;
 

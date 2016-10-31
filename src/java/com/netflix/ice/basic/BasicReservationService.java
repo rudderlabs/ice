@@ -513,7 +513,8 @@ public class BasicReservationService extends Poller implements ReservationServic
             }
             else if (reservedInstances.isRDS()) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
-            	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + db.usageType, "hours");
+            	String multiAZ = reservedInstances.getMultiAZ() ? ".multiaz" : "";
+            	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
             	product = Product.rds_instance;
             }
             else {
