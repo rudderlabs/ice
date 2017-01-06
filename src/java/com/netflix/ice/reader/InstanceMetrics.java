@@ -17,6 +17,8 @@ public class InstanceMetrics {
     	new Metrics("t2.small",		1,		3.0),
     	new Metrics("t2.medium",	2,		6.0),
     	new Metrics("t2.large",		2,		6.0),
+    	new Metrics("t2.xlarge",	4,		12.0),
+    	new Metrics("t2.2xlarge",	8,		24.0),
 
     	new Metrics("m1.small",		1,		1),
     	new Metrics("m1.medium",	1,		2),
@@ -73,6 +75,13 @@ public class InstanceMetrics {
     	new Metrics("r3.2xlarge",	8,		26),
     	new Metrics("r3.4xlarge",	16,		52),
     	new Metrics("r3.8xlarge",	32,		104),
+
+    	new Metrics("r4.large",		2,		7),
+    	new Metrics("r4.xlarge",	4,		13.5),
+    	new Metrics("r4.2xlarge",	8,		27),
+    	new Metrics("r4.4xlarge",	16,		55),
+    	new Metrics("r4.8xlarge",	32,		99),
+    	new Metrics("r4.16xlarge",	64,		195),
 
     	new Metrics("hi1.4xlarge",	16,		35),
     	new Metrics("hs1.8xlarge",	16,		35),
