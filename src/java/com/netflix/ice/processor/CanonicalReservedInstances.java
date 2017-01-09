@@ -10,6 +10,11 @@ import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
 import com.amazonaws.services.redshift.model.ReservedNode;
 
+/*
+ * CanonicalReservedInstances is a universal representation of a reserved instance.
+ * This class unifies the representation of reserved instances across EC2, RDS, and Redshift so
+ * that client code can treat them in a consistent and uniform way.
+ */
 public class CanonicalReservedInstances {
 	public static final String hourly = "Hourly";
 	

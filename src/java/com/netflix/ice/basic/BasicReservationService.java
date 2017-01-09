@@ -289,7 +289,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         final long start; // Reservation start time rounded down to starting hour mark where it takes effect
         final long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
         final ReservationUtilization utilization;
-        final double fixedPrice;
+        final double hourlyFixedPrice; // The hourly fixed price - used to compute amortization
         final double usagePrice; // usage price plus the recurring hourly charge
 
         public Reservation(
@@ -297,13 +297,13 @@ public class BasicReservationService extends Poller implements ReservationServic
                 long start,
                 long end,
                 ReservationUtilization utilization,
-                double fixedPrice,
+                double hourlyFixedPrice,
                 double usagePrice) {
             this.count = count;
             this.start = start;
             this.end = end;
             this.utilization = utilization;
-            this.fixedPrice = fixedPrice;
+            this.hourlyFixedPrice = hourlyFixedPrice;
             this.usagePrice = usagePrice;
         }
     }
@@ -349,7 +349,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	            if (time >= reservation.start && time < reservation.end) {
 	                count += reservation.count;
 	
-	                upfrontAmortized += reservation.count * reservation.fixedPrice / ((reservation.end - reservation.start) / AwsUtils.hourMillis);
+	                upfrontAmortized += reservation.count * reservation.hourlyFixedPrice;
 	                hourlyCost += reservation.count * reservation.usagePrice;
 	            }
 	        }
@@ -383,83 +383,46 @@ public class BasicReservationService extends Poller implements ReservationServic
 	    return new ReservationInfo(count, upfrontAmortized, hourlyCost);
 	}
 
+     
     /*
-    public ReservationInfo getReservation(
-            long time,
-            TagGroup tagGroup,
-            ReservationUtilization utilization) {
-
-        if (utilization == ReservationUtilization.FIXED)
-            return getFixedReservation(time, tagGroup);
-
-        double tier = getEc2Tier(time);
-
-        double upfrontAmortized = 0;
-        double hourlyCost = 0;
-
-        int count = 0;
-        if (this.reservations.get(utilization).containsKey(tagGroup)) {
-            for (Reservation reservation : this.reservations.get(utilization).get(tagGroup)) {
-                if (time >= reservation.start && time < reservation.end) {
-                    count += reservation.count;
-                    Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
-                    Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
-                    if (ec2Price != null) { // remove this...
-                        upfrontAmortized += reservation.count * ec2Price.upfrontPrice.getPrice(reservation.start).getUpfrontAmortized(reservation.start, term, tier);
-                        hourlyCost += reservation.count * ec2Price.hourlyPrice.getPrice(reservation.start).getPrice(tier);
-                    }
-                    else {
-                        logger.error("Not able to find reservation price for " + key);
-                    }
-                }
+     * Reservations created by AWS through modification of an existing reservation doesn't carry the fixed price.
+     * This method will search for and return the parent if found, else the child is returned.
+     */
+    private CanonicalReservedInstances getParentReservation(String childAccountId, CanonicalReservedInstances child, Map<String, CanonicalReservedInstances> reservationsFromApi)
+    {
+    	CanonicalReservedInstances parent = child;
+    	
+        for (String key: reservationsFromApi.keySet()) {
+            String accountId = key.substring(0, key.indexOf(","));
+            if (!accountId.equals(childAccountId)) {
+            	continue;
             }
-        }
-
-        if (count == 0) {
-            Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
-            Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
-            if (ec2Price != null) { // remove this...
-                upfrontAmortized = ec2Price.upfrontPrice.getPrice(null).getUpfrontAmortized(time, term, tier);
-                hourlyCost = ec2Price.hourlyPrice.getPrice(null).getPrice(tier);
+            CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
+            
+            if (reservedInstances.getReservationId().equals(child.getReservationId()) ||
+            		!reservedInstances.getState().equals("retired") ||
+            		!reservedInstances.getEnd().equals(child.getStart()) ||
+            		!reservedInstances.getRegion().equals(child.getRegion()) ||
+            		!reservedInstances.getInstanceType().equals(child.getInstanceType()) ||
+            		!reservedInstances.getOfferingType().equals(child.getOfferingType())
+            		) {
+                continue;
             }
-        }
-        else {
-            upfrontAmortized = upfrontAmortized / count;
-            hourlyCost = hourlyCost / count;
+            // Looks like a match
+            parent = reservedInstances;
+            while (parent.getFixedPrice() == 0.0) {
+            	// Try to find a parent of this one
+            	CanonicalReservedInstances grandParent = getParentReservation(childAccountId, parent, reservationsFromApi);
+            	if (grandParent.getReservationId().equals(parent.getReservationId())) {
+            		break;
+            	}
+            	parent = grandParent;
+            }
+
         }
         
-        return new ReservationInfo(count, upfrontAmortized, hourlyCost);
+    	return parent;
     }
-
-    private ReservationInfo getFixedReservation(
-            long time,
-            TagGroup tagGroup) {
-
-        double upfrontAmortized = 0;
-        double hourlyCost = 0;
-
-        int count = 0;
-        if (this.reservations.get(ReservationUtilization.FIXED).containsKey(tagGroup)) {
-            for (Reservation reservation : this.reservations.get(ReservationUtilization.FIXED).get(tagGroup)) {
-                if (time >= reservation.start && time < reservation.end) {
-                    count += reservation.count;
-                    upfrontAmortized += reservation.count * reservation.fixedPrice / ((reservation.end - reservation.start) / AwsUtils.hourMillis);
-                    hourlyCost += reservation.count * reservation.usagePrice;
-                }
-            }
-        }
-        else {
-        	logger.info("No fixed reservation for TagGroup: " + tagGroup.toString());
-        }
-
-        if (count > 0) {
-            upfrontAmortized = upfrontAmortized / count;
-            hourlyCost = hourlyCost / count;
-        }
-
-        return new ReservationInfo(count, upfrontAmortized, hourlyCost);
-    }
-    */
     
     private long getEffectiveReservationTime(Date d) {
     	Calendar c = new GregorianCalendar();
@@ -495,7 +458,17 @@ public class BasicReservationService extends Poller implements ReservationServic
             
             // usage price is the sum of the usage price and the recurring hourly charge
             double usagePrice = reservedInstances.getUsagePrice() + reservedInstances.getRecurringHourlyCharges();
-            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, reservedInstances.getFixedPrice(), usagePrice);
+            double fixedPrice = reservedInstances.getFixedPrice();
+            if (fixedPrice == 0.0 && 
+            		(utilization == ReservationUtilization.FIXED ||
+            		 utilization == ReservationUtilization.HEAVY_PARTIAL))  {
+            	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
+            	CanonicalReservedInstances parent = getParentReservation(accountId, reservedInstances, reservationsFromApi);
+            	fixedPrice = parent.getFixedPrice();
+                logger.info("Found modified reservation for " + reservedInstances.getInstanceType() + ", id: " + reservedInstances.getReservationId() + " with parent " + parent.getReservationId() + " price: " + fixedPrice);
+            }
+            double hourlyFixedPrice = fixedPrice / (reservedInstances.getDuration() / 3600); // duration is in seconds, we need hours
+            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             UsageType usageType;
             Product product;
