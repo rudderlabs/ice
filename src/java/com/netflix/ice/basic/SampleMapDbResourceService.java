@@ -24,6 +24,7 @@ import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,12 @@ public class SampleMapDbResourceService extends ResourceService {
     public void commit() {
         instanceDb.commit();
     }
+    
+	@Override
+	public void initHeader(List<String> header) {
+		logger.info("initHeader...");
+	}
+
 
     @Override
     public List<List<Product>> getProductsWithResources() {

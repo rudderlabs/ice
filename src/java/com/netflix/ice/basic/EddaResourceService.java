@@ -153,6 +153,14 @@ public class EddaResourceService extends ResourceService {
 		logger.info("Commit...");
 	}
 
+	/* (non-Javadoc)
+	 * @see com.netflix.ice.common.ResourceService#initHeader()
+	 */
+	@Override
+	public void initHeader(List<String> header) {
+		logger.info("initHeader...");
+	}
+
 	protected JSONArray readInstanceArray() throws IOException, MalformedURLException, JSONException {
 		InputStream stream = new URL(EDDA_ROOT_URL + "view/instances").openStream();
 		final String json;
