@@ -17,6 +17,11 @@
  */
 package com.netflix.ice.processor;
 
+import com.amazonaws.services.ec2.AmazonEC2Client;
+import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
+import com.amazonaws.services.ec2.model.ReservedInstances;
+import com.amazonaws.services.ec2.model.StopInstancesRequest;
+import com.amazonaws.services.ec2.model.StopInstancesResult;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
@@ -265,6 +270,21 @@ public class BillingFileProcessor extends Poller {
         }
 
         logger.info("AWS usage processed.");
+        if (config.processOnce) {
+        	// We're done. If we're running on an AWS EC2 instance, stop the instance
+            logger.info("Stopping EC2 Instance " + config.processorInstanceId + " in region " + config.processorRegion);
+
+            AmazonEC2Client ec2Client = new AmazonEC2Client(AwsUtils.awsCredentialsProvider.getCredentials(), AwsUtils.clientConfig);
+            ec2Client.setEndpoint("ec2." + config.processorRegion + ".amazonaws.com");
+            try {
+	            StopInstancesRequest request = new StopInstancesRequest().withInstanceIds(new String[] { config.processorInstanceId });
+	            StopInstancesResult result = ec2Client.stopInstances(request);
+            }
+            catch (Exception e) {
+                logger.error("error in stopInstances", e);
+            }
+            ec2Client.shutdown();
+        }
     }
 
     private void borrow(int i, long time,

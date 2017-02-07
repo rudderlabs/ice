@@ -176,6 +176,12 @@ class BootStrap {
 			}
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
+				
+                if (prop.getProperty(IceOptions.PROCESS_ONCE) != null) {
+                	properties.setProperty(IceOptions.PROCESS_ONCE, prop.getProperty(IceOptions.PROCESS_ONCE));
+					properties.setProperty(IceOptions.PROCESSOR_REGION, getInstanceRegion());
+					properties.setProperty(IceOptions.PROCESSOR_INSTANCE_ID, getInstanceId());
+                }
 
                 properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.processor.localDir"));
                 properties.setProperty(IceOptions.BILLING_S3_BUCKET_NAME, prop.getProperty(IceOptions.BILLING_S3_BUCKET_NAME));
@@ -298,12 +304,27 @@ class BootStrap {
     }
 
     private static String getCurrentRole() throws IOException {
-        URL roleUrl = new URL("http://169.254.169.254/latest/meta-data/iam/security-credentials/");
-        URLConnection urlConnection = roleUrl.openConnection();
-        InputStream input = urlConnection.getInputStream();
-        String role = IOUtils.toString(input).trim();
-        input.close();
+        String role = httpGet("http://169.254.169.254/latest/meta-data/iam/security-credentials/");
         logger.info("Found role: " + role);
         return role;
     }
+    private static String getInstanceRegion() throws IOException {
+        String region = httpGet("http://169.254.169.254/latest/meta-data/placement/availability-zone");
+		region = region.substring(0, region.length()-1);
+        logger.info("Found region: " + region);
+        return region;
+    }
+    private static String getInstanceId() throws IOException {
+        String instanceId = httpGet("http://169.254.169.254/latest/meta-data/instance-id");
+        logger.info("Found instance ID: " + instanceId);
+        return instanceId;
+    }
+	private static String httpGet(String url) throws IOException {
+		URL reqUrl = new URL(url);
+		URLConnection urlConnection = reqUrl.openConnection();
+		InputStream input = urlConnection.getInputStream();
+		String resp = IOUtils.toString(input).trim();
+		input.close();
+		return resp;
+	}
 }
