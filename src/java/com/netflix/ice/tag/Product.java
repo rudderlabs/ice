@@ -19,10 +19,12 @@ package com.netflix.ice.tag;
 
 public class Product extends Tag {
     public static final Product api_gateway = new Product("api_gateway");
+    public static final Product athena = new Product("athena");
     public static final Product cloudfront = new Product("cloudfront");
     public static final Product cloudhsm = new Product("cloudhsm");
     public static final Product cloudtrail = new Product("cloudtrail");
     public static final Product cloudwatch = new Product("cloudwatch");
+    public static final Product codecommit = new Product("codecommit");
     public static final Product config = new Product("config");
     public static final Product data_pipeline = new Product("data_pipeline");
     public static final Product data_transfer = new Product("data_transfer");
@@ -38,8 +40,10 @@ public class Product extends Tag {
     public static final Product efs = new Product("efs");
     public static final Product eip = new Product("eip");
     public static final Product elasticache = new Product("elasticache");
+    public static final Product elasticsearch = new Product("elasticsearch");
     public static final Product emr = new Product("emr");
     public static final Product glacier = new Product("glacier");
+    public static final Product kinesis = new Product("kinesis");
     public static final Product kinesis_firehose = new Product("kinesis_firehose");
     public static final Product kms = new Product("kms");
     public static final Product lambda = new Product("lambda");
@@ -47,10 +51,12 @@ public class Product extends Tag {
     public static final Product rds = new Product("rds");
     public static final Product rds_instance = new Product("rds_instance");
     public static final Product redshift = new Product("redshift");
+    public static final Product rekognition = new Product("rekognition");
     public static final Product route53 = new Product("route53");
     public static final Product s3 = new Product("s3");
-    public static final Product simpledb = new Product("simpledb");
+    public static final Product service_catalog = new Product("service_catalog");
     public static final Product ses = new Product("ses");
+    public static final Product simpledb = new Product("simpledb");
     public static final Product sns = new Product("sns");
     public static final Product sqs = new Product("sqs");
     public static final Product storage_gateway = new Product("storage_gateway");

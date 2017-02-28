@@ -91,6 +91,13 @@ public class InstanceMetrics {
     	new Metrics("i2.4xlarge",	16,		53),
     	new Metrics("i2.8xlarge",	32,		104),
 
+    	new Metrics("i3.large",		2,		7),
+    	new Metrics("i3.xlarge",	4,		13),
+    	new Metrics("i3.2xlarge",	8,		27),
+    	new Metrics("i3.4xlarge",	16,		53),
+    	new Metrics("i3.8xlarge",	32,		99),
+    	new Metrics("i3.8xlarge",	64,		200),
+
     	new Metrics("d2.xlarge",	4,		14),
     	new Metrics("d2.2xlarge",	8,		28),
     	new Metrics("d2.4xlarge",	16,		56),

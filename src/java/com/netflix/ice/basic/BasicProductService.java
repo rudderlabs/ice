@@ -32,10 +32,12 @@ public class BasicProductService implements ProductService {
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
 
     public static final BasicProduct api_gateway = new BasicProduct(Product.api_gateway, "API Gateway");
+    public static final BasicProduct athena = new BasicProduct(Product.athena, "Athena");
     public static final BasicProduct cloudfront = new BasicProduct(Product.cloudfront, "CloudFront");
     public static final BasicProduct cloudhsm = new BasicProduct(Product.cloudhsm, "CloudHSM");
     public static final BasicProduct cloudtrail = new BasicProduct(Product.cloudtrail, "CloudTrail");
     public static final BasicProduct cloudwatch = new BasicProduct(Product.cloudwatch, "AmazonCloudWatch");
+    public static final BasicProduct codecommit = new BasicProduct(Product.codecommit, "CodeCommit");
     public static final BasicProduct config = new BasicProduct(Product.config, "Config");
     public static final BasicProduct data_pipeline = new BasicProduct(Product.data_pipeline, "Data Pipeline");
     public static final BasicProduct data_transfer = new BasicProduct(Product.data_transfer, "Data Transfer");
@@ -51,18 +53,22 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct efs = new BasicProduct(Product.efs, "Elastic File System");
     public static final BasicProduct eip = new BasicProduct(Product.eip, "eip");
     public static final BasicProduct elasticache = new BasicProduct(Product.elasticache, "ElastiCache");
+    public static final BasicProduct elasticsearch = new BasicProduct(Product.elasticsearch, "Elasticsearch Service");
     public static final BasicProduct emr = new BasicProduct(Product.emr, "Elastic MapReduce");
     public static final BasicProduct glacier = new BasicProduct(Product.glacier, "Glacier");
+    public static final BasicProduct kinesis = new BasicProduct(Product.kinesis, "Kinesis");
     public static final BasicProduct kinesis_firehose = new BasicProduct(Product.kinesis_firehose, "Kinesis Firehose");
     public static final BasicProduct kms = new BasicProduct(Product.kms, "Key Management Service");
     public static final BasicProduct lambda = new BasicProduct(Product.lambda, "Lambda");
     public static final BasicProduct rds = new BasicProduct(Product.rds, "RDS Service");
     public static final BasicProduct rds_instance = new BasicProduct(Product.rds_instance, "rds_instance");
     public static final BasicProduct redshift = new BasicProduct(Product.redshift, "Redshift");
+    public static final BasicProduct rekognition = new BasicProduct(Product.rekognition, "Rekognition");
     public static final BasicProduct route53 = new BasicProduct(Product.route53, "Route 53");
     public static final BasicProduct s3 = new BasicProduct(Product.s3, "Simple Storage Service");
-    public static final BasicProduct simpledb = new BasicProduct(Product.simpledb, "SimpleDB");
+    public static final BasicProduct service_catalog = new BasicProduct(Product.service_catalog, "Service Catalog");
     public static final BasicProduct ses = new BasicProduct(Product.ses, "Simple Email Service");
+    public static final BasicProduct simpledb = new BasicProduct(Product.simpledb, "SimpleDB");
     public static final BasicProduct sns = new BasicProduct(Product.sns, "Simple Notification Service");
     public static final BasicProduct sqs = new BasicProduct(Product.sqs, "Simple Queue Service");
     public static final BasicProduct storage_gateway = new BasicProduct(Product.storage_gateway, "Storage Gateway");
@@ -74,11 +80,11 @@ public class BasicProductService implements ProductService {
     public static final BasicProduct monitor = new BasicProduct(Product.monitor, "monitor");
 
     private static BasicProduct[] products = new BasicProduct[]{
-    	api_gateway, cloudfront, cloudhsm, cloudtrail, config,
+    	api_gateway, athena, cloudfront, cloudhsm, cloudtrail, codecommit, config,
     	data_pipeline, data_transfer, direct_connect, database_migration, directory, dynamodb, 
-    	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, efs, eip, elasticache, emr, 
-    	glacier, kinesis_firehose, kms, lambda, rds, rds_instance, redshift, route53, 
-    	s3, simpledb, ses, sns, sqs, storage_gateway, support, sws, vpc, waf, workspaces
+    	ebs, ec2, ec2_cloudwatch, ec2_instance, ecr, efs, eip, elasticache, elasticsearch, emr, 
+    	glacier, kinesis, kinesis_firehose, kms, lambda, rds, rds_instance, redshift, rekognition, route53, 
+    	s3, service_catalog, ses, simpledb, sns, sqs, storage_gateway, support, sws, vpc, waf, workspaces
     	};
 
     static {
