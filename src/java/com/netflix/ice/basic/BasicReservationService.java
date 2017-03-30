@@ -34,8 +34,6 @@ import com.netflix.ice.tag.Region;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -441,8 +439,10 @@ public class BasicReservationService extends Poller implements ReservationServic
 
         for (String key: reservationsFromApi.keySet()) {
             CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
-            if (reservedInstances.getInstanceCount() <= 0)
+            if (reservedInstances.getInstanceCount() <= 0) {
+            	//logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + " has no instances");
                 continue;
+            }
 
             String accountId = key.substring(0, key.indexOf(","));
             Account account = config.accountService.getAccountById(accountId);
@@ -453,12 +453,17 @@ public class BasicReservationService extends Poller implements ReservationServic
             long startTime = getEffectiveReservationTime(reservedInstances.getStart());
             long endTime = getEffectiveReservationTime(reservedInstances.getEnd());
             endTime = Math.min(endTime, startTime + reservedInstances.getDuration() * 1000);
-            if (endTime <= config.startDate.getMillis())
+            if (endTime <= config.startDate.getMillis()) {
+            	//logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + " has expired");
                 continue;
+            }
             
             // usage price is the sum of the usage price and the recurring hourly charge
             double usagePrice = reservedInstances.getUsagePrice() + reservedInstances.getRecurringHourlyCharges();
             double fixedPrice = reservedInstances.getFixedPrice();
+
+            // logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
+            
             if (fixedPrice == 0.0 && 
             		(utilization == ReservationUtilization.FIXED ||
             		 utilization == ReservationUtilization.HEAVY_PARTIAL))  {
@@ -476,9 +481,14 @@ public class BasicReservationService extends Poller implements ReservationServic
             Region region = Region.getRegionByName(reservedInstances.getRegion());
             
             if (reservedInstances.isEC2()) {
-                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
-                if (zone == null)
-                    logger.error("Not able to find zone for EC2 reserved instances " + reservedInstances.getAvailabilityZone());
+            	if (reservedInstances.getScope().equals("Availability Zone")) {
+	                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
+	                if (zone == null)
+	                    logger.error("Not able to find zone for EC2 reserved instances " + reservedInstances.getAvailabilityZone());
+            	}
+            	else if (!reservedInstances.getScope().equals("Region")) {
+            		logger.error("Unknown scope value for reservation: " + reservedInstances.getReservationId() + ", scope: " + reservedInstances.getScope());
+            	}
                 String osStr = reservedInstances.getProductDescription();
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");

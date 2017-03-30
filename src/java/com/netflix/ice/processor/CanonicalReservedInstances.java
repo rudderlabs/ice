@@ -47,6 +47,11 @@ public class CanonicalReservedInstances {
      * The reservation instance, class, or node type.
      */
 	private String instanceType;
+	
+	/**
+	 * The scope of the EC2 reservation AZ or Region
+	 */
+	private String scope;
 
     /**
      * The Availability Zone in which the EC2 Reserved Instance can be used.
@@ -116,7 +121,7 @@ public class CanonicalReservedInstances {
      * The Reserved Instance offering type.
      * <p>
      * <b>Constraints:</b><br/>
-     * <b>Allowed Values: </b>Heavy Utilization, Medium Utilization, Light Utilization
+     * <b>Allowed Values: </b>Heavy Utilization
      */
 	private String offeringType;
     
@@ -152,6 +157,7 @@ public class CanonicalReservedInstances {
         this.reservationId = ri.getReservedInstancesId();
         this.reservationOfferingId = "";
         this.instanceType = ri.getInstanceType();
+        this.scope = ri.getScope();
         this.availabilityZone = ri.getAvailabilityZone();
         this.multiAZ = false;
         this.start = ri.getStart();
@@ -177,6 +183,7 @@ public class CanonicalReservedInstances {
         this.reservationId = ri.getReservedDBInstanceId();
         this.reservationOfferingId = ri.getReservedDBInstancesOfferingId();
         this.instanceType = ri.getDBInstanceClass();
+        this.scope = "";
         this.availabilityZone = "";
         this.multiAZ = ri.getMultiAZ();
         this.start = ri.getStartTime();
@@ -202,6 +209,7 @@ public class CanonicalReservedInstances {
         this.reservationId = ri.getReservedNodeId();
         this.reservationOfferingId = ri.getReservedNodeOfferingId();
         this.instanceType = ri.getNodeType();
+        this.scope = "";
         this.availabilityZone = "";
         this.multiAZ = false;
         this.start = ri.getStartTime();
@@ -228,27 +236,28 @@ public class CanonicalReservedInstances {
         reservationId = tokens[3];
         reservationOfferingId = tokens[4];
         instanceType = tokens[5];
-        availabilityZone = tokens[6];
-        multiAZ = Boolean.parseBoolean(tokens[7]);
-        Long s = Long.parseLong(tokens[8]);
+        scope = tokens[6];
+        availabilityZone = tokens[7];
+        multiAZ = Boolean.parseBoolean(tokens[8]);
+        Long s = Long.parseLong(tokens[9]);
         start = new Date(s);
-        Long e = Long.parseLong(tokens[9]);
-        duration = Long.parseLong(tokens[10]);
+        Long e = Long.parseLong(tokens[10]);
+        duration = Long.parseLong(tokens[11]);
         if (e != null)
             end = new Date(e);
         else
             end = new Date(s + duration * 1000);
-        usagePrice = Double.parseDouble(tokens[11]);
-        fixedPrice = Double.parseDouble(tokens[12]);
-        instanceCount = Integer.parseInt(tokens[13]);
-        productDescription = tokens[14];
-        state = tokens[15];
-        currencyCode = tokens[16];
-        offeringType = tokens[17];
+        usagePrice = Double.parseDouble(tokens[12]);
+        fixedPrice = Double.parseDouble(tokens[13]);
+        instanceCount = Integer.parseInt(tokens[14]);
+        productDescription = tokens[15];
+        state = tokens[16];
+        currencyCode = tokens[17];
+        offeringType = tokens[18];
         // Recurring charges in the form "f:c|f:c"
         recurringCharges = new ArrayList<RecurringCharge>();
-        if (tokens.length > 18) {
-	        String[] charges = tokens[18].split("\\|");
+        if (tokens.length > 19) {
+	        String[] charges = tokens[19].split("\\|");
 	        for (String charge: charges) {
 	        	recurringCharges.add(new RecurringCharge(charge));
 	        }
@@ -301,6 +310,14 @@ public class CanonicalReservedInstances {
 
 	public void setInstanceType(String instanceType) {
 		this.instanceType = instanceType;
+	}
+
+	public String getScope() {
+		return scope;
+	}
+
+	public void setScope(String scope) {
+		this.scope = scope;
 	}
 
 	public String getAvailabilityZone() {
@@ -422,6 +439,7 @@ public class CanonicalReservedInstances {
     	        reservationId,
     	        reservationOfferingId,
     	        instanceType,
+    	        scope,
     	        availabilityZone,
     	        multiAZ.toString(),
     	        start.getTime() + "",

@@ -449,7 +449,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             	operation = Operation.ondemandInstances;
             db = getInstanceDb(operationStr);
         }
-        else if (usageTypeStr.startsWith("HeavyUsage") || usageTypeStr.startsWith("MediumUsage") || usageTypeStr.startsWith("LightUsage")) {
+        else if (usageTypeStr.startsWith("HeavyUsage")) {
         	// Line item for hourly "No Upfront" EC2 or monthly "No Upfront" for Redshift (and possibly RDS?)
             index = usageTypeStr.indexOf(":");
             String offeringType;

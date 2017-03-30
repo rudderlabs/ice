@@ -164,14 +164,4 @@ public class IceOptions {
      * enable single-pass run of billing file processor. Will shut down EC2 instance when pass completes.
      */
     public static final String PROCESS_ONCE = "ice.processOnce";
-    
-    /**
-     * AWS region where this processor instance is running. Used to shut down EC2 instance when pass completes if processOnce is true.
-     */
-    public static final String PROCESSOR_REGION = "ice.processorRegion";
-
-    /**
-     * AWS EC2 instance ID of this processor. Used to shut down EC2 instance when pass completes if processOnce is true.
-     */
-    public static final String PROCESSOR_INSTANCE_ID = "ice.processorInstanceId";
 }

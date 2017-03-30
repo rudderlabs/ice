@@ -102,6 +102,7 @@ public class ReservationCapacityPoller extends Poller {
                        try {
                            DescribeReservedInstancesResult result = ec2Client.describeReservedInstances();
                            for (ReservedInstances reservation: result.getReservedInstances()) {
+                        	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
                                String key = account.id + "," + region.name + "," + reservation.getReservedInstancesId();
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
                                reservations.put(key, cri);

@@ -179,8 +179,6 @@ class BootStrap {
 				
                 if (prop.getProperty(IceOptions.PROCESS_ONCE) != null) {
                 	properties.setProperty(IceOptions.PROCESS_ONCE, prop.getProperty(IceOptions.PROCESS_ONCE));
-					properties.setProperty(IceOptions.PROCESSOR_REGION, getInstanceRegion());
-					properties.setProperty(IceOptions.PROCESSOR_INSTANCE_ID, getInstanceId());
                 }
 
                 properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.processor.localDir"));
