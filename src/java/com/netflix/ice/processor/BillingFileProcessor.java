@@ -279,10 +279,19 @@ public class BillingFileProcessor extends Poller {
 
         logger.info("AWS usage processed.");
         if (config.processOnce) {
-        	// We're done. Stop the instance
-            logger.info("Shutting down");
-            Runtime.getRuntime().exec("sudo shutdown -h now");
-            System.exit(0);
+        	// We're done. If we're running on an AWS EC2 instance, stop the instance
+            logger.info("Stopping EC2 Instance " + config.processorInstanceId + " in region " + config.processorRegion);
+
+            AmazonEC2Client ec2Client = new AmazonEC2Client(AwsUtils.awsCredentialsProvider.getCredentials(), AwsUtils.clientConfig);
+            ec2Client.setEndpoint("ec2." + config.processorRegion + ".amazonaws.com");
+            try {
+	            StopInstancesRequest request = new StopInstancesRequest().withInstanceIds(new String[] { config.processorInstanceId });
+	            StopInstancesResult result = ec2Client.stopInstances(request);
+            }
+            catch (Exception e) {
+                logger.error("error in stopInstances", e);
+            }
+            ec2Client.shutdown();
         }
     }
 

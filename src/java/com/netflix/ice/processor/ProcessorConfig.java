@@ -44,6 +44,8 @@ public class ProcessorConfig extends Config {
     public final double costPerMonitorMetricPerHour;
     public final boolean useBlended;
     public final boolean processOnce;
+    public final String processorRegion;
+    public final String processorInstanceId;
 
     public final String useCostForResourceGroup;
 
@@ -94,6 +96,8 @@ public class ProcessorConfig extends Config {
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
         
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
+        processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
+        processorInstanceId = properties.getProperty(IceOptions.PROCESSOR_INSTANCE_ID);
 
         ProcessorConfig.instance = this;
 
