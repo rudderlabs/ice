@@ -81,11 +81,21 @@ public class BasicReservationService extends Poller implements ReservationServic
 
         ec2InstanceReservationPrices = Maps.newHashMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
             ec2InstanceReservationPrices.put(utilization, new ConcurrentSkipListMap<Ec2InstanceReservationPrice.Key, Ec2InstanceReservationPrice>());
         }
 
         reservations = Maps.newHashMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
             reservations.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
     }
@@ -94,11 +104,21 @@ public class BasicReservationService extends Poller implements ReservationServic
         this.config = ProcessorConfig.getInstance();
         files = Maps.newHashMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
             files.put(utilization,  new File(config.localDir, "reservation_prices." + term.name() + "." + utilization.name()));
         }
 
         boolean fileExisted = false;
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
             File file = files.get(utilization);
             AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
             fileExisted = file.exists();
@@ -114,6 +134,11 @@ public class BasicReservationService extends Poller implements ReservationServic
         }
         else {
             for (ReservationUtilization utilization: ReservationUtilization.values()) {
+                if (utilization == ReservationUtilization.LIGHT ||
+                		utilization == ReservationUtilization.MEDIUM) {
+                	// ignore these old reservation types
+                	continue;
+                }
                 try {
                     File file = files.get(utilization);
                     if (file.exists()) {
@@ -434,6 +459,11 @@ public class BasicReservationService extends Poller implements ReservationServic
     public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
 
@@ -448,6 +478,13 @@ public class BasicReservationService extends Poller implements ReservationServic
             Account account = config.accountService.getAccountById(accountId);
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
+            
+            if (utilization == ReservationUtilization.LIGHT ||
+            		utilization == ReservationUtilization.MEDIUM) {
+            	// ignore these old reservation types
+            	continue;
+            }
+            
             // AWS reservations start at the beginning of the hour in which the reservation was purchased.
             // Likewise, they end at the start of the hour as well.
             long startTime = getEffectiveReservationTime(reservedInstances.getStart());
