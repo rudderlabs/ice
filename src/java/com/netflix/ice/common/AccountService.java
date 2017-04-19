@@ -73,11 +73,4 @@ public interface AccountService {
      * the values are product names for which the account holds reservations.
      */
     Map<Account, Set<String>> getReservationProducts();
-
-    /**
-     * @param account
-     * @param zone
-     * @return Whether or not external mappings are not available in specified account.
-     */
-    boolean externalMappingExist(Account account, Zone zone);
 }

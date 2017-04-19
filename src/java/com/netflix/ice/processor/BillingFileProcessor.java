@@ -18,8 +18,6 @@
 package com.netflix.ice.processor;
 
 import com.amazonaws.services.ec2.AmazonEC2Client;
-import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
-import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.amazonaws.services.ec2.model.StopInstancesResult;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -76,12 +74,33 @@ public class BillingFileProcessor extends Poller {
     private String fromEmail;
     private String alertEmails;
     private String urlPrefix;
+    
+    private final Set<Account> reservationOwners;
+    private final Map<Account, List<Account>> reservationBorrowers;
 
     public BillingFileProcessor(String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails) {
         this.ondemandThreshold = ondemandThreshold;
         this.fromEmail = fromEmail;
         this.alertEmails = alertEmails;
         this.urlPrefix = urlPrefix;
+        
+        // Initialize the reservation owner and borrower account lists
+        Map<Account, List<Account>> reservationAccounts = config.accountService.getReservationAccounts();
+        reservationOwners = reservationAccounts.keySet();
+        reservationBorrowers = Maps.newHashMap();
+        for (Account account: reservationAccounts.keySet()) {
+            List<Account> list = reservationAccounts.get(account);
+            for (Account borrowingAccount: list) {
+                if (borrowingAccount.name.equals(account.name))
+                    continue;
+                List<Account> from = reservationBorrowers.get(borrowingAccount);
+                if (from == null) {
+                    from = Lists.newArrayList();
+                    reservationBorrowers.put(borrowingAccount, from);
+                }
+                from.add(account);
+            }
+        }
     }
 
     @Override
@@ -257,7 +276,7 @@ public class BillingFileProcessor extends Poller {
             		continue;
             	
             	logger.info("---------- Process reservations for utilization: " + utilization);
-                processReservations(utilization);
+                processReservations(utilization, config.reservationService);
             }
 
             /***** Debugging */
@@ -302,11 +321,13 @@ public class BillingFileProcessor extends Poller {
                         TagGroup tagGroup,
                         Ec2InstanceReservationPrice.ReservationUtilization utilization,
                         boolean forBonus,
+                        ReservationService reservationService,
+                        Set<TagGroup> reservationTagGroups,
                         boolean debug) {
 
         Double existing = usageMap.get(tagGroup);
 
-        if (existing != null && config.accountService.externalMappingExist(tagGroup.account, tagGroup.zone) && fromAccounts != null) {
+        if (existing != null && fromAccounts != null) {
 
             for (Account from: fromAccounts) {
                 if (existing <= 0)
@@ -315,11 +336,12 @@ public class BillingFileProcessor extends Poller {
                 TagGroup unusedTagGroup = new TagGroup(from, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
                 Double unused = usageMap.get(unusedTagGroup);
 
-                if (debug) {
-                	logger.info("---- borrow(" + i + ") from: " + from + ", existing: " + existing + ", unused: " + unused + ", tagGroup: " + tagGroup);
-                }
-
                 if (unused != null && unused > 0) {
+                    if (debug) {
+                    	logger.info("** borrow(" + i + ") up to: " + existing + " for: " + tagGroup);
+                    	logger.info("       from: " + from + ", unused: " + unused + ", " + unusedTagGroup);
+                    }
+
                     double hourlyCost = costMap.get(unusedTagGroup) / unused;
 
                     double reservedBorrowed = Math.min(existing, unused);
@@ -346,7 +368,6 @@ public class BillingFileProcessor extends Poller {
                     costMap.put(unusedTagGroup, reservedUnused * hourlyCost);
 
                     if (debug) {
-	                	logger.info("** borrow(" + i + ")** from: " + from);
 	                	logger.info("      borrowed  quantity: " + reservedBorrowed + ", tag: " + borrowedTagGroup);
 	                	logger.info("      lent      quantity: " + reservedLent + ", tag: " + lentTagGroup);
 	                	logger.info("      remaining quantity: " + existing + ", tag: " + tagGroup);
@@ -354,11 +375,76 @@ public class BillingFileProcessor extends Poller {
                     }
                 }
             }
+            
+            // Now process family-based borrowing
+            for (Account from: fromAccounts) {
+                if (existing <= 0)
+                    break;
+                
+                // Scan all the regional reservations looking for matching account, region, and family with unused reservations
+                for (TagGroup rtg: reservationTagGroups) {
+                	if (rtg.zone != null || rtg.account != from || rtg.region != tagGroup.region || !sameFamily(rtg, tagGroup))
+                		continue;
+                	
+                    TagGroup unusedRegionalTagGroup = new TagGroup(from, rtg.region, null, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, null);
+                    Double unused = usageMap.get(unusedRegionalTagGroup);
+
+                    if (unused != null && unused > 0) {
+    	                if (debug) {
+    	                   	logger.info("** family borrow(" + i + ") up to: " + existing + " for: " + tagGroup);
+                        	logger.info("       from: " + from + ", unused: " + unused + ", " + rtg);
+    	                }
+    	                
+    	    	        double hourlyCost = costMap.get(unusedRegionalTagGroup) / unused;
+
+    	                double adjustedUnused = convertFamilyUnits(unused, rtg.usageType, tagGroup.usageType);
+	                    double adjustedReservedBorrowed = Math.min(existing, adjustedUnused);
+	                    double reservedUnused = convertFamilyUnits(adjustedUnused - adjustedReservedBorrowed, tagGroup.usageType, rtg.usageType);
+	                    double reservedBorrowed = unused - reservedUnused;
+	                    
+	                    existing -= adjustedReservedBorrowed;
+   	                
+	                    TagGroup borrowedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBorrowedInstances(utilization), tagGroup.usageType, null);
+	                    TagGroup lentTagGroup = new TagGroup(from, rtg.region, rtg.zone, rtg.product, Operation.getLentInstances(utilization), rtg.usageType, null);
+	                    
+	                    // Lent is in reservation units
+	                    Double existingLent = usageMap.get(lentTagGroup);
+	                    double reservedLent = existingLent == null ? reservedBorrowed : reservedBorrowed + existingLent;
+
+	                    // Borrowed is in actual usage units
+	                    double curBorrowedCost = reservedBorrowed * hourlyCost;
+	                    Double existingBorrowedCost = costMap.get(borrowedTagGroup);
+	                    double borrowedCost = existingBorrowedCost == null ? curBorrowedCost : curBorrowedCost + existingBorrowedCost;
+
+	                    Double existingBorrowed = usageMap.get(borrowedTagGroup);
+	                    adjustedReservedBorrowed = existingBorrowed == null ? adjustedReservedBorrowed : adjustedReservedBorrowed + existingBorrowed;
+	                    
+
+	                    usageMap.put(borrowedTagGroup, adjustedReservedBorrowed);
+	                    costMap.put(borrowedTagGroup, borrowedCost);
+	                    
+	                    usageMap.put(lentTagGroup, reservedLent);
+	                    costMap.put(lentTagGroup, reservedLent * hourlyCost);
+	                    usageMap.put(tagGroup, existing);
+	                    costMap.put(tagGroup, existing * hourlyCost);
+
+	                    usageMap.put(unusedRegionalTagGroup, reservedUnused);
+	                    costMap.put(unusedRegionalTagGroup, reservedUnused * hourlyCost);
+
+	                    if (debug) {
+		                	logger.info("      borrowed  quantity: " + adjustedReservedBorrowed + ", tag: " + borrowedTagGroup);
+		                	logger.info("      lent      quantity: " + reservedLent + ", tag: " + lentTagGroup);
+		                	logger.info("      remaining quantity: " + existing + ", tag: " + tagGroup);
+		                    logger.info("      unused    quantity: " + reservedUnused + ", tag: " + unusedRegionalTagGroup);
+	                    }
+                    }
+                }
+            }
         }
 
         // the rest is bonus
         if (existing != null && existing > 0 && !forBonus) {
-            ReservationService.ReservationInfo reservation = config.reservationService.getReservation(time, tagGroup, utilization);
+            ReservationService.ReservationInfo reservation = reservationService.getReservation(time, tagGroup, utilization);
             TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
             if (debug) {
             	logger.info("** borrow(" + i + ") **   bonus     quantity: " + existing + ", tag: " + bonusTagGroup);
@@ -387,7 +473,7 @@ public class BillingFileProcessor extends Poller {
             Map<TagGroup, Double> costMap,
             TagGroup tagGroup,
             Ec2InstanceReservationPrice.ReservationUtilization utilization,
-            Set<TagGroup> unallocatedTags,
+            Set<TagGroup> bonusTags,
             boolean debug) {
 
 	    TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
@@ -401,15 +487,15 @@ public class BillingFileProcessor extends Poller {
             }
             
 	        // Scan bonus reservations for this account
-	        for (TagGroup tg: unallocatedTags) {
+	        for (TagGroup tg: bonusTags) {
 	        	// only look within the same account
 	        	if (tg.account != tagGroup.account)
 	        		continue;
 	        	
-                if (debug) {
-                	logger.info("      found bonus, same=" + sameFamily(tg, tagGroup) + ", bonus: " + usageMap.get(tg) + ", tag: " + tg);
-                }
 	        	if (sameFamily(tg, tagGroup)) {
+	                if (debug) {
+	                	logger.info("      found bonus: " + usageMap.get(tg) + ", tag: " + tg);
+	                }
 	        		// found a reservation that uses the unused portion
 	        		Double used = usageMap.get(tg);
 	        		if (used != null && used > 0) {
@@ -423,8 +509,17 @@ public class BillingFileProcessor extends Poller {
 	        	        TagGroup familyTagGroup = new TagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getFamilyReservedInstances(utilization), tg.usageType, null);
 	        	        
 	        	        // Allocated usage as a family reservation
-	        	        usageMap.put(familyTagGroup, familyUsed);
-	        	        costMap.put(familyTagGroup, reservedUsed * hourlyCost);
+	        	        
+	                    Double existingFamilyUsage = usageMap.get(familyTagGroup);
+	                    double totalFamilyUsage = existingFamilyUsage == null ? familyUsed : familyUsed + existingFamilyUsage;
+	                    Double existingFamilyCost = costMap.get(familyTagGroup);
+	                    double familyCost = reservedUsed * hourlyCost;
+	                    double totalFamilyCost = existingFamilyCost == null ? familyCost : familyCost + existingFamilyCost;
+
+	        	        
+	        	        
+	        	        usageMap.put(familyTagGroup, totalFamilyUsage);
+	        	        costMap.put(familyTagGroup, totalFamilyCost);
 	        	        
 	        	        // What's left of bonus if any
 	        			usageMap.put(tg, used);
@@ -432,7 +527,7 @@ public class BillingFileProcessor extends Poller {
 	        			
 	                    if (debug) {
 		                	logger.info("** family(" + i + ")** ");
-		                	logger.info("      family    quantity: " + familyUsed + ", tag: " + familyTagGroup);
+		                	logger.info("      family    quantity: " + totalFamilyUsage + ", tag: " + familyTagGroup);
 		                	logger.info("      bonus     quantity: " + used + ", tag: " + tg);
 		                    logger.info("      unused    quantity: " + unused + ", tag: " + unusedTagGroup);
 	                    }
@@ -445,13 +540,15 @@ public class BillingFileProcessor extends Poller {
 	    }
 	}
 
-    private boolean debugReservations(int i) {
+    private boolean debugReservations(int i, UsageType ut) {
+    	String family = ut.name.split("\\.")[0];
     	// Edit expression below to enable debugging output on a set of hour data, else set to false to disable
     	// e.g. i == 530 || i == 531
+    	//return i == 308 && family.equals("m2");
     	return false;
     }
     
-    private void processReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    private void processReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization, ReservationService reservationService) {
 
         if (config.reservationService.getTagGroups(utilization).size() == 0)
             return;
@@ -459,34 +556,16 @@ public class BillingFileProcessor extends Poller {
         ReadWriteData usageData = usageDataByProduct.get(null);
         ReadWriteData costData = costDataByProduct.get(null);
 
-        // This first block of code could be factored out as it only needs to be called
-        // once to build the maps as it isn't dependent on utilization. In fact it
-        // should only be called when this class is initialized. -jroth
-        Map<Account, List<Account>> reservationAccounts = config.accountService.getReservationAccounts();
-        Set<Account> reservationOwners = reservationAccounts.keySet();
-        Map<Account, List<Account>> reservationBorrowers = Maps.newHashMap();
-        for (Account account: reservationAccounts.keySet()) {
-            List<Account> list = reservationAccounts.get(account);
-            for (Account borrowingAccount: list) {
-                if (borrowingAccount.name.equals(account.name))
-                    continue;
-                List<Account> from = reservationBorrowers.get(borrowingAccount);
-                if (from == null) {
-                    from = Lists.newArrayList();
-                    reservationBorrowers.put(borrowingAccount, from);
-                }
-                from.add(account);
-            }
-        }
-        
-
         // first mark owner accounts
-        // The toMarkOwners set will contain all the tagGroups for usage associated with reservations that the account owns.
-        // It will NOT include any reserved instance usage for borrowed reservations or reservation usage by members of the same
+        // The reservationTagGroups set will contain all the tagGroups for reservation purchases.
+        // The account tag is the owner of the reservation, the zone is null for regionally scoped RIs.
+        // It does NOT have anything to do with usage.
+        // Usage is saved in the usageData maps.
+        // reservationTagGroups therefore, does not include any reserved instance usage for borrowed reservations or reservation usage by members of the same
         // family of instance. Family reservervation usage will appear as bonus reservations if the account owns other RIs for
         // that same usage type.
-        Set<TagGroup> toMarkOwners = Sets.newTreeSet();
-        for (TagGroup tagGroup: config.reservationService.getTagGroups(utilization)) {
+        Set<TagGroup> reservationTagGroups = Sets.newTreeSet();
+        for (TagGroup tagGroup: reservationService.getTagGroups(utilization)) {
         	// For each of the owner reservation tag groups...
             for (int i = 0; i < usageData.getNum(); i++) {
             	// For each hour of usage...
@@ -495,16 +574,17 @@ public class BillingFileProcessor extends Poller {
                 Map<TagGroup, Double> costMap = costData.getData(i);
 
                 // Do we have any usage from the current reservation?
+                // This will not catch usage for region-scoped reservations. That will be handled later.
                 Double existing = usageMap.get(tagGroup);
                 double value = existing == null ? 0 : existing;
                 
                 // Get the reservation info for the utilization and tagGroup in the current hour
-                ReservationService.ReservationInfo reservation = config.reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
+                ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
                 double reservedUsed = Math.min(value, reservation.capacity);
                 double reservedUnused = reservation.capacity - reservedUsed;
                 double bonusReserved = value > reservation.capacity ? value - reservation.capacity : 0;
 
-                boolean debug = debugReservations(i);
+                boolean debug = debugReservations(i, tagGroup.usageType);
 
                 if (debug) {
                 	logger.info("**** reservation **** hour: " + i + ", value: " + value + ", capacity: " + reservation.capacity + ", existing: " + existing + ", tagGroup: " + tagGroup);
@@ -545,7 +625,7 @@ public class BillingFileProcessor extends Poller {
                 }
             }
 
-            toMarkOwners.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
+            reservationTagGroups.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
         }
 
         // now mark borrowing accounts
@@ -556,15 +636,16 @@ public class BillingFileProcessor extends Poller {
         for (TagGroup tagGroup: usageData.getTagGroups()) {
             if (tagGroup.resourceGroup == null &&
                 tagGroup.product == Product.ec2_instance &&
-                (tagGroup.operation == Operation.getReservedInstances(utilization) && !toMarkOwners.contains(tagGroup) ||
+                (tagGroup.operation == Operation.getReservedInstances(utilization) && !reservationTagGroups.contains(tagGroup) ||
                  tagGroup.operation == Operation.getBonusReservedInstances(utilization))) {
 
                 toMarkBorrowing.add(tagGroup);
             }
         }
 
-        // Scan bonus reservations and handle family-based usage of regionally-scoped reservations within each owner account (new as of 3/1/2017)
-        for (TagGroup tagGroup: toMarkOwners) {
+        // Scan bonus reservations and handle non-zone-specific and family-based usage of regionally-scoped reservations
+        // within each owner account (region-scoped reservations new as of 11/1/2016, family-based credits are new as of 3/1/2017)
+        for (TagGroup tagGroup: reservationTagGroups) {
         	// only process regional reservations
         	if (tagGroup.zone != null)
         		continue;
@@ -574,7 +655,7 @@ public class BillingFileProcessor extends Poller {
                 Map<TagGroup, Double> usageMap = usageData.getData(i);
                 Map<TagGroup, Double> costMap = costData.getData(i);
                 
-                boolean debug = debugReservations(i);
+                boolean debug = debugReservations(i, tagGroup.usageType);
                 family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, utilization, toMarkBorrowing, debug);
             }
         }
@@ -586,9 +667,16 @@ public class BillingFileProcessor extends Poller {
                 Map<TagGroup, Double> usageMap = usageData.getData(i);
                 Map<TagGroup, Double> costMap = costData.getData(i);
 
-                boolean debug = debugReservations(i);
-                borrow(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap,
-                       reservationBorrowers.get(tagGroup.account), tagGroup, utilization, reservationOwners.contains(tagGroup.account), debug);
+                boolean debug = debugReservations(i, tagGroup.usageType);
+                borrow(i, startMilli + i * AwsUtils.hourMillis,
+                		usageMap, costMap,
+                       reservationBorrowers.get(tagGroup.account),
+                       tagGroup,
+                       utilization,
+                       reservationOwners.contains(tagGroup.account),
+                       reservationService,
+                       reservationTagGroups,
+                       debug);
             }
         }
     }

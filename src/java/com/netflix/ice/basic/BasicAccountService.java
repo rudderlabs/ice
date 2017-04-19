@@ -101,8 +101,4 @@ public class BasicAccountService implements AccountService {
     public Map<Account, Set<String>> getReservationProducts() {
         return reservationProducts;
     }
-
-    public boolean externalMappingExist(Account account, Zone zone) {
-        return true;
-    }
 }
