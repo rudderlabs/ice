@@ -44,7 +44,7 @@ public class ReservationProcessor {
     
     // hour of data to print debug statements. Set to -1 to turn off.
     private int debugHour = -1;
-    private String debugFamily;
+    private String debugFamily = "";
 
     public ReservationProcessor(Map<Account, List<Account>> reservationAccounts) {        
         // Initialize the reservation owner and borrower account lists
@@ -356,6 +356,54 @@ public class ReservationProcessor {
 		}
 	}
 	
+	private class UsedUnused {
+		public double used;
+		public double unused;
+		
+		public UsedUnused(double used, double unused) {
+			this.used = used;
+			this.unused = unused;
+		}
+	}
+	
+	private UsedUnused processUsage(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			TagGroup tagGroup,
+			Zone zone,
+			Map<TagGroup, Double> usageMap,
+			Map<TagGroup, Double> costMap,
+			UsedUnused uu,
+			double reservationHourlyCost) {
+		
+		TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
+		Double existing = usageMap.get(bonusTagGroup);
+		double value = existing == null ? 0 : existing;
+		
+		double reservedUsedZone = Math.min(value, uu.unused);
+	    if (reservedUsedZone > 0) {
+    		uu.used += reservedUsedZone;
+    		uu.unused -= reservedUsedZone;
+
+    		TagGroup usedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null);
+    		Double usedExisting = usageMap.get(usedTagGroup);
+    		double usedTotal = usedExisting == null ? reservedUsedZone : usedExisting + reservedUsedZone;
+    		
+	        usageMap.put(usedTagGroup, usedTotal);				        
+	        costMap.put(usedTagGroup, usedTotal * reservationHourlyCost);
+	        
+	        // Now decrement the bonus
+	        double bonus = value - reservedUsedZone;
+	        if (bonus > 0) {
+	        	usageMap.put(bonusTagGroup, bonus);
+	        	costMap.put(bonusTagGroup, bonus * reservationHourlyCost);
+	        }
+	        else {
+	        	usageMap.remove(bonusTagGroup);
+	        	costMap.remove(bonusTagGroup);
+	        }				        
+	    }
+	    return uu;
+	}
+	
 	public void process(Ec2InstanceReservationPrice.ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
@@ -366,6 +414,23 @@ public class ReservationProcessor {
 			return;
 	
     	logger.info("---------- Process " + reservationService.getTagGroups(utilization).size() + " reservations for utilization: " + utilization);
+
+		if (debugHour >= 0) {
+			logger.info("---------- usage for hour " + debugHour + " before processing ----------------");
+		    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);
+			
+			for (TagGroup tagGroup: usageData.getTagGroups()) {
+				if (debugReservations(debugHour, tagGroup.usageType))
+					logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
+			}
+
+			Map<TagGroup, Double> costMap = costData.getData(debugHour);
+
+			for (TagGroup tagGroup: costData.getTagGroups()) {
+				if (debugReservations(debugHour, tagGroup.usageType))
+					logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
+			}
+		}
 
 		// first mark owner accounts
 		// The reservationTagGroups set will contain all the tagGroups for reservation purchases.
@@ -435,7 +500,8 @@ public class ReservationProcessor {
 			reservationTagGroups.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
 		}
 		
-		// Now spin through all the bonus reservations and allocate them to any regional reservations in the owner account
+		// Now spin through all the bonus reservations and allocate them to any regional reservations in the owner account.
+		// Regional reservations include RDS and Redshift products.
 		for (TagGroup tagGroup: reservationService.getTagGroups(utilization)) {
 			// For each of the owner Region reservation tag groups...
 			if (tagGroup.zone != null)
@@ -450,51 +516,31 @@ public class ReservationProcessor {
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
 			    boolean debug = debugReservations(i, tagGroup.usageType);
 
-			    double reservedUsed = 0;
-			    double reservedUnused = reservation.capacity;
+			    UsedUnused uu = new UsedUnused(0.0, reservation.capacity);
 			    
-			    // Do we have any usage from the current reservation?
+			    if (uu.unused > 0) {
+				    // Do we have any usage from the current reservation?
+				    // First check for region-based usage
+				    uu = processUsage(utilization, tagGroup, null, usageMap, costMap, uu, reservation.reservationHourlyCost);
 
-		    	// Check each of the AZs in the region
-		    	for (Zone zone: tagGroup.region.getZones()) {
-		    		TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
-		    		Double existing = usageMap.get(bonusTagGroup);
-		    		double value = existing == null ? 0 : existing;
-		    		
-		    		double reservedUsedZone = Math.min(value, reservedUnused);
-				    if (reservedUsedZone > 0) {
-			    		reservedUsed += reservedUsedZone;
-			    		reservedUnused -= reservedUsedZone;
-
-			    		TagGroup usedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null);
-			    		Double usedExisting = usageMap.get(usedTagGroup);
-			    		double usedTotal = usedExisting == null ? reservedUsedZone : usedExisting + reservedUsedZone;
+			    	// Check each of the AZs in the region
+			    	for (Zone zone: tagGroup.region.getZones()) {
+			    		if (uu.unused <= 0)
+			    			break;
 			    		
-				        usageMap.put(usedTagGroup, usedTotal);				        
-				        costMap.put(usedTagGroup, usedTotal * reservation.reservationHourlyCost);
-				        
-				        // Now decrement the bonus
-				        double bonus = value - reservedUsedZone;
-				        if (bonus > 0) {
-				        	usageMap.put(bonusTagGroup, bonus);
-				        	costMap.put(bonusTagGroup, bonus * reservation.reservationHourlyCost);
-				        }
-				        else {
-				        	usageMap.remove(bonusTagGroup);
-				        	costMap.remove(bonusTagGroup);
-				        }				        
-				    }				
+			    		uu = processUsage(utilization, tagGroup, zone, usageMap, costMap, uu, reservation.reservationHourlyCost);
+				    }
 			    }
 			    if (debug) {
-			    	logger.info("**** Region reservation **** hour: " + i + ", used: " + reservedUsed + ", capacity: " + reservation.capacity + ", tagGroup: " + tagGroup);
+			    	logger.info("**** Region reservation **** hour: " + i + ", used: " + uu.used + ", capacity: " + reservation.capacity + ", tagGroup: " + tagGroup);
 			    }
 			    
-			    if (reservedUnused > 0) {
+			    if (uu.unused > 0) {
 			        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
-			        usageMap.put(unusedTagGroup, reservedUnused);
-			        costMap.put(unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
+			        usageMap.put(unusedTagGroup, uu.unused);
+			        costMap.put(unusedTagGroup, uu.unused * reservation.reservationHourlyCost);
 			        if (debug) {
-			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + reservedUsed + ", unused: " + reservedUnused + ", tag: " + unusedTagGroup);
+			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + uu.used + ", unused: " + uu.unused + ", tag: " + unusedTagGroup);
 			        }
 			    }
 			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {

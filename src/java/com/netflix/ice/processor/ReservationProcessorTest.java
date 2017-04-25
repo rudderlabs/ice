@@ -76,6 +76,12 @@ public class ReservationProcessorTest {
 			this.tagGroup = new TagGroup(account, region, zone, Product.ec2_instance, operation, UsageType.getUsageType(usageType, "hours"), null);
 			this.value = value;
 		}
+		
+		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, double value)
+		{
+			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.value = value;
+		}
 	}
 	
 	private Map<TagGroup, Double> makeDataMap(Datum[] data) {
@@ -495,4 +501,34 @@ public class ReservationProcessorTest {
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 	}
+	
+	/*
+	 * Test one Region scoped full-upfront RDS reservation where the instance is used.
+	 */
+	@Test
+	public void testFixedRDS() {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,RDS,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,1463763023778,1495299023778,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", 0.0223),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
+		
+	}	
 }
