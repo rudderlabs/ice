@@ -32,6 +32,11 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
+
+/*
+ * All reservation usage starts out tagged as BonusReservedInstances and is later reassigned proper tags
+ * based on it's usage by the ReservationProcessor.
+ */
 public class BasicLineItemProcessor implements LineItemProcessor {
     private Logger logger = LoggerFactory.getLogger(BasicLineItemProcessor.class);
 
@@ -223,7 +228,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (items.length > resourceIndex && !StringUtils.isEmpty(items[resourceIndex]) && config.resourceService != null) {
 
             if (config.useCostForResourceGroup.equals("modeled") && product == Product.ec2_instance)
-                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
+                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
 
             if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation && !usageType.name.endsWith(InstanceOs.spot.name())) {
                 UsageType usageTypeForPrice = usageType;
@@ -329,7 +334,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
 
     private Result processEc2Instance(boolean processDelayed, boolean reservationUsage, Operation operation, Zone zone) {
-        if (!processDelayed && zone == null && operation.name.startsWith("ReservedInstances") && reservationUsage)
+        if (!processDelayed && zone == null && operation.name.startsWith("BonusReservedInstances") && reservationUsage)
             return Result.ignore;
         else
             return Result.hourly;
@@ -415,9 +420,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             if (reservationUsage && product == Product.ec2 && cost == 0)
-                operation = Operation.reservedInstancesFixed;
+                operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.ec2)
-                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
             else
                 operation = Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
@@ -431,9 +436,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
         	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
             if (reservationUsage && product == Product.redshift && cost == 0 && description.contains(" 0.0 per"))
-            	operation = Operation.reservedInstancesFixed;
+            	operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.redshift)
-                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
             else
             	operation = Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
@@ -442,9 +447,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	// Line item for hourly RDS instance usage - both On-Demand and Reserved
             usageTypeStr = usageTypeStr.split(":")[1] + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");            
             if (reservationUsage && product == Product.rds && cost == 0)
-            	operation = Operation.reservedInstancesFixed;
+            	operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.rds)
-                operation = Operation.getReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
             else
             	operation = Operation.ondemandInstances;
             db = getInstanceDb(operationStr);
@@ -484,7 +489,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (operation instanceof Operation.ReservationOperation) {
                 if (os != InstanceOs.linux) {
                     usageTypeStr = usageTypeStr + "." + os;
-                    operation = operation.name.startsWith("ReservedInstances") ? operation : Operation.ondemandInstances;
+                    operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
                 }
             }
         }
@@ -493,7 +498,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             product = Product.rds_instance;
             if (operation instanceof Operation.ReservationOperation) {
                 usageTypeStr = usageTypeStr + "." + db;
-                operation = operation.name.startsWith("ReservedInstances") ? operation : Operation.ondemandInstances;
+                operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
             }
         }
 
@@ -520,7 +525,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (operationStr.startsWith("RunInstances") ||
         		operationStr.startsWith("RunComputeNode") ||
         		operationStr.startsWith("CreateDBInstance")) {
-            return (reservationUsage ? Operation.getReservedInstances(utilization) : Operation.ondemandInstances);
+            return (reservationUsage ? Operation.getBonusReservedInstances(utilization) : Operation.ondemandInstances);
         }
         return null;
     }

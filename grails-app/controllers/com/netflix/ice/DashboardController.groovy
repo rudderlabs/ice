@@ -19,6 +19,7 @@
 package com.netflix.ice
 
 import grails.converters.JSON
+
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
 import com.netflix.ice.tag.Region
@@ -27,25 +28,35 @@ import com.netflix.ice.tag.UsageType
 import com.netflix.ice.tag.Operation
 import com.netflix.ice.tag.ResourceGroup
 import com.netflix.ice.tag.TagType
+
 import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTimeZone
 import org.joda.time.DateTime
 import org.joda.time.Interval
+
 import com.netflix.ice.tag.Tag
 import com.netflix.ice.reader.*;
 import com.google.common.collect.Lists
 import com.google.common.collect.Sets
 import com.google.common.collect.Maps
+
 import org.json.JSONObject
+
 import com.netflix.ice.common.ConsolidateType
+
 import org.joda.time.Hours
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory
 import org.apache.commons.lang.StringUtils
+
 import com.netflix.ice.common.AwsUtils
 
 
 class DashboardController {
-    private static ReaderConfig config = ReaderConfig.getInstance();
+    private static Logger logger = LoggerFactory.getLogger(DashboardController.class);
+
+	private static ReaderConfig config = ReaderConfig.getInstance();
     private static Managers managers = config == null ? null : config.managers;
     private static DateTimeFormatter dateFormatterForDownload = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd hha").withZone(DateTimeZone.UTC);
@@ -198,7 +209,6 @@ class DashboardController {
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 
         Collection<Operation> data;
-        System.out.println(new Date().getTime());
         if (showResourceGroups) {
             data = Sets.newTreeSet();
             if (products.size() == 0) {
@@ -211,7 +221,6 @@ class DashboardController {
                 TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
                 Collection<Operation> tmp = tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
                 data.addAll(tmp);
-                System.out.println(new Date().getTime() + " " + product);
             }
         }
         else {
@@ -223,7 +232,14 @@ class DashboardController {
             for (Operation.ReservationOperation lentOp: Operation.getLentInstances())
                 data.remove(lentOp);
         }
-
+		
+		logger.debug("operations: " + operations);
+		logger.debug("   accounts: " + accounts);
+		logger.debug("   regions: " + regions);
+		logger.debug("   zones: " + zones);
+		logger.debug("   products: " + products);
+		logger.debug("   data: " + data);
+		
         def result = [status: 200, data: data]
         render result as JSON
     }
@@ -389,7 +405,9 @@ class DashboardController {
     def appgroup = {}
 
     private Map doGetData(JSONObject query) {
-        TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
+		logger.debug("******** doGetData: called");
+
+		TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
         if (tagGroupManager == null) {
             return [status: 200, start: 0, data: [:], stats: [:], groupBy: "None"];
         }
@@ -501,7 +519,6 @@ class DashboardController {
                     tmp.put(new com.netflix.ice.tag.ApplicationGroup(name), dataOfProduct.get(Tag.aggregated));
 
                     merge(tmp, data);
-                    System.out.println(product);
                 }
             }
         }
@@ -556,10 +573,11 @@ class DashboardController {
                 } 
                 
                 merge(dataOfProduct, data);
-                System.out.println(product);
             }
         }
         else {
+			logger.debug("doGetData: " + operations + ", forReservation: " + forReservation);
+			
             DataManager dataManager = isCost ? getManagers().getCostManager(null, consolidateType) : getManagers().getUsageManager(null, consolidateType);
             data = dataManager.getData(
                 interval,
@@ -569,6 +587,8 @@ class DashboardController {
                 forReservation,
 				usageUnit
             );
+		
+			logger.debug("  -- tags: " + data.keySet());
         }
 		
 		def stats = [:];
