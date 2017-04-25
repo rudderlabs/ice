@@ -18,6 +18,7 @@
 package com.netflix.ice.processor;
 
 import com.amazonaws.services.ec2.model.ReservedInstances;
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
@@ -76,7 +77,7 @@ public interface ReservationService {
      * Called by ReservationCapacityPoller to update reservations.
      * @param reservations
      */
-    void updateReservations(Map<String, CanonicalReservedInstances> reservations);
+    void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis);
 
 
     public static class ReservationInfo {

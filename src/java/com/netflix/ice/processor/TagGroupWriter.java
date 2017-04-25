@@ -72,10 +72,12 @@ public class TagGroupWriter {
         logger.info(dbName + " uploading to s3...");
         AwsUtils.upload(config.workS3BucketName, config.workS3BucketPrefix, config.localDir, dbName);
         logger.info(dbName + " uploading done.");
+
     }
     
     // Output file to CSV for general debugging
     void outputCsv(String dir) throws IOException {
+    	new File(dir).mkdirs();
         File csvFile = new File(dir, dbName + ".csv");
         DataOutputStream out = new DataOutputStream(new FileOutputStream(csvFile));
         try {

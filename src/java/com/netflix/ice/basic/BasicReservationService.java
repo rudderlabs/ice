@@ -21,6 +21,7 @@ import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.services.ec2.model.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.TagGroup;
@@ -166,7 +167,8 @@ public class BasicReservationService extends Poller implements ReservationServic
         long currentTime = new DateTime().withTimeAtStartOfDay().getMillis();
 
         DescribeReservedInstancesOfferingsRequest req =  new DescribeReservedInstancesOfferingsRequest()
-                .withFilters(new com.amazonaws.services.ec2.model.Filter().withName("marketplace").withValues("false"));
+                .withFilters(new com.amazonaws.services.ec2.model.Filter().withName("marketplace").withValues("false"),
+                		new com.amazonaws.services.ec2.model.Filter().withName("scope").withValues("Availability Zone"));
         String token = null;
         boolean hasNewPrice = false;
         AmazonEC2Client ec2Client = new AmazonEC2Client(AwsUtils.awsCredentialsProvider, AwsUtils.clientConfig);
@@ -200,13 +202,13 @@ public class BasicReservationService extends Poller implements ReservationServic
                     }
                     UsageType usageType = getUsageType(offer.getInstanceType(), offer.getProductDescription());
                     // Unknown Zone
-                    if (Zone.getZone(offer.getAvailabilityZone()) == null) {
-                        logger.error("No Zone for " + offer.getAvailabilityZone());
+                    if (offer.getAvailabilityZone() == null || Zone.getZone(offer.getAvailabilityZone()) == null) {
+                        logger.error("No Zone for " + offer.getAvailabilityZone() + ", instanceType: " + offer.getInstanceType() + " - " + offer.getProductDescription());
                     } else {
                         hasNewPrice = setPrice(utilization, currentTime, Zone.getZone(offer.getAvailabilityZone()).region, usageType,
                                 offer.getFixedPrice(), hourly) || hasNewPrice;
 
-                        //logger.info("Setting RI price for " + Zone.getZone(offer.getAvailabilityZone()).region + " " + utilization + " " + usageType + " " + offer.getFixedPrice() + " " + hourly);
+                        logger.debug("Setting RI price for " + Zone.getZone(offer.getAvailabilityZone()).region + " " + utilization + " " + usageType + " " + offer.getFixedPrice() + " " + hourly);
                     }
                 }
             } while (!StringUtils.isEmpty(token));
@@ -382,6 +384,8 @@ public class BasicReservationService extends Poller implements ReservationServic
 	    }
 	    
 	    if (count == 0) {
+	    	//logger.info("No active reservation for tagGroup: " + tagGroup);
+	    	
 	    	// Either we didn't find the reservation, or there is no longer an active reservation
 	    	// for this usage. Pull the prices from the pricelist.
 	        if (tagGroup.product == Product.ec2_instance) {
@@ -456,7 +460,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     	return c.getTime().getTime();
     }
 
-    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi) {
+    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             if (utilization == ReservationUtilization.LIGHT ||
@@ -475,7 +479,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             }
 
             String accountId = key.substring(0, key.indexOf(","));
-            Account account = config.accountService.getAccountById(accountId);
+            Account account = accountService.getAccountById(accountId);
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
             
@@ -490,7 +494,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             long startTime = getEffectiveReservationTime(reservedInstances.getStart());
             long endTime = getEffectiveReservationTime(reservedInstances.getEnd());
             endTime = Math.min(endTime, startTime + reservedInstances.getDuration() * 1000);
-            if (endTime <= config.startDate.getMillis()) {
+            if (endTime <= startMillis) {
             	//logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + " has expired");
                 continue;
             }
@@ -537,9 +541,13 @@ public class BasicReservationService extends Poller implements ReservationServic
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
             	product = Product.rds_instance;
             }
-            else {
+            else if (reservedInstances.isRedshift()){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
             	product = Product.redshift;
+            }
+            else {
+            	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());
+            	continue;
             }
 
             TagGroup reservationKey = new TagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);

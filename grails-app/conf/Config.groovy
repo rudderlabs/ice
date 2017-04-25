@@ -87,6 +87,9 @@ log4j = {
             'org.codehaus.groovy.grails.orm.hibernate' // hibernate integration
 
     warn 'org.mortbay.log'
+	
+	//debug 'com.netflix.ice.basic.BasicReservationService',
+			// 'com.netflix.ice.DashboardController'
 
     root {
         info()

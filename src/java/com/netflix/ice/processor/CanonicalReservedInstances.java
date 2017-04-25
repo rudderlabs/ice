@@ -458,15 +458,15 @@ public class CanonicalReservedInstances {
     }
 	
 	public boolean isEC2() {
-		return product == "EC2";
+		return product.equals("EC2");
 	}
 	
 	public boolean isRDS() {
-		return product == "RDS";
+		return product.equals("RDS");
 	}
 	
 	public boolean isRedshift() {
-		return product == "Redshift";
+		return product.equals("Redshift");
 	}
 	
 	public double getRecurringHourlyCharges() {
