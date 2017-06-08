@@ -850,6 +850,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
 
   var reservationOps = [
     "OndemandInstances",
+    "SpotInstances",
     "ReservedInstancesAllUpfront",
     "FamilyReservedInstancesAllUpfront",
     "BonusReservedInstancesAllUpfront",
@@ -1007,6 +1008,7 @@ function utilizationCtrl($scope, $location, usage_db, highchart) {
 
   var utilizationOps = [
     "OndemandInstances",
+    "SpotInstances",
     "ReservedInstancesAllUpfront",
     "ReservedInstancesNoUpfront",
     "ReservedInstancesPartialUpfront"];

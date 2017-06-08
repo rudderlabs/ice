@@ -59,7 +59,9 @@ public class Operation extends Tag {
     public static final ReservationOperation lentInstancesHeavyPartial = new ReservationOperation("LentInstancesPartialUpfront", 19);
     public static final ReservationOperation unusedInstancesHeavyPartial = new ReservationOperation("UnusedInstancesPartialUpfront", 20);
     public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("AmortizedPartialUpfront", 21);    
-    
+
+    public static final ReservationOperation spotInstances = new ReservationOperation("SpotInstances", 0);
+
     public static ReservationOperation getReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return reservedInstancesFixed;

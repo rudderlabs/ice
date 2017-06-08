@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.*;
+import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
 import com.netflix.ice.tag.*;
 
 import org.apache.commons.lang.StringUtils;
@@ -138,7 +139,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         boolean reservationUsage = "Y".equals(items[reservedIndex]);
-        ReformedMetaData reformedMetaData = reform(millisStart, config, product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
+        ReformedMetaData reformedMetaData = reform(config.reservationService.getDefaultReservationUtilization(millisStart), product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
         product = reformedMetaData.product;
         Operation operation = reformedMetaData.operation;
         final UsageType usageType = reformedMetaData.usageType;
@@ -230,7 +231,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (config.useCostForResourceGroup.equals("modeled") && product == Product.ec2_instance)
                 operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
 
-            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation && operation != Operation.ondemandInstances) {
+            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation &&
+            		operation != Operation.ondemandInstances && operation != Operation.spotInstances) {
                 UsageType usageTypeForPrice = usageType;
                 if (usageType.name.endsWith(InstanceOs.others.name())) {
                     usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);
@@ -383,7 +385,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    protected ReformedMetaData reform(long millisStart, ProcessorConfig config, Product product, boolean reservationUsage, String operationStr, String usageTypeStr, String description, double cost) {
+    protected ReformedMetaData reform(ReservationUtilization defaultReservationUtilization, Product product, boolean reservationUsage, String operationStr, String usageTypeStr, String description, double cost) {
 
         Operation operation = null;
         UsageType usageType = null;
@@ -415,14 +417,19 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (usageTypeStr.startsWith("CW:"))
             product = Product.ec2_cloudwatch;
         else if ((usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
-        	// Line item for hourly "All Upfront" or "On-Demand" EC2 instance usage
+        	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
+        	boolean spot = usageTypeStr.startsWith("SpotUsage");
             index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
-            if (reservationUsage && product == Product.ec2 && cost == 0)
-                operation = Operation.bonusReservedInstancesFixed;
-            else if (reservationUsage && product == Product.ec2)
-                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+            if (reservationUsage && product == Product.ec2) {
+            	if (cost == 0)
+                    operation = Operation.bonusReservedInstancesFixed;
+            	else
+                    operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
+            }
+            else if (spot)
+            	operation = Operation.spotInstances;
             else
                 operation = Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
@@ -438,7 +445,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (reservationUsage && product == Product.redshift && cost == 0 && description.contains(" 0.0 per"))
             	operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.redshift)
-                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+                operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
             else
             	operation = Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
@@ -449,7 +456,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (reservationUsage && product == Product.rds && cost == 0)
             	operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.rds)
-                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(millisStart));
+                operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
             else
             	operation = Operation.ondemandInstances;
             db = getInstanceDb(operationStr);
@@ -487,7 +494,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (product == Product.ec2 && operation instanceof Operation.ReservationOperation) {
             product = Product.ec2_instance;
             if (operation instanceof Operation.ReservationOperation) {
-                if (os != InstanceOs.linux) {
+                if (os != InstanceOs.linux && os != InstanceOs.spot) {
                     usageTypeStr = usageTypeStr + "." + os;
                     operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
                 }
@@ -546,7 +553,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return usageType;
     }
 
-    private static class ReformedMetaData{
+    protected static class ReformedMetaData{
         public final Region region;
         public final Product product;
         public final Operation operation;
