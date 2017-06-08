@@ -226,11 +226,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         double resourceCostValue = costValue;
         if (items.length > resourceIndex && !StringUtils.isEmpty(items[resourceIndex]) && config.resourceService != null) {
-
+        	
             if (config.useCostForResourceGroup.equals("modeled") && product == Product.ec2_instance)
                 operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
 
-            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation && !usageType.name.endsWith(InstanceOs.spot.name())) {
+            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation && operation != Operation.ondemandInstances) {
                 UsageType usageTypeForPrice = usageType;
                 if (usageType.name.endsWith(InstanceOs.others.name())) {
                     usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);
@@ -239,7 +239,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                     resourceCostValue = usageValue * config.reservationService.getLatestHourlyTotalPrice(millisStart, tagGroup.region, usageTypeForPrice, config.reservationService.getDefaultReservationUtilization(0L));
                 }
                 catch (Exception e) {
-                    logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice);
+                    logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice + " " + operation);
                     resourceCostValue = -1;
                 }
             }

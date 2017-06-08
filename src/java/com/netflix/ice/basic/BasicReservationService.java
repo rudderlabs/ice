@@ -17,7 +17,8 @@
  */
 package com.netflix.ice.basic;
 
-import com.amazonaws.services.ec2.AmazonEC2Client;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -166,30 +167,32 @@ public class BasicReservationService extends Poller implements ReservationServic
     private void pollAPI() throws Exception {
         long currentTime = new DateTime().withTimeAtStartOfDay().getMillis();
 
+        // We only want one price for the region since all AZs should be the same,
+        // so we ask for the Region scoped reservations (New in Nov. 2016).
+        Integer duration = 3600 * 24 * 365 * (this.term == Ec2InstanceReservationPrice.ReservationPeriod.oneyear ? 1 : 3);
         DescribeReservedInstancesOfferingsRequest req =  new DescribeReservedInstancesOfferingsRequest()
                 .withFilters(new com.amazonaws.services.ec2.model.Filter().withName("marketplace").withValues("false"),
-                		new com.amazonaws.services.ec2.model.Filter().withName("scope").withValues("Availability Zone"));
+                		     new com.amazonaws.services.ec2.model.Filter().withName("scope").withValues("Region"),
+                		     new com.amazonaws.services.ec2.model.Filter().withName("duration").withValues(duration.toString()));
         String token = null;
         boolean hasNewPrice = false;
-        AmazonEC2Client ec2Client = new AmazonEC2Client(AwsUtils.awsCredentialsProvider, AwsUtils.clientConfig);
-
+        
         for (Region region: Region.getAllRegions()) {
-            ec2Client.setEndpoint("ec2." + region.name + ".amazonaws.com");
+            AmazonEC2 ec2 = AmazonEC2ClientBuilder.standard()
+            		.withCredentials(AwsUtils.awsCredentialsProvider)
+            		.withClientConfiguration(AwsUtils.clientConfig)
+            		.withRegion(region.name)
+            		.build();
+
             logger.info("Setting RI prices for " + region.name);
             do {
                 if (!StringUtils.isEmpty(token))
                     req.setNextToken(token);
-                DescribeReservedInstancesOfferingsResult offers = ec2Client.describeReservedInstancesOfferings(req);
+                DescribeReservedInstancesOfferingsResult offers = ec2.describeReservedInstancesOfferings(req);
                 token = offers.getNextToken();
 
                 for (ReservedInstancesOffering offer: offers.getReservedInstancesOfferings()) {
-                    if (offer.getProductDescription().indexOf("Amazon VPC") >= 0)
-                        continue;
                     ReservationUtilization utilization = ReservationUtilization.get(offer.getOfferingType());
-                    Ec2InstanceReservationPrice.ReservationPeriod term = offer.getDuration() / 24 / 3600 > 366 ?
-                            Ec2InstanceReservationPrice.ReservationPeriod.threeyear : Ec2InstanceReservationPrice.ReservationPeriod.oneyear;
-                    if (term != this.term)
-                        continue;
 
                     double hourly = offer.getUsagePrice();
                     if (hourly <= 0) {
@@ -201,20 +204,15 @@ public class BasicReservationService extends Poller implements ReservationServic
                         }
                     }
                     UsageType usageType = getUsageType(offer.getInstanceType(), offer.getProductDescription());
-                    // Unknown Zone
-                    if (offer.getAvailabilityZone() == null || Zone.getZone(offer.getAvailabilityZone()) == null) {
-                        logger.error("No Zone for " + offer.getAvailabilityZone() + ", instanceType: " + offer.getInstanceType() + " - " + offer.getProductDescription());
-                    } else {
-                        hasNewPrice = setPrice(utilization, currentTime, Zone.getZone(offer.getAvailabilityZone()).region, usageType,
+                    hasNewPrice = setPrice(utilization, currentTime, region, usageType,
                                 offer.getFixedPrice(), hourly) || hasNewPrice;
 
-                        logger.debug("Setting RI price for " + Zone.getZone(offer.getAvailabilityZone()).region + " " + utilization + " " + usageType + " " + offer.getFixedPrice() + " " + hourly);
-                    }
+                    logger.debug("Setting RI price for " + region + " " + usageType + " " + utilization + " " + offer.getFixedPrice() + " " + hourly);
                 }
             } while (!StringUtils.isEmpty(token));
+            ec2.shutdown();
         }
 
-        ec2Client.shutdown();
         if (hasNewPrice) {
             for (ReservationUtilization utilization: files.keySet()) {
                 File file = files.get(utilization);
@@ -304,7 +302,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             return true;
         }
         else {
-            //logger.info("exisitng reservation price for " + usageType + " in " + region + ": " + upfront + " "  + hourly);
+            //logger.info("existing reservation price for " + usageType + " in " + region + ": " + upfront + " "  + hourly);
             return false;
         }
     }
