@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 public class UsageType extends Tag {
-    private static final Logger logger = LoggerFactory.getLogger(Operation.class);
+    private static final Logger logger = LoggerFactory.getLogger(UsageType.class);
     public final String unit;
 
     private UsageType (String name, String unit) {
@@ -53,18 +53,20 @@ public class UsageType extends Tag {
             usageType = usageTypes.get(name);
         }
         else if (!usageType.unit.equals(unit)) {
-            logger.error("found different units for " + usageType + usageType.unit + " " + unit);
+            logger.error("found different units for " + usageType + " " + usageType.unit + " " + unit);
         }
         return usageType;
     }
 
     public static UsageType getUsageType(String name, Operation operation, String description) {
         String unit = "";
-        if (name.contains("Bytes") || name.contains("ByteHrs") || description.contains("GB"))
+        // Lambda unit for memory consumption is Lambda-GB-Second
+        // May want to split that out as separate unit type from GB -jroth
+        if (name.contains("Bytes") || name.contains("ByteHrs") || name.contains("-GB") || description.contains("GB"))
             unit = "GB";
         if (operation instanceof Operation.ReservationOperation)
             unit = "hours";
-
+        
         return getUsageType(name, unit);
     }
 
@@ -76,7 +78,7 @@ public class UsageType extends Tag {
             usageType = usageTypes.get(name);
         }
         else if (!usageType.unit.equals(unit)) {
-            logger.error("found different units for " + usageType + usageType.unit + " " + unit);
+            logger.error("found different units for " + usageType + ", " + usageType.unit + ", " + unit);
         }
         return usageType;
     }
