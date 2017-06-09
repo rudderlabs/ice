@@ -67,6 +67,9 @@ public class ReservationCapacityPoller extends Poller {
             
         	try {
                 String assumeRole = config.accountService.getReservationAccessRoles().get(account);
+                if (assumeRole != null && assumeRole.isEmpty())
+                	assumeRole = null;
+                
                 AWSSessionCredentials sessionCredentials = null;
                 if (assumeRole != null) {
                     String externalId = config.accountService.getReservationAccessExternalIds().get(account);
