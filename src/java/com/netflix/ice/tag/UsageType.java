@@ -43,6 +43,11 @@ public class UsageType extends Tag {
         out.writeUTF(usageType.unit);
     }
 
+    public static void serializeCSV(DataOutput out, UsageType usageType) throws IOException {
+        out.writeChars(usageType.name + ",");
+        out.writeChars(usageType.unit);
+    }
+
     public static UsageType deserialize(DataInput in) throws IOException {
         String name = in.readUTF();
         String unit = in.readUTF();

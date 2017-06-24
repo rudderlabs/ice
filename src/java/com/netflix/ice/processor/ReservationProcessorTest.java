@@ -403,7 +403,7 @@ public class ReservationProcessorTest {
 	}
 
 	/*
-	 * Test one Region scoped full-upfront reservation where one instance is used by the owner account and one borrowed by a second account.
+	 * Test one Region scoped full-upfront reservation where four small instance reservations are used by one large instance in the owner account.
 	 */
 	@Test
 	public void testFixedRegionalFamily() {
@@ -530,5 +530,36 @@ public class ReservationProcessorTest {
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
-	}	
+	}
+	
+	/*
+	 * Test one Region scoped partial-upfront reservation that's used by the owner.
+	 */
+	@Test
+	public void testUsedPartialRegion() {
+		long startMillis = 1494004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,1493283689633,1524819688000,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesHeavyPartial, "c4.2xlarge", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesHeavyPartial, "c4.2xlarge", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesHeavyPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedHeavyPartial, "c4.2xlarge", 0.121),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
+	}
+
+
 }

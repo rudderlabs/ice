@@ -53,7 +53,7 @@ public class ReadOnlyData {
             int numKeys = in.readInt();
             List<TagGroup> keys = Lists.newArrayList();
             for (int j = 0; j < numKeys; j++) {
-                keys.add(TagGroup.Serializer.deserialize(ReaderConfig.getInstance(), in));
+                keys.add(TagGroup.Serializer.deserialize(ReaderConfig.getInstance().accountService, ReaderConfig.getInstance().productService, in));
             }
 
             int num = in.readInt();

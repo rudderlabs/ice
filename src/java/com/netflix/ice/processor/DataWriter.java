@@ -48,7 +48,7 @@ public class DataWriter {
         if (file.exists()) {
             DataInputStream in = new DataInputStream(new FileInputStream(file));
             try {
-                data = ReadWriteData.Serializer.deserialize(in);
+                data = ReadWriteData.Serializer.deserialize(config.accountService, config.productService, in);
             }
             catch (Exception e) {
                 throw new RuntimeException("DataWriter: failed to load " + name + ", " + e.getMessage());

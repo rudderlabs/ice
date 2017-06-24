@@ -20,6 +20,8 @@ package com.netflix.ice.processor;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 
 import java.io.DataInput;
@@ -125,12 +127,12 @@ public class ReadWriteData {
             }
         }
 
-        public static ReadWriteData deserialize(DataInput in) throws IOException {
+        public static ReadWriteData deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
 
             int numKeys = in.readInt();
             List<TagGroup> keys = Lists.newArrayList();
             for (int j = 0; j < numKeys; j++) {
-                keys.add(TagGroup.Serializer.deserialize(ProcessorConfig.getInstance(), in));
+                keys.add(TagGroup.Serializer.deserialize(accountService, productService, in));
             }
 
             List<Map<TagGroup, Double>> data = Lists.newArrayList();

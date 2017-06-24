@@ -154,6 +154,17 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
 
+        public static void serializeCSV(DataOutput out, TagGroup tagGroup) throws IOException {
+            out.writeChars(tagGroup.account.toString() + ",");
+            out.writeChars(tagGroup.region.toString() + ",");
+            out.writeChars(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
+            out.writeChars(tagGroup.product.toString() + ",");
+            out.writeChars(tagGroup.operation.toString() + ",");
+            UsageType.serializeCSV(out, tagGroup.usageType);
+            out.writeChars(",");
+            out.writeChars(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
+        }
+
         public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(Config config, DataInput in) throws IOException {
             int numCollections = in.readInt();
             TreeMap<Long, Collection<TagGroup>> result = Maps.newTreeMap();
@@ -162,7 +173,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 int numKeys = in.readInt();
                 List<TagGroup> keys = Lists.newArrayList();
                 for (int j = 0; j < numKeys; j++) {
-                    keys.add(deserialize(config, in));
+                    keys.add(deserialize(config.accountService, config.productService, in));
                 }
                 result.put(monthMilli, keys);
             }
@@ -170,13 +181,13 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             return result;
         }
 
-        public static TagGroup deserialize(Config config, DataInput in) throws IOException {
-            Account account = config.accountService.getAccountByName(in.readUTF());
+        public static TagGroup deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
+            Account account = accountService.getAccountByName(in.readUTF());
             Region region = Region.getRegionByName(in.readUTF());
             String zoneStr = in.readUTF();
             Zone zone = StringUtils.isEmpty(zoneStr) ? null : Zone.getZone(zoneStr, region);
             String prodStr = in.readUTF();
-            Product product = config.productService.getProductByName(prodStr);
+            Product product = productService.getProductByName(prodStr);
             if (product == null) {
                 int iii = 0;
             }

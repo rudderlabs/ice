@@ -378,7 +378,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        }
 	    }
 	    else {
-	        logger.error("Not able to find " + utilization.name() + " reservation " + " for " + tagGroup);
+	        logger.error("Not able to find " + utilization.name() + " reservation at " + AwsUtils.dateFormatter.print(time) + " for " + tagGroup);
 	    }
 	    
 	    if (count == 0) {
@@ -509,7 +509,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
             	CanonicalReservedInstances parent = getParentReservation(accountId, reservedInstances, reservationsFromApi);
             	fixedPrice = parent.getFixedPrice();
-                logger.info("Found modified reservation for " + reservedInstances.getInstanceType() + ", id: " + reservedInstances.getReservationId() + " with parent " + parent.getReservationId() + " price: " + fixedPrice);
+                logger.debug("Found modified reservation for " + reservedInstances.getInstanceType() + ", id: " + reservedInstances.getReservationId() + " with parent " + parent.getReservationId() + " price: " + fixedPrice);
             }
             double hourlyFixedPrice = fixedPrice / (reservedInstances.getDuration() / 3600); // duration is in seconds, we need hours
             Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);

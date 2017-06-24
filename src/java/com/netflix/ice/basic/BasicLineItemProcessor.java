@@ -462,23 +462,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             db = getInstanceDb(operationStr);
         }
         else if (usageTypeStr.startsWith("HeavyUsage")) {
-        	// Line item for hourly "No Upfront" EC2 or monthly "No Upfront" for Redshift (and possibly RDS?)
+        	// Line item for hourly "No Upfront" or "Partial Upfront" EC2 or monthly "No Upfront" for Redshift (and possibly RDS?)
             index = usageTypeStr.indexOf(":");
-            String offeringType;
             if (index < 0) {
-                offeringType = usageTypeStr;
                 usageTypeStr = "m1.small";
             }
             else {
-                offeringType = usageTypeStr;
                 usageTypeStr = usageTypeStr.substring(index+1);
                 if (product == Product.redshift) {
                 	usageTypeStr = currentRedshiftUsageType(usageTypeStr);
                 }
-
             }
-
-            operation = getOperation(operationStr, reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization.get(offeringType));
+            operation = getOperation(operationStr, reservationUsage, defaultReservationUtilization);
             os = getInstanceOs(operationStr);
         }
 
