@@ -19,7 +19,12 @@ package com.netflix.ice.tag;
 
 import java.io.Serializable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class Tag implements Comparable<Tag>, Serializable {
+    protected static Logger logger = LoggerFactory.getLogger(Tag.class);
+
     public static final Tag aggregated = new Tag("aggregated") {
         @Override
         public int compareTo(Tag t) {
