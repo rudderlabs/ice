@@ -435,6 +435,20 @@ public class ReservationProcessor {
 	    return uu;
 	}
 	
+	/*
+	 * process() will run through all the usage data looking for reservation usage and
+	 * associate it with the appropriate reservations found in the reservation owner
+	 * accounts. It handles both AZ and Regional scoped reservations including borrowing
+	 * across accounts linked through consolidated billing and sharing of instance reservations
+	 * among instance types in the same family.
+	 * When called, all usage data is flagged as bonusReserved. The job of this method is to
+	 * walk through all the bonus tags and convert them to the proper reservation usage type
+	 * based on the association the the actual reservations. Since the detailed billing reports
+	 * don't tell us which reservation was actually used for each line item, we mimic the AWS rules
+	 * as best we can. The actual usage in AWS may be slightly different. Only the AWS Cost and Usage
+	 * reports fully provide the reservation ARN that is associated with each usage, but ICE doesn't
+	 * use those reports.
+	 */
 	public void process(Ec2InstanceReservationPrice.ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
@@ -447,7 +461,19 @@ public class ReservationProcessor {
     	logger.info("---------- Process " + reservationService.getTagGroups(utilization).size() + " reservations for utilization: " + utilization);
 
 		if (debugHour >= 0)
-			printUsage("before", usageData, costData);		
+			printUsage("before", usageData, costData);
+		
+		processAvailabilityZoneReservations(utilization, reservationService, usageData, costData, startMilli);
+		processRegionalReservations(utilization, reservationService, usageData, costData, startMilli);
+		if (debugHour >= 0)
+			printUsage("after", usageData, costData);		
+	}
+	
+	private void processAvailabilityZoneReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			ReservationService reservationService,
+			ReadWriteData usageData,
+			ReadWriteData costData,
+			Long startMilli) {
 
 		// first mark owner accounts
 		// The reservationTagGroups set will contain all the tagGroups for reservation purchases.
@@ -516,9 +542,68 @@ public class ReservationProcessor {
 			
 			reservationTagGroups.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
 		}
+		processFamilySharingAndBorrowing(utilization, reservationService, usageData, costData, startMilli, reservationTagGroups, false);
+	}
+	
+	private void processFamilySharingAndBorrowing(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			ReservationService reservationService,
+			ReadWriteData usageData,
+			ReadWriteData costData,
+			Long startMilli,
+			Set<TagGroup> reservationTagGroups,
+			boolean regional) {
+
+		Operation bonusOperation = Operation.getBonusReservedInstances(utilization);
 		
+		if (regional) {
+			Set<TagGroup> unassignedUsage = getUnassignedUsage(usageData, bonusOperation);
+					
+			// Scan bonus reservations and handle non-zone-specific and family-based usage of regionally-scoped reservations
+			// within each owner account (region-scoped reservations new as of 11/1/2016, family-based credits are new as of 3/1/2017)
+			for (TagGroup tagGroup: reservationTagGroups) {
+				// only process regional reservations
+				if (tagGroup.zone != null)
+					continue;
+				
+				for (int i = 0; i < usageData.getNum(); i++) {
+				
+				    Map<TagGroup, Double> usageMap = usageData.getData(i);
+				    Map<TagGroup, Double> costMap = costData.getData(i);
+				    
+				    boolean debug = debugReservations(i, tagGroup.usageType);
+				    family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, utilization, unassignedUsage, debug);
+				}
+			}
+		}
+			
+		for (TagGroup tagGroup: getUnassignedUsage(usageData, bonusOperation)) {
+			for (int i = 0; i < usageData.getNum(); i++) {
+			
+			    Map<TagGroup, Double> usageMap = usageData.getData(i);
+			    Map<TagGroup, Double> costMap = costData.getData(i);
+			
+			    boolean debug = debugReservations(i, tagGroup.usageType);
+			    borrow(i, startMilli + i * AwsUtils.hourMillis,
+			    		usageMap, costMap,
+			           reservationBorrowers.get(tagGroup.account),
+			           tagGroup,
+			           utilization,
+			           reservationOwners.contains(tagGroup.account),
+			           reservationService,
+			           reservationTagGroups,
+			           debug);
+			}
+		}		
+	}
+		
+	private void processRegionalReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			ReservationService reservationService,
+			ReadWriteData usageData,
+			ReadWriteData costData,
+			Long startMilli) {
 		// Now spin through all the bonus reservations and allocate them to any regional reservations in the owner account.
 		// Regional reservations include RDS and Redshift products.
+		Set<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		for (TagGroup tagGroup: reservationService.getTagGroups(utilization)) {
 			// For each of the owner Region reservation tag groups...
 			if (tagGroup.zone != null)
@@ -568,60 +653,24 @@ public class ReservationProcessor {
 			reservationTagGroups.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
 		}
 		
-		// now mark borrowing accounts
-		// mark all tag groups for reserved instances not used by the owner account and any bonus reservations.
-		// Reserved instance usage that has other reservations in the owner account for that usage type will be flagged as BonusReservedInstances.
-		// Reserved instance usage that doesn't have any reservations in the owner account will also be flagged as BonusReservedInstances
-		Set<TagGroup> toMarkBorrowing = Sets.newTreeSet();
+		processFamilySharingAndBorrowing(utilization, reservationService, usageData, costData, startMilli, reservationTagGroups, true);
+	}
+	
+	private Set<TagGroup> getUnassignedUsage(ReadWriteData usageData, Operation bonusOperation) {
+		// Collect all tag groups for reserved instances not yet associated with a reservation.
+		// They will appear as BonusReservedInstances.
+		Set<TagGroup> unassignedUsage = Sets.newTreeSet();
 		for (TagGroup tagGroup: usageData.getTagGroups()) {
 			if (tagGroup.resourceGroup == null &&
 			    tagGroup.product == Product.ec2_instance &&
-			    tagGroup.operation == Operation.getBonusReservedInstances(utilization)) {
+			    tagGroup.operation == bonusOperation) {
 			
-			    toMarkBorrowing.add(tagGroup);
+				unassignedUsage.add(tagGroup);
 			}
 		}
-		
-		// Scan bonus reservations and handle non-zone-specific and family-based usage of regionally-scoped reservations
-		// within each owner account (region-scoped reservations new as of 11/1/2016, family-based credits are new as of 3/1/2017)
-		for (TagGroup tagGroup: reservationTagGroups) {
-			// only process regional reservations
-			if (tagGroup.zone != null)
-				continue;
-			
-			for (int i = 0; i < usageData.getNum(); i++) {
-			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			    
-			    boolean debug = debugReservations(i, tagGroup.usageType);
-			    family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, utilization, toMarkBorrowing, debug);
-			}
-		}
-			
-			
-		for (TagGroup tagGroup: toMarkBorrowing) {
-			for (int i = 0; i < usageData.getNum(); i++) {
-			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			
-			    boolean debug = debugReservations(i, tagGroup.usageType);
-			    borrow(i, startMilli + i * AwsUtils.hourMillis,
-			    		usageMap, costMap,
-			           reservationBorrowers.get(tagGroup.account),
-			           tagGroup,
-			           utilization,
-			           reservationOwners.contains(tagGroup.account),
-			           reservationService,
-			           reservationTagGroups,
-			           debug);
-			}
-		}
-		
-		if (debugHour >= 0)
-			printUsage("after", usageData, costData);		
+		return unassignedUsage;
 	}
+	
 	
 	private void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
 		logger.info("---------- usage for hour " + debugHour + " " + when + " processing ----------------");

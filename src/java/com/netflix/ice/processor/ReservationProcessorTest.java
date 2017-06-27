@@ -600,8 +600,8 @@ public class ReservationProcessorTest {
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
 			"111111111111,EC2,us-west-2,2e73d4b7-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,1492033482000,1523569481000,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
-			"222222222222,EC2,us-west-2,46852280-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,1474587867448,1506123866000,31536000,0.0,590.0,10,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
-			"222222222222,EC2,us-west-2,b6876c3a-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,1474587867022,1506123866000,31536000,0.0,590.0,10,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"222222222222,EC2,us-west-2,46852280-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,1474587867448,1506123866000,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"222222222222,EC2,us-west-2,b6876c3a-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,1474587867022,1506123866000,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -611,19 +611,28 @@ public class ReservationProcessorTest {
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 4.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 3.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 2.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 8.0),
 			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 1.0),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesHeavyPartial, "c4.xlarge", 2.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesHeavyPartial, "c4.xlarge", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 0.199),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 0.209),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 0.209),
-			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.283),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.298),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.228),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.171),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.456),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.134),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.067),
+				new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesHeavyPartial, "c4.xlarge", 0.134),
+				new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesHeavyPartial, "c4.xlarge", 0.067),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.862),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.134),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.067),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
