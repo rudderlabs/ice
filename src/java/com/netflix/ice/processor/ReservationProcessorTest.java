@@ -92,8 +92,20 @@ public class ReservationProcessorTest {
 		}
 		return m;
 	}
-	
 	private void runOneHourTest(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) {
+		runOneHourTestWithOwners(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, reservationOwners.keySet());
+	}
+	
+	private void runOneHourTestWithOwners(
+			long startMillis, 
+			String[] reservationsCSV, 
+			Datum[] usageData, 
+			Datum[] costData, 
+			Datum[] expectedUsage, 
+			Datum[] expectedCost, 
+			String debugFamily,
+			Set<Account> rsvOwners) {
+		
 		Map<TagGroup, Double> hourUsageData = makeDataMap(usageData);
 		Map<TagGroup, Double> hourCostData = makeDataMap(costData);
 
@@ -106,7 +118,7 @@ public class ReservationProcessorTest {
 		ReadWriteData cost = new ReadWriteData();
 		cost.setData(cd, 0, false);
 
-		runTest(startMillis, reservationsCSV, usage, cost, debugFamily);
+		runTest(startMillis, reservationsCSV, usage, cost, debugFamily, rsvOwners);
 
 		assertTrue("usage size should be " + expectedUsage.length + ", got " + hourUsageData.size(), hourUsageData.size() == expectedUsage.length);
 		for (Datum datum: expectedUsage) {
@@ -120,7 +132,7 @@ public class ReservationProcessorTest {
 		}
 	}
 	
-	private void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily) {
+	private void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) {
 		Map<String, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
@@ -132,7 +144,7 @@ public class ReservationProcessorTest {
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
 		reservationService.updateReservations(reservations, accountService, startMillis);		
 
-		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet());
+		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners);
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
 		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, startMillis);
@@ -637,4 +649,73 @@ public class ReservationProcessorTest {
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
+	
+	/*
+	 * Test one AZ scoped full-upfront reservation that's used by the owner.
+	 */
+	@Test
+	public void testBonusFixed() {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+		};
+		
+		Set<Account> owners = Sets.newHashSet(accounts.get(0));
+
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners);		
+	}
+
+	/*
+	 * Test one AZ scoped full-upfront reservation that's used by the owner.
+	 */
+	@Test
+	public void testBonusBorrowedFixed() {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"222222222222,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+		};
+
+		Set<Account> owners = Sets.newHashSet(accounts.get(1));
+
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners);		
+	}
+
 }

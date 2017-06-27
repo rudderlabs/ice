@@ -43,7 +43,7 @@ public class ReservationProcessor {
     private final Map<Account, List<Account>> reservationBorrowers;
     
     // hour of data to print debug statements. Set to -1 to turn off.
-    private int debugHour = 0;
+    private int debugHour = -1;
     private String debugFamily = "c4";
 
     public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners) {        
@@ -127,7 +127,6 @@ public class ReservationProcessor {
             List<Account> fromAccounts,
             TagGroup tagGroup,
             Ec2InstanceReservationPrice.ReservationUtilization utilization,
-            boolean forBonus,
             ReservationService reservationService,
             Set<TagGroup> reservationTagGroups,
             boolean debug) {
@@ -267,19 +266,15 @@ public class ReservationProcessor {
 
 		// the rest is bonus
 		if (existing != null && existing > 0) {
-			if (!forBonus) {
-				ReservationService.ReservationInfo reservation = reservationService.getReservation(time, tagGroup, utilization);
-				TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
-				if (debug) {
-					logger.info("** borrow(" + i + ") **   bonus     quantity: " + existing + ", tag: " + bonusTagGroup);
-				}
-				usageMap.put(bonusTagGroup, existing);
-				if (reservation.reservationHourlyCost > 0)
-					costMap.put(bonusTagGroup, existing * reservation.reservationHourlyCost);
-				
-				usageMap.remove(tagGroup);
-				costMap.remove(tagGroup);
+	        TagGroup resTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null);
+			ReservationService.ReservationInfo reservation = reservationService.getReservation(time, resTagGroup, utilization);
+			TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
+			if (debug) {
+				logger.info("** bonus(" + i + ") **   bonus     quantity: " + existing + ", tag: " + bonusTagGroup);
 			}
+			usageMap.put(bonusTagGroup, existing);
+			if (reservation.reservationHourlyCost > 0)
+				costMap.put(bonusTagGroup, existing * reservation.reservationHourlyCost);				
 		}
 		else {
 			usageMap.remove(tagGroup);
@@ -588,7 +583,6 @@ public class ReservationProcessor {
 			           reservationBorrowers.get(tagGroup.account),
 			           tagGroup,
 			           utilization,
-			           reservationOwners.contains(tagGroup.account),
 			           reservationService,
 			           reservationTagGroups,
 			           debug);

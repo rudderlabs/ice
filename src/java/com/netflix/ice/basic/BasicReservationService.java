@@ -378,7 +378,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        }
 	    }
 	    else {
-	        logger.error("Not able to find " + utilization.name() + " reservation at " + AwsUtils.dateFormatter.print(time) + " for " + tagGroup);
+	        logger.debug("Not able to find " + utilization.name() + " reservation at " + AwsUtils.dateFormatter.print(time) + " for " + tagGroup);
 	    }
 	    
 	    if (count == 0) {
