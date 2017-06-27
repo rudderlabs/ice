@@ -60,7 +60,7 @@ public class ReservationCapacityPoller extends Poller {
 
         Map<String, CanonicalReservedInstances> reservations = readArchive(config);
         
-        for (Entry<Account, Set<String>> entry: config.accountService.getReservationProducts().entrySet()) {
+        for (Entry<Account, Set<String>> entry: config.accountService.getReservationAccounts().entrySet()) {
             Account account = entry.getKey();
             Set<String> products = entry.getValue();
             logger.info("Get reservations for account: " + account.name);

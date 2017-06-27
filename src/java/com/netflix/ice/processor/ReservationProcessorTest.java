@@ -1,9 +1,11 @@
 package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.ivy.util.StringUtils;
 import org.junit.Test;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
@@ -29,35 +32,33 @@ public class ReservationProcessorTest {
 
     // reservationAccounts is a cross-linked list of accounts where each account
 	// can borrow reservations from any other.
-	private static Map<Account, List<Account>> reservationAccounts = Maps.newHashMap();
+	private static Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
+	private static Map<Account, Set<String>> reservationOwners = Maps.newHashMap();
 	
 	private static final int numAccounts = 3;
-	private static final List<Account> accounts = Lists.newArrayList();
+	private static List<Account> accounts = Lists.newArrayList();
 	static {
-		// Auto-populate the reservationAccounts map based on numAccounts
+		// Auto-populate the accounts list based on numAccounts
 		for (Integer i = 1; i <= numAccounts; i++) {
 			// Create accounts of the form Account("111111111111", "Account1")
 			accounts.add(new Account(StringUtils.repeat(i.toString(), 12), "Account" + i.toString()));
 		}
-		// Populate the reservationAccounts
-		for (int i = 0; i < numAccounts; i++) {
-            List<Account> borrowers = Lists.newArrayList();
-	    	for (int j = 0; j < numAccounts; j++) {
-	    		if (i == j)
-	    			continue;
-	    		
-	    		borrowers.add(accounts.get(j));	    		
-	    	}
-	    	reservationAccounts.put(accounts.get(i), borrowers);
+		// Populate the payerAccounts map - first account is payer, others are linked
+		// Every account is a reservation owner for these tests
+		Set<String> products = Sets.newHashSet("ec2", "rds", "redshift");
+		reservationOwners.put(accounts.get(0), products);
+        List<Account> linked = Lists.newArrayList();
+		for (int i = 1; i < numAccounts; i++) {
+			linked.add(accounts.get(i));
+			reservationOwners.put(accounts.get(i), products);
 		}
-		
-		
+    	payerAccounts.put(accounts.get(0), linked);
 	}
 
 	@Test
 	public void testConstructor() {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
-		ReservationProcessor rp = new ReservationProcessor(reservationAccounts);
+		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet());
 		assertNotNull("Contructor returned null", rp);
 	}
 	
@@ -126,12 +127,12 @@ public class ReservationProcessorTest {
 			reservations.put(fields[0]+","+fields[2]+","+fields[3], new CanonicalReservedInstances(res));
 		}
 		
-		AccountService accountService = new BasicAccountService(accounts, reservationAccounts, null, null, null);
+		AccountService accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);
 		
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
 		reservationService.updateReservations(reservations, accountService, startMillis);		
 
-		ReservationProcessor rp = new ReservationProcessor(reservationAccounts);
+		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet());
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
 		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, startMillis);
@@ -561,5 +562,70 @@ public class ReservationProcessorTest {
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
 	}
 
+	@Test
+	public void testUsedAndBorrowedPartialRegion() {
+		long startMillis = 1494004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-west-2,e098729a-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,1492041221000,1523577220000,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
+			"222222222222,EC2,us-west-2,8c587942-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,1475509708914,1507045707000,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesHeavyPartial, "c3.4xlarge", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 1.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 0.199),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 0.209),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 0.209),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.283),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.298),
+		};
 
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c3");
+	}
+	
+	@Test
+	public void testUsedAndBorrowedPartialRegionAndAZ() {
+		long startMillis = 1494004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-west-2,2e73d4b7-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,1492033482000,1523569481000,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
+			"222222222222,EC2,us-west-2,46852280-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,1474587867448,1506123866000,31536000,0.0,590.0,10,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"222222222222,EC2,us-west-2,b6876c3a-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,1474587867022,1506123866000,31536000,0.0,590.0,10,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+		};
+		
+		Datum[] usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 9.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 5.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 4.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c4.xlarge", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 0.199),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 0.209),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 0.209),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.283),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.298),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+	}
 }

@@ -51,7 +51,7 @@ public class DataWriter {
                 data = ReadWriteData.Serializer.deserialize(config.accountService, config.productService, in);
             }
             catch (Exception e) {
-                throw new RuntimeException("DataWriter: failed to load " + name + ", " + e.getMessage());
+                throw new RuntimeException("DataWriter: failed to load " + name + ", " + e + ", " + e.getMessage());
             }
             finally {
                 in.close();

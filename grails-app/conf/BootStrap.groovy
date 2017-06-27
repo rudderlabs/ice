@@ -107,39 +107,43 @@ class BootStrap {
                     accounts.put(accountName, new Account(prop.getProperty(name), accountName));
                 }
             }
-            Map<Account, List<Account>> reservationAccounts = Maps.newHashMap();
+            Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
+			for (String name: prop.stringPropertyNames()) {
+				if (name.startsWith("ice.payeraccount.")) {
+					String accountName = name.substring("ice.payeraccount.".length());
+					String[] links = prop.getProperty(name).split(",");
+					List<Account> linkedAccounts = Lists.newArrayList();
+					for (String link: links) {
+						Account linkedAccount = accounts.get(link);
+						if (linkedAccount != null)
+							linkedAccounts.add(linkedAccount);
+					}
+					payerAccounts.put(accounts.get(accountName), linkedAccounts);
+				}
+			}
+            Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
             Map<Account, String> reservationAccessRoles = Maps.newHashMap();
             Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
-			Map<Account, Set<String>> reservationProducts = Maps.newHashMap();
             for (String name: prop.stringPropertyNames()) {
-                if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId") && !name.endsWith(".products")) {
+                if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {					
                     String accountName = name.substring("ice.owneraccount.".length());
-                    String[] childen = prop.getProperty(name).split(",");
-                    List<Account> childAccounts = Lists.newArrayList();
-                    for (String child: childen) {
-                        Account childAccount = accounts.get(child);
-                        if (childAccount != null)
-                            childAccounts.add(childAccount);
-                    }
-                    reservationAccounts.put(accounts.get(accountName), childAccounts);
+					String[] products = prop.getProperty(name).split(",");
+					Set<String> productSet = new HashSet<String>();
+					for (String product: products) {
+						productSet.add(product);
+					}
+					reservationAccounts.put(accounts.get(accountName), productSet);
 
                     String role = prop.getProperty(name + ".role", "");
                     reservationAccessRoles.put(accounts.get(accountName), role);
 
                     String externalId = prop.getProperty(name + ".externalId", "");
-                    reservationAccessExternalIds.put(accounts.get(accountName), externalId);
-					
-					String[] products = prop.getProperty(name + ".products", "").split(",");
-					Set<String> productSet = new HashSet<String>();
-					for (String product: products) {
-						productSet.add(product);
-					}
-					reservationProducts.put(accounts.get(accountName), productSet);
+                    reservationAccessExternalIds.put(accounts.get(accountName), externalId);					
                 }
             }
 
-            BasicAccountService accountService = new BasicAccountService(Lists.newArrayList(accounts.values()), reservationAccounts,
-                    reservationAccessRoles, reservationAccessExternalIds, reservationProducts);
+            BasicAccountService accountService = new BasicAccountService(Lists.newArrayList(accounts.values()), payerAccounts,
+                    reservationAccounts, reservationAccessRoles, reservationAccessExternalIds);
             Properties properties = new Properties();
             if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MILLIS)))
                 properties.setProperty(IceOptions.START_MILLIS, prop.getProperty(IceOptions.START_MILLIS));

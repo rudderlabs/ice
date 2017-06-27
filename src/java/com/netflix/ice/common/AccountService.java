@@ -48,9 +48,16 @@ public interface AccountService {
 
     /**
      * If you don't have reserved instances, you can return an empty map.
-     * @return Map of accounts. The keys are owner accounts, the values are list of borrowing accounts.
+     * @return Map of accounts. The keys are payer accounts, the values are list of linked accounts.
      */
-    Map<Account, List<Account>> getReservationAccounts();
+    Map<Account, List<Account>> getPayerAccounts();
+
+    /**
+     * Get a map of accounts containing the products that each holds reservations for.
+     * @return Map of account products with reservations. The keys are reservation owner accounts,
+     * the values are product names for which the account holds reservations.
+     */
+    Map<Account, Set<String>> getReservationAccounts();
 
     /**
      * If you don't need to poll reservation capacity through ec2 API for other accounts, you can return an empty map.
@@ -66,11 +73,4 @@ public interface AccountService {
      * the values are external ids to call ec2 describeReservedInstances on each reservation owner account.
      */
     Map<Account, String> getReservationAccessExternalIds();
-
-    /**
-     * Get a map of accounts containing the products that each holds reservations for.
-     * @return Map of account products with reservations. The keys are reservation owner accounts,
-     * the values are product names for which the account holds reservations.
-     */
-    Map<Account, Set<String>> getReservationProducts();
 }

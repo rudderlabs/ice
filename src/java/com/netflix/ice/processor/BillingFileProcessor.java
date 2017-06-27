@@ -78,7 +78,7 @@ public class BillingFileProcessor extends Poller {
         this.alertEmails = alertEmails;
         this.urlPrefix = urlPrefix;
         
-        reservationProcessor = new ReservationProcessor(config.accountService.getReservationAccounts());
+        reservationProcessor = new ReservationProcessor(config.accountService.getPayerAccounts(), config.accountService.getReservationAccounts().keySet());
     }
 
     @Override

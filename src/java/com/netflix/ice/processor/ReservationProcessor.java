@@ -43,26 +43,57 @@ public class ReservationProcessor {
     private final Map<Account, List<Account>> reservationBorrowers;
     
     // hour of data to print debug statements. Set to -1 to turn off.
-    private int debugHour = -1;
-    private String debugFamily = "";
+    private int debugHour = 0;
+    private String debugFamily = "c4";
 
-    public ReservationProcessor(Map<Account, List<Account>> reservationAccounts) {        
+    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners) {        
         // Initialize the reservation owner and borrower account lists
-        reservationOwners = reservationAccounts.keySet();
+        this.reservationOwners = reservationOwners;
         reservationBorrowers = Maps.newHashMap();
-        for (Account account: reservationAccounts.keySet()) {
-            List<Account> list = reservationAccounts.get(account);
-            for (Account borrowingAccount: list) {
-                if (borrowingAccount.name.equals(account.name))
-                    continue;
-                List<Account> from = reservationBorrowers.get(borrowingAccount);
-                if (from == null) {
-                    from = Lists.newArrayList();
-                    reservationBorrowers.put(borrowingAccount, from);
-                }
-                from.add(account);
-            }
+        // Associate all the accounts in a consolidated billing group with the reservation owner
+        Set<Account> payers = payerAccounts.keySet();
+        for (Account owner: reservationOwners) {
+        	// Find the owner account in the payerAccounts
+        	for (Account payer: payers) {
+        		if (payer.name.equals(owner.name)) {
+            		// Owner is a payer account. Add all the linked accounts as reservationBorrowers
+                    List<Account> list = payerAccounts.get(payer);
+                    for (Account borrower: list) {
+                        if (borrower.name.equals(owner.name))
+                            continue;
+                        addBorrower(owner, borrower);
+                    }
+                    break;
+        		}
+    			// Look for the owner in the linked account lists
+    			boolean found = false;
+    			for (Account linked: payerAccounts.get(payer)) {
+    				if (linked.name.equals(owner.name)) {
+    					found = true;
+    					break;
+    				}
+    			}
+    			if (found) {
+					// Add the payer and all the other linked accounts to the reservationBorrowers
+    				addBorrower(owner, payer);
+    				for (Account borrower: payerAccounts.get(payer)) {
+    					if (borrower.name.equals(owner.name))
+    						continue;
+    					addBorrower(owner, borrower);
+    				}
+    				break;
+    			}
+        	}
         }
+    }
+    
+    private void addBorrower(Account owner, Account borrower) {
+        List<Account> from = reservationBorrowers.get(borrower);
+        if (from == null) {
+            from = Lists.newArrayList();
+            reservationBorrowers.put(borrower, from);
+        }
+        from.add(owner);
     }
     
     public void setDebugHour(int i) {
@@ -415,22 +446,8 @@ public class ReservationProcessor {
 	
     	logger.info("---------- Process " + reservationService.getTagGroups(utilization).size() + " reservations for utilization: " + utilization);
 
-		if (debugHour >= 0) {
-			logger.info("---------- usage for hour " + debugHour + " before processing ----------------");
-		    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);
-			
-			for (TagGroup tagGroup: usageData.getTagGroups()) {
-				if (debugReservations(debugHour, tagGroup.usageType))
-					logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
-			}
-
-			Map<TagGroup, Double> costMap = costData.getData(debugHour);
-
-			for (TagGroup tagGroup: costData.getTagGroups()) {
-				if (debugReservations(debugHour, tagGroup.usageType))
-					logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
-			}
-		}
+		if (debugHour >= 0)
+			printUsage("before", usageData, costData);		
 
 		// first mark owner accounts
 		// The reservationTagGroups set will contain all the tagGroups for reservation purchases.
@@ -438,7 +455,7 @@ public class ReservationProcessor {
 		// It does NOT have anything to do with usage.
 		// Usage is saved in the usageData maps.
 		// reservationTagGroups therefore, does not include any reserved instance usage for borrowed reservations or reservation usage by members of the same
-		// family of instance. Family reservervation usage will appear as bonus reservations if the account owns other RIs for
+		// family of instance. Family reservation usage will appear as bonus reservations if the account owns other RIs for
 		// that same usage type.
 		Set<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		for (TagGroup tagGroup: reservationService.getTagGroups(utilization)) {
@@ -554,13 +571,12 @@ public class ReservationProcessor {
 		// now mark borrowing accounts
 		// mark all tag groups for reserved instances not used by the owner account and any bonus reservations.
 		// Reserved instance usage that has other reservations in the owner account for that usage type will be flagged as BonusReservedInstances.
-		// Reserved instance usage that doesn't have any reservations in the owner account will be flagged as ReservedInstances
+		// Reserved instance usage that doesn't have any reservations in the owner account will also be flagged as BonusReservedInstances
 		Set<TagGroup> toMarkBorrowing = Sets.newTreeSet();
 		for (TagGroup tagGroup: usageData.getTagGroups()) {
 			if (tagGroup.resourceGroup == null &&
 			    tagGroup.product == Product.ec2_instance &&
-			    (tagGroup.operation == Operation.getReservedInstances(utilization) && !reservationTagGroups.contains(tagGroup) ||
-			     tagGroup.operation == Operation.getBonusReservedInstances(utilization))) {
+			    tagGroup.operation == Operation.getBonusReservedInstances(utilization)) {
 			
 			    toMarkBorrowing.add(tagGroup);
 			}
@@ -603,21 +619,29 @@ public class ReservationProcessor {
 			}
 		}
 		
-		if (debugHour >= 0) {
-			logger.info("---------- usage for hour " + debugHour + " after processing ----------------");
-		    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);
-			
-			for (TagGroup tagGroup: usageData.getTagGroups()) {
-				if (debugReservations(debugHour, tagGroup.usageType))
-					logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
-			}
+		if (debugHour >= 0)
+			printUsage("after", usageData, costData);		
+	}
+	
+	private void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
+		logger.info("---------- usage for hour " + debugHour + " " + when + " processing ----------------");
+	    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);
+		
+		for (TagGroup tagGroup: usageData.getTagGroups()) {
+			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
+				continue;
+			if (debugReservations(debugHour, tagGroup.usageType) && usageMap.get(tagGroup) != null)
+				logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
+		}
 
-			Map<TagGroup, Double> costMap = costData.getData(debugHour);
+		Map<TagGroup, Double> costMap = costData.getData(debugHour);
 
-			for (TagGroup tagGroup: costData.getTagGroups()) {
-				if (debugReservations(debugHour, tagGroup.usageType))
-					logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
-			}
+		for (TagGroup tagGroup: costData.getTagGroups()) {
+			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
+				continue;
+			if (debugReservations(debugHour, tagGroup.usageType) && costMap.get(tagGroup) != null)
+				logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
 		}
 	}
 }
+

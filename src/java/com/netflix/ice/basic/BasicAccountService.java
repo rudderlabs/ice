@@ -34,18 +34,20 @@ public class BasicAccountService implements AccountService {
 
     private Map<String, Account> accountsById = Maps.newConcurrentMap();
     private Map<String, Account> accountsByName = Maps.newConcurrentMap();
-    private Map<Account, List<Account>> reservationAccounts = Maps.newHashMap();
+    private Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
+    private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
-    private Map<Account, Set<String>> reservationProducts = Maps.newHashMap();
 
-    public BasicAccountService(List<Account> accounts, Map<Account, List<Account>> reservationAccounts,
-                               Map<Account, String> reservationAccessRoles, Map<Account, String> reservationAccessExternalIds,
-                               Map<Account, Set<String>> reservationProducts) {
+    public BasicAccountService(List<Account> accounts,
+    			Map<Account, List<Account>> payerAccounts,
+    			Map<Account, Set<String>> reservationAccounts,
+                Map<Account, String> reservationAccessRoles,
+                Map<Account, String> reservationAccessExternalIds) {
+        this.payerAccounts = payerAccounts;
         this.reservationAccounts = reservationAccounts;
         this.reservationAccessRoles = reservationAccessRoles;
         this.reservationAccessExternalIds = reservationAccessExternalIds;
-        this.reservationProducts = reservationProducts;
         for (Account account: accounts) {
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
@@ -85,7 +87,11 @@ public class BasicAccountService implements AccountService {
         return result;
     }
 
-    public Map<Account, List<Account>> getReservationAccounts() {
+    public Map<Account, List<Account>> getPayerAccounts() {
+        return payerAccounts;
+    }
+
+    public Map<Account, Set<String>> getReservationAccounts() {
         return reservationAccounts;
     }
 
@@ -96,9 +102,5 @@ public class BasicAccountService implements AccountService {
 
     public Map<Account, String> getReservationAccessExternalIds() {
         return reservationAccessExternalIds;
-    }
-
-    public Map<Account, Set<String>> getReservationProducts() {
-        return reservationProducts;
     }
 }
