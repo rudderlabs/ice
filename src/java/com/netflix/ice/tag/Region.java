@@ -27,20 +27,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Region extends Tag {
-    public static final Region US_EAST_1 = new Region("us-east-1", "USE1");
-    public static final Region US_EAST_2 = new Region("us-east-2", "USE2");
-    public static final Region US_WEST_1 = new Region("us-west-1", "USW1");
-    public static final Region US_WEST_2 = new Region("us-west-2", "USW2");
-    public static final Region CA_CENTRAL_1 = new Region("ca-central-1", "CAC1");
-    public static final Region EU_WEST_1 = new Region("eu-west-1", "EU");
-    public static final Region EU_CENTRAL_1 = new Region("eu-central-1", "EUC1");
-    public static final Region EU_WEST_2 = new Region("eu-west-2", "EUW2");
-    public static final Region AP_NORTHEAST_1 = new Region("ap-northeast-1","APN1");
-    public static final Region AP_NORTHEAST_2 = new Region("ap-northeast-2","APN2");
-    public static final Region AP_SOUTHEAST_1 = new Region("ap-southeast-1", "APS1");
-    public static final Region AP_SOUTHEAST_2 = new Region("ap-southeast-2", "APS2");
-    public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3");
-    public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1");
+    public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US");
+    public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US");
+    public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US");
+    public static final Region US_WEST_2 = new Region("us-west-2", "USW2", "US");
+    public static final Region CA_CENTRAL_1 = new Region("ca-central-1", "CAC1", "CA");
+    public static final Region EU_WEST_1 = new Region("eu-west-1", "EU", "EU");
+    public static final Region EU_CENTRAL_1 = new Region("eu-central-1", "EUC1", "EU");
+    public static final Region EU_WEST_2 = new Region("eu-west-2", "EUW2", "EU");
+    public static final Region AP_NORTHEAST_1 = new Region("ap-northeast-1","APN1", "JP");
+    public static final Region AP_NORTHEAST_2 = new Region("ap-northeast-2","APN2", "AP");
+    public static final Region AP_SOUTHEAST_1 = new Region("ap-southeast-1", "APS1", "AP");
+    public static final Region AP_SOUTHEAST_2 = new Region("ap-southeast-2", "APS2", "AU");
+    public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3", "IN");
+    public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1", "SA");
 
     private static ConcurrentMap<String, Region> regionsByName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Region> regionsByShortName = Maps.newConcurrentMap();
@@ -61,6 +61,15 @@ public class Region extends Tag {
         regionsByShortName.put(AP_SOUTH_1.shortName, AP_SOUTH_1);
         regionsByShortName.put(SA_EAST_1.shortName, SA_EAST_1);
 
+        // Only populate unique values
+        regionsByShortName.put(US_EAST_1.cloudFrontName, US_EAST_1);
+        regionsByShortName.put(CA_CENTRAL_1.cloudFrontName, CA_CENTRAL_1);
+        regionsByShortName.put(EU_WEST_1.cloudFrontName, EU_WEST_1);
+        regionsByShortName.put(AP_NORTHEAST_1.cloudFrontName, AP_NORTHEAST_1);
+        regionsByShortName.put(AP_SOUTHEAST_1.cloudFrontName, AP_SOUTHEAST_1);
+        regionsByShortName.put(AP_SOUTH_1.cloudFrontName, AP_SOUTH_1);
+        regionsByShortName.put(SA_EAST_1.cloudFrontName, SA_EAST_1);
+
         regionsByName.put(US_EAST_1.name, US_EAST_1);
         regionsByName.put(US_EAST_2.name, US_EAST_2);
         regionsByName.put(US_WEST_1.name, US_WEST_1);
@@ -78,11 +87,13 @@ public class Region extends Tag {
     }
 
     public final String shortName;
+    public final String cloudFrontName;
     List<Zone> zones = Lists.newArrayList();
 
-    private Region(String name, String shortName) {
+    private Region(String name, String shortName, String cloudFrontName) {
         super(name);
         this.shortName = shortName;
+        this.cloudFrontName = cloudFrontName;
     }
 
     public List<Zone> getZones() {
@@ -94,10 +105,7 @@ public class Region extends Tag {
     }
 
     public static Region getRegionByShortName(String shortName) {
-    	Region region =  regionsByShortName.get(shortName);
-        if (region == null)
-        	logger.error("Unknown region short name: " + shortName);
-        return region;
+    	return regionsByShortName.get(shortName);
     }
 
     public static Region getRegionByName(String name) {
