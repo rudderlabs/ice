@@ -17,19 +17,25 @@
  */
 package com.netflix.ice.common;
 
+import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
 import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.services.simpledb.AmazonSimpleDBClient;
+import com.amazonaws.services.simpledb.AmazonSimpleDBClientBuilder;
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClient;
+import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder;
 import com.amazonaws.ClientConfiguration;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -57,10 +63,11 @@ public class AwsUtils {
     public static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HHa").withZone(DateTimeZone.UTC);
     public static long hourMillis = 3600000L;
 
+    private static String ec2Region;
     private static AmazonS3Client s3Client;
     private static AmazonSimpleEmailServiceClient emailServiceClient;
     private static AmazonSimpleDBClient simpleDBClient;
-    private static AWSSecurityTokenServiceClient securityClient;
+    private static AWSSecurityTokenService securityClient;
     public static AWSCredentialsProvider awsCredentialsProvider;
     public static ClientConfiguration clientConfig;
 
@@ -70,16 +77,28 @@ public class AwsUtils {
      * @param assumeRole
      * @return assumes IAM credentials
      */
-    public static Credentials getAssumedCredentials(String accountId, String assumeRole, String externalId) {
+    public static AWSCredentialsProvider getAssumedCredentialsProvider(String accountId, String assumeRole, String externalId) {
         AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
                 .withRoleArn("arn:aws:iam::" + accountId + ":role/" + assumeRole)
                 .withRoleSessionName(assumeRole.substring(0, Math.min(assumeRole.length(), 32)));
         if (!StringUtils.isEmpty(externalId))
             assumeRoleRequest.setExternalId(externalId);
         AssumeRoleResult roleResult = securityClient.assumeRole(assumeRoleRequest);
-        return roleResult.getCredentials();
-    }
 
+        
+        final Credentials credentials = roleResult.getCredentials();
+        AWSCredentialsProvider credentialsProvider = new AWSCredentialsProvider() {
+            public AWSCredentials getCredentials() {
+                return new BasicSessionCredentials(credentials.getAccessKeyId(), credentials.getSecretAccessKey(), credentials.getSessionToken());
+            }
+
+            public void refresh() {
+            }
+        };
+
+        return credentialsProvider;
+    }
+    
     /**
      * This method must be called before all methods can be used.
      * @param credentialsProvider
@@ -93,16 +112,12 @@ public class AwsUtils {
             clientConfig.setProxyHost(proxyHost);
             clientConfig.setProxyPort(Integer.parseInt(proxyPort));
         }
-        s3Client = new AmazonS3Client(awsCredentialsProvider, clientConfig);
-        securityClient = new AWSSecurityTokenServiceClient(awsCredentialsProvider, clientConfig);
-        if (System.getProperty("EC2_REGION") != null && !"us-east-1".equals(System.getProperty("EC2_REGION"))) {
-            if ("global".equals(System.getProperty("EC2_REGION"))) {
-                s3Client.setEndpoint("s3.amazonaws.com");
-            }
-            else {
-                s3Client.setEndpoint("s3-" + System.getProperty("EC2_REGION") + ".amazonaws.com");
-            }
+        ec2Region = System.getProperty("EC2_REGION");
+        if (ec2Region == null || ec2Region.equals("global")) {
+        	ec2Region = "us-east-1";
         }
+        s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+        securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
     }
 
     public static AmazonS3Client getAmazonS3Client() {
@@ -111,21 +126,13 @@ public class AwsUtils {
 
     public static AmazonSimpleEmailServiceClient getAmazonSimpleEmailServiceClient() {
         if (emailServiceClient == null)
-            emailServiceClient = new AmazonSimpleEmailServiceClient(awsCredentialsProvider, clientConfig);
+            emailServiceClient = (AmazonSimpleEmailServiceClient) AmazonSimpleEmailServiceClientBuilder.standard().withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
         return emailServiceClient;
     }
 
     public static AmazonSimpleDBClient getAmazonSimpleDBClient() {
         if (simpleDBClient == null) {
-            simpleDBClient = new AmazonSimpleDBClient(awsCredentialsProvider, clientConfig);
-            if (System.getProperty("EC2_REGION") != null && !"us-east-1".equals(System.getProperty("EC2_REGION"))) {
-                if ("global".equals(System.getProperty("EC2_REGION"))) {
-                    simpleDBClient.setEndpoint("sdb.amazonaws.com");
-                }
-                else {
-                    simpleDBClient.setEndpoint("sdb." + System.getProperty("EC2_REGION") + ".amazonaws.com");
-                }
-            }
+            simpleDBClient = (AmazonSimpleDBClient) AmazonSimpleDBClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
         }
         return simpleDBClient;
     }
@@ -165,12 +172,7 @@ public class AwsUtils {
             List<S3ObjectSummary> result = Lists.newLinkedList();
 
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                Credentials assumedCredentials = getAssumedCredentials(accountId, assumeRole, externalId);
-                s3Client = new AmazonS3Client(
-                        new BasicSessionCredentials(assumedCredentials.getAccessKeyId(),
-                                assumedCredentials.getSecretAccessKey(),
-                                assumedCredentials.getSessionToken()),
-                                clientConfig);
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
             }
 
             ObjectListing page = null;
@@ -264,12 +266,7 @@ public class AwsUtils {
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                Credentials assumedCredentials = getAssumedCredentials(accountId, assumeRole, externalId);
-                s3Client = new AmazonS3Client(
-                        new BasicSessionCredentials(assumedCredentials.getAccessKeyId(),
-                                assumedCredentials.getSecretAccessKey(),
-                                assumedCredentials.getSessionToken()),
-                                clientConfig);
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
             }
 
             ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());

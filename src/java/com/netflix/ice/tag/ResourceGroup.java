@@ -24,7 +24,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 public class ResourceGroup extends Tag {
-    private ResourceGroup (String name) {
+	private static final long serialVersionUID = 1L;
+
+	private ResourceGroup (String name) {
         super(name);
     }
     private static ConcurrentMap<String, ResourceGroup> resourceGroups = Maps.newConcurrentMap();

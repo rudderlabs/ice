@@ -186,7 +186,7 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagGroup.product == Product.emr || tagGroup.product == Product.redshift) {
-                int iii = 0;
+                //int iii = 0;
             }
             if (tagLists.contains(tagGroup))
                 result.add(tagGroup.operation);
@@ -282,6 +282,8 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
             case ResourceGroup:
                 groupByTags.addAll(getResourceGroups(interval, tagListsForTag));
                 break;
+            default:
+            	break;
         }
         if (groupBy == TagType.Operation && !forReservation) {
             for (Operation.ReservationOperation lentOp: Operation.getLentInstances())

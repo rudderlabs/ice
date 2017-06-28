@@ -24,11 +24,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class Zone extends Tag {
-    public final Region region;
+	private static final long serialVersionUID = 1L;
+	public final Region region;
 
     private Zone (Region region, String name) {
         super(name);

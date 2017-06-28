@@ -19,8 +19,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.tag.Account;
-import com.netflix.ice.tag.Zone;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

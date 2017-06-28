@@ -79,9 +79,9 @@ public class BasicS3ApplicationGroupService implements ApplicationGroupService {
         try {
             JSONObject json = new JSONObject(new JSONTokener(jsonStr));
             Map<String, ApplicationGroup> appgroups = Maps.newHashMap();
-            Iterator<String> keys = json.keys();
+            Iterator<?> keys = json.keys();
             while (keys.hasNext()) {
-                String key = keys.next();
+                String key = (String) keys.next();
                 String str = json.getString(key);
                 appgroups.put(key, new ApplicationGroup(str));
             }

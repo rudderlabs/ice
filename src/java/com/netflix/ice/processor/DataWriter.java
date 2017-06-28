@@ -18,20 +18,15 @@
 package com.netflix.ice.processor;
 
 import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.common.TagGroup;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.Collection;
-import java.util.TreeMap;
 
 public class DataWriter {
     private final static Logger logger = LoggerFactory.getLogger(DataWriter.class);
 
 
-    private TreeMap<Integer, Collection<TagGroup>> tagGroups;
     private ProcessorConfig config = ProcessorConfig.getInstance();
     private String dbName;
     private File file;

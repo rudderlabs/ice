@@ -23,10 +23,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class Tag implements Comparable<Tag>, Serializable {
-    protected static Logger logger = LoggerFactory.getLogger(Tag.class);
+	private static final long serialVersionUID = 1L;
+
+	protected static Logger logger = LoggerFactory.getLogger(Tag.class);
 
     public static final Tag aggregated = new Tag("aggregated") {
-        @Override
+		private static final long serialVersionUID = 1L;
+
+		@Override
         public int compareTo(Tag t) {
             return this == t ? 0 : -1;
         }

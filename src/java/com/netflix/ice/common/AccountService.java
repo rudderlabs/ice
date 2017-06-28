@@ -18,8 +18,6 @@
 package com.netflix.ice.common;
 
 import com.netflix.ice.tag.Account;
-import com.netflix.ice.tag.Zone;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

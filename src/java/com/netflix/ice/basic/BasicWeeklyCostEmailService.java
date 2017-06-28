@@ -119,7 +119,9 @@ public class BasicWeeklyCostEmailService extends Poller {
         this.testEmail = testEmail;
 
         costFormatter = new NumberFormat() {
-            @Override
+			private static final long serialVersionUID = 1L;
+			
+			@Override
             public StringBuffer format(long number, StringBuffer toAppendTo, FieldPosition pos) {
                 return numberFormatter.format(number, toAppendTo, pos).insert(0, "$");
             }
@@ -278,7 +280,9 @@ public class BasicWeeklyCostEmailService extends Poller {
         title.setFont(title.getFont().deriveFont((title.getFont().getSize()-3)));
 
         renderer.setBaseItemLabelGenerator(new StandardCategoryItemLabelGenerator() {
-            public java.lang.String generateLabel(org.jfree.data.category.CategoryDataset dataset, int row, int column) {
+			private static final long serialVersionUID = 1L;
+
+			public java.lang.String generateLabel(org.jfree.data.category.CategoryDataset dataset, int row, int column) {
                 return costFormatter.format(dataset.getValue(row, column));
             }
         });

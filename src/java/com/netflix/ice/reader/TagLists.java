@@ -164,6 +164,9 @@ public class TagLists {
             case ResourceGroup:
                 result = resourceGroups == null || resourceGroups.size() == 0 || resourceGroups.contains(tag);
                 break;
+            default:
+            	result = false;
+            	break;
         }
         return result;
     }
@@ -193,6 +196,9 @@ public class TagLists {
             case ResourceGroup:
                 result = new TagLists(this.accounts, this.regions, this.zones, this.products, this.operations, this.usageTypes, Lists.newArrayList((ResourceGroup)tag));
                 break;
+            default:
+            	result = null;
+            	break;
         }
         return result;
     }

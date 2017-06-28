@@ -51,7 +51,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private int usageQuantityIndex;
     private int startTimeIndex;
     private int endTimeIndex;
-    private int rateIndex;
+    //private int rateIndex;
     private int costIndex;
     private int resourceIndex;
 
@@ -81,7 +81,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         // Without Blended Rates
         //    ..., UsageQuantity, UnBlendedRate, UnBlendedCost
         // We want to always reference the UnBlended Cost unless useBlendedCost is true.
-        rateIndex = 19 + (withTags ? 0 : -1) + ((hasBlendedCost && useBlendedCost == false) ? 0 : -2);
+        //rateIndex = 19 + (withTags ? 0 : -1) + ((hasBlendedCost && useBlendedCost == false) ? 0 : -2);
         costIndex = 20 + (withTags ? 0 : -1) + ((hasBlendedCost && useBlendedCost == false) ? 0 : -2);
         resourceIndex = 21 + (withTags ? 0 : -1) + (hasBlendedCost ? 0 : -2);
 
@@ -166,8 +166,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (product == Product.ebs) {
             result = processEbs(usageType);
         }
-        else if (product == Product.rds) {
-            result = processRds(usageType);
+        else if (product == Product.rds || product == Product.rds_instance) {
+            result = processRds(usageType, processDelayed, reservationUsage, operation, costValue);
+//            if (startIndex == 0 && reservationUsage) {
+//            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
+//            }
         }
         else if (product == Product.support) {
         	result = Result.monthly;
@@ -279,15 +282,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 Map<TagGroup, Double> usages = usageData.getData(i);
                 Map<TagGroup, Double> costs = costData.getData(i);
                 
-                // Redshift has cost as a monthly charge, but usage appears hourly so
-                // so unlike EC2, we have to process the monthly line item to capture the cost
-                if (!(product == Product.redshift && result == Result.monthly)) {
-                	//if (product == Product.redshift)
-                	//	logger.info("Add usage value for Redshift: " + usageValue + ", " + tagGroup);
+                // Redshift and RDS have cost as a monthly charge, but usage appears hourly
+                // so unlike EC2, we have to process the monthly line item to capture the cost,
+                // but we don't want to add the monthly line items to the usage.
+                if (!((product == Product.redshift || product == Product.rds_instance) && result == Result.monthly)) {
                 	addValue(usages, tagGroup, usageValue,  config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
                 }
-            	//if (product == Product.redshift && costValue > 0)
-            	//	logger.info("[" + i + "] Add cost value for Redshift: " + costValue + ", " + tagGroup);
 
                 addValue(costs, tagGroup, costValue, config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
             }
@@ -300,7 +300,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
 
                 if (config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3) {
-                    addValue(usagesOfResource, resourceTagGroup, usageValue, product != Product.monitor);
+                    if (!((product == Product.redshift || product == Product.rds) && result == Result.monthly)) {
+                    	addValue(usagesOfResource, resourceTagGroup, usageValue, product != Product.monitor);
+                    }
+                    
                     if (!config.useCostForResourceGroup.equals("modeled") || resourceCostValue < 0) {
                         addValue(costsOfResource, resourceTagGroup, costValue, product != Product.monitor);
                     } else {
@@ -378,9 +381,15 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    private Result processRds(UsageType usageType) {
+    private Result processRds(UsageType usageType, boolean processDelayed, boolean reservationUsage, Operation operation, double costValue) {
         if (usageType.name.startsWith("RDS:ChargedBackupUsage"))
             return Result.daily;
+        else if (!processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+            return Result.delay; // Must be a monthly charge for all the hourly usage
+        else if (!processDelayed && costValue == 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+            return Result.hourly; // Must be the hourly usage
+        else if (processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+            return Result.monthly; // This is the post processing of the monthly charge for all the hourly usage
         else
             return Result.hourly;
     }
@@ -438,7 +447,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	// Line item for hourly Redshift instance usage both On-Demand and Reserved.
             usageTypeStr = currentRedshiftUsageType(usageTypeStr.split(":")[1]);
             
-        	// Both Fixed and Heavy (and probably HeavyPartial - don't have an example) apply cost monthly,
+        	// Fixed, Heavy, and HeavyPartial apply cost monthly,
         	// so can't tell them apart without looking at the description. Examples:
         	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
         	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
@@ -452,8 +461,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if ((usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
         	// Line item for hourly RDS instance usage - both On-Demand and Reserved
-            usageTypeStr = usageTypeStr.split(":")[1] + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");            
-            if (reservationUsage && product == Product.rds && cost == 0)
+            usageTypeStr = usageTypeStr.split(":")[1] + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");
+            
+        	// Fixed, Heavy, and HeavyPartial apply cost monthly,
+        	// so can't tell them apart without looking at the description. Examples:
+            // --- Need examples, for now assuming it's the same as for Redshift ---
+        	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
+        	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
+            if (reservationUsage && product == Product.rds && cost == 0 && description.contains(" 0.0 per"))
             	operation = Operation.bonusReservedInstancesFixed;
             else if (reservationUsage && product == Product.rds)
                 operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
@@ -462,7 +477,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             db = getInstanceDb(operationStr);
         }
         else if (usageTypeStr.startsWith("HeavyUsage")) {
-        	// Line item for hourly "No Upfront" or "Partial Upfront" EC2 or monthly "No Upfront" for Redshift (and possibly RDS?)
+        	// Line item for hourly "No Upfront" or "Partial Upfront" EC2 or monthly "No Upfront" or "Partial Upfront" for Redshift and RDS)
             index = usageTypeStr.indexOf(":");
             if (index < 0) {
                 usageTypeStr = "m1.small";
@@ -472,6 +487,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 if (product == Product.redshift) {
                 	usageTypeStr = currentRedshiftUsageType(usageTypeStr);
                 }
+            }
+            if (product == Product.rds){
+                db = getInstanceDb(operationStr);
             }
             operation = getOperation(operationStr, reservationUsage, defaultReservationUtilization);
             os = getInstanceOs(operationStr);
@@ -488,20 +506,16 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         if (product == Product.ec2 && operation instanceof Operation.ReservationOperation) {
             product = Product.ec2_instance;
-            if (operation instanceof Operation.ReservationOperation) {
-                if (os != InstanceOs.linux && os != InstanceOs.spot) {
-                    usageTypeStr = usageTypeStr + "." + os;
-                    operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
-                }
+            if (os != InstanceOs.linux && os != InstanceOs.spot) {
+                usageTypeStr = usageTypeStr + "." + os;
+                operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
             }
         }
 
         if (product == Product.rds && operation instanceof Operation.ReservationOperation) {
             product = Product.rds_instance;
-            if (operation instanceof Operation.ReservationOperation) {
-                usageTypeStr = usageTypeStr + "." + db;
-                operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
-            }
+            usageTypeStr = usageTypeStr + "." + db;
+            operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
         }
 
         if (usageType == null) {
@@ -558,6 +572,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             this.product = product;
             this.operation = operation;
             this.usageType = usageType;
+        }
+        
+        public String toString() {
+            return "\"" + region + "\",\"" + product + "\",\"" + operation + "\",\"" + usageType + "\"";
+
         }
     }
     

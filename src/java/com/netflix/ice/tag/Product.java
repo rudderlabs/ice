@@ -18,7 +18,9 @@
 package com.netflix.ice.tag;
 
 public class Product extends Tag {
-    public static final Product api_gateway = new Product("api_gateway");
+	private static final long serialVersionUID = 1L;
+	
+	public static final Product api_gateway = new Product("api_gateway");
     public static final Product athena = new Product("athena");
     public static final Product cloudfront = new Product("cloudfront");
     public static final Product cloudhsm = new Product("cloudhsm");

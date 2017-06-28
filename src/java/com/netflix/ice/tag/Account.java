@@ -18,7 +18,9 @@
 package com.netflix.ice.tag;
 
 public class Account extends Tag {
-    public final String id;
+	private static final long serialVersionUID = 1L;
+	
+	public final String id;
 
     public Account(String accountId, String accountName) {
         super(accountName);

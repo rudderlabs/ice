@@ -546,6 +546,36 @@ public class ReservationProcessorTest {
 	}
 	
 	/*
+	 * Test one Region scoped full-upfront RDS reservation where the instance is used.
+	 */
+	@Test
+	public void testPartialRDS() {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,RDS,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,1485929307960,1517465307960,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
+		};
+		
+		Datum[] usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.bonusReservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 0.024),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.upfrontAmortizedHeavyPartial, "db.t2.micro.postgresql", 0.018),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
+		
+	}
+	
+	/*
 	 * Test one Region scoped partial-upfront reservation that's used by the owner.
 	 */
 	@Test

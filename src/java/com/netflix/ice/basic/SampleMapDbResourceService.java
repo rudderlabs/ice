@@ -18,7 +18,6 @@
 package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
-import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
@@ -38,7 +37,8 @@ public class SampleMapDbResourceService extends ResourceService {
 
     public static final String UNKNOWN = "unknown";
     private static final Logger logger = LoggerFactory.getLogger(SampleMapDbResourceService.class);
-    private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
+    @SuppressWarnings("unchecked")
+	private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
             Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs),
             Lists.newArrayList(Product.rds, Product.rds_instance),
             Lists.newArrayList(Product.s3));

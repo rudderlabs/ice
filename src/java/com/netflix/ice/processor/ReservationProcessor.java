@@ -39,16 +39,14 @@ import com.netflix.ice.tag.Zone;
 public class ReservationProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final Set<Account> reservationOwners;
     private final Map<Account, List<Account>> reservationBorrowers;
     
     // hour of data to print debug statements. Set to -1 to turn off.
-    private int debugHour = -1;
-    private String debugFamily = "c4";
+    private int debugHour = 0;
+    private String debugFamily = "db";
 
     public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners) {        
         // Initialize the reservation owner and borrower account lists
-        this.reservationOwners = reservationOwners;
         reservationBorrowers = Maps.newHashMap();
         // Associate all the accounts in a consolidated billing group with the reservation owner
         Set<Account> payers = payerAccounts.keySet();

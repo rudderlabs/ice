@@ -20,14 +20,17 @@ package com.netflix.ice.tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization.*;
-
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 public class Operation extends Tag {
 
-    protected int seq = Integer.MAX_VALUE;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	protected int seq = Integer.MAX_VALUE;
     private Operation (String name) {
         super(name);
     }
@@ -151,7 +154,9 @@ public class Operation extends Tag {
     }
 
     public static class ReservationOperation extends Operation {
-        private ReservationOperation(String name, int seq) {
+		private static final long serialVersionUID = 1L;
+
+		private ReservationOperation(String name, int seq) {
             super(name);
             this.seq = seq;
             operations.put(name, this);

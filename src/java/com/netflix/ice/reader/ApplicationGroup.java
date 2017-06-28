@@ -55,9 +55,9 @@ public class ApplicationGroup {
         name = json.getString("name");
         owner = json.getString("owner");
         json = json.getJSONObject("data");
-        Iterator<String> keys = json.keys();
+        Iterator<?> keys = json.keys();
         while (keys.hasNext()) {
-            String key = keys.next();
+            String key = (String) keys.next();
             JSONArray jsonArray = json.getJSONArray(key);
             List<String> values = Lists.newArrayList();
             for (int i = 0; i < jsonArray.length(); i++)

@@ -17,7 +17,6 @@
  */
 package com.netflix.ice.processor;
 
-import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Region;

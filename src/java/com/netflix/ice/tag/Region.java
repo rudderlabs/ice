@@ -23,11 +23,10 @@ import com.google.common.collect.Maps;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class Region extends Tag {
-    public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US");
+	private static final long serialVersionUID = 1L;
+	
+	public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US");
     public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US");
     public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US");
     public static final Region US_WEST_2 = new Region("us-west-2", "USW2", "US");

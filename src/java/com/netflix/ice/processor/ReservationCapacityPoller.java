@@ -17,17 +17,19 @@
  */
 package com.netflix.ice.processor;
 
-import com.amazonaws.auth.AWSSessionCredentials;
-import com.amazonaws.services.ec2.AmazonEC2Client;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
 import com.amazonaws.services.ec2.model.ReservedInstances;
-import com.amazonaws.services.rds.AmazonRDSClient;
+import com.amazonaws.services.rds.AmazonRDS;
+import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.DescribeReservedDBInstancesResult;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
-import com.amazonaws.services.redshift.AmazonRedshiftClient;
+import com.amazonaws.services.redshift.AmazonRedshift;
+import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
 import com.amazonaws.services.redshift.model.DescribeReservedNodesResult;
 import com.amazonaws.services.redshift.model.ReservedNode;
-import com.amazonaws.services.securitytoken.model.Credentials;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
@@ -35,7 +37,6 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Region;
 
 import java.io.*;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -60,6 +61,10 @@ public class ReservationCapacityPoller extends Poller {
 
         Map<String, CanonicalReservedInstances> reservations = readArchive(config);
         
+        AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+        AmazonRDSClientBuilder rdsBuilder = AmazonRDSClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+        AmazonRedshiftClientBuilder redshiftBuilder = AmazonRedshiftClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);       
+        
         for (Entry<Account, Set<String>> entry: config.accountService.getReservationAccounts().entrySet()) {
             Account account = entry.getKey();
             Set<String> products = entry.getValue();
@@ -70,40 +75,20 @@ public class ReservationCapacityPoller extends Poller {
                 if (assumeRole != null && assumeRole.isEmpty())
                 	assumeRole = null;
                 
-                AWSSessionCredentials sessionCredentials = null;
+                AWSCredentialsProvider credentialsProvider = AwsUtils.awsCredentialsProvider;
                 if (assumeRole != null) {
                     String externalId = config.accountService.getReservationAccessExternalIds().get(account);
-                    final Credentials credentials = AwsUtils.getAssumedCredentials(account.id, assumeRole, externalId);
-                	sessionCredentials = new AWSSessionCredentials() {
-                        public String getAWSAccessKeyId() {
-                            return credentials.getAccessKeyId();
-                        }
-
-                        public String getAWSSecretKey() {
-                            return credentials.getSecretAccessKey();
-                        }
-
-                        public String getSessionToken() {
-                            return credentials.getSessionToken();
-                        }
-                    };
+                    credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
                 }
                 
                 for (Region region: Region.getAllRegions()) {
 
             	   
                    if (products.contains(ec2)) {
-                       AmazonEC2Client ec2Client;
-                       if (assumeRole != null) {
-                           ec2Client = new AmazonEC2Client(sessionCredentials);
-                       }
-                       else {
-                           ec2Client = new AmazonEC2Client(AwsUtils.awsCredentialsProvider.getCredentials(), AwsUtils.clientConfig);
-                       }
-                       ec2Client.setEndpoint("ec2." + region.name + ".amazonaws.com");
-
+                	   AmazonEC2 ec2 = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                	   
                        try {
-                           DescribeReservedInstancesResult result = ec2Client.describeReservedInstances();
+                           DescribeReservedInstancesResult result = ec2.describeReservedInstances();
                            for (ReservedInstances reservation: result.getReservedInstances()) {
                         	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
                                String key = account.id + "," + region.name + "," + reservation.getReservedInstancesId();
@@ -114,24 +99,15 @@ public class ReservationCapacityPoller extends Poller {
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
                        }
-                       ec2Client.shutdown();
+                       ec2.shutdown();
                    }
                	
    
                    if (products.contains(rds)) {
-                       AmazonRDSClient rdsClient;
+                       AmazonRDS rds = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
                        
-                       if (assumeRole != null) {
-                           rdsClient = new AmazonRDSClient(sessionCredentials);
-                       }
-                       else {
-                           rdsClient = new AmazonRDSClient(AwsUtils.awsCredentialsProvider.getCredentials(), AwsUtils.clientConfig);
-                       }
-     
-                       rdsClient.setEndpoint("rds." + region.name + ".amazonaws.com");
-
                        try {
-                           DescribeReservedDBInstancesResult result = rdsClient.describeReservedDBInstances();
+                           DescribeReservedDBInstancesResult result = rds.describeReservedDBInstances();
                            for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
                                String key = account.id + "," + region.name + "," + reservation.getReservedDBInstanceId();
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
@@ -141,23 +117,14 @@ public class ReservationCapacityPoller extends Poller {
                        catch (Exception e) {
                            logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
                        }
-                       rdsClient.shutdown();
+                       rds.shutdown();
                    }
             	   
                    if (products.contains(redshift)) {
-                       AmazonRedshiftClient redshiftClient;
-                       
-                       if (assumeRole != null) {
-                           redshiftClient = new AmazonRedshiftClient(sessionCredentials);
-                       }
-                       else {
-                           redshiftClient = new AmazonRedshiftClient(AwsUtils.awsCredentialsProvider.getCredentials(), AwsUtils.clientConfig);
-                       }
-
-	                   redshiftClient.setEndpoint("redshift." + region.name + ".amazonaws.com");
-	
+                       AmazonRedshift redshift = redshiftBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                       	
 	                   try {
-	                        DescribeReservedNodesResult result = redshiftClient.describeReservedNodes();
+	                        DescribeReservedNodesResult result = redshift.describeReservedNodes();
 	                        for (ReservedNode reservation: result.getReservedNodes()) {
 	                            String key = account.id + "," + region.name + "," + reservation.getReservedNodeId();
 	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
@@ -167,7 +134,7 @@ public class ReservationCapacityPoller extends Poller {
 	                   catch (Exception e) {
 	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
 	                   }
-	                   redshiftClient.shutdown();
+	                   redshift.shutdown();
                    }
 	           }
 

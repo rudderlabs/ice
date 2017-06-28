@@ -36,7 +36,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class TagGroup implements Comparable<TagGroup>, Serializable {
-    public final Account account;
+	private static final long serialVersionUID = 1L;
+	
+	public final Account account;
     public final Product product;
     public final Operation operation;
     public final UsageType usageType;
@@ -104,7 +106,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             result = prime * result + this.zone.hashCode();
         result = prime * result + this.account.hashCode();
         if (this.region == null || this.product == null) {
-            int iii = 0;
+           // int iii = 0;
         }
         result = prime * result + this.region.hashCode();
         result = prime * result + this.product.hashCode();
@@ -189,7 +191,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             String prodStr = in.readUTF();
             Product product = productService.getProductByName(prodStr);
             if (product == null) {
-                int iii = 0;
+                //int iii = 0;
             }
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
