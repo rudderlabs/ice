@@ -4,5 +4,6 @@ public enum UsageUnit {
 	Dollar,
 	Instances,
 	ECUs,
-	vCPUs
+	vCPUs,
+	CostMult
 }

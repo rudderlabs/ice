@@ -42,7 +42,7 @@ public class ReservationProcessor {
     private final Map<Account, List<Account>> reservationBorrowers;
     
     // hour of data to print debug statements. Set to -1 to turn off.
-    private int debugHour = 0;
+    private int debugHour = -1;
     private String debugFamily = "db";
 
     public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners) {        
@@ -434,6 +434,15 @@ public class ReservationProcessor {
 	 * accounts. It handles both AZ and Regional scoped reservations including borrowing
 	 * across accounts linked through consolidated billing and sharing of instance reservations
 	 * among instance types in the same family.
+	 * 
+	 * The order of processing is as follows:
+	 *  1. AZ-scoped reservations used within the owner account.
+	 *  2. AZ-scoped reservations borrowed by other accounts within the consolidated group.
+	 *  3. Region-scoped reservations used within the owner account.
+	 *  4. Region-scoped reservations used within the owner account but from a different instance type within the same family.
+	 *  5. Region-scoped reservations borrowed by other accounts
+	 *  6. Region-scoped reservations borrowed by other accounts but from a different instance type within the same family.
+	 * 
 	 * When called, all usage data is flagged as bonusReserved. The job of this method is to
 	 * walk through all the bonus tags and convert them to the proper reservation usage type
 	 * based on the association the the actual reservations. Since the detailed billing reports
