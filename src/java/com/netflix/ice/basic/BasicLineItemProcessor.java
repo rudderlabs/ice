@@ -151,7 +151,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         Result result = Result.hourly;
         if (product == Product.ec2_instance) {
             result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
-            instances.add(items[resourceIndex], usageType.toString(), getUserTagsString(items));
+            if (items.length > resourceIndex)
+            	instances.add(items[resourceIndex], usageType.toString(), getUserTagsString(items));
         }
         else if (product == Product.redshift) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);
