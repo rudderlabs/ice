@@ -17,58 +17,160 @@
  */
 package com.netflix.ice.tag;
 
-public class Product extends Tag {
-	private static final long serialVersionUID = 1L;
-	
-	public static final Product api_gateway = new Product("api_gateway");
-    public static final Product athena = new Product("athena");
-    public static final Product cloudfront = new Product("cloudfront");
-    public static final Product cloudhsm = new Product("cloudhsm");
-    public static final Product cloudtrail = new Product("cloudtrail");
-    public static final Product cloudwatch = new Product("cloudwatch");
-    public static final Product codecommit = new Product("codecommit");
-    public static final Product config = new Product("config");
-    public static final Product data_pipeline = new Product("data_pipeline");
-    public static final Product data_transfer = new Product("data_transfer");
-    public static final Product direct_connect = new Product("direct_connect");
-    public static final Product database_migration = new Product("database_migration");
-    public static final Product directory = new Product("directory");
-    public static final Product dynamodb = new Product("dynamodb");
-    public static final Product ebs = new Product("ebs");
-    public static final Product ec2 = new Product("ec2");
-    public static final Product ec2_cloudwatch = new Product("ec2_cloudwatch");
-    public static final Product ec2_instance = new Product("ec2_instance");
-    public static final Product ecr = new Product("ecr");
-    public static final Product efs = new Product("efs");
-    public static final Product eip = new Product("eip");
-    public static final Product elasticache = new Product("elasticache");
-    public static final Product elasticsearch = new Product("elasticsearch");
-    public static final Product emr = new Product("emr");
-    public static final Product glacier = new Product("glacier");
-    public static final Product kinesis = new Product("kinesis");
-    public static final Product kinesis_firehose = new Product("kinesis_firehose");
-    public static final Product kms = new Product("kms");
-    public static final Product lambda = new Product("lambda");
-    public static final Product monitor = new Product("monitor");
-    public static final Product rds = new Product("rds");
-    public static final Product rds_instance = new Product("rds_instance");
-    public static final Product redshift = new Product("redshift");
-    public static final Product rekognition = new Product("rekognition");
-    public static final Product route53 = new Product("route53");
-    public static final Product s3 = new Product("s3");
-    public static final Product service_catalog = new Product("service_catalog");
-    public static final Product ses = new Product("ses");
-    public static final Product simpledb = new Product("simpledb");
-    public static final Product sns = new Product("sns");
-    public static final Product sqs = new Product("sqs");
-    public static final Product storage_gateway = new Product("storage_gateway");
-    public static final Product support = new Product("support");
-    public static final Product sws = new Product("sws");
-    public static final Product vpc = new Product("vpc");
-    public static final Product waf = new Product("waf");
-    public static final Product workspaces = new Product("workspaces");
+import java.util.Map;
 
-    public Product (String name) {
-        super(name);
+import com.google.common.collect.Maps;
+
+public class Product extends Tag {
+	private static final long serialVersionUID = 2L;
+	
+	/*
+	 * Product is a Tag representing AWS products. The name field
+	 * stored in the inherited Tag class is used for both the
+	 * map key in the ProductService and the product names returned
+	 * by the DataManager which are ultimately displayed in the
+	 * browser UI.
+	 * 
+	 * By default the name is the Amazon/AWS name pulled from the billing
+	 * reports with the AWS or Amazon prefix removed. For some products
+	 * we break down the usage into sub-categories as defined below.
+	 * In addition, a few of the product's names are modified to include
+	 * the common usage acronym such as EC2 for Elastic Compute Cloud and
+	 * S3 for Simple Storage Service. This is helpful when using the
+	 * product filter in the browser UI.
+	 */
+	
+	/*
+	 * shortName is used for naming files
+	 */
+	private final String shortName;
+	
+	/*
+	 * Standard product name strings needed to test identity in the "is" methods.
+	 */
+	public static final String cloudhsm     = "CloudHSM";
+	public static final String dataTransfer = "Data Transfer";
+	public static final String ec2          = "Elastic Compute Cloud";
+	public static final String rds          = "RDS Service";
+	public static final String redshift     = "Redshift";
+	public static final String s3           = "Simple Storage Service";
+	public static final String monitor      = "Monitor"; // seems to refer to EC2 metrics, but I've never seen this in any reports -jimroth
+    /*
+     * ICE-defined product sub-category strings used to test identity in the "is" methods.
+     */
+    public static final String ebs           = "Elastic Block Storage";
+    public static final String ec2CloudWatch = "EC2 CloudWatch";
+    public static final String ec2Instance   = "EC2 Instance";
+    public static final String eip           = "Elastic IP";
+    public static final String rdsInstance   = "RDS Instance";
+
+	/*
+	 * Map of product names used to replace the AWS name
+	 */
+    private static Map<String, String> alternateNames = Maps.newHashMap();
+    private static Map<String, String> awsNames = Maps.newHashMap();
+    static {
+    	alternateNames.put(ec2, ec2 + " (EC2)");
+    	alternateNames.put(s3, s3 + " (S3)");
+    	
+    	// Create an inverted map for lookup by alternate name
+    	for (Map.Entry<String, String> e: alternateNames.entrySet()) {
+    		awsNames.put(e.getValue(), e.getKey());
+    	}
     }
+
+    /*
+     * Product constructor should only be called by the ProductService.
+     * All references to products needs to be through the product service maps.
+     * 
+     * Product can be constructed using either the AWS name or the alternate name.
+     */
+    public Product(String name) {    	
+    	super(getAlternate(canonicalName(name)));
+    	
+    	// substitute "_" for spaces and make lower case
+    	shortName = getAwsName(this.name).replace(" ", "_").toLowerCase();
+    }
+
+    private static String canonicalName(String name) {
+    	String s = name;
+    	// Strip off "Amazon" or "AWS"
+    	if (s.startsWith("Amazon"))
+    		s = s.substring("Amazon".length()).trim();
+    	else if (s.startsWith("AWS"))
+    		s = s.substring("AWS".length()).trim();
+    	return s;
+    }
+    
+    public static void addAlternate(String awsName, String alternate) {
+    	alternateNames.put(awsName,  alternate);
+    	awsNames.put(alternate,  awsName);
+    }
+
+    public static String getAlternate(String awsName) {
+    	String n;
+    	return (n = alternateNames.get(awsName)) != null ? n : awsName;
+    }
+    
+    public static String getAwsName(String name) {
+    	String n;
+    	return (n = awsNames.get(name)) != null ? n : name;
+    }
+
+    public String getShortName() {
+    	return shortName;
+    }
+    
+    public boolean isSupport() {
+    	return name.contains(getAwsName("Support"));
+    }
+    
+    public boolean isCloudHsm() {
+    	return name.equals(getAlternate(cloudhsm));
+    }
+    
+    public boolean isDataTransfer() {
+    	return name.equals(getAlternate(dataTransfer));
+    }
+    
+    public boolean isEc2() {
+    	return name.equals(getAlternate(ec2));
+    }
+    
+    public boolean isRds() {
+    	return name.equals(getAlternate(rds));
+    }
+    
+    public boolean isRedshift() {
+    	return name.equals(getAlternate(redshift));
+    }
+    
+    public boolean isS3() {
+    	return name.equals(getAlternate(s3));
+    }
+    
+    public boolean isMonitor() {
+    	return name.equals(getAlternate(monitor));
+    }
+    
+    public boolean isEbs() {
+    	return name.equals(getAlternate(ebs));
+    }
+    
+    public boolean isEC2CloudWatch() {
+    	return name.equals(getAlternate(ec2CloudWatch));
+    }
+    
+    public boolean isEc2Instance() {
+    	return name.equals(getAlternate(ec2Instance));
+    }
+    
+    public boolean isEip() {
+    	return name.equals(getAlternate(eip));
+    }
+    
+    public boolean isRdsInstance() {
+    	return name.equals(getAlternate(rdsInstance));
+    }
+    
 }

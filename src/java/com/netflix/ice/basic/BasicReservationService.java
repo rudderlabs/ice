@@ -25,6 +25,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.*;
@@ -386,7 +387,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	    	
 	    	// Either we didn't find the reservation, or there is no longer an active reservation
 	    	// for this usage. Pull the prices from the pricelist.
-	        if (tagGroup.product == Product.ec2_instance) {
+	        if (tagGroup.product.isEc2Instance()) {
 		        Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
 		        Ec2InstanceReservationPrice ec2Price = ec2InstanceReservationPrices.get(utilization).get(key);
 		        if (ec2Price != null) { // remove this...
@@ -458,7 +459,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     	return c.getTime().getTime();
     }
 
-    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis) {
+    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             if (utilization == ReservationUtilization.LIGHT ||
@@ -531,17 +532,17 @@ public class BasicReservationService extends Poller implements ReservationServic
                 String osStr = reservedInstances.getProductDescription();
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
-                product = Product.ec2_instance;
+                product = productService.getProductByName(Product.ec2Instance);
             }
             else if (reservedInstances.isRDS()) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? ".multiaz" : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
-            	product = Product.rds_instance;
+            	product = productService.getProductByName(Product.rdsInstance);
             }
             else if (reservedInstances.isRedshift()){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
-            	product = Product.redshift;
+            	product = productService.getProductByName(Product.redshift);
             }
             else {
             	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());

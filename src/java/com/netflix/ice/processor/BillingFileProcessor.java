@@ -57,7 +57,7 @@ public class BillingFileProcessor extends Poller {
     private boolean processingMonitor;
     /**
      * The usageDataByProduct map holds both the usage data for each
-     * individual product (if ResourceService is enabled) and a "null"
+     * individual product that has resourceIDs (if ResourceService is enabled) and a "null"
      * key entry for aggregated data for "all" services.
      * i.e. the null key means "all"
      */
@@ -309,7 +309,7 @@ public class BillingFileProcessor extends Poller {
         logger.info("archiving tag data...");
 
         for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.name);
+            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getShortName());
             writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
             // Debugging file output
             //writer.outputCsv(config.localDir + "/csv");
@@ -339,7 +339,7 @@ public class BillingFileProcessor extends Poller {
     private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix) throws Exception {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.name;
+            String prodName = product == null ? "all" : product.getShortName();
             DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false);
             writer.archive(dataMap.get(product));
         }
@@ -358,7 +358,7 @@ public class BillingFileProcessor extends Poller {
 
         for (Product product: dataMap.keySet()) {
 
-            String prodName = product == null ? "all" : product.name;
+            String prodName = product == null ? "all" : product.getShortName();
             ReadWriteData data = dataMap.get(product);
             Collection<TagGroup> tagGroups = data.getTagGroups();
 
@@ -480,7 +480,7 @@ public class BillingFileProcessor extends Poller {
             reader.readRecord();
             String[] headers = reader.getValues();
 
-            config.lineItemProcessor.initIndexes(config, withTags, headers);
+            config.lineItemProcessor.initIndexes(config.useBlended, withTags, headers);
 
             while (reader.readRecord()) {
                 String[] items = reader.getValues();
@@ -519,7 +519,7 @@ public class BillingFileProcessor extends Poller {
 
     private void processOneLine(List<String[]> delayedItems, String[] items) {
 
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, config, items, usageDataByProduct, costDataByProduct, ondemandRate, instances);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, items, usageDataByProduct, costDataByProduct, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(items);
@@ -544,7 +544,7 @@ public class BillingFileProcessor extends Poller {
 
             Map<TagGroup, Double> data = costs.getData(i);
             for (TagGroup tagGroup : tagGroups) {
-                if (tagGroup.product == Product.ec2_instance && tagGroup.operation == Operation.ondemandInstances &&
+                if (tagGroup.product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances &&
                     data.get(tagGroup) != null) {
                     Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
                     if (ondemandCosts.get(key) != null)

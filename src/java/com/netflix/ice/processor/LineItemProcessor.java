@@ -32,11 +32,12 @@ public interface LineItemProcessor {
     public static final DateTimeFormatter amazonBillingDateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.UTC);
     public static final DateTimeFormatter amazonBillingDateFormat2 = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm:ss").withZone(DateTimeZone.UTC);
 
-    void initIndexes(ProcessorConfig config, boolean withTags, String[] header);
+    void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour);
+    void initIndexes(boolean useBlended, boolean withTags, String[] header);
     List<String> getHeader();
     int getUserTagStartIndex();
     long getEndMillis(String[] items);
-    Result process(long startMilli, boolean processAll, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances);
+    Result process(long startMilli, boolean processAll, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances);
 
     public static enum Result {
         delay,

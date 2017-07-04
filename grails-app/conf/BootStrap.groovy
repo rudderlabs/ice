@@ -16,6 +16,7 @@
 
 import com.netflix.ice.reader.ReaderConfig
 import com.netflix.ice.processor.ProcessorConfig
+import com.netflix.ice.processor.ReservationService
 import com.netflix.ice.JSONConverter
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger
@@ -222,14 +223,17 @@ class BootStrap {
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 
+				ProductService productService = new BasicProductService();
+				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+				
                 processorConfig = new ProcessorConfig(
                         properties,
                         credentialsProvider,
                         accountService,
-                        new BasicProductService(),
-                        new BasicReservationService(reservationPeriod, reservationUtilization),
+                        productService,
+                        reservationService,
                         resourceService,
-                        new BasicLineItemProcessor(),
+                        new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null),
                         null)
                 processorConfig.start(reservationCapacityPoller);
             }

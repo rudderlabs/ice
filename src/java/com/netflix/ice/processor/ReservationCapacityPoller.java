@@ -144,7 +144,7 @@ public class ReservationCapacityPoller extends Poller {
             }
         }
 
-        config.reservationService.updateReservations(reservations, config.accountService, config.startDate.getMillis());
+        config.reservationService.updateReservations(reservations, config.accountService, config.startDate.getMillis(), config.productService);
         updatedConfig = true;
         
         archive(config, reservations);

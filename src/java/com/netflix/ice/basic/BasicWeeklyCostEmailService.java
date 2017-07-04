@@ -158,11 +158,11 @@ public class BasicWeeklyCostEmailService extends Poller {
     }
 
     protected String getResourceGroupsDisplayName(String product) {
-        if (product.equals(Product.ec2.name))
+        if (product.equals(config.productService.getProductByName(Product.ec2).name))
             return "Applications";
-        else if (product.equals(Product.s3.name))
+        else if (product.equals(config.productService.getProductByName(Product.s3).name))
             return "S3 buckets";
-        else if (product.equals(Product.rds.name))
+        else if (product.equals(config.productService.getProductByName(Product.rds).name))
             return "RDS DBs";
         else
             return product + " resource groups";
@@ -300,8 +300,8 @@ public class BasicWeeklyCostEmailService extends Poller {
     }
 
     private List<ResourceGroup> getResourceGroups(ApplicationGroup appGroup, Product product) {
-        if (product == Product.monitor)
-            product = Product.ec2;
+        if (product.isMonitor())
+            product = config.productService.getProductByName(Product.ec2);
 
         List<List<Product>> products = config.resourceService.getProductsWithResources();
         Product productForResource = null;

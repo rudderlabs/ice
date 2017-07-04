@@ -38,16 +38,28 @@ public class SampleMapDbResourceService extends ResourceService {
     public static final String UNKNOWN = "unknown";
     private static final Logger logger = LoggerFactory.getLogger(SampleMapDbResourceService.class);
     @SuppressWarnings("unchecked")
-	private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
-            Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs),
-            Lists.newArrayList(Product.rds, Product.rds_instance),
+	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
+            Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs),
+            Lists.newArrayList(Product.rds, Product.rdsInstance),
             Lists.newArrayList(Product.s3));
+    
+	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
+
     MapDb instanceDb;
     ProcessorConfig config;
 
     public void init() {
         config = ProcessorConfig.getInstance();
         instanceDb = new MapDb("instances");
+        ProcessorConfig processorConfig = ProcessorConfig.getInstance();
+        
+        for (List<String> l: productNamesWithResources) {
+        	List<Product> lp = Lists.newArrayList();
+        	for (String name: l) {
+        		lp.add(processorConfig.productService.getProductByName(name));
+        	}
+        	productsWithResources.add(lp);
+        }
     }
 
     @Override
@@ -69,16 +81,16 @@ public class SampleMapDbResourceService extends ResourceService {
     @Override
     public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart) {
 
-        if (product == Product.ec2 || product == Product.ec2_instance || product == Product.ebs || product == Product.ec2_cloudwatch) {
+        if (product.isEc2() || product.isEc2Instance() || product.isEbs() || product.isEC2CloudWatch()) {
             return getEc2Resource(account, region, resourceId, lineItem, millisStart);
         }
-        else if (product == Product.rds || product == Product.rds_instance) {
+        else if (product.isRds() || product.isRdsInstance()) {
             return getRdsResource(account, region, resourceId, lineItem, millisStart);
         }
-        else if (product == Product.s3) {
+        else if (product.isS3()) {
             return getS3Resource(account, region, resourceId, lineItem, millisStart);
         }
-        else if (product == Product.eip) {
+        else if (product.isEip()) {
             return null;
         }
         else {

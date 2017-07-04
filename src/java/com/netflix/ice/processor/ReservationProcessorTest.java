@@ -16,8 +16,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
+import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
 import com.netflix.ice.tag.Account;
@@ -54,7 +56,10 @@ public class ReservationProcessorTest {
 		}
     	payerAccounts.put(accounts.get(0), linked);
 	}
+	
+	private ProductService productService = new BasicProductService();
 
+	
 	@Test
 	public void testConstructor() {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
@@ -62,7 +67,7 @@ public class ReservationProcessorTest {
 		assertNotNull("Contructor returned null", rp);
 	}
 	
-	public static class Datum {
+	public class Datum {
 		public TagGroup tagGroup;
 		public double value;
 		
@@ -74,10 +79,10 @@ public class ReservationProcessorTest {
 		
 		public Datum(Account account, Region region, Zone zone, Operation operation, String usageType, double value)
 		{
-			this.tagGroup = new TagGroup(account, region, zone, Product.ec2_instance, operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.tagGroup = new TagGroup(account, region, zone, productService.getProductByName(Product.ec2Instance), operation, UsageType.getUsageType(usageType, "hours"), null);
 			this.value = value;
 		}
-		
+
 		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, double value)
 		{
 			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), null);
@@ -142,7 +147,7 @@ public class ReservationProcessorTest {
 		AccountService accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);
 		
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
-		reservationService.updateReservations(reservations, accountService, startMillis);		
+		reservationService.updateReservations(reservations, accountService, startMillis, productService);		
 
 		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners);
 		rp.setDebugHour(0);
@@ -525,20 +530,21 @@ public class ReservationProcessorTest {
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
 			"111111111111,RDS,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,1463763023778,1495299023778,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
 		};
+		Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Product.rds_instance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", 0.0223),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", 0.0223),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
@@ -556,19 +562,20 @@ public class ReservationProcessorTest {
 			"111111111111,RDS,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,1485929307960,1517465307960,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
 		};
 		
+		Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.bonusReservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 0.024),
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Product.rds_instance, Operation.upfrontAmortizedHeavyPartial, "db.t2.micro.postgresql", 0.018),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 0.024),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedHeavyPartial, "db.t2.micro.postgresql", 0.018),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");

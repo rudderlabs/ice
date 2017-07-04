@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class TagGroup implements Comparable<TagGroup>, Serializable {
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 	
 	public final Account account;
     public final Product product;

@@ -101,6 +101,7 @@ public class ProcessorConfig extends Config {
 
         ProcessorConfig.instance = this;
 
+        lineItemProcessor.init(useCostForResourceGroup.equals("modeled"), costPerMonitorMetricPerHour);
         reservationService.init();
         if (resourceService != null)
             resourceService.init();

@@ -46,9 +46,11 @@ public class BasicAccountService implements AccountService {
         this.reservationAccounts = reservationAccounts;
         this.reservationAccessRoles = reservationAccessRoles;
         this.reservationAccessExternalIds = reservationAccessExternalIds;
-        for (Account account: accounts) {
-            accountsByName.put(account.name, account);
-            accountsById.put(account.id, account);
+        if (accounts != null) {
+	        for (Account account: accounts) {
+	            accountsByName.put(account.name, account);
+	            accountsById.put(account.id, account);
+	        }
         }
     }
 

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -18,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -38,15 +38,16 @@ import com.netflix.ice.tag.Region;
  * TODO: There is currently no caching done, so there might be a lot of requests fired off to Edda!
  */
 public class EddaResourceService extends ResourceService {
-	private static final ArrayList<Product> EC2_PRODUCTS = Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs);
-	//private static final ArrayList<Product> RDS_PRODUCTS = Lists.newArrayList(Product.rds, Product.rds_instance);
-	//private static final ArrayList<Product> S3_PRODUCTS = Lists.newArrayList(Product.s3);
+	@SuppressWarnings("unchecked")
+	private final List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
+              Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs)
+         //   , Lists.newArrayList(Product.rds, Product.rdsInstance)
+         //   , Lists.newArrayList(Product.s3)
+           );
 
 	private final static Logger logger = LoggerFactory.getLogger(EddaResourceService.class);
 
-    @SuppressWarnings("unchecked")
-	private static List<List<Product>> productsWithResources =
-    		Lists.<List<Product>>newArrayList(EC2_PRODUCTS/*, RDS_PRODUCTS*//*, S3_PRODUCTS*/);
+	private List<List<Product>> productsWithResources = Lists.newArrayList();
 
     // read from properties
     protected String EDDA_ROOT_URL;
@@ -68,6 +69,15 @@ public class EddaResourceService extends ResourceService {
 	@Override
 	public void init() {
         logger.info("Initializing...");
+        ProcessorConfig processorConfig = ProcessorConfig.getInstance();
+        
+        for (List<String> l: productNamesWithResources) {
+        	List<Product> lp = Lists.newArrayList();
+        	for (String name: l) {
+        		lp.add(processorConfig.productService.getProductByName(name));
+        	}
+        	productsWithResources.add(lp);
+        }
 	}
 
 
@@ -75,7 +85,7 @@ public class EddaResourceService extends ResourceService {
 	public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem,
 			long millisStart) {
 		// currently we support ec2
-		if(Product.ec2.equals(product) || Product.ec2_instance.equals(product)) {
+		if(product.isEc2() || product.isEc2Instance()) {
 			if(StringUtils.isEmpty(resourceId)) {
 				logger.warn("Had empty resourceId");
 				return "Error";

@@ -19,11 +19,13 @@ public class BasicResourceService extends ResourceService {
     private ProcessorConfig processorConfig;
     
     @SuppressWarnings("unchecked")
-    private static List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList(
-            Lists.newArrayList(Product.ec2, Product.ec2_instance, Product.ebs),
-            Lists.newArrayList(Product.rds, Product.rds_instance),
+	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
+            Lists.newArrayList(Product.ec2, Product.ec2Instance),
+            Lists.newArrayList(Product.rds, Product.rdsInstance),
             Lists.newArrayList(Product.redshift),
             Lists.newArrayList(Product.s3));
+    
+	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
 
     
     private final Map<String, List<String>> tagKeys;
@@ -51,6 +53,13 @@ public class BasicResourceService extends ResourceService {
 	@Override
     public void init() {
         processorConfig = ProcessorConfig.getInstance();
+        for (List<String> l: productNamesWithResources) {
+        	List<Product> lp = Lists.newArrayList();
+        	for (String name: l) {
+        		lp.add(processorConfig.productService.getProductByName(name));
+        	}
+        	productsWithResources.add(lp);
+        }
     }
 
     @Override
@@ -77,6 +86,8 @@ public class BasicResourceService extends ResourceService {
 
     @Override
     public List<List<Product>> getProductsWithResources() {
+    	List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
+    	
         return productsWithResources;
         
 //        List<List<Product>> result = Lists.newArrayList();

@@ -56,10 +56,37 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private int resourceIndex;
 
     private List<String> header;
+    
+    private AccountService accountService;
+    private ProductService productService;
+    private ReservationService reservationService;
+    private boolean modeledCostForResourceGroup;
+    private double costPerMonitorMetricPerHour;
 
-    public void initIndexes(ProcessorConfig processorConfig, boolean withTags, String[] header) {
+    private ResourceService resourceService;
+    private Randomizer randomizer;
+    
+    public BasicLineItemProcessor(
+    		AccountService accountService, 
+    		ProductService productService, 
+    		ReservationService reservationService, 
+    		ResourceService resourceService, 
+    		Randomizer randomizer) {
+    	this.accountService = accountService;
+    	this.productService = productService;
+    	this.reservationService = reservationService;
+    	this.resourceService = resourceService;
+    	this.randomizer = randomizer;
+    }
+    
+    public void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour) {
+    	this.modeledCostForResourceGroup = modeledCostForResourceGroup;
+    	this.costPerMonitorMetricPerHour = costPerMonitorMetricPerHour;
+    }
+
+    public void initIndexes(boolean useBlended, boolean withTags, String[] header) {
         boolean hasBlendedCost = false;
-        boolean useBlendedCost = processorConfig.useBlended;
+        boolean useBlendedCost = useBlended;
         for (String column: header) {
             if (column.equalsIgnoreCase("UnBlendedCost")) {
                 hasBlendedCost = true;
@@ -87,8 +114,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         this.header = Lists.newArrayList(header);
         
-        if (processorConfig.resourceService != null) {
-        	processorConfig.resourceService.initHeader(this.header);
+        if (resourceService != null) {
+        	resourceService.initHeader(this.header);
         }
     }
 
@@ -104,19 +131,27 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return amazonBillingDateFormat.parseMillis(items[endTimeIndex]);
     }
 
-    public Result process(long startMilli, boolean processDelayed, ProcessorConfig config, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances) {
+    public Result process(
+    		long startMilli, 
+    		boolean processDelayed, 
+    		String[] items, 
+    		Map<Product, ReadWriteData> usageDataByProduct, 
+    		Map<Product, ReadWriteData> costDataByProduct, 
+    		Map<String, Double> ondemandRate, 
+    		Instances instances) {
+    	
         if (StringUtils.isEmpty(items[accountIdIndex]) ||
             StringUtils.isEmpty(items[productIndex]) ||
             StringUtils.isEmpty(items[costIndex]))
             return Result.ignore;
 
-        Account account = config.accountService.getAccountById(items[accountIdIndex]);
+        Account account = accountService.getAccountById(items[accountIdIndex]);
         if (account == null)
             return Result.ignore;
 
-        Product product = config.productService.getProductByAwsName(items[productIndex]);
+        Product product = productService.getProductByAwsName(items[productIndex]);
         double usageValue = 0.0;
-        if (product != Product.support) {
+        if (!product.isSupport()) {
         	if (StringUtils.isEmpty(items[usageTypeIndex]) ||
                 StringUtils.isEmpty(items[operationIndex]) ||
                 StringUtils.isEmpty(items[usageQuantityIndex])) {
@@ -139,7 +174,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         boolean reservationUsage = "Y".equals(items[reservedIndex]);
-        ReformedMetaData reformedMetaData = reform(config.reservationService.getDefaultReservationUtilization(millisStart), product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
+        ReformedMetaData reformedMetaData = reform(reservationService.getDefaultReservationUtilization(millisStart), 
+        		product, reservationUsage, items[operationIndex], items[usageTypeIndex], items[descriptionIndex], costValue);
         product = reformedMetaData.product;
         Operation operation = reformedMetaData.operation;
         final UsageType usageType = reformedMetaData.usageType;
@@ -149,31 +185,31 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
 
         Result result = Result.hourly;
-        if (product == Product.ec2_instance) {
+        if (instances != null && product.isEc2Instance()) {
             result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
             if (items.length > resourceIndex)
             	instances.add(items[resourceIndex], usageType.toString(), getUserTagsString(items));
         }
-        else if (product == Product.redshift) {
+        else if (product.isRedshift()) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);
             //logger.info("Process Redshift " + operation + " " + costValue + " returned: " + result);
         }
-        else if (product == Product.data_transfer) {
+        else if (product.isDataTransfer()) {
             result = processDataTranfer(processDelayed, usageType);
         }
-        else if (product == Product.cloudhsm) {
+        else if (product.isCloudHsm()) {
             result = processCloudhsm(processDelayed, usageType);
         }
-        else if (product == Product.ebs) {
+        else if (product.isEbs()) {
             result = processEbs(usageType);
         }
-        else if (product == Product.rds || product == Product.rds_instance) {
+        else if (product.isRds() || product.isRdsInstance()) {
             result = processRds(usageType, processDelayed, reservationUsage, operation, costValue);
 //            if (startIndex == 0 && reservationUsage) {
 //            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
 //            }
         }
-        else if (product == Product.support) {
+        else if (product.isSupport()) {
         	result = Result.monthly;
         	//logger.info("Support lineitem: " + costValue);
         }
@@ -224,25 +260,25 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         TagGroup tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
         TagGroup resourceTagGroup = null;
 
-        if (costValue > 0 && !reservationUsage && product == Product.ec2_instance && tagGroup.operation == Operation.ondemandInstances) {
+        if (costValue > 0 && !reservationUsage && product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances) {
             String key = operation + "|" + tagGroup.region + "|" + usageType;
             ondemandRate.put(key, costValue/usageValue);
         }
 
         double resourceCostValue = costValue;
-        if (items.length > resourceIndex && !StringUtils.isEmpty(items[resourceIndex]) && config.resourceService != null) {
+        if (items.length > resourceIndex && !StringUtils.isEmpty(items[resourceIndex]) && resourceService != null) {
         	
-            if (config.useCostForResourceGroup.equals("modeled") && product == Product.ec2_instance)
-                operation = Operation.getBonusReservedInstances(config.reservationService.getDefaultReservationUtilization(0L));
+            if (modeledCostForResourceGroup && product.isEc2Instance())
+                operation = Operation.getBonusReservedInstances(reservationService.getDefaultReservationUtilization(0L));
 
-            if (product == Product.ec2_instance && operation instanceof Operation.ReservationOperation &&
+            if (product.isEc2Instance() && operation instanceof Operation.ReservationOperation &&
             		operation != Operation.ondemandInstances && operation != Operation.spotInstances) {
                 UsageType usageTypeForPrice = usageType;
                 if (usageType.name.endsWith(InstanceOs.others.name())) {
                     usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);
                 }
                 try {
-                    resourceCostValue = usageValue * config.reservationService.getLatestHourlyTotalPrice(millisStart, tagGroup.region, usageTypeForPrice, config.reservationService.getDefaultReservationUtilization(0L));
+                    resourceCostValue = usageValue * reservationService.getLatestHourlyTotalPrice(millisStart, tagGroup.region, usageTypeForPrice, reservationService.getDefaultReservationUtilization(0L));
                 }
                 catch (Exception e) {
                     logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice + " " + operation);
@@ -250,7 +286,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 }
             }
 
-            String resourceGroupStr = config.resourceService.getResource(account, reformedMetaData.region, product, items[resourceIndex], items, millisStart);
+            String resourceGroupStr = resourceService.getResource(account, reformedMetaData.region, product, items[resourceIndex], items, millisStart);
             if (!StringUtils.isEmpty(resourceGroupStr)) {
                 ResourceGroup resourceGroup = ResourceGroup.getResourceGroup(resourceGroupStr);
                 resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
@@ -265,63 +301,63 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         // Does the following code need to check for Product.cloudwatch in addition to Product.monitor?
         // I have a suspicion that Amazon renamed the service. -jroth
-        if (config.randomizer != null && product == Product.monitor)
+        if (randomizer != null && product.isMonitor())
             return result;
 
         for (int i : indexes) {
 
-            if (config.randomizer != null) {
+            if (randomizer != null) {
 
-                if (tagGroup.product != Product.rds && tagGroup.product != Product.s3 && usageData.getData(i).get(tagGroup) != null)
+                if (!tagGroup.product.isRds() && !tagGroup.product.isS3() && usageData.getData(i).get(tagGroup) != null)
                     break;
 
                 long time = millisStart + i * AwsUtils.hourMillis;
-                usageValue = config.randomizer.randomizeUsage(time, resourceTagGroup == null ? tagGroup : resourceTagGroup, usageValue);
-                costValue = usageValue * config.randomizer.randomizeCost(tagGroup);
+                usageValue = randomizer.randomizeUsage(time, resourceTagGroup == null ? tagGroup : resourceTagGroup, usageValue);
+                costValue = usageValue * randomizer.randomizeCost(tagGroup);
             }
-            if (product != Product.monitor) {
+            if (!product.isMonitor()) {
                 Map<TagGroup, Double> usages = usageData.getData(i);
                 Map<TagGroup, Double> costs = costData.getData(i);
                 
                 // Redshift and RDS have cost as a monthly charge, but usage appears hourly
                 // so unlike EC2, we have to process the monthly line item to capture the cost,
                 // but we don't want to add the monthly line items to the usage.
-                if (!((product == Product.redshift || product == Product.rds_instance) && result == Result.monthly)) {
-                	addValue(usages, tagGroup, usageValue,  config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
+                if (!((product.isRedshift() || product.isRdsInstance()) && result == Result.monthly)) {
+                	addValue(usages, tagGroup, usageValue,  randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());
                 }
 
-                addValue(costs, tagGroup, costValue, config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3);
+                addValue(costs, tagGroup, costValue, randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());
             }
             else {
-                resourceCostValue = usageValue * config.costPerMonitorMetricPerHour;
+                resourceCostValue = usageValue * costPerMonitorMetricPerHour;
             }
 
             if (resourceTagGroup != null) {
                 Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
                 Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
 
-                if (config.randomizer == null || tagGroup.product == Product.rds || tagGroup.product == Product.s3) {
-                    if (!((product == Product.redshift || product == Product.rds) && result == Result.monthly)) {
-                    	addValue(usagesOfResource, resourceTagGroup, usageValue, product != Product.monitor);
+                if (randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3()) {
+                    if (!((product.isRedshift() || product.isRds()) && result == Result.monthly)) {
+                    	addValue(usagesOfResource, resourceTagGroup, usageValue, !product.isMonitor());
                     }
                     
-                    if (!config.useCostForResourceGroup.equals("modeled") || resourceCostValue < 0) {
-                        addValue(costsOfResource, resourceTagGroup, costValue, product != Product.monitor);
+                    if (!modeledCostForResourceGroup || resourceCostValue < 0) {
+                        addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
                     } else {
-                        addValue(costsOfResource, resourceTagGroup, resourceCostValue, product != Product.monitor);
+                        addValue(costsOfResource, resourceTagGroup, resourceCostValue, !product.isMonitor());
                     }
                 }
                 else {
-                    Map<String, Double> distribution = config.randomizer.getDistribution(tagGroup);
+                    Map<String, Double> distribution = randomizer.getDistribution(tagGroup);
                     for (Map.Entry<String, Double> entry : distribution.entrySet()) {
                         String app = entry.getKey();
                         double dist = entry.getValue();
                         resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, ResourceGroup.getResourceGroup(app));
                         double usage = usageValue * dist;
-                        if (product == Product.ec2_instance)
+                        if (product.isEc2Instance())
                             usage = (int)usageValue * dist;
                         addValue(usagesOfResource, resourceTagGroup, usage, false);
-                        addValue(costsOfResource, resourceTagGroup, usage * config.randomizer.randomizeCost(tagGroup), false);
+                        addValue(costsOfResource, resourceTagGroup, usage * randomizer.randomizeCost(tagGroup), false);
                     }
                 }
             }
@@ -340,18 +376,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
 
     private Result processEc2Instance(boolean processDelayed, boolean reservationUsage, Operation operation, Zone zone) {
-        if (!processDelayed && zone == null && operation.name.startsWith("BonusReservedInstances") && reservationUsage)
+        if (!processDelayed && zone == null && operation.isBonus() && reservationUsage)
             return Result.ignore;
         else
             return Result.hourly;
     }
 
     private Result processRedshift(boolean processDelayed, boolean reservationUsage, Operation operation, double costValue) {
-        if (!processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        if (!processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
             return Result.delay;
-        else if (!processDelayed && costValue == 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        else if (!processDelayed && costValue == 0 && operation.isBonus() && reservationUsage)
             return Result.hourly;
-        else if (processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        else if (processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
             return Result.monthly;
         else
             return Result.hourly;
@@ -385,17 +421,24 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private Result processRds(UsageType usageType, boolean processDelayed, boolean reservationUsage, Operation operation, double costValue) {
         if (usageType.name.startsWith("RDS:ChargedBackupUsage"))
             return Result.daily;
-        else if (!processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        else if (!processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
             return Result.delay; // Must be a monthly charge for all the hourly usage
-        else if (!processDelayed && costValue == 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        else if (!processDelayed && costValue == 0 && operation.isBonus() && reservationUsage)
             return Result.hourly; // Must be the hourly usage
-        else if (processDelayed && costValue != 0 && operation.name.contains("ReservedInstances") && reservationUsage)
+        else if (processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
             return Result.monthly; // This is the post processing of the monthly charge for all the hourly usage
         else
             return Result.hourly;
     }
 
-    protected ReformedMetaData reform(ReservationUtilization defaultReservationUtilization, Product product, boolean reservationUsage, String operationStr, String usageTypeStr, String description, double cost) {
+    protected ReformedMetaData reform(
+    		ReservationUtilization defaultReservationUtilization,
+    		Product product, 
+    		boolean reservationUsage, 
+    		String operationStr, 
+    		String usageTypeStr, 
+    		String description, 
+    		double cost) {
 
         Operation operation = null;
         UsageType usageType = null;
@@ -414,25 +457,25 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (operationStr.equals("EBS Snapshot Copy")) {
-            product = Product.ebs;
+            product = productService.getProductByName(Product.ebs);
         }
 
         if (usageTypeStr.startsWith("ElasticIP:")) {
-            product = Product.eip;
+            product = productService.getProductByName(Product.eip);
         }
         else if (usageTypeStr.startsWith("EBS:"))
-            product = Product.ebs;
+            product = productService.getProductByName(Product.ebs);
         else if (usageTypeStr.startsWith("EBSOptimized:"))
-            product = Product.ebs;
+            product = productService.getProductByName(Product.ebs);
         else if (usageTypeStr.startsWith("CW:"))
-            product = Product.ec2_cloudwatch;
+            product = productService.getProductByName(Product.ec2CloudWatch);
         else if ((usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
         	boolean spot = usageTypeStr.startsWith("SpotUsage");
             index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
-            if (reservationUsage && product == Product.ec2) {
+            if (reservationUsage && product.isEc2()) {
             	if (cost == 0)
                     operation = Operation.bonusReservedInstancesFixed;
             	else
@@ -452,9 +495,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	// so can't tell them apart without looking at the description. Examples:
         	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
         	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
-            if (reservationUsage && product == Product.redshift && cost == 0 && description.contains(" 0.0 per"))
+            if (reservationUsage && product.isRedshift() && cost == 0 && description.contains(" 0.0 per"))
             	operation = Operation.bonusReservedInstancesFixed;
-            else if (reservationUsage && product == Product.redshift)
+            else if (reservationUsage && product.isRedshift())
                 operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
             else
             	operation = Operation.ondemandInstances;
@@ -469,9 +512,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             // --- Need examples, for now assuming it's the same as for Redshift ---
         	// No Upfront:  "Redshift, dw2.8xlarge instance-hours used this month"
         	// All Upfront: "USD 0.0 per Redshift, dw2.8xlarge instance-hour (or partial hour)"
-            if (reservationUsage && product == Product.rds && cost == 0 && description.contains(" 0.0 per"))
+            if (reservationUsage && product.isRds() && cost == 0 && description.contains(" 0.0 per"))
             	operation = Operation.bonusReservedInstancesFixed;
-            else if (reservationUsage && product == Product.rds)
+            else if (reservationUsage && product.isRds())
                 operation = Operation.getBonusReservedInstances(defaultReservationUtilization);
             else
             	operation = Operation.ondemandInstances;
@@ -485,11 +528,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
             else {
                 usageTypeStr = usageTypeStr.substring(index+1);
-                if (product == Product.redshift) {
+                if (product.isRedshift()) {
                 	usageTypeStr = currentRedshiftUsageType(usageTypeStr);
                 }
             }
-            if (product == Product.rds){
+            if (product.isRds()){
                 db = getInstanceDb(operationStr);
             }
             operation = getOperation(operationStr, reservationUsage, defaultReservationUtilization);
@@ -505,18 +548,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             operation = Operation.getOperation(operationStr);
         }
 
-        if (product == Product.ec2 && operation instanceof Operation.ReservationOperation) {
-            product = Product.ec2_instance;
+        if (product.isEc2() && operation instanceof Operation.ReservationOperation) {
+            product = productService.getProductByName(Product.ec2Instance);
             if (os != InstanceOs.linux && os != InstanceOs.spot) {
                 usageTypeStr = usageTypeStr + "." + os;
-                operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
+                operation = operation.isBonus() ? operation : Operation.ondemandInstances;
             }
         }
 
-        if (product == Product.rds && operation instanceof Operation.ReservationOperation) {
-            product = Product.rds_instance;
+        if (product.isRds() && operation instanceof Operation.ReservationOperation) {
+            product = productService.getProductByName(Product.rdsInstance);
             usageTypeStr = usageTypeStr + "." + db;
-            operation = operation.name.startsWith("BonusReservedInstances") ? operation : Operation.ondemandInstances;
+            operation = operation.isBonus() ? operation : Operation.ondemandInstances;
         }
 
         if (usageType == null) {

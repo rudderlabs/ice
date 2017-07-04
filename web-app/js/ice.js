@@ -849,29 +849,29 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, usage_db, highchart) {
 
   var reservationOps = [
-    "OndemandInstances",
-    "SpotInstances",
-    "ReservedInstancesAllUpfront",
-    "FamilyReservedInstancesAllUpfront",
-    "BonusReservedInstancesAllUpfront",
-    "BorrowedInstancesAllUpfront",
-    "LentInstancesAllUpfront",
-    "UnusedInstancesAllUpfront",
-    "AmortizedAllUpfront",
-    "ReservedInstancesNoUpfront",
-    "FamilyReservedInstancesNoUpfront",
-    "BonusReservedInstancesNoUpfront",
-    "BorrowedInstancesNoUpfront",
-    "LentInstancesNoUpfront",
-    "UnusedInstancesNoUpfront",
-    "AmortizedNoUpfront",
-    "ReservedInstancesPartialUpfront",
-    "FamilyReservedInstancesPartialUpfront",
-    "BonusReservedInstancesPartialUpfront",
-    "BorrowedInstancesPartialUpfront",
-    "LentInstancesPartialUpfront",
-    "UnusedInstancesPartialUpfront",
-    "AmortizedPartialUpfront"];
+    "Spot Instances",
+    "On-Demand Instances",
+    "Used RIs - All Upfront",
+    "Family RIs - All Upfront",
+    "Bonus RIs - All Upfront",
+    "Borrowed RIs - All Upfront",
+    "Lent RIs - All Upfront",
+    "Unused RIs - All Upfront",
+    "Amortized RIs - All Upfront",
+    "Used RIs - Partial Upfront",
+    "Family RIs - Partial Upfront",
+    "Bonus RIs - Partial Upfront",
+    "Borrowed RIs - Partial Upfront",
+    "Lent RIs - Partial Upfront",
+    "Unused RIs - Partial Upfront",
+    "Amortized RIs - Partial Upfront",
+    "Used RIs - No Upfront",
+    "Family RIs - No Upfront",
+    "Bonus RIs - No Upfront",
+    "Borrowed RIs - No Upfront",
+    "Lent RIs - No Upfront",
+    "Unused RIs - No Upfront",
+    "Amortized RIs - No Upfront"];
 
   var predefinedQuery = {operation: reservationOps.join(",")};
   $scope.legends = [];
@@ -1007,11 +1007,11 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
 function utilizationCtrl($scope, $location, usage_db, highchart) {
 
   var utilizationOps = [
-    "OndemandInstances",
-    "SpotInstances",
-    "ReservedInstancesAllUpfront",
-    "ReservedInstancesNoUpfront",
-    "ReservedInstancesPartialUpfront"];
+    "On-Demand Instances",
+    "Spot Instances",
+    "Used RIs - All Upfront",
+    "Used RIs - No Upfront",
+    "Used RIs - Partial Upfront"];
 
   var predefinedQuery = {operation: utilizationOps.join(",")};
   $scope.legends = [];
@@ -1907,9 +1907,9 @@ function editCtrl($scope, $location, $http) {
       for (var i in result.data) {
         var row = result.data[i];
         row.name = row.product.name;
-        if (row.name === 'ec2')
+        if (row.name === 'Elastic Compute Cloud (EC2)')
           row.displayName = 'Applications';
-        else if (row.name === 's3')
+        else if (row.name === 'Simple Storage Service (S3)')
           row.displayName = 'S3 Buckets';
         else
           row.displayName = row.name;

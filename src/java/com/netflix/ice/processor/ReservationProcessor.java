@@ -32,7 +32,6 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
-import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
@@ -282,7 +281,7 @@ public class ReservationProcessor {
 
 	private boolean sameFamily(TagGroup a, TagGroup b) {
 		// True if both tags are ec2_instances and have the same usage type prefix
-		return a.product == Product.ec2_instance &&
+		return a.product.isEc2Instance() &&
 			a.product == b.product &&
 			a.usageType.name.split("\\.")[0].equals(b.usageType.name.split("\\.")[0]);
 	}
@@ -663,7 +662,7 @@ public class ReservationProcessor {
 		Set<TagGroup> unassignedUsage = Sets.newTreeSet();
 		for (TagGroup tagGroup: usageData.getTagGroups()) {
 			if (tagGroup.resourceGroup == null &&
-			    tagGroup.product == Product.ec2_instance &&
+			    tagGroup.product.isEc2Instance() &&
 			    tagGroup.operation == bonusOperation) {
 			
 				unassignedUsage.add(tagGroup);

@@ -48,7 +48,7 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
     private Interval totalInterval;
 
     BasicTagGroupManager(Product product) {
-        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.name);
+        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getShortName());
         file = new File(config.localDir, dbName);
         try {
             poll();
@@ -185,9 +185,6 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
         Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
 
         for (TagGroup tagGroup: tagGroupsInRange) {
-            if (tagGroup.product == Product.emr || tagGroup.product == Product.redshift) {
-                //int iii = 0;
-            }
             if (tagLists.contains(tagGroup))
                 result.add(tagGroup.operation);
         }
