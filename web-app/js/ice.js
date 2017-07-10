@@ -692,7 +692,8 @@ ice.factory('usage_db', function($window, $http, $filter) {
             end: $scope.end,
             breakdown: false,
             showsps: $scope.showsps ? true : false,
-            factorsps: $scope.factorsps ? true : false
+            factorsps: $scope.factorsps ? true : false,
+            family: $scope.family ? true : false
           }, params);
       this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts);
       if ($scope.showZones)
@@ -888,6 +889,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
   $scope.showsps = false;
   $scope.factorsps = false;
   $scope.groupBy = $scope.groupBys[4];
+  $scope.family = false;
   $scope.consolidate = "hourly";
   $scope.showZones = false;
   $scope.plotType = 'area';
@@ -915,6 +917,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
       start: $scope.start,
       end: $scope.end,
       groupBy: $scope.groupBy.name,
+      family: "" + $scope.family,
       showZones: "" + $scope.showZones,
       consolidate: $scope.consolidate,
       plotType: $scope.plotType,

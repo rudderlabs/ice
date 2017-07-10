@@ -20,6 +20,7 @@ package com.netflix.ice
 
 import grails.converters.JSON
 
+import com.netflix.ice.tag.FamilyTag
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
 import com.netflix.ice.tag.Region
@@ -417,6 +418,7 @@ class DashboardController {
         boolean breakdown = query.getBoolean("breakdown");
         boolean showsps = query.getBoolean("showsps");
         boolean factorsps = query.getBoolean("factorsps");
+		boolean consolidateFamily = query.getBoolean("family");
 		UsageUnit usageUnit = UsageUnit.Dollar;
 		if (!isCost) {
 			usageUnit = UsageUnit.valueOf(query.getString("usageUnit"));
@@ -597,6 +599,8 @@ class DashboardController {
 			data = reduceToDailyElasticity(data, stats);
 		}
 		else {
+			if (groupBy == TagType.UsageType && consolidateFamily)
+				data = consolidateFamilies(data);
 	        stats = getStats(data);
 		}
 		
@@ -752,6 +756,30 @@ class DashboardController {
 			if (avgDailyMax > 0)
 				elasticity = 1 - avgDailyMin / avgDailyMax;
 			stats[tag] = [avgDailyMin: avgDailyMin, avgDailyMax: avgDailyMax, elasticity: elasticity * 100];
+		}
+		return result;
+	}
+	
+	private Map<Tag, Map> consolidateFamilies(Map<Tag, double[]> data) {
+		// Run through the data reducing EC2 Instance Types to a Family Type
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			if (entry.getKey() == Tag.aggregated) {
+				// Don't mess with the aggregated data series.
+				result[entry.getKey()] = entry.getValue();
+				continue;
+			}
+			
+            Tag familyTag = new FamilyTag(entry.getKey().name);
+            double[] values = entry.getValue();
+			double[] consolidated = result[familyTag];
+			if (consolidated == null) {
+				result[familyTag] = values;
+			}
+			else {
+				for (int i = 0; i < consolidated.length; i++)
+					consolidated[i] += values[i];
+			}
 		}
 		return result;
 	}

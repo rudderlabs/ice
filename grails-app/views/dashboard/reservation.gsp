@@ -34,7 +34,12 @@
       <td ng-show="showZones">Zone</td>
       <td>Product</td>
       <td>Operation</td>
-      <td>UsageType</td>
+      <td>
+      	<span style="float:left">UsageType</span>
+      	<span style="float:right">
+      		<input type="checkbox" ng-model="family" style=""> Consolidate Family</input>
+      	</span>
+      </td>
     </tr>
     <tr>
       <td>
