@@ -12,11 +12,11 @@ public class BasicProductServiceTest {
 	@Test
 	public void testGetProductByAwsName() {
 		ProductService ps = new BasicProductService();
-		Product product1 = ps.getProductByAwsName("AWS Product");
-		assertTrue("Wrong product name, expected Product, got " + product1.name, product1.name.equals("Product"));
+		Product product1 = ps.getProductByAwsName("AWS ProductA");
+		assertTrue("Wrong product name, expected ProductA, got " + product1.name, product1.name.equals("ProductA"));
 		
-		Product product2 = ps.getProductByAwsName("Amazon Product");
-		assertTrue("Wrong product name, expected Product, got " + product2.name, product2.name.equals("Product"));
+		Product product2 = ps.getProductByAwsName("Amazon ProductA");
+		assertTrue("Wrong product name, expected ProductA, got " + product2.name, product2.name.equals("ProductA"));
 		
 		assertEquals("Both product strings should refer to the same object", product1, product2);
 	}
@@ -24,10 +24,10 @@ public class BasicProductServiceTest {
 	@Test
 	public void testGetProductByName() {
 		ProductService ps = new BasicProductService();
-		Product product1 = ps.getProductByName("Product");
-		assertTrue("Wrong product name, expected Product, got " + product1.name, product1.name.equals("Product"));
+		Product product1 = ps.getProductByName("Product1");
+		assertTrue("Wrong product name, expected Product, got " + product1.name, product1.name.equals("Product1"));
 		
-		Product product2 = ps.getProductByAwsName("Amazon Product");		
+		Product product2 = ps.getProductByAwsName("Amazon Product1");		
 		assertEquals("Both product strings should refer to the same object", product1, product2);
 	}
 
