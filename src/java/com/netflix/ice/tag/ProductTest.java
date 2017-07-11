@@ -49,7 +49,7 @@ public class ProductTest {
 	public void testShortName() {
 		Product.addAlternate("Foo Bar", "Foo Bar (FB)");
 		Product product = new Product("Amazon Foo Bar");
-		assertTrue("Wrong short name from getShortName(), expected foo_bar, got " + product.getShortName(), "foo_bar".equals(product.getShortName()));
+		assertTrue("Wrong short name from getShortName(), expected Foo_Bar, got " + product.getFileName(), "Foo_Bar".equals(product.getFileName()));
 	}
 	
 	@Test

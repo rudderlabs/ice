@@ -41,9 +41,9 @@ public class Product extends Tag {
 	 */
 	
 	/*
-	 * shortName is used for naming files
+	 * fileName is used for naming product-specific files
 	 */
-	private final String shortName;
+	private final String fileName;
 	
 	/*
 	 * Standard product name strings needed to test identity in the "is" methods.
@@ -89,7 +89,9 @@ public class Product extends Tag {
     	super(getAlternate(canonicalName(name)));
     	
     	// substitute "_" for spaces and make lower case
-    	shortName = getAwsName(this.name).replace(" ", "_").toLowerCase();
+    	// This operation must be invertible, so we assume product
+    	// names don't use underscore!
+    	fileName = getAwsName(this.name).replace(" ", "_");
     }
 
     private static String canonicalName(String name) {
@@ -100,6 +102,11 @@ public class Product extends Tag {
     	else if (s.startsWith("AWS"))
     		s = s.substring("AWS".length()).trim();
     	return s;
+    }
+    
+    public static String getNameFromFileName(String fileName) {
+    	// Invert the operation we did to create the short name
+    	return fileName.replace("_", " ");
     }
     
     public static void addAlternate(String awsName, String alternate) {
@@ -117,8 +124,8 @@ public class Product extends Tag {
     	return (n = awsNames.get(name)) != null ? n : name;
     }
 
-    public String getShortName() {
-    	return shortName;
+    public String getFileName() {
+    	return fileName;
     }
     
     public boolean isSupport() {

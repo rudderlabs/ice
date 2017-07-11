@@ -32,11 +32,18 @@ public interface ProductService {
     Product getProductByAwsName(String name);
 
     /**
-     * Get product by name, e.g. ec2, emr
+     * Get product by name, e.g. CloudFront, "Elastic Compute Cloud (EC2)"
      * @param name
-     * @return
+     * @return product
      */
     Product getProductByName(String name);
+
+    /**
+     * Get product by file name, e.g. Elastic_Compute_Cloud_(EC2)
+     * @param fileName
+     * @return product
+     */
+    Product getProductByFileName(String fileName);
 
     /**
      * Get list of products from given names

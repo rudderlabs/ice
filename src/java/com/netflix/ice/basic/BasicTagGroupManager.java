@@ -48,7 +48,7 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
     private Interval totalInterval;
 
     BasicTagGroupManager(Product product) {
-        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getShortName());
+        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
         file = new File(config.localDir, dbName);
         try {
             poll();

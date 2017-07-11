@@ -34,6 +34,7 @@ public class BasicProductService implements ProductService {
 	 */
     private static ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
+    private static ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
        
     public Product getProductByAwsName(String awsName) {
         Product product = productsByAwsName.get(awsName);
@@ -41,21 +42,38 @@ public class BasicProductService implements ProductService {
             product = new Product(awsName);
             productsByAwsName.put(product.name, product);
             productsByName.put(product.name, product);
+            productsByFileName.put(product.getFileName(), product);
         }
         return product;
+    }
+    
+    public Product getProductByFileName(String fileName) {
+    	// Look up the product by the name used for the tagdb file
+    	Product product = productsByFileName.get(fileName);
+    	if (product == null) {
+    		String name = Product.getNameFromFileName(fileName);
+    		product = new Product(name);
+    		addProduct(name, product);
+    	}
+    	return product;
     }
 
     public Product getProductByName(String name) {
         Product product = productsByName.get(name);
         if (product == null) {
             product = new Product(name);
-            productsByName.put(product.name, product);
-
-            String awsName = Product.getAwsName(name);
-            productsByAwsName.put("AWS " + awsName, product);
-            productsByAwsName.put("Amazon " + awsName, product);
+            addProduct(name, product);
         }
         return product;
+    }
+    
+    private void addProduct(String name, Product product) {
+        productsByName.put(product.name, product);
+        productsByFileName.put(product.getFileName(), product);
+
+        String awsName = Product.getAwsName(name);
+        productsByAwsName.put("AWS " + awsName, product);
+        productsByAwsName.put("Amazon " + awsName, product);
     }
 
     public Collection<Product> getProducts() {

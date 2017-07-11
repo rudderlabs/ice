@@ -37,7 +37,7 @@ public class BasicProductServiceTest {
 		Product.addAlternate("Alternate Product", "Alternate Product (AP)");
 		Product product = ps.getProductByName("Alternate Product");
 		assertTrue("Wrong product name, expected Alternate Product (AP), got " + product.name, product.name.equals("Alternate Product (AP)"));
-		assertTrue("Wrong product short name, expected product, got " + product.getShortName(), product.getShortName().equals("alternate_product"));
+		assertTrue("Wrong product file name, expected product, got " + product.getFileName(), product.getFileName().equals("Alternate_Product"));
 	}
 
 }
