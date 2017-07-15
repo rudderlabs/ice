@@ -70,8 +70,8 @@ public class Product extends Tag {
     private static Map<String, String> alternateNames = Maps.newHashMap();
     private static Map<String, String> awsNames = Maps.newHashMap();
     static {
-    	alternateNames.put(ec2, ec2 + " (EC2)");
-    	alternateNames.put(s3, s3 + " (S3)");
+    	alternateNames.put(ec2, "EC2");
+    	alternateNames.put(s3, "S3");
     	
     	// Create an inverted map for lookup by alternate name
     	for (Map.Entry<String, String> e: alternateNames.entrySet()) {
@@ -84,6 +84,11 @@ public class Product extends Tag {
      * All references to products needs to be through the product service maps.
      * 
      * Product can be constructed using either the AWS name or the alternate name.
+     * The inherited tag name value will use the alternate name if present, otherwise
+     * it uses the canonical AWS name (AWS and Amazon stripped off the head).
+     * 
+     * The AWS name is always used by the TagGroup serializer so that changing
+     * the alternate name won't corrupt the data files.
      */
     public Product(String name) {    	
     	super(getAlternate(canonicalName(name)));
@@ -114,12 +119,17 @@ public class Product extends Tag {
     	awsNames.put(alternate,  awsName);
     }
 
-    public static String getAlternate(String awsName) {
+    protected static String getAlternate(String awsName) {
     	String n;
     	return (n = alternateNames.get(awsName)) != null ? n : awsName;
     }
     
-    public static String getAwsName(String name) {
+    protected static String getAwsName(String name) {
+    	String n;
+    	return (n = awsNames.get(name)) != null ? n : name;
+    }
+    
+    public String getAwsName() {
     	String n;
     	return (n = awsNames.get(name)) != null ? n : name;
     }
@@ -129,7 +139,7 @@ public class Product extends Tag {
     }
     
     public boolean isSupport() {
-    	return name.contains(getAwsName("Support"));
+    	return getAwsName().contains("Support");
     }
     
     public boolean isCloudHsm() {

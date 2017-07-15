@@ -71,7 +71,7 @@ public class BasicProductService implements ProductService {
         productsByName.put(product.name, product);
         productsByFileName.put(product.getFileName(), product);
 
-        String awsName = Product.getAwsName(name);
+        String awsName = product.getAwsName();
         productsByAwsName.put("AWS " + awsName, product);
         productsByAwsName.put("Amazon " + awsName, product);
     }

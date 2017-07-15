@@ -115,7 +115,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         this.header = Lists.newArrayList(header);
         
         if (resourceService != null) {
-        	resourceService.initHeader(this.header);
+        	resourceService.initHeader(this.header, getUserTagStartIndex());
         }
     }
 

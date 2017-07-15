@@ -2,25 +2,29 @@ package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 public class BasicResourceService extends ResourceService {
+    private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
-    private ProcessorConfig processorConfig;
+    private ProductService productService;
+    private String[] customTags;
     
     @SuppressWarnings("unchecked")
 	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
-            Lists.newArrayList(Product.ec2, Product.ec2Instance),
+            Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs, Product.ec2CloudWatch),
             Lists.newArrayList(Product.rds, Product.rdsInstance),
             Lists.newArrayList(Product.redshift),
             Lists.newArrayList(Product.s3));
@@ -39,8 +43,9 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
 
-    public BasicResourceService(Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues) {
+    public BasicResourceService(ProductService productService, Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues) {
 		super();
+		this.productService = productService;
 		this.tagKeys = tagKeys;
 		this.tagValuesInverted = Maps.newHashMap();
 		for (Entry<String, List<String>> entry: tagValues.entrySet()) {			
@@ -51,22 +56,23 @@ public class BasicResourceService extends ResourceService {
 	}
 
 	@Override
-    public void init() {
-        processorConfig = ProcessorConfig.getInstance();
+    public void init(String[] customTags) {
+		this.customTags = customTags;
         for (List<String> l: productNamesWithResources) {
         	List<Product> lp = Lists.newArrayList();
         	for (String name: l) {
-        		lp.add(processorConfig.productService.getProductByName(name));
+        		lp.add(productService.getProductByName(name));
         	}
         	productsWithResources.add(lp);
         }
+		logger.info("Initialized BasicResourceService with " + productsWithResources.size() + " products");
     }
 
     @Override
     public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart) {
         // Build the resource group name based on the values of the custom tags
         String result = "";
-        for (String tag: processorConfig.customTags) {
+        for (String tag: customTags) {
         	// Grab the first non-empty value for each custom tag
         	for (int index: tagIndecies.get(tag)) {
         		if (lineItem.length > index && !StringUtils.isEmpty(lineItem[index])) {
@@ -86,8 +92,6 @@ public class BasicResourceService extends ResourceService {
 
     @Override
     public List<List<Product>> getProductsWithResources() {
-    	List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
-    	
         return productsWithResources;
         
 //        List<List<Product>> result = Lists.newArrayList();
@@ -103,9 +107,9 @@ public class BasicResourceService extends ResourceService {
     }
     
     @Override
-    public void initHeader(List<String> header) {
+    public void initHeader(List<String> header, int userTagStartIndex) {
     	tagIndecies = Maps.newHashMap();
-    	for (String tag: processorConfig.customTags) {
+    	for (String tag: customTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
     		List<Integer> indecies = Lists.newArrayList();
     		tagIndecies.put(tag, indecies);
@@ -116,7 +120,7 @@ public class BasicResourceService extends ResourceService {
     			indecies.add(index);
     		}
     		// Look for alternate cases
-            int startIndex = processorConfig.lineItemProcessor.getUserTagStartIndex();
+            int startIndex = userTagStartIndex;
             for (int i = startIndex; i < header.size(); i++) {
             	if (i == index) {
             		continue;	// skip the exact match we handled above

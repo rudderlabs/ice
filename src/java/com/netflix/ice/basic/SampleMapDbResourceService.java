@@ -18,8 +18,8 @@
 package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -46,17 +46,23 @@ public class SampleMapDbResourceService extends ResourceService {
 	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
 
     MapDb instanceDb;
-    ProcessorConfig config;
+    ProductService productService;
+    
+    public SampleMapDbResourceService(ProductService productService) {
+		super();
+		this.productService = productService;
+    }
 
-    public void init() {
-        config = ProcessorConfig.getInstance();
+	int userTagStartIndex;
+
+    public void init(String[] customTags) {
+        userTagStartIndex = 0;
         instanceDb = new MapDb("instances");
-        ProcessorConfig processorConfig = ProcessorConfig.getInstance();
         
         for (List<String> l: productNamesWithResources) {
         	List<Product> lp = Lists.newArrayList();
         	for (String name: l) {
-        		lp.add(processorConfig.productService.getProductByName(name));
+        		lp.add(productService.getProductByName(name));
         	}
         	productsWithResources.add(lp);
         }
@@ -68,8 +74,9 @@ public class SampleMapDbResourceService extends ResourceService {
     }
     
 	@Override
-	public void initHeader(List<String> header) {
+	public void initHeader(List<String> header, int userTagStartIndex) {
 		logger.info("initHeader...");
+		this.userTagStartIndex = userTagStartIndex;
 	}
 
 
@@ -99,8 +106,8 @@ public class SampleMapDbResourceService extends ResourceService {
     }
 
     protected String getEc2Resource(Account account, Region region, String resourceId, String[] lineItem, long millisStart) {
-        String autoScalingGroupName = lineItem.length > config.lineItemProcessor.getUserTagStartIndex() ?
-                lineItem[config.lineItemProcessor.getUserTagStartIndex()] : null;
+        String autoScalingGroupName = lineItem.length > userTagStartIndex ?
+                lineItem[userTagStartIndex] : null;
 
         if (StringUtils.isEmpty(autoScalingGroupName)) {
             return UNKNOWN;

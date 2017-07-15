@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class TagGroup implements Comparable<TagGroup>, Serializable {
-	private static final long serialVersionUID = 2L;
+	private static final long serialVersionUID = 3L;
 	
 	public final Account account;
     public final Product product;
@@ -150,7 +150,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.account.toString());
             out.writeUTF(tagGroup.region.toString());
             out.writeUTF(tagGroup.zone == null ? "" : tagGroup.zone.toString());
-            out.writeUTF(tagGroup.product.toString());
+            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
+            out.writeUTF(tagGroup.product.getAwsName());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
             out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
@@ -160,7 +161,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeChars(tagGroup.account.toString() + ",");
             out.writeChars(tagGroup.region.toString() + ",");
             out.writeChars(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
-            out.writeChars(tagGroup.product.toString() + ",");
+            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
+            out.writeChars(tagGroup.product.getAwsName() + ",");
             out.writeChars(tagGroup.operation.toString() + ",");
             UsageType.serializeCSV(out, tagGroup.usageType);
             out.writeChars(",");

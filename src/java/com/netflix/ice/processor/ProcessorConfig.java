@@ -104,7 +104,7 @@ public class ProcessorConfig extends Config {
         lineItemProcessor.init(useCostForResourceGroup.equals("modeled"), costPerMonitorMetricPerHour);
         reservationService.init();
         if (resourceService != null)
-            resourceService.init();
+            resourceService.init(customTags);
 
         billingFileProcessor = new BillingFileProcessor(
             properties.getProperty(IceOptions.URL_PREFIX),

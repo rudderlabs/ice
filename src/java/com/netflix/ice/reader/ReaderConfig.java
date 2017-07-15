@@ -100,6 +100,8 @@ public class ReaderConfig extends Config {
         if (throughputMetricService != null)
             throughputMetricService.init();
         managers.init();
+        if (resourceService != null)
+            resourceService.init(null);
         applicationGroupService.init();
     }
 

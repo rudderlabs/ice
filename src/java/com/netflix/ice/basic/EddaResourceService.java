@@ -67,7 +67,7 @@ public class EddaResourceService extends ResourceService {
 	 * @see com.netflix.ice.common.ResourceService#init()
 	 */
 	@Override
-	public void init() {
+	public void init(String[] customTags) {
         logger.info("Initializing...");
         ProcessorConfig processorConfig = ProcessorConfig.getInstance();
         
@@ -167,7 +167,7 @@ public class EddaResourceService extends ResourceService {
 	 * @see com.netflix.ice.common.ResourceService#initHeader()
 	 */
 	@Override
-	public void initHeader(List<String> header) {
+	public void initHeader(List<String> header, int userTagStartIndex) {
 		logger.info("initHeader...");
 	}
 

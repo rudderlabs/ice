@@ -57,4 +57,14 @@ public class ProductTest {
 		Product product = new Product(Product.ec2);
 		assertTrue("isEc2() returned false, but should be true", product.isEc2());
 	}
+	
+	@Test
+	public void testIsSupport() {
+		Product product = new Product("Support (Developer)");
+		assertTrue("isSupport() returned false, but should be true", product.isSupport());
+		
+		product = new Product("Suppose Not");
+		assertFalse("isSupport() returned true, but should be false", product.isSupport());
+	}
+	
 }

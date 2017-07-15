@@ -15,6 +15,7 @@
  */
 
 import com.netflix.ice.reader.ReaderConfig
+import com.netflix.ice.processor.LineItemProcessor
 import com.netflix.ice.processor.ProcessorConfig
 import com.netflix.ice.processor.ReservationService
 import com.netflix.ice.JSONConverter
@@ -219,12 +220,13 @@ class BootStrap {
                 Ec2InstanceReservationPrice.ReservationUtilization reservationUtilization =
                     Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty("ice.reservationUtilization", "HEAVY"));
 
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(tagKeys, tagValues);
+				ProductService productService = new BasicProductService();
+                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 
-				ProductService productService = new BasicProductService();
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null);
 				
                 processorConfig = new ProcessorConfig(
                         properties,
@@ -233,7 +235,7 @@ class BootStrap {
                         productService,
                         reservationService,
                         resourceService,
-                        new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null),
+                        lineItemProcessor,
                         null)
                 processorConfig.start(reservationCapacityPoller);
             }
@@ -249,9 +251,9 @@ class BootStrap {
                 if (prop.getProperty(IceOptions.HIGHSTOCK_URL) != null)
                     properties.setProperty(IceOptions.HIGHSTOCK_URL, prop.getProperty(IceOptions.HIGHSTOCK_URL));
 
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(tagKeys, tagValues);
                 ApplicationGroupService applicationGroupService = new BasicS3ApplicationGroupService();
                 ProductService productService = new BasicProductService();
+                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
                 BasicWeeklyCostEmailService weeklyEmailService = null;
 
                 if ("true".equals(prop.getProperty(IceOptions.WEEKLYEMAILS))) {
