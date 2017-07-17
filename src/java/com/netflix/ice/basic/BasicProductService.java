@@ -24,6 +24,7 @@ import com.netflix.ice.tag.Product;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 
 public class BasicProductService implements ProductService {
@@ -36,7 +37,15 @@ public class BasicProductService implements ProductService {
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
        
-    public Product getProductByAwsName(String awsName) {
+    public BasicProductService(Properties alternateProductNames) {
+		super();
+		if (alternateProductNames != null) {
+			for (String altName: alternateProductNames.stringPropertyNames())
+				Product.addAlternate(alternateProductNames.getProperty(altName), altName);
+		}
+	}
+
+	public Product getProductByAwsName(String awsName) {
         Product product = productsByAwsName.get(awsName);
         if (product == null) {
             product = new Product(awsName);

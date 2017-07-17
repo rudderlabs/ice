@@ -69,15 +69,6 @@ public class Product extends Tag {
 	 */
     private static Map<String, String> alternateNames = Maps.newHashMap();
     private static Map<String, String> awsNames = Maps.newHashMap();
-    static {
-    	alternateNames.put(ec2, "EC2");
-    	alternateNames.put(s3, "S3");
-    	
-    	// Create an inverted map for lookup by alternate name
-    	for (Map.Entry<String, String> e: alternateNames.entrySet()) {
-    		awsNames.put(e.getValue(), e.getKey());
-    	}
-    }
 
     /*
      * Product constructor should only be called by the ProductService.

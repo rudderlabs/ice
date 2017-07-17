@@ -64,16 +64,12 @@ class BootStrap {
         try {
 
             logger.info('Starting ice...');
-
-            Properties prop = new Properties();
-            is = getClass().getClassLoader().getResourceAsStream(System.getProperty("ice.propertiesfile", "ice.properties"));
-            if (is == null) {
-                if (System.getenv().get("ICE_HOME") == null)
-                    throw new IllegalArgumentException("ICE_HOME is not set.");
-                is = new FileInputStream(new File(System.getenv().get("ICE_HOME"), System.getProperty("ice.propertiesfile", "ice.properties")));
-            }
-            prop.load(is);
-
+			
+            logger.info('Read ice.properties ...');
+			Properties prop = getProperties("ice.propertiesfile", "ice.properties");			
+            logger.info('Reading tag.properties...');
+			Properties tagProp = getProperties("tag.propertiesfile", "tag.properties");
+			
             AWSCredentialsProvider credentialsProvider;
 
             if (StringUtils.isEmpty(System.getProperty("ice.s3AccessKeyId")) || StringUtils.isEmpty(System.getProperty("ice.s3SecretKey")))
@@ -220,7 +216,7 @@ class BootStrap {
                 Ec2InstanceReservationPrice.ReservationUtilization reservationUtilization =
                     Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty("ice.reservationUtilization", "HEAVY"));
 
-				ProductService productService = new BasicProductService();
+				ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
                 ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
@@ -250,9 +246,9 @@ class BootStrap {
                     properties.setProperty(IceOptions.CURRENCY_SIGN, prop.getProperty(IceOptions.CURRENCY_SIGN));
                 if (prop.getProperty(IceOptions.HIGHSTOCK_URL) != null)
                     properties.setProperty(IceOptions.HIGHSTOCK_URL, prop.getProperty(IceOptions.HIGHSTOCK_URL));
-
+					
                 ApplicationGroupService applicationGroupService = new BasicS3ApplicationGroupService();
-                ProductService productService = new BasicProductService();
+                ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
                 ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
                 BasicWeeklyCostEmailService weeklyEmailService = null;
 
@@ -291,10 +287,6 @@ class BootStrap {
             e.printStackTrace();
             logger.error("Startup failed", e);
             System.exit(0);
-        }
-        finally {
-            if (is != null)
-                is.close();
         }
     }
 
@@ -339,4 +331,39 @@ class BootStrap {
 		input.close();
 		return resp;
 	}
+	
+	private Properties getProperties(String key, String defaultValue) {
+		Properties prop = new Properties();
+        InputStream is = null;
+		try {
+			is = getClass().getClassLoader().getResourceAsStream(System.getProperty(key, defaultValue));
+			if (is == null) {
+				if (System.getenv().get("ICE_HOME") == null)
+					throw new IllegalArgumentException("ICE_HOME is not set.");
+				is = new FileInputStream(new File(System.getenv().get("ICE_HOME"), System.getProperty(key, defaultValue)));
+			}
+			prop.load(is);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("Startup failed", e);
+            System.exit(0);
+        }
+        finally {
+            if (is != null)
+                is.close();
+        }
+		return prop;
+	}
+	
+	private Properties getSubProperties(Properties tagProps, String prefix) {
+		Properties subProperties = new Properties();
+		for (String name: tagProps.stringPropertyNames()) {
+			if (name.startsWith(prefix)) {
+				String subName = name.substring(prefix.length());
+				subProperties.setProperty(subName, tagProps.getProperty(name));
+			}
+		}
+		return subProperties;
+	}
 }
+	

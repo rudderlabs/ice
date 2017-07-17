@@ -57,7 +57,7 @@ public class ReservationProcessorTest {
     	payerAccounts.put(accounts.get(0), linked);
 	}
 	
-	private ProductService productService = new BasicProductService();
+	private ProductService productService = new BasicProductService(null);
 
 	
 	@Test

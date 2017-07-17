@@ -32,7 +32,7 @@ public class BasicLineItemProcessorTest {
     @Before
     public void newBasicLineItemProcessor() {
     	accountService = new BasicAccountService(null, null, null, null, null);
-		productService = new BasicProductService();
+		productService = new BasicProductService(null);
 		ReservationService reservationService = new BasicReservationService(Ec2InstanceReservationPrice.ReservationPeriod.oneyear, ReservationUtilization.HEAVY_PARTIAL);
     	
     	lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, null, null);
