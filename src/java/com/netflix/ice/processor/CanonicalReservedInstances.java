@@ -260,7 +260,7 @@ public class CanonicalReservedInstances {
         offeringType = tokens[18];
         // Recurring charges in the form "f:c|f:c"
         recurringCharges = new ArrayList<RecurringCharge>();
-        if (tokens.length > 19) {
+        if (tokens.length > 19 && !tokens[19].isEmpty()) {
 	        String[] charges = tokens[19].split("\\|");
 	        for (String charge: charges) {
 	        	recurringCharges.add(new RecurringCharge(charge));

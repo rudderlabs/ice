@@ -31,9 +31,10 @@ public class CanonicalReservedInstancesTest {
 	private static final String currency = "USD";
 	private static final String offeringType = "All Upfront";
 	private static final String recurringCharges = "hourly:1.0|monthly:30.0";
+	private static final String parentReservationId = "bbbbbbbb-cccc-cccc-ddddddddddddddddd";
 	
 	
-	private void compareValues(CanonicalReservedInstances cri, boolean hasSubscriptionId) {
+	private void compareValues(CanonicalReservedInstances cri, int numRecurring) {
 		assertTrue("Account doesn't match", account.equals(cri.getAccountId()));
 		assertTrue("Region doesn't match", region.equals(cri.getRegion()));
 		assertTrue("Product doesn't match", product.equals(cri.getProduct()));
@@ -57,20 +58,30 @@ public class CanonicalReservedInstancesTest {
 		assertTrue("OfferingType doesn't match", offeringType.equals(cri.getOfferingType()));
 		List<RecurringCharge> rcsA = cri.getRecurringCharges();
 		String[] rcsB = recurringCharges.split("\\|");
-		assertTrue("Number of recurring charges is wrong", rcsA.size() == rcsB.length);
-		for (int i = 0; i < rcsB.length; i++) {
+		assertTrue("Number of recurring charges is wrong", rcsA.size() == numRecurring);
+		for (int i = 0; i < numRecurring; i++) {
 			String[] rcB = rcsB[i].split(":");
 			assertTrue("Recurrence frequency for index " + i + " doesn't match", rcB[0].equals(rcsA.get(i).frequency));
 			assertTrue("Recurrence cost for index " + i + " doesn't match", Double.parseDouble(rcB[1]) - rcsA.get(i).cost < 0.001);
 		}
+		assertTrue("ParentReservationId doesn't match", parentReservationId.equals(cri.getParentReservationId()));
 	}
 
 	@Test
 	public void testCSVConstructor() {
 		String testRes = account + "," + product + "," + region + "," + reservationId + "," + offeringId + "," + instanceType + "," + scope + "," +
 				zone + "," + multiAZ + "," + start + "," + end + "," + duration + "," + usagePrice + "," + fixedPrice + "," + instanceCount + "," +
-				description + "," + state + "," + currency + "," + offeringType + "," + recurringCharges;
+				description + "," + state + "," + currency + "," + offeringType + "," + recurringCharges + "," + parentReservationId;
 		CanonicalReservedInstances cri = new CanonicalReservedInstances(testRes);
-		compareValues(cri, false);
+		compareValues(cri, 2);
+	}
+	
+	@Test
+	public void testCSVConstructorNoRecurring() {
+		String testRes = account + "," + product + "," + region + "," + reservationId + "," + offeringId + "," + instanceType + "," + scope + "," +
+				zone + "," + multiAZ + "," + start + "," + end + "," + duration + "," + usagePrice + "," + fixedPrice + "," + instanceCount + "," +
+				description + "," + state + "," + currency + "," + offeringType + ",," + parentReservationId;
+		CanonicalReservedInstances cri = new CanonicalReservedInstances(testRes);
+		compareValues(cri, 0);
 	}
 }
