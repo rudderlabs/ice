@@ -17,6 +17,7 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
 import com.netflix.ice.processor.Instances;
+import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Operation;
@@ -89,43 +90,80 @@ public class BasicLineItemProcessorTest {
 			ret = ret.substring(0, ret.length() - 2);
 		return ret;
 	}
+	
+	class ProcessTest {
+		private String[] items;
+		private String[] expectedTag;
+		private double usage;
+		private double cost;
+		private Result result;
+		
+		ProcessTest(String[] items, String[] expectedTag, double usage, double cost, Result result) {
+			this.items = items;
+			this.expectedTag = expectedTag;
+			this.usage = usage;
+			this.cost = cost;
+			this.result = result;
+		}
+	}
 
 	@Test
 	public void testProcess() {
 		String[] header = {
 				"InvoiceID","PayerAccountId","LinkedAccountId","RecordType","RecordId","ProductName","RateId","SubscriptionId","PricingPlanId","UsageType","Operation","AvailabilityZone","ReservedInstance","ItemDescription","UsageStartDate","UsageEndDate","UsageQuantity","BlendedRate","BlendedCost","UnBlendedRate","UnBlendedCost"
 		};
-		String[] items = {
-				"Estimated","123456789012","234567890123","LineItem","64995239622564160456413494","Amazon Elastic Compute Cloud","15783673","480197576","1208006","APS2-HeavyUsage:c4.2xlarge","RunInstances:0002","ap-southeast-2a","Y","USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance","2017-06-01 00:00:00","2017-06-01 01:00:00","1.00000000","0.0000000000","0.00000000","0.34000","0.3400000000000"
+		
+		ProcessTest[] tests = {
+				new ProcessTest( // Usage of one EC2 Reserved insance
+						new String[] { "Estimated","123456789012","234567890123","LineItem","64995239622564160456413494","Amazon Elastic Compute Cloud","15783673","480197576","1208006","APS2-HeavyUsage:c4.2xlarge","RunInstances:0002","ap-southeast-2a","Y","USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance","2017-06-01 00:00:00","2017-06-01 01:00:00","1.00000000","0.0000000000","0.00000000","0.34000","0.3400000000000" },
+						new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null },
+						1, 0.34, Result.hourly
+					),
+				new ProcessTest( // RI Purchase record
+						new String[] { "Estimated","123456789012","234567890123","LineItem","64995239622564160456413494","Amazon Elastic Compute Cloud","0","","","","","","Y","Sign up charge for subscription: 647735683, planId: 2195643","2017-06-09 21:21:37","2018-06-09 21:21:36","150.0","","9832.500000","","9832.500000" },
+						null, 0, 0, Result.ignore
+					),
 		};
 
 		long startMilli = 1496275200000L;
 		boolean processDelayed = false;
 
-		Map<Product, ReadWriteData> usageDataByProduct = Maps.newHashMap();
-		Map<Product, ReadWriteData> costDataByProduct = Maps.newHashMap();
-        usageDataByProduct.put(null, new ReadWriteData());
-        costDataByProduct.put(null, new ReadWriteData());
-
         Map<String, Double> ondemandRate = Maps.newHashMap();
-		Instances instances = null;
 		
 		lineItemProcessor.initIndexes(false, true, header);
-		lineItemProcessor.process(startMilli, processDelayed, items, usageDataByProduct, costDataByProduct, ondemandRate, instances);
 		
-		String[] expected = new String[]{
-				"234567890123",
-				"ap-southeast-2",
-				"ap-southeast-2a",
-				"EC2 Instance",
-				"Bonus RIs - Partial Upfront",
-				"c4.2xlarge.windows",
-				null
-		};
-		TagGroup got = (TagGroup) usageDataByProduct.get(null).getTagGroups().toArray()[0];
-		String errors = checkTag(got, expected);
-		assertTrue("Tag is not correct: " + errors, errors.length() == 0);
-	
-	
+		for (ProcessTest t: tests) {
+			Instances instances = null;
+			Map<Product, ReadWriteData> usageDataByProduct = Maps.newHashMap();
+			Map<Product, ReadWriteData> costDataByProduct = Maps.newHashMap();
+	        usageDataByProduct.put(null, new ReadWriteData());
+	        costDataByProduct.put(null, new ReadWriteData());
+
+			Result result = lineItemProcessor.process(startMilli, processDelayed, t.items, usageDataByProduct, costDataByProduct, ondemandRate, instances);
+			assertTrue("Incorrect result. Expected " + t.result + ", got " + result, result == t.result);
+			
+			// Check usage data
+			int gotLen = usageDataByProduct.get(null).getTagGroups().size();
+			int expectLen = t.expectedTag == null ? 0 : 1;
+			assertTrue("Incorrect number of usage tags. Expected " + (t.expectedTag == null ? 0 : 1) + ", got " + gotLen, gotLen == expectLen);
+			if (gotLen > 0) {
+				TagGroup got = (TagGroup) usageDataByProduct.get(null).getTagGroups().toArray()[0];
+				String errors = checkTag(got, t.expectedTag);
+				assertTrue("Tag is not correct: " + errors, errors.length() == 0);
+				double usage = usageDataByProduct.get(null).getData(0).get(got);
+				assertTrue("Usage is incorrect. Expected " + t.usage + ", got " + usage, usage - t.usage < 0.001);
+			}
+			// Check cost data
+			gotLen = costDataByProduct.get(null).getTagGroups().size();
+			expectLen = t.expectedTag == null ? 0 : 1;
+			assertTrue("Incorrect number of usage tags. Expected " + (t.expectedTag == null ? 0 : 1) + ", got " + gotLen, gotLen == expectLen);
+			if (gotLen > 0) {
+				TagGroup got = (TagGroup) costDataByProduct.get(null).getTagGroups().toArray()[0];
+				String errors = checkTag(got, t.expectedTag);
+				assertTrue("Tag is not correct: " + errors, errors.length() == 0);
+				double cost = costDataByProduct.get(null).getData(0).get(got);
+				assertTrue("Usage is incorrect. Expected " + t.cost + ", got " + cost, cost - t.usage < 0.001);				
+			}
+		}
 	}
 }

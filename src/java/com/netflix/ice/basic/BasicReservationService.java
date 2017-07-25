@@ -408,47 +408,6 @@ public class BasicReservationService extends Poller implements ReservationServic
 	    
 	    return new ReservationInfo(count, upfrontAmortized, hourlyCost);
 	}
-
-     
-    /*
-     * Reservations created by AWS through modification of an existing reservation doesn't carry the fixed price.
-     * This method will search for and return the parent if found, else the child is returned.
-     */
-    private CanonicalReservedInstances getParentReservation(String childAccountId, CanonicalReservedInstances child, Map<String, CanonicalReservedInstances> reservationsFromApi)
-    {
-    	CanonicalReservedInstances parent = child;
-    	
-        for (String key: reservationsFromApi.keySet()) {
-            String accountId = key.substring(0, key.indexOf(","));
-            if (!accountId.equals(childAccountId)) {
-            	continue;
-            }
-            CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
-            
-            if (reservedInstances.getReservationId().equals(child.getReservationId()) ||
-            		!reservedInstances.getState().equals("retired") ||
-            		!reservedInstances.getEnd().equals(child.getStart()) ||
-            		!reservedInstances.getRegion().equals(child.getRegion()) ||
-            		!reservedInstances.getInstanceType().equals(child.getInstanceType()) ||
-            		!reservedInstances.getOfferingType().equals(child.getOfferingType())
-            		) {
-                continue;
-            }
-            // Looks like a match
-            parent = reservedInstances;
-            while (parent.getFixedPrice() == 0.0) {
-            	// Try to find a parent of this one
-            	CanonicalReservedInstances grandParent = getParentReservation(childAccountId, parent, reservationsFromApi);
-            	if (grandParent.getReservationId().equals(parent.getReservationId())) {
-            		break;
-            	}
-            	parent = grandParent;
-            }
-
-        }
-        
-    	return parent;
-    }
     
     private long getEffectiveReservationTime(Date d) {
     	Calendar c = new GregorianCalendar();
@@ -458,8 +417,8 @@ public class BasicReservationService extends Poller implements ReservationServic
     	c.set(Calendar.MILLISECOND, 0);
     	return c.getTime().getTime();
     }
-
-    public void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService) {
+        
+    public void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             if (utilization == ReservationUtilization.LIGHT ||
@@ -470,15 +429,14 @@ public class BasicReservationService extends Poller implements ReservationServic
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
 
-        for (String key: reservationsFromApi.keySet()) {
+        for (ReservationKey key: reservationsFromApi.keySet()) {
             CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
             if (reservedInstances.getInstanceCount() <= 0) {
             	//logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + " has no instances");
                 continue;
             }
 
-            String accountId = key.substring(0, key.indexOf(","));
-            Account account = accountService.getAccountById(accountId);
+            Account account = accountService.getAccountById(key.account);
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
             
@@ -504,14 +462,6 @@ public class BasicReservationService extends Poller implements ReservationServic
 
             // logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
             
-            if (fixedPrice == 0.0 && 
-            		(utilization == ReservationUtilization.FIXED ||
-            		 utilization == ReservationUtilization.HEAVY_PARTIAL))  {
-            	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
-            	CanonicalReservedInstances parent = getParentReservation(accountId, reservedInstances, reservationsFromApi);
-            	fixedPrice = parent.getFixedPrice();
-                logger.debug("Found modified reservation for " + reservedInstances.getInstanceType() + ", id: " + reservedInstances.getReservationId() + " with parent " + parent.getReservationId() + " price: " + fixedPrice);
-            }
             double hourlyFixedPrice = fixedPrice / (reservedInstances.getDuration() / 3600); // duration is in seconds, we need hours
             Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 

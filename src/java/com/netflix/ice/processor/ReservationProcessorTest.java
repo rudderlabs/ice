@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.ivy.util.StringUtils;
+import org.joda.time.DateTime;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
+import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -137,11 +139,30 @@ public class ReservationProcessorTest {
 		}
 	}
 	
+	private String convertStartAndEnd(String res) {
+		// If start and end times are in milliseconds, convert to AWS billing format
+		String[] fields = res.split(",");
+		try {
+			Long start = Long.parseLong(fields[9]);
+			fields[9] = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(start));
+		}
+		catch (Exception e) {
+		}
+		try {
+			Long end = Long.parseLong(fields[10]);
+			fields[10] = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(end));
+		}
+		catch (Exception e) {
+		}
+		return StringUtils.join(fields, ",");
+	}
+	
 	private void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) {
-		Map<String, CanonicalReservedInstances> reservations = Maps.newHashMap();
+		Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
-			reservations.put(fields[0]+","+fields[2]+","+fields[3], new CanonicalReservedInstances(res));
+			res = convertStartAndEnd(res);
+			reservations.put(new ReservationKey(fields[0], fields[2], fields[3]), new CanonicalReservedInstances(res));
 		}
 		
 		AccountService accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);

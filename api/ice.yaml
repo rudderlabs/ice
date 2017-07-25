@@ -1,0 +1,371 @@
+swagger: '2.0'
+info:
+  title: Netflix/ICE Data API
+  version: '3.0'
+host: ec2-34-195-35-246.compute-1.amazonaws.com
+basePath: /ice/dashboard
+schemes:
+  - https
+securityDefinitions:
+  ice_auth:
+    type: basic
+security:
+  - ice_auth: []
+consumes:
+  - application/json
+produces:
+  - application/json
+definitions:
+  Name:
+    type: object
+    properties:
+      name:
+        type: string
+  Names:
+    type: array
+    items:
+      $ref: '#/definitions/Name'
+  NamesResponse:
+    type: object
+    properties:
+      status:
+        type: number
+      data:
+        $ref: '#/definitions/Names'
+  ApplicationGroup:
+    type: object
+    properties:
+      name:
+        type: string
+      owner:
+        type: string
+      data:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+  ApplicationGroupResponse:
+    type: object
+    properties:
+      status:
+        type: integer
+      data:
+        $ref: '#/definitions/ApplicationGroup'
+
+parameters:
+  accountParam:
+    name: account
+    in: query
+    description: Comma separated list of account names.
+    type: array
+    items:
+      type: string
+    required: true
+  regionParam:
+    name: region
+    in: query
+    type: array
+    items:
+      type: string
+    description: Comma separated list of region names.
+    required: true
+  productParam:
+    name: product
+    in: query
+    description: Comma separated list of product names.
+    type: array
+    items:
+      type: string
+    required: true
+  operationParam:
+    name: operation
+    in: query
+    description: Comma separated list of operation names.
+    type: array
+    items:
+      type: string
+    required: true
+  nameParam:
+    name: name
+    in: query
+    description: name of application group
+    type: string
+    required: true
+
+responses:
+  successResponse:
+    description: success response
+    schema:
+      type: object
+      properties:
+        status:
+          type: integer
+  
+paths:
+  /getAccounts:
+    get:
+      description: Get the list of accounts.
+      operationId: getAccounts
+      responses:
+        '200':
+          description: getAccounts response
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getRegions:
+    get:
+      description: Get the list of regions used by the supplied accounts.
+      operationId: getRegions
+      parameters:
+        - $ref: '#/parameters/accountParam'
+      responses:
+        '200':
+          description: collection of regions
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getZones:
+    get:
+      description: Get the list of zones used by all accounts.
+      operationId: getZones
+      responses:
+        '200':
+          description: collection of zones
+          schema:
+            $ref: '#/definitions/NamesResponse'
+            
+  /getProducts:
+    get:
+      description: Get the list of products used by the supplied accounts in the specified regions.
+      operationId: getProducts
+      parameters:
+        - $ref: '#/parameters/accountParam'
+        - $ref: '#/parameters/regionParam'
+      responses:
+        '200':
+          description: collection of products
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getResourceGroups:
+    get:
+      description: Get the list of resource groups for the requested accounts, products, and regions.
+      operationId: getResourceGroups
+      parameters:
+        - $ref: '#/parameters/accountParam'
+        - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/productParam'
+      responses:
+        '200':
+          description: collection of resource groups
+          schema:
+            $ref: '#/definitions/NamesResponse'
+            
+  /getOperations:
+    get:
+      description: Get the list of operations for the supplied products used by the provided accounts in the specified regions.
+      parameters:
+        - $ref: '#/parameters/accountParam'
+        - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/productParam'
+      responses:
+        '200':
+          description: collection of operations
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getUsageTypes:
+    get:
+      description: Get the list of usage types for the accounts, regions, products, and operations provided.
+      parameters:
+        - $ref: '#/parameters/accountParam'
+        - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/productParam'
+        - $ref: '#/parameters/operationParam'
+      responses:
+        '200':
+          description: collection of usage types
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getData:
+    post:
+      description: Get the data for the requested cost or usage.
+      parameters:
+        - name: dataRequest
+          in: body
+          description: data request parameters
+          required: true
+          schema:
+            type: object
+            properties: 
+              isCost:
+                type: boolean
+              usageUnit:
+                type: string
+                enum: [Dollar, Instances, ECUs, vCPUs, CostMult]
+              aggregate:
+                type: string
+                enum: [none, stats, data, both]
+              groupBy:
+                type: string
+                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup]
+              consolidate:
+                type: string
+                enum: [monthly, weekly, daily, hourly]
+              start:
+                type: string
+              end:
+                type: string
+              breakdown:
+                type: boolean
+              showsps:
+                type: boolean
+              factorsps:
+                type: boolean
+              family:
+                type: boolean
+              account:
+                type: string
+              appgroup:
+                type: string
+              forReservation:
+                type: boolean
+              elasticity:
+                type: boolean
+              showZones:
+                type: boolean
+              showResourceGroups:
+                type: boolean
+              spans:
+                type: integer
+      responses:
+        '200':
+          description: data collection
+          schema:
+            type: object
+            properties:
+              status:
+                type: number
+              start:
+                type: number
+              data:
+                type: object
+              stats:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    min:
+                      type: number
+                    max:
+                      type: number
+                    total:
+                      type: number
+                    average:
+                      type: number
+              groupBy:
+                type: string
+              interval:
+                type: integer
+  /getTimeSpan:
+    get:
+      description: Get the start and end times for the requested number of spans.
+      parameters:
+        - name: spans
+          in: query
+          description: number of spans
+          type: integer
+          required: true
+        - name: end
+          in: query
+          description: end time
+          type: string
+          required: true
+        - name: consolidate
+          in: query
+          description: consolidation period
+          type: string
+          enum:
+            - daily
+            - hourly
+            - weekly
+            - monthly
+          required: true
+      responses:
+        '200':
+          description: time span response
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+              start:
+                type: string
+              end:
+                type: string
+
+  /getApplicationGroup:
+    get:
+      description: Get application group by name
+      parameters:
+        - $ref: '#/parameters/nameParam'
+      responses:
+        '200':
+          description: application group
+          schema:
+            $ref: '#/definitions/ApplicationGroupResponse'
+        '404':
+          description: not found error
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+
+  /deleteApplicationGroup:
+    get:
+      description: Delete application group by name
+      parameters:
+        - $ref: '#/parameters/nameParam'
+      responses:
+        '200':
+          $ref: '#/responses/successResponse'
+
+  /getResourceGroupLists:
+    get:
+      description: Get resource group lists.
+      responses:
+        '200':
+          description: resource groups list
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product:
+                      $ref: '#/definitions/Name'
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/definitions/Name'
+
+  /saveApplicationGroup:
+    post:
+      description: Save application group
+      parameters:
+        - name: applicationGroup
+          in: body
+          schema:
+            $ref: '#/definitions/ApplicationGroup'
+      responses:
+        '200':
+          $ref: '#/responses/successResponse'
+            
+

@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.DateTime;
 
 import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
@@ -149,8 +150,13 @@ public class CanonicalReservedInstances {
      * The recurring charge tag assigned to the resource.
      */
     private List<RecurringCharge> recurringCharges;
+    
+    /*
+     * parent reservation ID if this was modified
+     */
+    private String parentReservationId;
 
-    public CanonicalReservedInstances(String accountId, String region, ReservedInstances ri) {
+    public CanonicalReservedInstances(String accountId, String region, ReservedInstances ri, String parentReservationId) {
 		this.accountId = accountId;
         this.product = "EC2";
         this.region = region;
@@ -174,6 +180,7 @@ public class CanonicalReservedInstances {
         for (com.amazonaws.services.ec2.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getFrequency(), rc.getAmount()));
         }
+        this.parentReservationId = parentReservationId;
 	}
     
     public CanonicalReservedInstances(String accountId, String region, ReservedDBInstance ri) {
@@ -200,6 +207,7 @@ public class CanonicalReservedInstances {
         for (com.amazonaws.services.rds.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
         }
+        this.parentReservationId = null;
     }
 
     public CanonicalReservedInstances(String accountId, String region, ReservedNode ri) {
@@ -226,6 +234,7 @@ public class CanonicalReservedInstances {
         for (com.amazonaws.services.redshift.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
         }
+        this.parentReservationId = null;
     }
 
     public CanonicalReservedInstances(String csv) {
@@ -239,14 +248,9 @@ public class CanonicalReservedInstances {
         scope = tokens[6];
         availabilityZone = tokens[7];
         multiAZ = Boolean.parseBoolean(tokens[8]);
-        Long s = Long.parseLong(tokens[9]);
-        start = new Date(s);
-        Long e = Long.parseLong(tokens[10]);
+        start = new Date(LineItemProcessor.amazonBillingDateFormat.parseMillis(tokens[9]));
+        end = new Date(LineItemProcessor.amazonBillingDateFormat.parseMillis(tokens[10]));
         duration = Long.parseLong(tokens[11]);
-        if (e != null)
-            end = new Date(e);
-        else
-            end = new Date(s + duration * 1000);
         usagePrice = Double.parseDouble(tokens[12]);
         fixedPrice = Double.parseDouble(tokens[13]);
         instanceCount = Integer.parseInt(tokens[14]);
@@ -262,6 +266,8 @@ public class CanonicalReservedInstances {
 	        	recurringCharges.add(new RecurringCharge(charge));
 	        }
         }
+    	if (tokens.length > 20)
+    		parentReservationId = tokens[20];
     }
     
 	public String getAccountId() {
@@ -423,6 +429,37 @@ public class CanonicalReservedInstances {
 	public void setRecurringCharges(List<RecurringCharge> recurringCharges) {
 		this.recurringCharges = recurringCharges;
 	}
+	
+	/*
+	 * Generate a header for a CSV file
+	 */
+	public static String header() {
+		String[] cols = new String[] {
+			"Account",
+			"Product",
+			"Region",
+			"ReservationId",
+			"ReservationOfferingId",
+			"InstanceType",
+			"Scope",
+			"AvailabilityZone",
+			"MultiAZ",
+			"Start",
+			"End",
+			"Duration",
+			"UsagePrice",
+			"FixedPrice",
+			"InstanceCount",
+			"ProductDescription",
+			"State",
+			"CurrencyCode",
+			"OfferingType",
+			"RecurringCharges",
+			"SubscriptionId",
+			"ParentReservationId",
+		};
+		return StringUtils.join(cols, ",");
+	}
 
 	public String toString() {
     	// First prep the recurring charges
@@ -442,8 +479,8 @@ public class CanonicalReservedInstances {
     	        scope,
     	        availabilityZone,
     	        multiAZ.toString(),
-    	        start.getTime() + "",
-    	        end.getTime() + "",
+    	        LineItemProcessor.amazonBillingDateFormat.print(new DateTime(start.getTime())),
+    	        LineItemProcessor.amazonBillingDateFormat.print(new DateTime(end.getTime())),
     	        duration.toString(),
     	        usagePrice.toString(),
     	        fixedPrice.toString(),
@@ -452,7 +489,8 @@ public class CanonicalReservedInstances {
     	        state,
     	        currencyCode,
     	        offeringType,
-    	        rcs
+    	        rcs,
+    	        parentReservationId,
         };
     	return StringUtils.join(fields, ",");
     }
@@ -478,5 +516,14 @@ public class CanonicalReservedInstances {
     	}
     	return charge;
 	}
+	
+	public String getParentReservationId() {
+		return parentReservationId;
+	}
+
+	public void setParentReservationId(String parentReservationId) {
+		this.parentReservationId = parentReservationId;
+	}
+
 }
     

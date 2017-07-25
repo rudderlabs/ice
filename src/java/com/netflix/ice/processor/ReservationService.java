@@ -77,7 +77,7 @@ public interface ReservationService {
      * Called by ReservationCapacityPoller to update reservations.
      * @param reservations
      */
-    void updateReservations(Map<String, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService);
+    void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService);
 
 
     public static class ReservationInfo {
@@ -85,10 +85,34 @@ public interface ReservationService {
         public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
         public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
-        public ReservationInfo (int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        public ReservationInfo(int capacity, double upfrontAmortized, double reservationHourlyCost) {
             this.capacity = capacity;
             this.upfrontAmortized = upfrontAmortized;
             this.reservationHourlyCost = reservationHourlyCost;
         }
     }
+    
+    public class ReservationKey implements Comparable<ReservationKey> {
+    	public String account;
+    	public String region;
+    	public String reservationId;
+    	
+    	ReservationKey(String account, String region, String reservationId) {
+    		this.account = account;
+    		this.region = region;
+    		this.reservationId = reservationId;
+    	}
+
+		@Override
+		public int compareTo(ReservationKey o) {
+	        int result = account.compareTo(o.account);
+	        if (result != 0)
+	            return result;
+	        result = region.compareTo(o.region);
+	        if (result != 0)
+	            return result;
+			return reservationId.compareTo(o.reservationId);
+		}
+    }
+
 }

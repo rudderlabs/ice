@@ -20,8 +20,12 @@ package com.netflix.ice.processor;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsRequest;
+import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsResult;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
 import com.amazonaws.services.ec2.model.ReservedInstances;
+import com.amazonaws.services.ec2.model.ReservedInstancesModification;
+import com.amazonaws.services.ec2.model.ReservedInstancesModificationResult;
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.DescribeReservedDBInstancesResult;
@@ -30,13 +34,17 @@ import com.amazonaws.services.redshift.AmazonRedshift;
 import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
 import com.amazonaws.services.redshift.model.DescribeReservedNodesResult;
 import com.amazonaws.services.redshift.model.ReservedNode;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
+import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Region;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -50,16 +58,70 @@ public class ReservationCapacityPoller extends Poller {
     private static final String ec2 		= "ec2";
     private static final String rds 		= "rds";
     private static final String redshift 	= "redshift";
+    
+    private static final String archiveFilename = "reservation_capacity.csv";
 
     public boolean updatedConfig() {
         return updatedConfig;
     }
+    
+	public class Ec2Mods {
+		private List<ReservedInstancesModification> mods;
+		
+		Ec2Mods(List<ReservedInstancesModification> mods) {
+			this.mods = mods;
+		}
+		
+		public ReservedInstancesModification getMod(String reservationId) {
+			for (ReservedInstancesModification mod: mods) {
+				if (mod.getStatus().equals("failed"))
+					continue;
+				
+				for (ReservedInstancesModificationResult result: mod.getModificationResults()) {
+					if (result.getReservedInstancesId() == null) {
+						logger.error("getReservedInstancesId for " + mod.getReservedInstancesIds() + " return null: " + result);
+						continue;
+					}
+					if (result.getReservedInstancesId().equals(reservationId))
+						return mod;
+				}
+			}
+			return null;
+		}
+		
+		public String getModResId(String reservationId) {
+			ReservedInstancesModification mod = getMod(reservationId);
+			return mod == null ? "" : mod.getReservedInstancesIds().get(0).getReservedInstancesId();
+		}
+		
+		public String getOriginalReservationId(String reservationId) {
+			String childId = reservationId;
+			for (ReservedInstancesModification modification = getMod(childId); modification != null; modification = getMod(childId)) {
+				childId = modification.getReservedInstancesIds().get(0).getReservedInstancesId();
+				logger.debug("Reservation " + reservationId + " has parent " + childId);
+			}
+			return childId;
+		}
+		
+		public String info() {
+			int fulfilled = 0;
+			int failed = 0;
+			
+			for (ReservedInstancesModification mod: mods) {
+				if (mod.getStatus().equals("failed"))
+					failed++;
+				if (mod.getStatus().equals("fulfilled"))
+					fulfilled++;
+			}
+			return "Modifications: " + fulfilled + " fulfilled, " + failed + " failed, " + mods.size();
+		}
+	}
 
     @Override
     protected void poll() throws Exception {
         ProcessorConfig config = ProcessorConfig.getInstance();
 
-        Map<String, CanonicalReservedInstances> reservations = readArchive(config);
+        Map<ReservationKey, CanonicalReservedInstances> reservations = readArchive(config);
         
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
         AmazonRDSClientBuilder rdsBuilder = AmazonRDSClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
@@ -86,30 +148,53 @@ public class ReservationCapacityPoller extends Poller {
             	   
                    if (products.contains(ec2)) {
                 	   AmazonEC2 ec2 = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                	   Map<ReservationKey, CanonicalReservedInstances> ec2Reservations = Maps.newTreeMap();
                 	   
+                	   // Start by getting any reservation modifications so that we can later use them to track down
+                	   // the fixed price of modified Partial Upfront or All Upfront reservations. AWS doesn't carry
+                	   // the fixed price to the modified reservation, but we need that to compute amortization.
+                	   List<ReservedInstancesModification> modifications = Lists.newArrayList();
+                	   try {
+                		   DescribeReservedInstancesModificationsResult modResult = ec2.describeReservedInstancesModifications();
+                		   
+                		   modifications.addAll(modResult.getReservedInstancesModifications());
+                		   while (modResult.getNextToken() != null) {
+                			   modResult = ec2.describeReservedInstancesModifications(new DescribeReservedInstancesModificationsRequest().withNextToken(modResult.getNextToken()));
+                    		   modifications.addAll(modResult.getReservedInstancesModifications());
+                		   }
+                	   }
+                       catch (Exception e) {
+                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
+                       }
+                	   Ec2Mods mods = new Ec2Mods(modifications);
                        try {
+                    	   
                            DescribeReservedInstancesResult result = ec2.describeReservedInstances();
                            for (ReservedInstances reservation: result.getReservedInstances()) {
                         	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
-                               String key = account.id + "," + region.name + "," + reservation.getReservedInstancesId();
-                               CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
-                               reservations.put(key, cri);
+                               ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedInstancesId());
+                               
+                               CanonicalReservedInstances cri = new CanonicalReservedInstances(
+                            		   account.id, region.name, reservation, 
+                            		   mods.getModResId(reservation.getReservedInstancesId()));
+                               ec2Reservations.put(key, cri);
                            }
                        }
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
                        }
                        ec2.shutdown();
+                       handleEC2Modifications(ec2Reservations, mods);
+                       reservations.putAll(ec2Reservations);
                    }
                	
    
                    if (products.contains(rds)) {
                        AmazonRDS rds = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
-                       
                        try {
                            DescribeReservedDBInstancesResult result = rds.describeReservedDBInstances();
                            for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
-                               String key = account.id + "," + region.name + "," + reservation.getReservedDBInstanceId();
+                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedDBInstanceId());
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
                                reservations.put(key, cri);
                            }
@@ -126,7 +211,7 @@ public class ReservationCapacityPoller extends Poller {
 	                   try {
 	                        DescribeReservedNodesResult result = redshift.describeReservedNodes();
 	                        for (ReservedNode reservation: result.getReservedNodes()) {
-	                            String key = account.id + "," + region.name + "," + reservation.getReservedNodeId();
+	                            ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedNodeId());
 	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
 	                            reservations.put(key, cri);
 	                        }
@@ -150,8 +235,40 @@ public class ReservationCapacityPoller extends Poller {
         archive(config, reservations);
     }
     
-    private Map<String, CanonicalReservedInstances> readArchive(ProcessorConfig config) {
-        File file = new File(config.localDir, "reservation_capacity.txt");
+    private void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods) {
+    	for (ReservationKey key: ec2Reservations.keySet()) {
+    		CanonicalReservedInstances reservedInstances = ec2Reservations.get(key);
+    		
+	        double fixedPrice = reservedInstances.getFixedPrice();
+	        ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
+	
+	        logger.debug("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
+	        
+	        if (fixedPrice == 0.0 && 
+	        		(utilization == ReservationUtilization.FIXED ||
+	        		 utilization == ReservationUtilization.HEAVY_PARTIAL))  {
+	        	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
+	        	// Get the reservation modification for this RI
+	        	String parentReservationId = mods.getOriginalReservationId(reservedInstances.getReservationId());
+	        	if (parentReservationId.equals(reservedInstances.getReservationId())) {
+	        		logger.error("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", No parent reservation found" +
+	        					mods.getMod(reservedInstances.getReservationId()));
+	        		logger.error(mods.info());
+	        		continue;
+	        	}
+	        	ReservationKey parentKey = new ReservationKey(key.account, key.region, parentReservationId);
+	        	CanonicalReservedInstances parentRI = ec2Reservations.get(parentKey);
+	        	if (parentRI == null) {
+	        		logger.error("Reservation: " + parentKey + " Not found in reservation list");
+	        		continue;
+	        	}
+	        	reservedInstances.setFixedPrice(parentRI.getFixedPrice());
+	        }
+    	}
+    }
+    
+    private Map<ReservationKey, CanonicalReservedInstances> readArchive(ProcessorConfig config) {
+        File file = new File(config.localDir, archiveFilename);
         
         // read from s3 if not exists
         if (!file.exists()) {
@@ -161,17 +278,20 @@ public class ReservationCapacityPoller extends Poller {
         }
 
         // read from file
-        Map<String, CanonicalReservedInstances> reservations = Maps.newTreeMap();
+        Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newTreeMap();
         if (file.exists()) {
             BufferedReader reader = null;
             try {
                 reader = new BufferedReader(new FileReader(file));
                 String line;
+                
+                // skip the header
+                reader.readLine();
 
                 while ((line = reader.readLine()) != null) {
                 	CanonicalReservedInstances reservation = new CanonicalReservedInstances(line);
                 	
-                    reservations.put(reservation.getAccountId() + "," + reservation.getRegion() + "," + reservation.getReservationId(), reservation);
+                    reservations.put(new ReservationKey(reservation.getAccountId(), reservation.getRegion(), reservation.getReservationId()), reservation);
                 }
             }
             catch (Exception e) {
@@ -186,14 +306,16 @@ public class ReservationCapacityPoller extends Poller {
         return reservations;
     }
     
-    private void archive(ProcessorConfig config, Map<String, CanonicalReservedInstances> reservations) {
-        File file = new File(config.localDir, "reservation_capacity.txt");
+    private void archive(ProcessorConfig config, Map<ReservationKey, CanonicalReservedInstances> reservations) {
+        File file = new File(config.localDir, archiveFilename);
 
         // archive to disk
         BufferedWriter writer = null;
         try {
             writer = new BufferedWriter(new FileWriter(file));
-            for (String key: reservations.keySet()) {
+            writer.write(CanonicalReservedInstances.header());
+            writer.newLine();
+            for (ReservationKey key: reservations.keySet()) {
                 CanonicalReservedInstances reservation = reservations.get(key);
                 writer.write(reservation.toString());
                 writer.newLine();
