@@ -49,7 +49,7 @@ public class BasicProductService implements ProductService {
         Product product = productsByAwsName.get(awsName);
         if (product == null) {
             product = new Product(awsName);
-            productsByAwsName.put(product.name, product);
+            productsByAwsName.put(awsName, product);
             productsByName.put(product.name, product);
             productsByFileName.put(product.getFileName(), product);
         }

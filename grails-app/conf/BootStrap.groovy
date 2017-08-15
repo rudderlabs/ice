@@ -98,55 +98,15 @@ class BootStrap {
 
             JSONConverter.register();
 
-            Map<String, Account> accounts = Maps.newHashMap();
-            for (String name: prop.stringPropertyNames()) {
-                if (name.startsWith("ice.account.")) {
-                    String accountName = name.substring("ice.account.".length());
-                    accounts.put(accountName, new Account(prop.getProperty(name), accountName));
-                }
-            }
-            Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
-			for (String name: prop.stringPropertyNames()) {
-				if (name.startsWith("ice.payeraccount.")) {
-					String accountName = name.substring("ice.payeraccount.".length());
-					String[] links = prop.getProperty(name).split(",");
-					List<Account> linkedAccounts = Lists.newArrayList();
-					for (String link: links) {
-						Account linkedAccount = accounts.get(link);
-						if (linkedAccount != null)
-							linkedAccounts.add(linkedAccount);
-					}
-					payerAccounts.put(accounts.get(accountName), linkedAccounts);
-				}
-			}
-            Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
-            Map<Account, String> reservationAccessRoles = Maps.newHashMap();
-            Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
-            for (String name: prop.stringPropertyNames()) {
-                if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {					
-                    String accountName = name.substring("ice.owneraccount.".length());
-					String[] products = prop.getProperty(name).split(",");
-					Set<String> productSet = new HashSet<String>();
-					for (String product: products) {
-						productSet.add(product);
-					}
-					reservationAccounts.put(accounts.get(accountName), productSet);
-
-                    String role = prop.getProperty(name + ".role", "");
-                    reservationAccessRoles.put(accounts.get(accountName), role);
-
-                    String externalId = prop.getProperty(name + ".externalId", "");
-                    reservationAccessExternalIds.put(accounts.get(accountName), externalId);					
-                }
-            }
-
-            BasicAccountService accountService = new BasicAccountService(Lists.newArrayList(accounts.values()), payerAccounts,
-                    reservationAccounts, reservationAccessRoles, reservationAccessExternalIds);
+            BasicAccountService accountService = new BasicAccountService(prop);
             Properties properties = new Properties();
-            if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MILLIS)))
-                properties.setProperty(IceOptions.START_MILLIS, prop.getProperty(IceOptions.START_MILLIS));
-            else
-                properties.setProperty(IceOptions.START_MILLIS, "" + new DateTime(DateTimeZone.UTC).withMillisOfDay(0).withDayOfMonth(1).getMillis());
+            if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
+                properties.setProperty(IceOptions.START_MONTH, prop.getProperty(IceOptions.START_MONTH));
+            }
+            else {
+				DateTime now = new DateTime(DateTimeZone.UTC);
+                properties.setProperty(IceOptions.START_MONTH, "" + now.year().get() + "-" + now.monthOfYear().get());
+            }
             properties.setProperty(IceOptions.WORK_S3_BUCKET_NAME, prop.getProperty(IceOptions.WORK_S3_BUCKET_NAME));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
 			
@@ -193,7 +153,8 @@ class BootStrap {
                 properties.setProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, prop.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_ROLENAME, prop.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_EXTERNALID, prop.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, ""));
-
+				properties.setProperty(IceOptions.COST_AND_USAGE_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_START_DATE, ""));
+				
                 if (prop.getProperty(IceOptions.COMPANY_NAME) != null)
                     properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
                 if (prop.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR) != null)
@@ -208,13 +169,13 @@ class BootStrap {
                     properties.setProperty(IceOptions.URL_PREFIX, prop.getProperty(IceOptions.URL_PREFIX));
 
                 ReservationCapacityPoller reservationCapacityPoller = null;
-                if ("true".equals(prop.getProperty("ice.reservationCapacityPoller"))) {
+                if ("true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER))) {
                     reservationCapacityPoller = new ReservationCapacityPoller();
                 }
                 Ec2InstanceReservationPrice.ReservationPeriod reservationPeriod =
-                    Ec2InstanceReservationPrice.ReservationPeriod.valueOf(prop.getProperty("ice.reservationPeriod", "threeyear"));
+                    Ec2InstanceReservationPrice.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
                 Ec2InstanceReservationPrice.ReservationUtilization reservationUtilization =
-                    Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty("ice.reservationUtilization", "HEAVY"));
+                    Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
 				ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
                 ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);

@@ -69,7 +69,7 @@ public class BasicDataManager extends Poller implements DataManager {
         this.consolidateType = consolidateType;
         this.dbName = (isCost ? "cost_" : "usage_") + consolidateType + "_" + (product == null ? "all" : product.getFileName());
 
-        start(300);
+        start();
     }
 
     /**

@@ -191,7 +191,52 @@ public class AwsUtils {
                 s3Client.shutdown();
         }
     }
+    
+    /**
+     * Read a cost and usage report manifest file
+     */
+	public static byte[] readManifest(String bucket, String fileKey, String accountId, String assumeRole, String externalId) {
+        AmazonS3Client s3Client = AwsUtils.s3Client;
 
+        try {
+
+            if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            }
+
+            S3Object s3Object = s3Client.getObject(bucket, fileKey);
+            InputStream input = s3Object.getObjectContent();
+            long targetSize = s3Object.getObjectMetadata().getContentLength();
+            if (targetSize > Integer.MAX_VALUE) {
+            	logger.error("manifest file too large: " + fileKey + ", " + targetSize);
+            	return null;
+            }
+            ByteArrayOutputStream output = new ByteArrayOutputStream((int) targetSize);
+
+            try {
+                byte buf[]=new byte[1024000];
+                int len;
+                while ((len=input.read(buf)) > 0) {
+                    output.write(buf, 0, len);
+                }
+            }
+            catch (IOException e) {
+                logger.error("error in downloading " + fileKey, e);
+            }
+            finally {
+                if (input != null) try {input.close();} catch (IOException e){}
+                if (output != null) try {output.close();} catch (IOException e){}
+            }
+            
+            return output.toByteArray();
+        }
+        finally {
+            if (s3Client != AwsUtils.s3Client)
+                s3Client.shutdown();
+        }
+	}
+
+    
     /**
      * Get list of months in from the file names.
      * @param bucket

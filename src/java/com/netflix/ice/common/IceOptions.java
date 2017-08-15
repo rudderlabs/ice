@@ -20,9 +20,9 @@ package com.netflix.ice.common;
 public class IceOptions {
 
     /**
-     * Data start date in millis.
+     * Data start date in YYYY-MM format.
      */
-    public static final String START_MILLIS = "ice.startmillis";
+    public static final String START_MONTH = "ice.startMonth";
 
     /**
      * Property for company name. It must be specified in ReaderConfig.
@@ -75,6 +75,11 @@ public class IceOptions {
      */
     public static final String BILLING_ACCESS_EXTERNALID = "ice.billing_accessExternalId";
 
+    /**
+     * Start date for transition to Cost and Usage Reports in YYYY-MM format.
+     */
+    public static final String COST_AND_USAGE_START_DATE = "ice.costAndUsageStartDate";
+    
     /**
      * User can configure their custom tags.
      */
@@ -174,4 +179,21 @@ public class IceOptions {
      * AWS EC2 instance ID of this processor. Used to shut down EC2 instance when pass completes if processOnce is true.
      */
     public static final String PROCESSOR_INSTANCE_ID = "ice.processorInstanceId";
+    
+    /**
+     * default reservation period, possible values are oneyear, threeyear
+     */
+    public static final String RESERVATION_PERIOD = "ice.reservationPeriod";
+    
+    /**
+     * default reservation utilization, possible values are HEAVY and HEAVY_PARTIAL.
+     */
+    public static final String RESERVATION_UTILIZATION = "ice.reservationUtilization";
+    
+    /**
+     * Reservation capacity poller: whether or not to start reservation capacity poller
+     */
+    public static final String RESERVATION_CAPACITY_POLLER = "ice.reservationCapacityPoller";
+
+
 }

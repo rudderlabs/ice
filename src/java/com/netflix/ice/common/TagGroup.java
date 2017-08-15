@@ -29,6 +29,7 @@ import org.joda.time.format.DateTimeFormatter;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
@@ -54,6 +55,16 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         this.usageType = usageType;
         this.resourceGroup = resourceGroup;
     }
+
+    public TagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
+        this.account = accountService.getAccountByName(account);
+        this.region = Region.getRegionByName(region);
+        this.zone = StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, this.region);
+        this.product = productService.getProductByName(product);
+        this.operation = Operation.getOperation(operation);
+        this.usageType = UsageType.getUsageType(usageTypeName, usageTypeUnit);
+        this.resourceGroup = StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup);
+}
 
     @Override
     public String toString() {
@@ -156,17 +167,23 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             UsageType.serialize(out, tagGroup.usageType);
             out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
+        
+        public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
+        	out.write("account,region,zone,product,operation,");
+        	UsageType.serializeCsvHeader(out);
+        	out.write(",resourceGroup");
+        }
 
-        public static void serializeCSV(DataOutput out, TagGroup tagGroup) throws IOException {
-            out.writeChars(tagGroup.account.toString() + ",");
-            out.writeChars(tagGroup.region.toString() + ",");
-            out.writeChars(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
+        public static void serializeCsv(OutputStreamWriter out, TagGroup tagGroup) throws IOException {
+            out.write(tagGroup.account.toString() + ",");
+            out.write(tagGroup.region.toString() + ",");
+            out.write(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
             // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.writeChars(tagGroup.product.getAwsName() + ",");
-            out.writeChars(tagGroup.operation.toString() + ",");
-            UsageType.serializeCSV(out, tagGroup.usageType);
-            out.writeChars(",");
-            out.writeChars(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
+            out.write(tagGroup.product.getAwsName() + ",");
+            out.write(tagGroup.operation.toString() + ",");
+            UsageType.serializeCsv(out, tagGroup.usageType);
+            out.write(",");
+            out.write(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
 
         public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(Config config, DataInput in) throws IOException {
@@ -199,7 +216,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
             return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         }
-        
+                
         // Serialize to CSV for general debugging
         public static void serializeTagGroupsCsv(DataOutput out, TreeMap<Long, Collection<TagGroup>> tagGroups) throws IOException {
             out.writeChars("Month,Account,Region,Zone,Product,Operation,UsageType,UsageTypeUnit,ResourceGroup\n");
@@ -232,7 +249,5 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 }
             }
         }
-
-
     }
 }

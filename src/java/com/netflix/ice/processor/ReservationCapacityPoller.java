@@ -49,6 +49,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Class to poll reservation capacities.
  */
@@ -60,6 +63,22 @@ public class ReservationCapacityPoller extends Poller {
     private static final String redshift 	= "redshift";
     
     private static final String archiveFilename = "reservation_capacity.csv";
+    
+	static Map<String, Double> instanceSizeMap = Maps.newHashMap();
+	static String[] sizes = new String[]{
+		"nano",
+		"micro",
+		"small",
+		"medium",
+		"large",
+		"xlarge",
+	};
+	{
+		// Load the multiplier map
+		for (int i = 0; i < sizes.length; i++)
+			instanceSizeMap.put(sizes[i], (double) (1 << i));
+	}
+
 
     public boolean updatedConfig() {
         return updatedConfig;
@@ -235,7 +254,7 @@ public class ReservationCapacityPoller extends Poller {
         archive(config, reservations);
     }
     
-    private void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods) {
+    protected void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods) {
     	for (ReservationKey key: ec2Reservations.keySet()) {
     		CanonicalReservedInstances reservedInstances = ec2Reservations.get(key);
     		
@@ -262,10 +281,33 @@ public class ReservationCapacityPoller extends Poller {
 	        		logger.error("Reservation: " + parentKey + " Not found in reservation list");
 	        		continue;
 	        	}
-	        	reservedInstances.setFixedPrice(parentRI.getFixedPrice());
+	        	/*
+	        	 * If reservation instance size changed, adjust the price accordingly.
+	        	 */
+	        	double adjustedPrice = adjustPrice(parentRI.getInstanceType(), reservedInstances.getInstanceType(), parentRI.getFixedPrice());
+	        	reservedInstances.setFixedPrice(adjustedPrice);
 	        }
     	}
     }
+    
+    private double adjustPrice(String fromInstanceType, String toInstanceType, double price) {
+    	String fromSize = fromInstanceType.split("\\.")[1];
+    	String toSize = toInstanceType.split("\\.")[1];
+    	return price * multiplier(toSize) / multiplier(fromSize);
+    }
+    
+	double multiplier(String size) {
+		Double m = instanceSizeMap.get(size);
+		if (m == null) {
+			if (size.endsWith("xlarge")) {
+				double mult = Double.parseDouble(size.substring(0, size.lastIndexOf("xlarge")));
+				return instanceSizeMap.get("xlarge") * mult;
+			}
+			logger.error("Cannot find multiplier for size: %s", size);
+			return 1.0;
+		}
+		return m;
+	}
     
     private Map<ReservationKey, CanonicalReservedInstances> readArchive(ProcessorConfig config) {
         File file = new File(config.localDir, archiveFilename);
@@ -277,6 +319,12 @@ public class ReservationCapacityPoller extends Poller {
             logger.info("downloaded " + file);
         }
 
+        Map<ReservationKey, CanonicalReservedInstances> reservations = readReservations(file);
+        logger.info("read " + reservations.size() + " reservations.");
+        return reservations;
+    }
+    
+    public static Map<ReservationKey, CanonicalReservedInstances> readReservations(File file) {
         // read from file
         Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newTreeMap();
         if (file.exists()) {
@@ -295,14 +343,14 @@ public class ReservationCapacityPoller extends Poller {
                 }
             }
             catch (Exception e) {
-                logger.error("error in reading " + file, e);
+            	Logger logger = LoggerFactory.getLogger(ReservationCapacityPoller.class);
+            	logger.error("error in reading " + file, e);
             }
             finally {
                 if (reader != null)
                     try {reader.close();} catch (Exception e) {}
             }
         }
-        logger.info("read " + reservations.size() + " reservations.");
         return reservations;
     }
     

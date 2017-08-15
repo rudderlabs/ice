@@ -10,6 +10,7 @@ import org.joda.time.DateTime;
 import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
 import com.amazonaws.services.redshift.model.ReservedNode;
+import com.netflix.ice.common.LineItem;
 
 /*
  * CanonicalReservedInstances is a universal representation of a reserved instance.
@@ -248,8 +249,8 @@ public class CanonicalReservedInstances {
         scope = tokens[6];
         availabilityZone = tokens[7];
         multiAZ = Boolean.parseBoolean(tokens[8]);
-        start = new Date(LineItemProcessor.amazonBillingDateFormat.parseMillis(tokens[9]));
-        end = new Date(LineItemProcessor.amazonBillingDateFormat.parseMillis(tokens[10]));
+        start = new Date(LineItem.amazonBillingDateFormat.parseMillis(tokens[9]));
+        end = new Date(LineItem.amazonBillingDateFormat.parseMillis(tokens[10]));
         duration = Long.parseLong(tokens[11]);
         usagePrice = Double.parseDouble(tokens[12]);
         fixedPrice = Double.parseDouble(tokens[13]);
@@ -455,7 +456,6 @@ public class CanonicalReservedInstances {
 			"CurrencyCode",
 			"OfferingType",
 			"RecurringCharges",
-			"SubscriptionId",
 			"ParentReservationId",
 		};
 		return StringUtils.join(cols, ",");
@@ -479,8 +479,8 @@ public class CanonicalReservedInstances {
     	        scope,
     	        availabilityZone,
     	        multiAZ.toString(),
-    	        LineItemProcessor.amazonBillingDateFormat.print(new DateTime(start.getTime())),
-    	        LineItemProcessor.amazonBillingDateFormat.print(new DateTime(end.getTime())),
+    	        LineItem.amazonBillingDateFormat.print(new DateTime(start.getTime())),
+    	        LineItem.amazonBillingDateFormat.print(new DateTime(end.getTime())),
     	        duration.toString(),
     	        usagePrice.toString(),
     	        fixedPrice.toString(),

@@ -2,6 +2,7 @@ package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.tag.Account;
@@ -69,14 +70,14 @@ public class BasicResourceService extends ResourceService {
     }
 
     @Override
-    public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart) {
+    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
         // Build the resource group name based on the values of the custom tags
         String result = "";
         for (String tag: customTags) {
         	// Grab the first non-empty value for each custom tag
         	for (int index: tagIndecies.get(tag)) {
-        		if (lineItem.length > index && !StringUtils.isEmpty(lineItem[index])) {
-        			String val = lineItem[index];
+        		if (lineItem.getResourceTagsSize() > index && !StringUtils.isEmpty(lineItem.getResourceTag(index))) {
+        			String val = lineItem.getResourceTag(index);
         			if (tagValuesInverted.containsKey(val.toLowerCase())) {
         				val = tagValuesInverted.get(val.toLowerCase());
         			}
@@ -107,7 +108,7 @@ public class BasicResourceService extends ResourceService {
     }
     
     @Override
-    public void initHeader(List<String> header, int userTagStartIndex) {
+    public void initHeader(String[] header) {
     	tagIndecies = Maps.newHashMap();
     	for (String tag: customTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
@@ -115,17 +116,22 @@ public class BasicResourceService extends ResourceService {
     		tagIndecies.put(tag, indecies);
     		
     		// First check the preferred key name
-    		int index = header.indexOf(fullTag);
-    		if (index > 0) {
+    		int index = -1;
+    		for (int i = 0; i < header.length; i++) {
+    			if (header[i].equals(fullTag)) {
+    				index = i;
+    				break;
+    			}
+    		}
+    		if (index >= 0) {
     			indecies.add(index);
     		}
     		// Look for alternate cases
-            int startIndex = userTagStartIndex;
-            for (int i = startIndex; i < header.size(); i++) {
+            for (int i = 0; i < header.length; i++) {
             	if (i == index) {
             		continue;	// skip the exact match we handled above
             	}
-            	if (fullTag.equalsIgnoreCase(header.get(i))) {
+            	if (fullTag.equalsIgnoreCase(header[i])) {
             		indecies.add(i);
             	}
             }
@@ -133,8 +139,8 @@ public class BasicResourceService extends ResourceService {
             if (tagKeys.containsKey(tag)) {
             	for (String alias: tagKeys.get(tag)) {
             		String fullAlias = USER_TAG_PREFIX + alias;
-                    for (int i = startIndex; i < header.size(); i++) {
-                    	if (fullAlias.equalsIgnoreCase(header.get(i))) {
+                    for (int i = 0; i < header.length; i++) {
+                    	if (fullAlias.equalsIgnoreCase(header[i])) {
                     		indecies.add(i);
                     	}
                     }

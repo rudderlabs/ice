@@ -4,9 +4,11 @@ import static org.junit.Assert.*;
 
 import java.util.Properties;
 
+import org.json.JSONArray;
 import org.junit.Test;
 
-import com.amazonaws.util.json.JSONArray;
+import com.netflix.ice.common.LineItem;
+import com.netflix.ice.processor.DetailedBillingReportLineItem;
 import com.netflix.ice.tag.Product;
 
 
@@ -15,34 +17,53 @@ import com.netflix.ice.tag.Product;
  * strictly speaking not unit tests any more...
  */
 public class EddaResourceServiceTest {
+    static final String[] dbrHeader = {
+		"InvoiceID","PayerAccountId","LinkedAccountId","RecordType","RecordId","ProductName","RateId","SubscriptionId","PricingPlanId","UsageType","Operation","AvailabilityZone","ReservedInstance","ItemDescription","UsageStartDate","UsageEndDate","UsageQuantity","BlendedRate","BlendedCost","UnBlendedRate","UnBlendedCost"
+    };
+    
+    private LineItem makeLineItem() {
+		LineItem lineItem = new DetailedBillingReportLineItem(false, true, dbrHeader);
+		String[] items = new String[dbrHeader.length];
+		for (int i = 0; i < items.length; i++)
+			items[i] = null;
+		lineItem.setItems(items);
+		
+		return lineItem;
+    }
 
 	@Test
 	public void test() throws Exception {
 		EddaResourceService service = new EddaResourceService(new Properties());
 
-		service.init();
+		service.init(null);
 
 		// does nothing really...
 		service.commit();
 
 		assertNotNull(service.getProductsWithResources());
+		
+		LineItem lineItem = makeLineItem();
+		
+		assertEquals("Product-name for unsupported resource", "somename", service.getResource(null, null, new Product("somename"), lineItem, 0));
+		assertEquals("Error for empty resourceId", "Error", service.getResource(null, null, new Product(Product.ec2), lineItem, 0));
+		lineItem.setResource("");
+		assertEquals("Error for empty resourceId", "Error", service.getResource(null, null, new Product(Product.ec2), lineItem, 0));
 
-		assertEquals("Product-name for unsupported resource", "somename", service.getResource(null, null, new Product("somename"), null, null, 0));
-		assertEquals("Error for empty resourceId", "Error", service.getResource(null, null, Product.ec2, null, null, 0));
-		assertEquals("Error for empty resourceId", "Error", service.getResource(null, null, Product.ec2, "", null, 0));
-
-		assertEquals("Unknown for resourceIds that we do not find", "Unknown", service.getResource(null, null, Product.ec2, "someunknowninstance", null, 0));
+		lineItem.setResource("someunknowninstance");
+		assertEquals("Unknown for resourceIds that we do not find", "Unknown", service.getResource(null, null, new Product(Product.ec2), lineItem, 0));
 
 		JSONArray instances = service.readInstanceArray();
 
-		String resource = service.getResource(null, null, Product.ec2, instances.getString(0), null, 0);
+		lineItem.setResource(instances.getString(0));
+		String resource = service.getResource(null, null, new Product(Product.ec2), lineItem, 0);
 		assertFalse("Not Error for an actual instance", "Error".equals(resource));
 
-		resource = service.getResource(null, null, Product.ec2_instance, instances.getString(0), null, 0);
+		resource = service.getResource(null, null, new Product(Product.ec2), lineItem, 0);
 		assertFalse("Not Error for an actual instance", "Error".equals(resource));
 
 		for(int i = 0;i < instances.length();i++) {
-			resource = service.getResource(null, null, Product.ec2_instance, instances.getString(i), null, 0);
+			lineItem.setResource(instances.getString(i));
+			resource = service.getResource(null, null, new Product(Product.ec2), lineItem, 0);
 			assertFalse("Not Error for an actual instance", "Error".equals(resource));
 		}
 	}
@@ -53,13 +74,17 @@ public class EddaResourceServiceTest {
 		EddaResourceService service = new EddaResourceService(new Properties());
 		JSONArray instances = service.readInstanceArray();
 
+		LineItem lineItem = makeLineItem();
+		
+
 		// overwrite config with an invalid hostname
 		Properties prop = new Properties();
 		prop.setProperty("ice.eddaresourceservice.url", "http://invalidhostname:18081/edda/api/v2/");
 		service = new EddaResourceService(prop);
 
 		// now the retrieved resources should return an error even for valid instances
-		String resource = service.getResource(null, null, Product.ec2, instances.getString(0), null, 0);
+		lineItem.setResource(instances.getString(0));
+		String resource = service.getResource(null, null, new Product(Product.ec2), lineItem, 0);
 		assertTrue("Error even for an actual instance when using wrong URL", "Error".equals(resource));
 
 		// overwrite config with an invalid URL
@@ -67,7 +92,8 @@ public class EddaResourceServiceTest {
 		service = new EddaResourceService(prop);
 
 		// now the retrieved resources should return an error even for valid instances
-		resource = service.getResource(null, null, Product.ec2, instances.getString(0), null, 0);
+		lineItem.setResource(instances.getString(0));
+		resource = service.getResource(null, null, new Product(Product.ec2), lineItem, 0);
 		assertTrue("Error even for an actual instance when using wrong URL", "Error".equals(resource));
 	}
 }

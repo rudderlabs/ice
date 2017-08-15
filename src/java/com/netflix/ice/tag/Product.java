@@ -81,9 +81,9 @@ public class Product extends Tag {
      * The AWS name is always used by the TagGroup serializer so that changing
      * the alternate name won't corrupt the data files.
      */
-    public Product(String name) {    	
+    public Product(String name) {  
     	super(getAlternate(canonicalName(name)));
-    	
+   	
     	// substitute "_" for spaces and make lower case
     	// This operation must be invertible, so we assume product
     	// names don't use underscore!

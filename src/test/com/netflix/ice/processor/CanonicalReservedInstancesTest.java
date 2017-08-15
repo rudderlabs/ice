@@ -7,6 +7,7 @@ import java.util.List;
 import org.joda.time.DateTime;
 import org.junit.Test;
 
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.processor.CanonicalReservedInstances.RecurringCharge;
 
 public class CanonicalReservedInstancesTest {
@@ -44,9 +45,9 @@ public class CanonicalReservedInstancesTest {
 		assertTrue("Scope doesn't match", scope.equals(cri.getScope()));
 		assertTrue("Zone doesn't match", zone.equals(cri.getAvailabilityZone()));
 		assertTrue("MultiAZ doesn't match", multiAZ.equals(cri.getMultiAZ().toString()));
-		String s = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(cri.getStart().getTime()));
+		String s = LineItem.amazonBillingDateFormat.print(new DateTime(cri.getStart().getTime()));
 		assertTrue("Start doesn't match", start.equals(s));
-		String e = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(cri.getEnd().getTime()));
+		String e = LineItem.amazonBillingDateFormat.print(new DateTime(cri.getEnd().getTime()));
 		assertTrue("End doesn't match", end.equals(e));
 		assertTrue("Duration doesn't match", duration.equals(cri.getDuration().toString()));
 		assertTrue("UsagePrice doesn't match", Double.parseDouble(usagePrice) - cri.getUsagePrice() < 0.001);

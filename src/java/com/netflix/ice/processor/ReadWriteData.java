@@ -24,12 +24,15 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 
+import java.io.BufferedReader;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -149,6 +152,50 @@ public class ReadWriteData {
                     }
                 }
                 data.add(map);
+            }
+
+            return new ReadWriteData(data);
+        }
+        
+        public static void serializeCsv(OutputStreamWriter out, ReadWriteData data) throws IOException {
+        	// write the header
+        	out.write("hour,");
+        	TagGroup.Serializer.serializeCsvHeader(out);
+        	out.write(",data\n");
+            for (int i = 0; i < data.data.size(); i++) {
+                Map<TagGroup, Double> map = data.getData(i);
+                for (Entry<TagGroup, Double> entry: map.entrySet()) {
+                	out.write("" + i + ",");
+                	TagGroup.Serializer.serializeCsv(out, entry.getKey());
+                    out.write(",");
+                    Double v = entry.getValue();
+                    if (v != null)
+                    	out.write(v.toString());
+                    out.write("\n");
+                }
+            }
+        }
+
+        public static ReadWriteData deserializeCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException {
+            List<Map<TagGroup, Double>> data = Lists.newArrayList();
+            
+            String line;
+            
+            // skip the header
+            in.readLine();
+
+            Map<TagGroup, Double> map = null;
+            while ((line = in.readLine()) != null) {
+            	String[] items = line.split(",");
+            	int hour = Integer.parseInt(items[0]);
+            	while (hour >= data.size()) {
+            		map = Maps.newHashMap();
+            		data.add(map);
+            	}
+            	map = data.get(hour);
+            	TagGroup tag = new TagGroup(items[1], items[2], items[3], items[4], items[5], items[6], items[7], items[8], accountService, productService);
+            	Double v = Double.parseDouble(items[9]);
+            	map.put(tag, v);
             }
 
             return new ReadWriteData(data);

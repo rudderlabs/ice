@@ -20,6 +20,7 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
@@ -40,7 +41,7 @@ public class ReservationProcessorTest {
 	private static Map<Account, Set<String>> reservationOwners = Maps.newHashMap();
 	
 	private static final int numAccounts = 3;
-	private static List<Account> accounts = Lists.newArrayList();
+	public static List<Account> accounts = Lists.newArrayList();
 	static {
 		// Auto-populate the accounts list based on numAccounts
 		for (Integer i = 1; i <= numAccounts; i++) {
@@ -57,9 +58,11 @@ public class ReservationProcessorTest {
 			reservationOwners.put(accounts.get(i), products);
 		}
     	payerAccounts.put(accounts.get(0), linked);
+		accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);
 	}
 	
-	private ProductService productService = new BasicProductService(null);
+	private static ProductService productService = new BasicProductService(null);
+	public static AccountService accountService;
 
 	
 	@Test
@@ -139,34 +142,32 @@ public class ReservationProcessorTest {
 		}
 	}
 	
-	private String convertStartAndEnd(String res) {
+	private static String convertStartAndEnd(String res) {
 		// If start and end times are in milliseconds, convert to AWS billing format
 		String[] fields = res.split(",");
 		try {
 			Long start = Long.parseLong(fields[9]);
-			fields[9] = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(start));
+			fields[9] = LineItem.amazonBillingDateFormat.print(new DateTime(start));
 		}
 		catch (Exception e) {
 		}
 		try {
 			Long end = Long.parseLong(fields[10]);
-			fields[10] = LineItemProcessor.amazonBillingDateFormat.print(new DateTime(end));
+			fields[10] = LineItem.amazonBillingDateFormat.print(new DateTime(end));
 		}
 		catch (Exception e) {
 		}
 		return StringUtils.join(fields, ",");
 	}
 	
-	private void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) {
+	public static void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) {
 		Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
 			res = convertStartAndEnd(res);
 			reservations.put(new ReservationKey(fields[0], fields[2], fields[3]), new CanonicalReservedInstances(res));
 		}
-		
-		AccountService accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);
-		
+				
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
 		reservationService.updateReservations(reservations, accountService, startMillis, productService);		
 

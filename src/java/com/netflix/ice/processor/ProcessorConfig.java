@@ -20,6 +20,8 @@ package com.netflix.ice.processor;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.netflix.ice.common.*;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,7 @@ public class ProcessorConfig extends Config {
     public final String[] billingS3BucketPrefixes;
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
+    public final DateTime costAndUsageStartDate;
 
     public final String[] customTags;
     public final ReservationService reservationService;
@@ -88,6 +91,12 @@ public class ProcessorConfig extends Config {
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        
+        String[] yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_START_DATE, "").split("-");
+        if (yearMonth.length < 2)
+            costAndUsageStartDate = new DateTime(3000, 1, 1, 0, 0, DateTimeZone.UTC); // Arbitrary year in the future
+        else
+        	costAndUsageStartDate = new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
 
         // Tags initialization
         customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
@@ -106,7 +115,7 @@ public class ProcessorConfig extends Config {
         if (resourceService != null)
             resourceService.init(customTags);
 
-        billingFileProcessor = new BillingFileProcessor(
+        billingFileProcessor = new BillingFileProcessor(this,
             properties.getProperty(IceOptions.URL_PREFIX),
             properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD) == null ? null :  Double.parseDouble(properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD)),
             properties.getProperty(IceOptions.FROM_EMAIL),
@@ -128,7 +137,7 @@ public class ProcessorConfig extends Config {
             }
         }
 
-        billingFileProcessor.start(300);
+        billingFileProcessor.start();
     }
 
     public void shutdown() {

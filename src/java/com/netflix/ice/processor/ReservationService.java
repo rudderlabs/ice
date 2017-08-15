@@ -113,6 +113,17 @@ public interface ReservationService {
 	            return result;
 			return reservationId.compareTo(o.reservationId);
 		}
+		
+		@Override
+		public boolean equals(Object o) {
+			ReservationKey rk = (ReservationKey) o;
+			return rk == null ? false : compareTo(rk) == 0;
+		}
+		
+		@Override
+		public int hashCode() {
+			return account.hashCode() * region.hashCode() * reservationId.hashCode();
+		}
     }
 
 }

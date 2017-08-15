@@ -17,11 +17,8 @@
  */
 package com.netflix.ice.processor;
 
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.tag.Product;
-import java.util.List;
-import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import java.util.Map;
 
@@ -29,15 +26,16 @@ import java.util.Map;
  * Interface to process each line item in billing file.
  */
 public interface LineItemProcessor {
-    public static final DateTimeFormatter amazonBillingDateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.UTC);
-    public static final DateTimeFormatter amazonBillingDateFormat2 = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm:ss").withZone(DateTimeZone.UTC);
-
     void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour);
-    void initIndexes(boolean useBlended, boolean withTags, String[] header);
-    List<String> getHeader();
-    int getUserTagStartIndex();
-    long getEndMillis(String[] items);
-    Result process(long startMilli, boolean processAll, String[] items, Map<Product, ReadWriteData> usageDataByProduct, Map<Product, ReadWriteData> costDataByProduct, Map<String, Double> ondemandRate, Instances instances);
+    Result process(
+    		long startMilli, 
+    		boolean processAll, 
+    		boolean isCostAndUsageReport,
+    		LineItem lineItem, 
+    		Map<Product, ReadWriteData> usageDataByProduct, 
+    		Map<Product, ReadWriteData> costDataByProduct, 
+    		Map<String, Double> ondemandRate, 
+    		Instances instances);
 
     public static enum Result {
         delay,
@@ -47,3 +45,4 @@ public interface LineItemProcessor {
         daily
     }
 }
+

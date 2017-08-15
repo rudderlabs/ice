@@ -53,7 +53,7 @@ public abstract class ResourceService {
      * @param millisStart
      * @return
      */
-    public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart){
+    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart){
         return product.name;
     }
 
@@ -71,7 +71,7 @@ public abstract class ResourceService {
     abstract public void commit();
     
     /**
-     * Initialize the billing file user tags from the header
+     * Initialize the billing file user tags from the userTags header
      */
-    abstract public void initHeader(List<String> header, int userTagStartIndex);
+    abstract public void initHeader(String[] header);
 }

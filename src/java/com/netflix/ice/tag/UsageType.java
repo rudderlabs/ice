@@ -19,12 +19,14 @@ package com.netflix.ice.tag;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
@@ -44,24 +46,20 @@ public class UsageType extends Tag {
         out.writeUTF(usageType.unit);
     }
 
-    public static void serializeCSV(DataOutput out, UsageType usageType) throws IOException {
-        out.writeChars(usageType.name + ",");
-        out.writeChars(usageType.unit);
+    public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
+    	out.write("usageType,usageUnits");
+    }
+    
+    public static void serializeCsv(OutputStreamWriter out, UsageType usageType) throws IOException {
+        out.write(usageType.name + ",");
+        out.write(usageType.unit);
     }
 
     public static UsageType deserialize(DataInput in) throws IOException {
         String name = in.readUTF();
         String unit = in.readUTF();
-
-        UsageType usageType = usageTypes.get(name);
-        if (usageType == null) {
-            usageTypes.putIfAbsent(name, new UsageType(name, unit));
-            usageType = usageTypes.get(name);
-        }
-        else if (!usageType.unit.equals(unit)) {
-            logger.error("found different units for " + usageType + " " + usageType.unit + " " + unit);
-        }
-        return usageType;
+        
+        return getUsageType(name, unit);
     }
 
     public static UsageType getUsageType(String name, Operation operation, String description) {
@@ -77,7 +75,6 @@ public class UsageType extends Tag {
     }
 
     public static UsageType getUsageType(String name, String unit) {
-
         UsageType usageType = usageTypes.get(name);
         if (usageType == null) {
             usageTypes.putIfAbsent(name, new UsageType(name, unit));

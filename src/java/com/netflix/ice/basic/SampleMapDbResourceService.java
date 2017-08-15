@@ -18,6 +18,7 @@
 package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.tag.Account;
@@ -53,10 +54,7 @@ public class SampleMapDbResourceService extends ResourceService {
 		this.productService = productService;
     }
 
-	int userTagStartIndex;
-
     public void init(String[] customTags) {
-        userTagStartIndex = 0;
         instanceDb = new MapDb("instances");
         
         for (List<String> l: productNamesWithResources) {
@@ -74,9 +72,8 @@ public class SampleMapDbResourceService extends ResourceService {
     }
     
 	@Override
-	public void initHeader(List<String> header, int userTagStartIndex) {
+	public void initHeader(String[] header) {
 		logger.info("initHeader...");
-		this.userTagStartIndex = userTagStartIndex;
 	}
 
 
@@ -86,35 +83,35 @@ public class SampleMapDbResourceService extends ResourceService {
     }
 
     @Override
-    public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem, long millisStart) {
+    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
 
         if (product.isEc2() || product.isEc2Instance() || product.isEbs() || product.isEC2CloudWatch()) {
-            return getEc2Resource(account, region, resourceId, lineItem, millisStart);
+            return getEc2Resource(account, region, lineItem, millisStart);
         }
         else if (product.isRds() || product.isRdsInstance()) {
-            return getRdsResource(account, region, resourceId, lineItem, millisStart);
+            return getRdsResource(account, region, lineItem, millisStart);
         }
         else if (product.isS3()) {
-            return getS3Resource(account, region, resourceId, lineItem, millisStart);
+            return getS3Resource(account, region, lineItem, millisStart);
         }
         else if (product.isEip()) {
             return null;
         }
         else {
-            return resourceId;
+            return lineItem.getResource();
         }
     }
 
-    protected String getEc2Resource(Account account, Region region, String resourceId, String[] lineItem, long millisStart) {
-        String autoScalingGroupName = lineItem.length > userTagStartIndex ?
-                lineItem[userTagStartIndex] : null;
+    protected String getEc2Resource(Account account, Region region, LineItem lineItem, long millisStart) {
+    	String resourceId = lineItem.getResource();
+        String autoScalingGroupName = lineItem.getResourceTagsSize() > 0 ? lineItem.getResourceTag(0) : null;
 
         if (StringUtils.isEmpty(autoScalingGroupName)) {
             return UNKNOWN;
         }
         else if (resourceId.startsWith("i-")) {
             String appName = autoScalingGroupName.length() > 5 ? autoScalingGroupName.substring(0, 5) : autoScalingGroupName;
-            instanceDb.SetResource(account, region, resourceId, appName, millisStart);
+            instanceDb.SetResource(account, region, lineItem.getResource(), appName, millisStart);
             return autoScalingGroupName;
         }
         else {
@@ -122,14 +119,15 @@ public class SampleMapDbResourceService extends ResourceService {
         }
     }
 
-    protected String getRdsResource(Account account, Region region, String resourceId, String[] lineItem, long millisStart) {
+    protected String getRdsResource(Account account, Region region, LineItem lineItem, long millisStart) {
+    	String resourceId = lineItem.getResource();
         if (resourceId.indexOf(":db:") > 0)
             return resourceId.substring(resourceId.indexOf(":db:") + 4);
         else
             return resourceId;
     }
 
-    protected String getS3Resource(Account account, Region region, String resourceId, String[] lineItem, long millisStart) {
-        return resourceId;
+    protected String getS3Resource(Account account, Region region, LineItem lineItem, long millisStart) {
+        return lineItem.getResource();
     }
 }

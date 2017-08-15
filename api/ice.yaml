@@ -202,6 +202,7 @@ paths:
             properties: 
               isCost:
                 type: boolean
+                description: Cost = true, Usage = false
               usageUnit:
                 type: string
                 enum: [Dollar, Instances, ECUs, vCPUs, CostMult]
@@ -219,12 +220,14 @@ paths:
               end:
                 type: string
               breakdown:
+                description: Produce data for breakdown by resource or application group
                 type: boolean
               showsps:
                 type: boolean
               factorsps:
                 type: boolean
               family:
+                description: Consolidate EC2 instance usage types of the same family into a single type
                 type: boolean
               account:
                 type: string

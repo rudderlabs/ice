@@ -26,10 +26,17 @@ public class BasicProductServiceTest {
 		Product product1 = ps.getProductByAwsName("AWS ProductA");
 		assertTrue("Wrong product name, expected ProductA, got " + product1.name, product1.name.equals("ProductA"));
 		
+		// get product again and make sure it's the same
+		assertTrue("Didn't get the same product the second time", ps.getProductByAwsName("AWS ProductA") == product1);
+		
 		Product product2 = ps.getProductByAwsName("Amazon ProductA");
 		assertTrue("Wrong product name, expected ProductA, got " + product2.name, product2.name.equals("ProductA"));
 		
-		assertEquals("Both product strings should refer to the same object", product1, product2);
+		// get product again and make sure it's the same
+		assertTrue("Didn't get the same product the second time", ps.getProductByAwsName("Amazon ProductA") == product2);
+		
+		// Should automatically match AWS and Amazon prefixes
+		assertEquals("Both product strings should not refer to the same object", product1, product2);
 	}
 
 	@Test

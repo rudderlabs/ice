@@ -26,7 +26,9 @@ public enum InstanceOs {
     rhbl(".rhbl", ":00g0", "Red Hat BYOL Linux"),
     windows(".windows", ":0002", "Windows"),
     dw(".dw", ":0001", "redshift"),
-    spot(".spot", ":S0000", ""), // Linux/UNIX Spot Instance - Number is the Zone # (Haven't seen example for windows yet -jroth)
+    // Linux/UNIX Spot Instance - Number is the Zone # (Haven't seen example for windows yet -jroth)
+    // VPC Spot instance starts with SV followed by three digit zone number - ":SV000"
+    spot(".spot", ":S0000", ""),
     others(".others", ":others", "others");
 
     public final String usageType;

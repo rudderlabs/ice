@@ -19,11 +19,14 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.tag.Account;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 public class BasicAccountService implements AccountService {
@@ -53,6 +56,93 @@ public class BasicAccountService implements AccountService {
 	        }
         }
     }
+    
+    /*
+     * Create an AccountService instance based on values from a Properties object (typically ice.properties file)
+     * 
+     * The following property key values are used:
+     * 
+     * Account definition:
+     * 		name:	account name
+     * 		id:		account id
+     * 
+     *	ice.account.{name}={id}
+     *
+     *		example: ice.account.myAccount=123456789012
+     * 
+     * Payer Account definition:
+     * 		payerAccountName:	name of the payer account when consolidated billing is used
+     * 		linkedAccounts:		comma separated list of linked account names
+     * 
+     *	ice.payeraccount.{payerAccountName}={linkedAccounts}
+     *
+     *		example: ice.payeraccount.myPayer=myFirtLinked,mySecondLinked
+     *
+     * Reservation Owner Account
+     * 		name: account name
+	 *		product: codes for products with purchased reserved instances. Possible values are ec2, rds, redshift
+     * 
+     *	ice.owneraccount.{name}={products}
+     *
+     *		example: ice.owneraccount.resHolder=ec2,rds
+     *
+     * Reservation Owner Account Role
+     * 		name: account name
+     * 		role: IAM role name to assume when pulling reservations from an owner account
+     * 
+     * 	ice.owneraccount.{name}.role={role}
+     * 
+     * 		example: ice.owneraccount.resHolder.role=ice
+     * 
+     * Reservation Owner Account ExternalId
+     * 		name: account name
+     * 		externalId: external ID for the reservation owner account
+     * 
+     * 	ice.owneraccount.{name}.externalId={externalId}
+     * 
+     * 		example: ice.owneraccount.resHolder.externalId=112233445566
+     */
+
+    public BasicAccountService(Properties properties) {
+        for (String name: properties.stringPropertyNames()) {
+            if (name.startsWith("ice.account.")) {
+                String accountName = name.substring("ice.account.".length());
+                Account account = new Account(properties.getProperty(name), accountName);
+                accountsByName.put(accountName, account);
+                accountsById.put(account.id, account);
+            }
+        }
+		for (String name: properties.stringPropertyNames()) {
+			if (name.startsWith("ice.payeraccount.")) {
+				String accountName = name.substring("ice.payeraccount.".length());
+				String[] links = properties.getProperty(name).split(",");
+				List<Account> linkedAccounts = Lists.newArrayList();
+				for (String link: links) {
+					Account linkedAccount = accountsByName.get(link);
+					if (linkedAccount != null)
+						linkedAccounts.add(linkedAccount);
+				}
+				payerAccounts.put(accountsByName.get(accountName), linkedAccounts);
+			}
+		}
+        for (String name: properties.stringPropertyNames()) {
+            if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {					
+                String accountName = name.substring("ice.owneraccount.".length());
+				String[] products = properties.getProperty(name).split(",");
+				Set<String> productSet = new HashSet<String>();
+				for (String product: products) {
+					productSet.add(product);
+				}
+				reservationAccounts.put(accountsByName.get(accountName), productSet);
+				
+                String role = properties.getProperty(name + ".role", "");
+                reservationAccessRoles.put(accountsByName.get(accountName), role);
+
+                String externalId = properties.getProperty(name + ".externalId", "");
+                reservationAccessExternalIds.put(accountsByName.get(accountName), externalId);					
+            }
+        }
+    }
 
     public Account getAccountById(String accountId) {
         Account account = accountsById.get(accountId);
@@ -60,7 +150,7 @@ public class BasicAccountService implements AccountService {
             account = new Account(accountId, accountId);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
-            logger.info("created account " + accountId + ".");
+            //logger.info("created account " + accountId + ".");
         }
         return account;
     }

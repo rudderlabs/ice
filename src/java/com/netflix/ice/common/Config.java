@@ -49,12 +49,13 @@ public abstract class Config {
             ProductService productService,
             ResourceService resourceService) {
         if (properties == null) throw new IllegalArgumentException("properties must be specified");
-        if (properties.getProperty(IceOptions.START_MILLIS) == null) throw new IllegalArgumentException("IceOptions.START_MILLIS must be specified");
+        if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         if (credentialsProvider == null) throw new IllegalArgumentException("credentialsProvider must be specified");
         if (accountService == null) throw new IllegalArgumentException("accountService must be specified");
         if (productService == null) throw new IllegalArgumentException("productService must be specified");
 
-        DateTime startDate = new DateTime(Long.parseLong(properties.getProperty(IceOptions.START_MILLIS)), DateTimeZone.UTC);
+        String[] yearMonth = properties.getProperty(IceOptions.START_MONTH).split("-");
+        DateTime startDate = new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
         workS3BucketName = properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME);
         workS3BucketPrefix = properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX, "ice/");
         localDir = properties.getProperty(IceOptions.LOCAL_DIR, "/mnt/ice");

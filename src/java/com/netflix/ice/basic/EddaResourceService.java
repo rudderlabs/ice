@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
+import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
@@ -82,8 +83,9 @@ public class EddaResourceService extends ResourceService {
 
 
 	@Override
-	public String getResource(Account account, Region region, Product product, String resourceId, String[] lineItem,
+	public String getResource(Account account, Region region, Product product, LineItem lineItem,
 			long millisStart) {
+		String resourceId = lineItem.getResource();
 		// currently we support ec2
 		if(product.isEc2() || product.isEc2Instance()) {
 			if(StringUtils.isEmpty(resourceId)) {
@@ -141,8 +143,7 @@ public class EddaResourceService extends ResourceService {
 		}
 
 		logger.debug("Product: " + product + " not handled, resourceId: " + resourceId);
-		//logger.info("get resource for account " + account + " region " + region + " product " + product + " resource: " + resourceId + " lineItem: " + Arrays.toString(lineItem));
-		return super.getResource(account, region, product, resourceId, lineItem, millisStart);
+		return super.getResource(account, region, product, lineItem, millisStart);
 	}
 
 
@@ -167,7 +168,7 @@ public class EddaResourceService extends ResourceService {
 	 * @see com.netflix.ice.common.ResourceService#initHeader()
 	 */
 	@Override
-	public void initHeader(List<String> header, int userTagStartIndex) {
+	public void initHeader(String[] header) {
 		logger.info("initHeader...");
 	}
 
