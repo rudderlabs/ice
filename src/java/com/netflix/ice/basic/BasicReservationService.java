@@ -53,6 +53,9 @@ public class BasicReservationService extends Poller implements ReservationServic
     protected ReservationUtilization defaultUtilization;
     protected Map<ReservationUtilization, File> files;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
+    private boolean hasEc2Reservations;
+    private boolean hasRdsReservations;
+    private boolean hasRedshiftReservations;
 
     protected static Map<String, String> instanceTypes = Maps.newHashMap();
     protected static Map<String, String> instanceSizes = Maps.newHashMap();
@@ -157,6 +160,19 @@ public class BasicReservationService extends Poller implements ReservationServic
         }
         
         start(3600, 3600*24, true);
+    }
+    
+    /**
+     * Methods to indicate that we have reservations for each corresponding service.
+     */
+    public boolean hasEc2Reservations() {
+    	return this.hasEc2Reservations;
+    }
+    public boolean hasRdsReservations() {
+    	return this.hasRdsReservations;
+    }
+    public boolean hasRedshiftReservations() {
+    	return this.hasRedshiftReservations;
     }
 
     @Override
@@ -428,6 +444,9 @@ public class BasicReservationService extends Poller implements ReservationServic
             }
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
+        hasEc2Reservations = false;
+        hasRdsReservations = false;
+        hasRedshiftReservations = false;
 
         for (ReservationKey key: reservationsFromApi.keySet()) {
             CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
@@ -483,16 +502,19 @@ public class BasicReservationService extends Poller implements ReservationServic
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
                 product = productService.getProductByName(Product.ec2Instance);
+                hasEc2Reservations = true;
             }
             else if (reservedInstances.isRDS()) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? ".multiaz" : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
             	product = productService.getProductByName(Product.rdsInstance);
+            	hasRdsReservations = true;
             }
             else if (reservedInstances.isRedshift()){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
             	product = productService.getProductByName(Product.redshift);
+            	hasRedshiftReservations = true;
             }
             else {
             	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());

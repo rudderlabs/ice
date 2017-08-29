@@ -26,20 +26,20 @@ import java.util.concurrent.ConcurrentMap;
 public class Region extends Tag {
 	private static final long serialVersionUID = 1L;
 	
-	public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US");
-    public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US");
-    public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US");
-    public static final Region US_WEST_2 = new Region("us-west-2", "USW2", "US");
-    public static final Region CA_CENTRAL_1 = new Region("ca-central-1", "CAC1", "CA");
-    public static final Region EU_WEST_1 = new Region("eu-west-1", "EU", "EU");
-    public static final Region EU_CENTRAL_1 = new Region("eu-central-1", "EUC1", "EU");
-    public static final Region EU_WEST_2 = new Region("eu-west-2", "EUW2", "EU");
-    public static final Region AP_NORTHEAST_1 = new Region("ap-northeast-1","APN1", "JP");
-    public static final Region AP_NORTHEAST_2 = new Region("ap-northeast-2","APN2", "AP");
-    public static final Region AP_SOUTHEAST_1 = new Region("ap-southeast-1", "APS1", "AP");
-    public static final Region AP_SOUTHEAST_2 = new Region("ap-southeast-2", "APS2", "AU");
-    public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3", "IN");
-    public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1", "SA");
+	public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US", "US East (N. Virginia)");
+    public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US", "US East (Ohio)");
+    public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US", "US West (N. California)");
+    public static final Region US_WEST_2 = new Region("us-west-2", "USW2", "US", "US West (Oregon)");
+    public static final Region CA_CENTRAL_1 = new Region("ca-central-1", "CAN1", "CA", "Canada (Central)");
+    public static final Region EU_WEST_1 = new Region("eu-west-1", "EU", "EU", "EU (Ireland)");
+    public static final Region EU_CENTRAL_1 = new Region("eu-central-1", "EUC1", "EU", "EU (Frankfurt)");
+    public static final Region EU_WEST_2 = new Region("eu-west-2", "EUW2", "EU", "EU (London)");
+    public static final Region AP_NORTHEAST_1 = new Region("ap-northeast-1","APN1", "JP", "Asia Pacific (Tokyo)");
+    public static final Region AP_NORTHEAST_2 = new Region("ap-northeast-2","APN2", "AP", "Asia Pacific (Seoul)");
+    public static final Region AP_SOUTHEAST_1 = new Region("ap-southeast-1", "APS1", "AP", "Asia Pacific (Singapore)");
+    public static final Region AP_SOUTHEAST_2 = new Region("ap-southeast-2", "APS2", "AU", "Asia Pacific (Sydney)");
+    public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3", "IN", "Asia Pacific (Mumbai)");
+    public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1", "SA", "South America (Sao Paulo)");
 
     private static ConcurrentMap<String, Region> regionsByName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Region> regionsByShortName = Maps.newConcurrentMap();
@@ -87,12 +87,14 @@ public class Region extends Tag {
 
     public final String shortName;
     public final String cloudFrontName;
+    public final String priceListName;
     List<Zone> zones = Lists.newArrayList();
 
-    private Region(String name, String shortName, String cloudFrontName) {
+    private Region(String name, String shortName, String cloudFrontName, String priceListName) {
         super(name);
         this.shortName = shortName;
         this.cloudFrontName = cloudFrontName;
+        this.priceListName = priceListName;
     }
 
     public List<Zone> getZones() {

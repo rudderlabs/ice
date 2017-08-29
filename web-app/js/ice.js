@@ -850,8 +850,10 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, usage_db, highchart) {
 
   var reservationOps = [
+    "Savings - Spot",
     "Spot Instances",
     "On-Demand Instances",
+    "Savings - All Upfront",
     "Used RIs - All Upfront",
     "Family RIs - All Upfront",
     "Bonus RIs - All Upfront",
@@ -859,6 +861,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
     "Lent RIs - All Upfront",
     "Unused RIs - All Upfront",
     "Amortized RIs - All Upfront",
+    "Savings - Partial Upfront",
     "Used RIs - Partial Upfront",
     "Family RIs - Partial Upfront",
     "Bonus RIs - Partial Upfront",
@@ -866,6 +869,7 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
     "Lent RIs - Partial Upfront",
     "Unused RIs - Partial Upfront",
     "Amortized RIs - Partial Upfront",
+    "Savings - No Upfront",
     "Used RIs - No Upfront",
     "Family RIs - No Upfront",
     "Bonus RIs - No Upfront",

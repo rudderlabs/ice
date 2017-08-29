@@ -79,6 +79,12 @@ public interface ReservationService {
      */
     void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService);
 
+    /**
+     * Methods to indicate that we have reservations for each corresponding service.
+     */
+    boolean hasEc2Reservations();
+    boolean hasRdsReservations();
+    boolean hasRedshiftReservations();
 
     public static class ReservationInfo {
         public final int capacity;

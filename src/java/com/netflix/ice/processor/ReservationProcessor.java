@@ -193,8 +193,8 @@ public class ReservationProcessor {
 			        usageMap.put(lentTagGroup, reservedLent);
 			        usageMap.put(tagGroup, existing);
 			        
+			        // Don't show cost for lent instances - cost burden is assigned to borrower
 			        costMap.put(borrowedTagGroup, reservedBorrowed * hourlyCost);
-			        costMap.put(lentTagGroup, reservedLent * hourlyCost);
 			        costMap.put(tagGroup, existing * hourlyCost);			        			
 			        
 			        if (reservedUnused > 0) {
@@ -264,7 +264,7 @@ public class ReservationProcessor {
 			            Double existingBorrowedCost = costMap.get(borrowedTagGroup);
 			            double borrowedCost = existingBorrowedCost == null ? curBorrowedCost : curBorrowedCost + existingBorrowedCost;
 
-			            costMap.put(lentTagGroup, reservedLent * hourlyCost);
+			            // Don't show cost for Lent instances - cost burden is assigned to borrower
 			            costMap.put(borrowedTagGroup, borrowedCost);
 			            costMap.put(tagGroup, existing * hourlyCost);
 			            			

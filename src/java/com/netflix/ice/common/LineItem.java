@@ -125,6 +125,10 @@ public abstract class LineItem {
 		return null;
 	}
 
+	public String getPublicOnDemandCost() {
+		return null;
+	}
+
 	public int getAccountIdIndex() {
 		return accountIdIndex;
 	}
@@ -177,4 +181,18 @@ public abstract class LineItem {
 		return resourceIndex;
 	}
 
+	/**
+	 * LineItemType is one of the columns from AWS Cost and Usage reports
+	 */
+	public static enum LineItemType {
+		DiscountedUsage,
+		Fee,
+		RIFee,
+		Tax,
+		Usage;
+	}
+	
+	public LineItemType getLineItemType() {
+		return null;
+	}
 }

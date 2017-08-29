@@ -19,6 +19,7 @@ package com.netflix.ice.basic;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
+import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
 import com.netflix.ice.tag.*;
@@ -74,6 +75,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		Map<Product, ReadWriteData> costDataByProduct, 
     		Map<String, Double> ondemandRate, 
     		Instances instances) {
+    	
+    	// Cost and Usage report-specific checks
+    	if (lineItem.getLineItemType() == LineItemType.Tax)
+    		return Result.ignore;
     	
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
@@ -254,6 +259,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 // For CAU reports, EC2, Redshift, and RDS have cost as a monthly charge, but usage appears hourly.
                 // 	so unlike EC2, we have to process the monthly line item to capture the cost,
                 // 	but we don't want to add the monthly line items to the usage.
+                // The reservation processor handles determination on what's unused.
                 if (result != Result.monthly || !(product.isRedshift() || product.isRdsInstance() || (product.isEc2Instance() && isCostAndUsageReport))) {
                 	addValue(usages, tagGroup, usageValue,  randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());
                 }
@@ -524,6 +530,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         if (usageType == null) {
             usageType = UsageType.getUsageType(usageTypeStr, operation, description);
+//            if (StringUtils.isEmpty(usageType.unit)) {
+//            	logger.info("No units for " + usageTypeStr + ", " + operation + ", " + description + ", " + product);
+//            }
         }
 
         return new ReformedMetaData(region, product, operation, usageType);

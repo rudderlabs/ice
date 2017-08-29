@@ -234,8 +234,10 @@ class DashboardController {
         }
 
         if (!forReservation) {
-            for (Operation.ReservationOperation lentOp: Operation.getLentInstances())
+            for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                 data.remove(lentOp);
+			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
+				data.remove(savingsOp);
         }
 		
 		logger.debug("operations: " + operations);

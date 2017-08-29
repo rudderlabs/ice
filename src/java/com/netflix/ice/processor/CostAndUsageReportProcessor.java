@@ -40,6 +40,9 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private Instances instances;
     private Long startMilli;
     private Long endMilli;
+    
+    // For debugging, set the number of files to process. Set to 0 to disable.
+    private int debugLimit = 0;
 
     private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
 
@@ -286,6 +289,10 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	        
 	        files.add(file);
 	        logger.info(" added " + file.getName() + ", size: " + files.size());
+	        
+	        // For debugging, only process to the limit
+	        if (debugLimit > 0 && files.size() >= debugLimit)
+	        	break;
 		}
 		return files;
 	}

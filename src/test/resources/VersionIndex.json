@@ -1,0 +1,79 @@
+{
+  "formatVersion" : "v1.0",
+  "disclaimer" : "This pricing list is for informational purposes only. All prices are subject to the additional terms included in the pricing pages on http://aws.amazon.com. All Free Tier prices are also subject to the terms included at https://aws.amazon.com/free/",
+  "publicationDate" : "2017-08-03T00:30:29Z",
+  "offerCode" : "AmazonEC2",
+  "currentVersion" : "20170803003029",
+  "versions" : {
+    "20151209144527" : {
+      "versionEffectiveBeginDate" : "2015-12-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2016-01-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20151209144527/index.json"
+    },
+    "20170429002201" : {
+      "versionEffectiveBeginDate" : "2017-04-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-05-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170429002201/index.json"
+    },
+    "20170605233259" : {
+      "versionEffectiveBeginDate" : "2017-06-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-07-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170605233259/index.json"
+    },
+    "20170302183221" : {
+      "versionEffectiveBeginDate" : "2017-02-28T23:59:59Z",
+      "versionEffectiveEndDate" : "2017-03-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170302183221/index.json"
+    },
+    "20160901005907" : {
+      "versionEffectiveBeginDate" : "2016-08-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2016-10-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20160901005907/index.json"
+    },
+    "20160628000628" : {
+      "versionEffectiveBeginDate" : "2016-06-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2016-08-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20160628000628/index.json"
+    },
+    "20170803003029" : {
+      "versionEffectiveBeginDate" : "2017-07-01T00:00:00Z",
+      "versionEffectiveEndDate" : "",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170803003029/index.json"
+    },
+    "20170224022054" : {
+      "versionEffectiveBeginDate" : "2017-02-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-02-28T23:59:59Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170224022054/index.json"
+    },
+    "20161213014831" : {
+      "versionEffectiveBeginDate" : "2016-12-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-01-31T23:59:59Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20161213014831/index.json"
+    },
+    "20170324211955" : {
+      "versionEffectiveBeginDate" : "2017-03-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-04-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170324211955/index.json"
+    },
+    "20170526181956" : {
+      "versionEffectiveBeginDate" : "2017-05-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2017-06-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170526181956/index.json"
+    },
+    "20160126001708" : {
+      "versionEffectiveBeginDate" : "2016-01-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2016-06-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20160126001708/index.json"
+    },
+    "20170210223144" : {
+      "versionEffectiveBeginDate" : "2017-01-31T23:59:59Z",
+      "versionEffectiveEndDate" : "2017-02-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20170210223144/index.json"
+    },
+    "20161026205455" : {
+      "versionEffectiveBeginDate" : "2016-10-01T00:00:00Z",
+      "versionEffectiveEndDate" : "2016-12-01T00:00:00Z",
+      "offerVersionUrl" : "/offers/v1.0/aws/AmazonEC2/20161026205455/index.json"
+    }
+  }
+}

@@ -376,6 +376,7 @@ public class AwsUtils {
             S3Object s3Object = s3Client.getObject(bucketName, fileKey);
             InputStream input = s3Object.getObjectContent();
             long targetSize = s3Object.getObjectMetadata().getContentLength();
+            long lastModified = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified().getTime();
             FileOutputStream output = null;
 
             boolean downloaded = false;
@@ -399,6 +400,9 @@ public class AwsUtils {
             }
 
             if (downloaded) {
+            	// Set modified time of local file to match the time of the file in S3
+            	file.setLastModified(lastModified);
+            	
                 long contentLenth = s3Client.getObjectMetadata(bucketName, fileKey).getContentLength();
                 if (contentLenth != size) {
                     logger.warn("size does not match contentLenth=" + contentLenth +

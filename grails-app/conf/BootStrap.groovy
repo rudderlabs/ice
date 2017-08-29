@@ -19,9 +19,11 @@ import com.netflix.ice.processor.LineItemProcessor
 import com.netflix.ice.processor.ProcessorConfig
 import com.netflix.ice.processor.ReservationService
 import com.netflix.ice.JSONConverter
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import com.netflix.ice.common.IceOptions
 import com.netflix.ice.processor.ReservationCapacityPoller
 import com.amazonaws.auth.AWSCredentialsProvider
@@ -37,11 +39,15 @@ import com.netflix.ice.basic.BasicLineItemProcessor
 import com.netflix.ice.processor.Ec2InstanceReservationPrice
 import com.netflix.ice.basic.BasicS3ApplicationGroupService
 import com.netflix.ice.basic.BasicManagers
+
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.BasicSessionCredentials
+
 import org.apache.commons.io.IOUtils
+
 import com.netflix.ice.common.ResourceService
 import com.netflix.ice.common.ProductService
 import com.netflix.ice.basic.BasicResourceService

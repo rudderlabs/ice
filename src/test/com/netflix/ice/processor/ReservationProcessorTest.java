@@ -327,7 +327,6 @@ public class ReservationProcessorTest {
 		};
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.unusedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.small", 0.0),
@@ -431,8 +430,6 @@ public class ReservationProcessorTest {
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.large", 0.0),
@@ -500,7 +497,6 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.small", 0.0),
 		};
 
@@ -534,8 +530,6 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
 				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
 				new Datum(accounts.get(2), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.xlarge", 0.0),
 		};
 
@@ -657,7 +651,6 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 0.199),
 			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 0.209),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 0.209),
 			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.283),
 			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.298),
 		};
@@ -699,8 +692,6 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.456),
 				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.134),
 				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.067),
-				new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesHeavyPartial, "c4.xlarge", 0.134),
-				new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesHeavyPartial, "c4.xlarge", 0.067),
 			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.862),
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.134),
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.067),
@@ -768,7 +759,6 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.large", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
 		};
 

@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,7 @@ public class ReservationCapacityPoller extends Poller {
     private static final String redshift 	= "redshift";
     
     private static final String archiveFilename = "reservation_capacity.csv";
+    private long archiveLastModified = 0;
     
 	static Map<String, Double> instanceSizeMap = Maps.newHashMap();
 	static String[] sizes = new String[]{
@@ -142,116 +144,118 @@ public class ReservationCapacityPoller extends Poller {
 
         Map<ReservationKey, CanonicalReservedInstances> reservations = readArchive(config);
         
-        AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
-        AmazonRDSClientBuilder rdsBuilder = AmazonRDSClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
-        AmazonRedshiftClientBuilder redshiftBuilder = AmazonRedshiftClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);       
+        if (archiveLastModified < DateTime.now().minusHours(6).getMillis()) {
         
-        for (Entry<Account, Set<String>> entry: config.accountService.getReservationAccounts().entrySet()) {
-            Account account = entry.getKey();
-            Set<String> products = entry.getValue();
-            logger.info("Get reservations for account: " + account.name);
-            
-        	try {
-                String assumeRole = config.accountService.getReservationAccessRoles().get(account);
-                if (assumeRole != null && assumeRole.isEmpty())
-                	assumeRole = null;
-                
-                AWSCredentialsProvider credentialsProvider = AwsUtils.awsCredentialsProvider;
-                if (assumeRole != null) {
-                    String externalId = config.accountService.getReservationAccessExternalIds().get(account);
-                    credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
-                }
-                
-                for (Region region: Region.getAllRegions()) {
-
-            	   
-                   if (products.contains(ec2)) {
-                	   AmazonEC2 ec2 = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
-                	   Map<ReservationKey, CanonicalReservedInstances> ec2Reservations = Maps.newTreeMap();
-                	   
-                	   // Start by getting any reservation modifications so that we can later use them to track down
-                	   // the fixed price of modified Partial Upfront or All Upfront reservations. AWS doesn't carry
-                	   // the fixed price to the modified reservation, but we need that to compute amortization.
-                	   List<ReservedInstancesModification> modifications = Lists.newArrayList();
-                	   try {
-                		   DescribeReservedInstancesModificationsResult modResult = ec2.describeReservedInstancesModifications();
-                		   
-                		   modifications.addAll(modResult.getReservedInstancesModifications());
-                		   while (modResult.getNextToken() != null) {
-                			   modResult = ec2.describeReservedInstancesModifications(new DescribeReservedInstancesModificationsRequest().withNextToken(modResult.getNextToken()));
-                    		   modifications.addAll(modResult.getReservedInstancesModifications());
-                		   }
-                	   }
-                       catch (Exception e) {
-                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
-                       }
-                	   Ec2Mods mods = new Ec2Mods(modifications);
-                       try {
-                    	   
-                           DescribeReservedInstancesResult result = ec2.describeReservedInstances();
-                           for (ReservedInstances reservation: result.getReservedInstances()) {
-                        	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
-                               ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedInstancesId());
-                               
-                               CanonicalReservedInstances cri = new CanonicalReservedInstances(
-                            		   account.id, region.name, reservation, 
-                            		   mods.getModResId(reservation.getReservedInstancesId()));
-                               ec2Reservations.put(key, cri);
-                           }
-                       }
-                       catch (Exception e) {
-                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
-                       }
-                       ec2.shutdown();
-                       handleEC2Modifications(ec2Reservations, mods);
-                       reservations.putAll(ec2Reservations);
-                   }
-               	
-   
-                   if (products.contains(rds)) {
-                       AmazonRDS rds = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
-                       try {
-                           DescribeReservedDBInstancesResult result = rds.describeReservedDBInstances();
-                           for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
-                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedDBInstanceId());
-                               CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
-                               reservations.put(key, cri);
-                           }
-                       }
-                       catch (Exception e) {
-                           logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
-                       }
-                       rds.shutdown();
-                   }
-            	   
-                   if (products.contains(redshift)) {
-                       AmazonRedshift redshift = redshiftBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
-                       	
-	                   try {
-	                        DescribeReservedNodesResult result = redshift.describeReservedNodes();
-	                        for (ReservedNode reservation: result.getReservedNodes()) {
-	                            ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedNodeId());
-	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
-	                            reservations.put(key, cri);
-	                        }
+	        AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+	        AmazonRDSClientBuilder rdsBuilder = AmazonRDSClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+	        AmazonRedshiftClientBuilder redshiftBuilder = AmazonRedshiftClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);       
+	        
+	        for (Entry<Account, Set<String>> entry: config.accountService.getReservationAccounts().entrySet()) {
+	            Account account = entry.getKey();
+	            Set<String> products = entry.getValue();
+	            logger.info("Get reservations for account: " + account.name);
+	            
+	        	try {
+	                String assumeRole = config.accountService.getReservationAccessRoles().get(account);
+	                if (assumeRole != null && assumeRole.isEmpty())
+	                	assumeRole = null;
+	                
+	                AWSCredentialsProvider credentialsProvider = AwsUtils.awsCredentialsProvider;
+	                if (assumeRole != null) {
+	                    String externalId = config.accountService.getReservationAccessExternalIds().get(account);
+	                    credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
+	                }
+	                
+	                for (Region region: Region.getAllRegions()) {
+	
+	            	   
+	                   if (products.contains(ec2)) {
+	                	   AmazonEC2 ec2 = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
+	                	   Map<ReservationKey, CanonicalReservedInstances> ec2Reservations = Maps.newTreeMap();
+	                	   
+	                	   // Start by getting any reservation modifications so that we can later use them to track down
+	                	   // the fixed price of modified Partial Upfront or All Upfront reservations. AWS doesn't carry
+	                	   // the fixed price to the modified reservation, but we need that to compute amortization.
+	                	   List<ReservedInstancesModification> modifications = Lists.newArrayList();
+	                	   try {
+	                		   DescribeReservedInstancesModificationsResult modResult = ec2.describeReservedInstancesModifications();
+	                		   
+	                		   modifications.addAll(modResult.getReservedInstancesModifications());
+	                		   while (modResult.getNextToken() != null) {
+	                			   modResult = ec2.describeReservedInstancesModifications(new DescribeReservedInstancesModificationsRequest().withNextToken(modResult.getNextToken()));
+	                    		   modifications.addAll(modResult.getReservedInstancesModifications());
+	                		   }
+	                	   }
+	                       catch (Exception e) {
+	                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
+	                       }
+	                	   Ec2Mods mods = new Ec2Mods(modifications);
+	                       try {
+	                    	   
+	                           DescribeReservedInstancesResult result = ec2.describeReservedInstances();
+	                           for (ReservedInstances reservation: result.getReservedInstances()) {
+	                        	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
+	                               ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedInstancesId());
+	                               
+	                               CanonicalReservedInstances cri = new CanonicalReservedInstances(
+	                            		   account.id, region.name, reservation, 
+	                            		   mods.getModResId(reservation.getReservedInstancesId()));
+	                               ec2Reservations.put(key, cri);
+	                           }
+	                       }
+	                       catch (Exception e) {
+	                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
+	                       }
+	                       ec2.shutdown();
+	                       handleEC2Modifications(ec2Reservations, mods);
+	                       reservations.putAll(ec2Reservations);
 	                   }
-	                   catch (Exception e) {
-	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
+	               	
+	   
+	                   if (products.contains(rds)) {
+	                       AmazonRDS rds = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+	                       try {
+	                           DescribeReservedDBInstancesResult result = rds.describeReservedDBInstances();
+	                           for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
+	                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedDBInstanceId());
+	                               CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+	                               reservations.put(key, cri);
+	                           }
+	                       }
+	                       catch (Exception e) {
+	                           logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
+	                       }
+	                       rds.shutdown();
 	                   }
-	                   redshift.shutdown();
-                   }
-	           }
-
-            }
-            catch (Exception e) {
-                logger.error("Error in describeReservedInstances for " + account.name, e);
-            }
+	            	   
+	                   if (products.contains(redshift)) {
+	                       AmazonRedshift redshift = redshiftBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+	                       	
+		                   try {
+		                        DescribeReservedNodesResult result = redshift.describeReservedNodes();
+		                        for (ReservedNode reservation: result.getReservedNodes()) {
+		                            ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedNodeId());
+		                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+		                            reservations.put(key, cri);
+		                        }
+		                   }
+		                   catch (Exception e) {
+		                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
+		                   }
+		                   redshift.shutdown();
+	                   }
+		           }
+	
+	            }
+	            catch (Exception e) {
+	                logger.error("Error in describeReservedInstances for " + account.name, e);
+	            }
+	        }
+	        archive(config, reservations);
         }
 
         config.reservationService.updateReservations(reservations, config.accountService, config.startDate.getMillis(), config.productService);
-        updatedConfig = true;
-        
-        archive(config, reservations);
+        updatedConfig = true;        
     }
     
     protected void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods) {
@@ -318,6 +322,8 @@ public class ReservationCapacityPoller extends Poller {
             AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
             logger.info("downloaded " + file);
         }
+        
+        archiveLastModified = file.lastModified();
 
         Map<ReservationKey, CanonicalReservedInstances> reservations = readReservations(file);
         logger.info("read " + reservations.size() + " reservations.");

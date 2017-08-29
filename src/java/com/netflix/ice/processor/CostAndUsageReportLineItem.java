@@ -18,6 +18,8 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int lineItemNormalizationFactorIndex;
 	private int productNormalizationSizeFactorIndex;
 	private int productUsageTypeIndex;
+	private int publicOnDemandCostIndex;
+	private LineItemType lineItemType;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -53,7 +55,21 @@ public class CostAndUsageReportLineItem extends LineItem {
         lineItemTypeIndex = report.getColumnIndex("lineItem", "LineItemType");
         lineItemNormalizationFactorIndex = report.getColumnIndex("lineItem", "NormalizationFactor");
         productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor"); // First appeared in 07-2017
-        productUsageTypeIndex = report.getColumnIndex("product",  "usagetype");
+        productUsageTypeIndex = report.getColumnIndex("product",  "usagetype"); 
+        
+        publicOnDemandCostIndex = report.getColumnIndex("pricing", "publicOnDemandCost");
+    }
+    
+    @Override
+    public void setItems(String[] items) {
+    	super.setItems(items);
+        lineItemType = null;
+        try {
+        	lineItemType = LineItemType.valueOf(items[lineItemTypeIndex]);
+        } catch (Exception e) {
+        }
+        if (lineItemType == null)
+        	logger.error("Unknown lineItemType: " + items[lineItemTypeIndex]);
     }
     
     public int size() {
@@ -73,8 +89,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     @Override
     public String getUsageType() {
     	String purchaseOption = getPurchaseOption();
-    	String lineItemType = getLineItemType();
-    	if ((lineItemType.equals("RIFee") || lineItemType.equals("DiscountedUsage")) && (purchaseOption.isEmpty() || !purchaseOption.equals("All Upfront")))
+    	if ((lineItemType == LineItemType.RIFee || lineItemType == LineItemType.DiscountedUsage) && (purchaseOption.isEmpty() || !purchaseOption.equals("All Upfront")))
     		return items[productUsageTypeIndex];
     	return items[usageTypeIndex];
     }
@@ -126,8 +141,9 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return items[purchaseOptionIndex];
 	}
 
-	public String getLineItemType() {
-		return items[lineItemTypeIndex];
+	@Override
+	public LineItemType getLineItemType() {
+		return lineItemType;
 	}
 	
 	private double computeProductNormalizedSizeFactor(String usageType) {
@@ -149,7 +165,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     	if (purchaseOption.isEmpty() || purchaseOption.equals("All Upfront"))
     		return super.getUsageQuantity();
 
-    	if (items[lineItemTypeIndex].equals("DiscountedUsage")) {
+    	if (lineItemType == LineItemType.DiscountedUsage) {
 			double usageAmount = Double.parseDouble(items[usageQuantityIndex]);
 			double normFactor = items[lineItemNormalizationFactorIndex].isEmpty() ? computeProductNormalizedSizeFactor(items[usageTypeIndex]) : Double.parseDouble(items[lineItemNormalizationFactorIndex]);
 			double productFactor = items[productNormalizationSizeFactorIndex].isEmpty() ? computeProductNormalizedSizeFactor(items[productUsageTypeIndex]) : Double.parseDouble(items[productNormalizationSizeFactorIndex]);
@@ -158,6 +174,11 @@ public class CostAndUsageReportLineItem extends LineItem {
 		}
 		return super.getUsageQuantity();
 	}
+	
+	@Override
+	public String getPublicOnDemandCost() {
+		return items[publicOnDemandCostIndex];
+	}
 
 	public int getResourceTagStartIndex() {
 		return resourceTagStartIndex;
@@ -165,10 +186,6 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	public int getPurchaseOptionIndex() {
 		return purchaseOptionIndex;
-	}
-
-	public int getLineItemTypeIndex() {
-		return lineItemTypeIndex;
 	}
 
 	public int getLineItemNormalizationFactorIndex() {
@@ -182,5 +199,6 @@ public class CostAndUsageReportLineItem extends LineItem {
 	public int getProductUsageTypeIndex() {
 		return productUsageTypeIndex;
 	}
+	
 }
 
