@@ -292,7 +292,7 @@ public class BasicDataManager extends Poller implements DataManager {
     	case vCPUs:
     		multiplier = InstanceMetrics.getVCpu(usageType);
     		break;
-    	case CostMult:
+    	case Normalized:
     		multiplier = InstanceMetrics.getCostMultiplier(usageType);
     		break;
     	}

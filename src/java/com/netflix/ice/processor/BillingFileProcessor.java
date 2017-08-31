@@ -144,10 +144,6 @@ public class BillingFileProcessor extends Poller {
             // now get reservation capacity to calculate upfront and un-used cost
             for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
             	// We no longer support Light and Medium
-            	if (utilization == Ec2InstanceReservationPrice.ReservationUtilization.LIGHT ||
-            			utilization == Ec2InstanceReservationPrice.ReservationUtilization.MEDIUM)
-            		continue;
-            	
             	reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), startMilli);
             }
             
@@ -235,10 +231,10 @@ public class BillingFileProcessor extends Poller {
 				tg.operation == ReservationOperation.ondemandInstances ||
 				tg.operation == ReservationOperation.lentInstancesFixed ||
 				tg.operation == ReservationOperation.lentInstancesHeavy ||
-				tg.operation == ReservationOperation.lentInstancesHeavyPartial ||
+				tg.operation == ReservationOperation.lentInstancesPartial ||
 				tg.operation == ReservationOperation.unusedInstancesFixed ||
 				tg.operation == ReservationOperation.unusedInstancesHeavy ||
-				tg.operation == ReservationOperation.unusedInstancesHeavyPartial) {
+				tg.operation == ReservationOperation.unusedInstancesPartial) {
 			return;
 		}
 		ReservationOperation resOp = (ReservationOperation) tg.operation;

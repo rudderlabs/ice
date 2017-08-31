@@ -54,14 +54,14 @@ public class Operation extends Tag {
     public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - No Upfront", 9, ReservationUtilization.HEAVY);
     public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - No Upfront", 10, ReservationUtilization.HEAVY);
 
-    public static final ReservationOperation savingsHeavyPartial = new ReservationOperation("Savings - Partial Upfront", 11, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation reservedInstancesHeavyPartial = new ReservationOperation("Used RIs - Partial Upfront", 12, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation familyReservedInstancesHeavyPartial = new ReservationOperation("Family RIs - Partial Upfront", 13, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation bonusReservedInstancesHeavyPartial = new ReservationOperation("Bonus RIs - Partial Upfront", 14, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation borrowedInstancesHeavyPartial = new ReservationOperation("Borrowed RIs - Partial Upfront", 15, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation lentInstancesHeavyPartial = new ReservationOperation("Lent RIs - Partial Upfront", 16, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation unusedInstancesHeavyPartial = new ReservationOperation("Unused RIs - Partial Upfront", 17, ReservationUtilization.HEAVY_PARTIAL);
-    public static final ReservationOperation upfrontAmortizedHeavyPartial = new ReservationOperation("Amortized RIs - Partial Upfront", 18, ReservationUtilization.HEAVY_PARTIAL);    
+    public static final ReservationOperation savingsPartial = new ReservationOperation("Savings - Partial Upfront", 11, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation reservedInstancesPartial = new ReservationOperation("Used RIs - Partial Upfront", 12, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation familyReservedInstancesPartial = new ReservationOperation("Family RIs - Partial Upfront", 13, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation bonusReservedInstancesPartial = new ReservationOperation("Bonus RIs - Partial Upfront", 14, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation borrowedInstancesPartial = new ReservationOperation("Borrowed RIs - Partial Upfront", 15, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation lentInstancesPartial = new ReservationOperation("Lent RIs - Partial Upfront", 16, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation unusedInstancesPartial = new ReservationOperation("Unused RIs - Partial Upfront", 17, ReservationUtilization.PARTIAL);
+    public static final ReservationOperation upfrontAmortizedPartial = new ReservationOperation("Amortized RIs - Partial Upfront", 18, ReservationUtilization.PARTIAL);    
 
     public static final ReservationOperation savingsFixed = new ReservationOperation("Savings - All Upfront", 19, ReservationUtilization.FIXED);
     public static final ReservationOperation reservedInstancesFixed = new ReservationOperation("Used RIs - All Upfront", 20, ReservationUtilization.FIXED);
@@ -76,7 +76,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return reservedInstancesFixed;
             case HEAVY: return reservedInstancesHeavy;
-            case HEAVY_PARTIAL: return reservedInstancesHeavyPartial;
+            case PARTIAL: return reservedInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -85,7 +85,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return familyReservedInstancesFixed;
             case HEAVY: return familyReservedInstancesHeavy;
-            case HEAVY_PARTIAL: return familyReservedInstancesHeavyPartial;
+            case PARTIAL: return familyReservedInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -94,7 +94,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return bonusReservedInstancesFixed;
             case HEAVY: return bonusReservedInstancesHeavy;
-            case HEAVY_PARTIAL: return bonusReservedInstancesHeavyPartial;
+            case PARTIAL: return bonusReservedInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -103,20 +103,20 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return borrowedInstancesFixed;
             case HEAVY: return borrowedInstancesHeavy;
-            case HEAVY_PARTIAL: return borrowedInstancesHeavyPartial;
+            case PARTIAL: return borrowedInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
 
     public static List<ReservationOperation> getLentOperations() {
-        return Lists.newArrayList(lentInstancesFixed, lentInstancesHeavy, lentInstancesHeavyPartial);
+        return Lists.newArrayList(lentInstancesFixed, lentInstancesHeavy, lentInstancesPartial);
     }
 
     public static ReservationOperation getLentInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return lentInstancesFixed;
             case HEAVY: return lentInstancesHeavy;
-            case HEAVY_PARTIAL: return lentInstancesHeavyPartial;
+            case PARTIAL: return lentInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -125,7 +125,7 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return unusedInstancesFixed;
             case HEAVY: return unusedInstancesHeavy;
-            case HEAVY_PARTIAL: return unusedInstancesHeavyPartial;
+            case PARTIAL: return unusedInstancesPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -134,20 +134,20 @@ public class Operation extends Tag {
         switch (utilization) {
             case FIXED: return upfrontAmortizedFixed;
             case HEAVY: return upfrontAmortizedHeavy;
-            case HEAVY_PARTIAL: return upfrontAmortizedHeavyPartial;
+            case PARTIAL: return upfrontAmortizedPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
 
     public static List<ReservationOperation> getSavingsOperations() {
-        return Lists.newArrayList(spotInstanceSavings, savingsFixed, savingsHeavy, savingsHeavyPartial);
+        return Lists.newArrayList(spotInstanceSavings, savingsFixed, savingsHeavy, savingsPartial);
     }
 
     public static ReservationOperation getSavings(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return savingsFixed;
             case HEAVY: return savingsHeavy;
-            case HEAVY_PARTIAL: return savingsHeavyPartial;
+            case PARTIAL: return savingsPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }

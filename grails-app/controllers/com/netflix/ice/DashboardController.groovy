@@ -427,7 +427,9 @@ class DashboardController {
 		boolean consolidateFamily = query.getBoolean("family");
 		UsageUnit usageUnit = UsageUnit.Dollar;
 		if (!isCost) {
-			usageUnit = UsageUnit.valueOf(query.getString("usageUnit"));
+			usageUnit = UsageUnit.Native;
+			if (!query.getString("usageUnit").isEmpty())
+				usageUnit = UsageUnit.valueOf(query.getString("usageUnit"));
 		}
         AggregateType aggregate = AggregateType.valueOf(query.getString("aggregate"));
         List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));

@@ -230,16 +230,14 @@ public class Ec2InstanceReservationPrice {
     }
 
     public static enum ReservationUtilization {
-        LIGHT,			// No longer offered by AWS as of 2014
-        MEDIUM,			// No longer offered by AWS as of 2014
-        HEAVY, 			// The new "No Upfront" Reservations
-        HEAVY_PARTIAL,	// The new "Partial Upfront" Reservations
-        FIXED;			// The new "Full Upfront" Reservations
+        HEAVY, 		// The new "No Upfront" Reservations
+        PARTIAL,	// The new "Partial Upfront" Reservations
+        FIXED;		// The new "Full Upfront" Reservations
 
         static final Map<String, String> reservationTypeMap = new HashMap<String, String>();
         static {
             reservationTypeMap.put("ALL", "FIXED");
-            reservationTypeMap.put("PARTIAL", "HEAVY_PARTIAL");
+            reservationTypeMap.put("PARTIAL", "PARTIAL");
             reservationTypeMap.put("NO", "HEAVY");
         }
 

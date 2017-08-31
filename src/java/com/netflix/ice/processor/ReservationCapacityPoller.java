@@ -269,7 +269,7 @@ public class ReservationCapacityPoller extends Poller {
 	        
 	        if (fixedPrice == 0.0 && 
 	        		(utilization == ReservationUtilization.FIXED ||
-	        		 utilization == ReservationUtilization.HEAVY_PARTIAL))  {
+	        		 utilization == ReservationUtilization.PARTIAL))  {
 	        	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
 	        	// Get the reservation modification for this RI
 	        	String parentReservationId = mods.getOriginalReservationId(reservedInstances.getReservationId());

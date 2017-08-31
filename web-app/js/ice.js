@@ -165,7 +165,8 @@ ice.factory('highchart', function() {
   }
 
   var setupYAxis = function(isCost, usageUnit, showsps, factorsps, elasticity) {
-    var yAxis = {title:{text: (elasticity ? "% Elasticity" : (isCost ? 'Cost' : 'Usage (' + usageUnit + ')')) + " per " + (factorsps ? metricunitname : consolidate)}, min: 0, lineWidth: 2};
+	var unitStr = usageUnit === '' ? '' : ' ('+usageUnit+')';
+    var yAxis = {title:{text: (elasticity ? "% Elasticity" : (isCost ? 'Cost' : 'Usage' + unitStr)) + " per " + (factorsps ? metricunitname : consolidate)}, min: 0, lineWidth: 2};
     if (isCost)
       yAxis.labels = {
         formatter: function() {
@@ -1162,7 +1163,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.plotType = "area";
   $scope.legends = [];
   $scope.usage_cost = "cost";
-  $scope.usageUnit = "Instances";
+  $scope.usageUnit = "";
   $scope.groupBys = [
     {name: "None"},
     {name: "Account"},
@@ -1336,7 +1337,7 @@ function appgroupCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.plotType = "area";
   $scope.legends = [];
   $scope.usage_cost = "cost";
-  $scope.usageUnit = "Instances";
+  $scope.usageUnit = "";
   $scope.groupBys = [
     {name: "Account"},
     {name: "Region"},
@@ -1645,7 +1646,7 @@ function breakdownCtrl($scope, $location, $http, usage_db, highchart) {
 function summaryCtrl($scope, $location, usage_db, highchart) {
 
   $scope.usage_cost = "cost";
-  $scope.usageUnit = "Instances";
+  $scope.usageUnit = "";
   $scope.groupBys = [
         {name: "Account"},
         {name: "Region"},

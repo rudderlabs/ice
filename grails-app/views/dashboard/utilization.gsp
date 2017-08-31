@@ -49,7 +49,7 @@
             <option>Instances</option>
             <option>ECUs</option>
             <option>vCPUs</option>
-            <option>CostMult</option>
+            <option>Normalized</option>
           </select>
         </div>
         <div style="padding-top: 10px">Group by

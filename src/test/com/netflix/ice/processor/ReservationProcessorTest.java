@@ -175,7 +175,7 @@ public class ReservationProcessorTest {
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
 		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, startMillis);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY_PARTIAL, reservationService, usage, cost, startMillis);
+		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.PARTIAL, reservationService, usage, cost, startMillis);
 		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.FIXED, reservationService, usage, cost, startMillis);		
 	}
 	
@@ -580,18 +580,18 @@ public class ReservationProcessorTest {
 		
 		Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgresql", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 2.0),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgresql", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesHeavyPartial, "db.t2.micro.postgresql", 0.024),
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedHeavyPartial, "db.t2.micro.postgresql", 0.018),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgresql", 0.024),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartial, "db.t2.micro.postgresql", 0.018),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
@@ -610,18 +610,18 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesHeavyPartial, "c4.2xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesPartial, "c4.2xlarge", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesHeavyPartial, "c4.2xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesPartial, "c4.2xlarge", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesHeavyPartial, "c4.2xlarge", 0.121),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedHeavyPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartial, "c4.2xlarge", 0.121),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
@@ -637,22 +637,22 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesHeavyPartial, "c3.4xlarge", 2.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesPartial, "c3.4xlarge", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 1.0),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 1.0),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesHeavyPartial, "c3.4xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesPartial, "c3.4xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesPartial, "c3.4xlarge", 1.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesPartial, "c3.4xlarge", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c3.4xlarge", 0.199),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c3.4xlarge", 0.209),
-			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.283),
-			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c3.4xlarge", 0.298),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesPartial, "c3.4xlarge", 0.199),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesPartial, "c3.4xlarge", 0.209),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c3.4xlarge", 0.283),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c3.4xlarge", 0.298),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c3");
@@ -669,32 +669,32 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 9.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 5.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.bonusReservedInstancesHeavyPartial, "c4.xlarge", 4.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.bonusReservedInstancesPartial, "c4.xlarge", 9.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.bonusReservedInstancesPartial, "c4.xlarge", 5.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.bonusReservedInstancesPartial, "c4.xlarge", 4.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 4.0),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 3.0),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 2.0),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 8.0),
-			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 1.0),
-			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesHeavyPartial, "c4.xlarge", 2.0),
-			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesHeavyPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesPartial, "c4.xlarge", 4.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesPartial, "c4.xlarge", 3.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesPartial, "c4.xlarge", 2.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesPartial, "c4.xlarge", 8.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesPartial, "c4.xlarge", 1.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesPartial, "c4.xlarge", 2.0),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesPartial, "c4.xlarge", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.228),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.171),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesHeavyPartial, "c4.xlarge", 0.456),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.134),
-				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesHeavyPartial, "c4.xlarge", 0.067),
-			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.862),
-			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.134),
-			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.upfrontAmortizedHeavyPartial, "c4.xlarge", 0.067),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, Operation.reservedInstancesPartial, "c4.xlarge", 0.228),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.reservedInstancesPartial, "c4.xlarge", 0.171),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.reservedInstancesPartial, "c4.xlarge", 0.456),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, Operation.borrowedInstancesPartial, "c4.xlarge", 0.134),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesPartial, "c4.xlarge", 0.067),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.862),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.134),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.067),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");

@@ -135,7 +135,7 @@ public class BillingFileProcessorTest {
 			}
 		}
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
-        ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY_PARTIAL"));
+        ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
 		ReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
 		
 		@SuppressWarnings("deprecation")
@@ -178,11 +178,6 @@ public class BillingFileProcessorTest {
         purgeSupportTags(costDataByProduct.get(null));
 		
         for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
-        	// We no longer support Light and Medium
-        	if (utilization == Ec2InstanceReservationPrice.ReservationUtilization.LIGHT ||
-        			utilization == Ec2InstanceReservationPrice.ReservationUtilization.MEDIUM)
-        		continue;
-        	
         	bfp.reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), startMilli);
         }
         

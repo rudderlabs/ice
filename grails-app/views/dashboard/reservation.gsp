@@ -54,7 +54,7 @@
           <option>Instances</option>
           <option>ECUs</option>
           <option>vCPUs</option>
-          <option>CostMult</option>
+          <option>Normalized</option>
         </select>
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>

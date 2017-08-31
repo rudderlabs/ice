@@ -44,12 +44,6 @@
       <td nowrap="">
         <input type="radio" ng-model="usage_cost" value="cost" id="radio_cost"> <label for="radio_cost" style="cursor: pointer">Cost</label>&nbsp;&nbsp;
         <input type="radio" ng-model="usage_cost" value="usage" id="radio_usage"> <label for="radio_usage" style="cursor: pointer">Usage</label>
-        <select ng-model="usageUnit">
-          <option>Instances</option>
-          <option>ECUs</option>
-          <option>vCPUs</option>
-          <option>CostMult</option>
-        </select>
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>
         </div>

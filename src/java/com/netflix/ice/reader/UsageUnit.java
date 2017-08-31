@@ -5,5 +5,6 @@ public enum UsageUnit {
 	Instances,
 	ECUs,
 	vCPUs,
-	CostMult
+	Normalized,
+	Native;
 }
