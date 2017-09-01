@@ -233,7 +233,23 @@ class DashboardController {
             data = tagGroupManager == null ? [] : tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
         }
 
-        if (!forReservation) {
+        if (forReservation) {
+			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
+			if (isCost) {
+				// Remove Lent from cost operations
+				for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
+                	data.remove(lentOp);
+			}
+			else {
+				// Remove Amortization and savings from the usage operations
+				for (Operation.ReservationOperation amortOp: Operation.getAmortizationOperations())
+					data.remove(amortOp);
+				for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
+					data.remove(savingsOp);
+			}
+        }
+		else {
+			// Don't show Lent and Savings operations unless it's the reservations dashboard
             for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                 data.remove(lentOp);
 			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())

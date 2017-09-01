@@ -130,6 +130,10 @@ public class Operation extends Tag {
         }
     }
 
+    public static List<ReservationOperation> getAmortizationOperations() {
+        return Lists.newArrayList(upfrontAmortizedHeavy, upfrontAmortizedPartial, upfrontAmortizedFixed);
+    }
+
     public static ReservationOperation getUpfrontAmortized(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return upfrontAmortizedFixed;

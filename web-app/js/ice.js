@@ -969,9 +969,13 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
   }
 
   $scope.productsChanged = function() {
-    updateOperations();
-    updateUsageTypes();
-  }
+	    updateOperations();
+	    updateUsageTypes();
+	  }
+
+  $scope.usageCostChanged = function() {
+	    updateOperations();
+	  }
 
   var updateOperations = function() {
     var query = jQuery.extend({usage_cost: $scope.usage_cost, forReservation: true}, predefinedQuery);
