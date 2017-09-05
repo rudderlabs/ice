@@ -73,13 +73,13 @@ public class ReservationCapacityPollerTest {
 		poller.handleEC2Modifications(reservations, ec2mods);
 		
 		CanonicalReservedInstances child = reservations.get(childKey);
-		assertTrue("Wrong fixed price, expected " + 100.0 + ", got " + child.getFixedPrice(), child.getFixedPrice() == 50.0);		
+		assertEquals("Wrong fixed price, expected " + 100.0 + ", got " + child.getFixedPrice(), child.getFixedPrice(), 50.0, 0.001);		
 	}
 	
 	@Test
 	public void testMultiplier() {
 		ReservationCapacityPoller rcp = new ReservationCapacityPoller();
-		assertTrue("Wrong multipliers converting micro to xlarge", rcp.multiplier("xlarge") / rcp.multiplier("micro") == 16.0);
-		assertTrue("Wrong multipliers converting small to 4xlarge", rcp.multiplier("4xlarge") / rcp.multiplier("small") == 32.0);
+		assertEquals("Wrong multipliers converting micro to xlarge", rcp.multiplier("xlarge") / rcp.multiplier("micro"), 16.0, 0.001);
+		assertEquals("Wrong multipliers converting small to 4xlarge", rcp.multiplier("4xlarge") / rcp.multiplier("small"), 32.0, 0.001);
 	}
 }

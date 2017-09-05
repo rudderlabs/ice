@@ -2,9 +2,8 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
@@ -20,6 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.joda.time.DateTime;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +46,10 @@ import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilizat
 import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationProcessorTest.Datum;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+import com.netflix.ice.processor.pricelist.PriceListService;
+import com.netflix.ice.processor.pricelist.VersionIndex.Version;
+import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -55,11 +59,21 @@ import com.netflix.ice.tag.Zone;
 public class BillingFileProcessorTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     
-    private static final String resourcesDir = "src/test/resources/report";
+    private static final String resourcesDir = "src/test/resources/";
+    private static final String resourcesReportDir = resourcesDir + "report/";
+	private static InstanceMetrics instanceMetrics = new InstanceMetrics();
+    
+	@BeforeClass
+	public static void loadInstanceMetrics() throws IOException {
+		File testFile = new File(resourcesDir, "instanceMetrics");
+		DataInputStream in = new DataInputStream(new FileInputStream(testFile));
+		instanceMetrics.load(in);
+	}
+	
 
 	private Properties getProperties() throws IOException {
 		Properties prop = new Properties();
-		File file = new File(resourcesDir + "/ice.properties");
+		File file = new File(resourcesReportDir, "ice.properties");
         InputStream is = new FileInputStream(file);
 		prop.load(is);
 	    is.close();
@@ -81,14 +95,14 @@ public class BillingFileProcessorTest {
 				Instances instances) throws IOException {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
-			File manifest = new File(resourcesDir + "/hourly-cost-and-usage-Manifest.json");
+			File manifest = new File(resourcesReportDir, "hourly-cost-and-usage-Manifest.json");
 			CostAndUsageReport report = new CostAndUsageReport(manifest, cauProcessor);
 			
 	    	List<File> files = Lists.newArrayList();
 	    	for (String key: report.getReportKeys()) {
 				String prefix = key.substring(0, key.lastIndexOf("/") + 1);
 				String filename = key.substring(prefix.length());
-	    		files.add(new File(resourcesDir + "/" + filename));
+	    		files.add(new File(resourcesReportDir, filename));
 	    	}
 	        Long startMilli = report.getStartTime().getMillis();
 	        if (startMilli != start.getMillis()) {
@@ -106,7 +120,7 @@ public class BillingFileProcessorTest {
 				Instances instances) throws IOException {
 			
 			DetailedBillingReportProcessor dbrProcessor = new DetailedBillingReportProcessor(config);
-			File dbr = new File(resourcesDir + "/aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
+			File dbr = new File(resourcesReportDir, "aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
 			S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
 			s3ObjectSummary.setKey("/aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
 			DetailedBillingReportProcessor.BillingFile report = dbrProcessor.new BillingFile(s3ObjectSummary, dbrProcessor);
@@ -119,7 +133,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	public void testFileData(ReportTest reportTest) throws IOException {
+	public void testFileData(ReportTest reportTest) throws Exception {
         Properties properties = getProperties();
                 
 		AccountService accountService = new BasicAccountService(properties);
@@ -140,6 +154,28 @@ public class BillingFileProcessorTest {
 		
 		@SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
+		
+		class TestPriceListService extends PriceListService {
+			public TestPriceListService() throws Exception {
+				super(null, null, null);
+			}
+
+			@Override
+		    protected InstancePrices load(ServiceCode serviceCode, String versionId, Version version) throws Exception {
+				return null;
+			}
+			
+			@Override
+		    protected void archive(InstancePrices prices, String name) throws IOException {
+				return;
+			}
+			
+			@Override
+		    protected void loadInstanceMetrics() throws IOException {
+				this.instanceMetrics = BillingFileProcessorTest.instanceMetrics;
+			}
+		}
+
 		ProcessorConfig config = new ProcessorConfig(
 										properties,
 										credentialsProvider,
@@ -148,9 +184,14 @@ public class BillingFileProcessorTest {
 										reservationService,
 										null,
 										new BasicLineItemProcessor(accountService, productService, reservationService, null, null),
+										new TestPriceListService(),
 										null);
-		BillingFileProcessor bfp = new BillingFileProcessor(config, null, null, null, null);
+		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
 		bfp.init();
+		
+		// Debug settings
+		//bfp.reservationProcessor.setDebugHour(0);
+		//bfp.reservationProcessor.setDebugFamily("c4");
     	
     	Map<Product, ReadWriteData> usageDataByProduct = new HashMap<Product, ReadWriteData>();
     	Map<Product, ReadWriteData> costDataByProduct = new HashMap<Product, ReadWriteData>();
@@ -159,7 +200,7 @@ public class BillingFileProcessorTest {
         Instances instances = new Instances();
         
 		Long startMilli = config.startDate.getMillis();
-		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesDir + "/reservation_capacity.csv"));
+		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		reservationService.updateReservations(reservations, accountService, startMilli, productService);
 		
 		Long endMilli = reportTest.Process(config, config.startDate, usageDataByProduct, costDataByProduct, instances);
@@ -186,7 +227,7 @@ public class BillingFileProcessorTest {
         		costDataByProduct.get(null).getTagGroups().size() + " cost tags");
         
 		// Read the file with tags to ignore if present
-        File ignoreFile = new File(resourcesDir, "ignore.csv");
+        File ignoreFile = new File(resourcesReportDir, "ignore.csv");
         Set<TagGroup> ignore = null;
         if (ignoreFile.exists()) {
     		try {
@@ -198,7 +239,7 @@ public class BillingFileProcessorTest {
     		}
         }
                 
-        File expectedUsage = new File(resourcesDir, "usage.csv");
+        File expectedUsage = new File(resourcesReportDir, "usage.csv");
         if (!expectedUsage.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference usage data...");
@@ -209,7 +250,7 @@ public class BillingFileProcessorTest {
         	logger.info("Comparing against reference usage data...");
         	compareData(usageDataByProduct.get(null), "Usage", expectedUsage, accountService, productService, ignore);
         }
-        File expectedCost = new File(resourcesDir, "cost.csv");
+        File expectedCost = new File(resourcesReportDir, "cost.csv");
         if (!expectedCost.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference cost data...");
@@ -263,7 +304,7 @@ public class BillingFileProcessorTest {
 		
 		
 		// See that number of hours matches
-		assertTrue(dataType+" number of hours doesn't match, expected " + expectedData.getNum() + ", got " + data.getNum(), expectedData.getNum() == data.getNum());
+		assertEquals(dataType+" number of hours doesn't match, expected " + expectedData.getNum() + ", got " + data.getNum(), expectedData.getNum(), data.getNum());
 		// For each hour see that the length and entries match
 		for (int i = 0; i < data.getNum(); i++) {
 			Map<TagGroup, Double> expected = expectedData.getData(i);
@@ -323,10 +364,10 @@ public class BillingFileProcessorTest {
 					}
 				}
 				logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
-				assertTrue("Hour "+i+" has " + numMismatches + " incorrect data values", numMismatches == 0);
+				assertEquals("Hour "+i+" has " + numMismatches + " incorrect data values", numMismatches, 0);
 			}
-			assertTrue("Hour "+i+" has " + numNotFound + " tags that were not found", numNotFound == 0);
-			assertTrue(dataType+" number of items for hour " + i + " doesn't match, expected " + expectedLen + ", got " + gotLen, expectedLen == gotLen);			
+			assertEquals("Hour "+i+" has " + numNotFound + " tags that were not found", numNotFound, 0);
+			assertEquals(dataType+" number of items for hour " + i + " doesn't match, expected " + expectedLen + ", got " + gotLen, expectedLen, gotLen);			
 		}
 	}
 	
@@ -353,12 +394,12 @@ public class BillingFileProcessorTest {
 
 	
 	@Test
-	public void testCostAndUsageReport() throws IOException {
+	public void testCostAndUsageReport() throws Exception {
 		testFileData(new CostAndUsageTest());
 	}
 	
 	@Test
-	public void testDetailedBillingReport() throws IOException {
+	public void testDetailedBillingReport() throws Exception {
 		testFileData(new DetailedBillingReportTest());
 	}
 	
@@ -406,12 +447,12 @@ public class BillingFileProcessorTest {
 		Set<Account> owners = Sets.newHashSet(ReservationProcessorTest.accounts.get(1));
 		ReservationProcessorTest.runTest(startMillis, resCSV, usage, cost, "c4", owners);
 
-		assertTrue("usage size should be " + expectedUsage.length + ", got " + hourUsageData.size(), hourUsageData.size() == expectedUsage.length);
+		assertEquals("usage size should be " + expectedUsage.length + ", got " + hourUsageData.size(), hourUsageData.size(), expectedUsage.length);
 		for (Datum datum: expectedUsage) {
 			assertNotNull("should have usage tag group " + datum.tagGroup, hourUsageData.get(datum.tagGroup));	
-			assertTrue("should have usage value " + datum.value + " for tag " + datum.tagGroup + ", got " + hourUsageData.get(datum.tagGroup), hourUsageData.get(datum.tagGroup) == datum.value);
+			assertEquals("should have usage value " + datum.value + " for tag " + datum.tagGroup + ", got " + hourUsageData.get(datum.tagGroup), hourUsageData.get(datum.tagGroup), datum.value, 0.001);
 		}
-		assertTrue("cost size should be " + expectedCost.length + ", got " + hourCostData.size(), hourCostData.size() == expectedCost.length);
+		assertEquals("cost size should be " + expectedCost.length + ", got " + hourCostData.size(), hourCostData.size(), expectedCost.length);
 		for (Datum datum: expectedCost) {
 			assertNotNull("should have cost tag group " + datum.tagGroup, hourCostData.get(datum.tagGroup));	
 			assertEquals("should have cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);

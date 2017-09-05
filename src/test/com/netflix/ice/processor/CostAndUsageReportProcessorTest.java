@@ -25,7 +25,7 @@ public class CostAndUsageReportProcessorTest {
 		String reportName = "hourly-cost-and-usage";
 		String key = "hourly/hourly-cost-and-usage/20170601-20170701/hourly-cost-and-usage-Manifest.json";
 		DateTime dataTime = CostAndUsageReportProcessor.getDateTimeFromCostAndUsageReport(key, CostAndUsageReportProcessor.getPattern(reportName));
-		assertTrue("Returned time is null", dataTime != null);
+		assertNotEquals("Returned time is null", dataTime, null);
 	}
 	
 	@Test
@@ -33,7 +33,7 @@ public class CostAndUsageReportProcessorTest {
 		String reportName = "hourly-cost-and-usage";
 		String key = "hourly/hourly-cost-and-usage/20170601-20170701/f255bdaf-4148-4b28-8201-c3d190f27a13/hourly-cost-and-usage-Manifest.json";
 		DateTime dataTime = CostAndUsageReportProcessor.getDateTimeFromCostAndUsageReport(key, CostAndUsageReportProcessor.getPattern(reportName));
-		assertTrue("Returned time is null", dataTime == null);
+		assertEquals("Returned time is null", dataTime, null);
 	}
 	
 	@Test
@@ -52,22 +52,22 @@ public class CostAndUsageReportProcessorTest {
 		assertTrue("Description is wrong", lineItem.getDescription().equals("\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\""));	    
 		assertTrue("UsageType is wrong", lineItem.getUsageType().equals("USW2-BoxUsage:c3.4xlarge"));	    
 		assertTrue("Operation is wrong", lineItem.getOperation().equals("RunInstances"));	    
-		assertTrue("UsageQuantity is wrong", Math.abs(Double.parseDouble(lineItem.getUsageQuantity()) - 1.0) < 0.001);	    
+		assertEquals("UsageQuantity is wrong", Double.parseDouble(lineItem.getUsageQuantity()), 1.0, 0.001);	    
 		assertTrue("StartTime is wrong", lineItem.getStartTime().equals("2017-08-01T00:00:00Z"));		
 		assertTrue("EndTime is wrong", lineItem.getEndTime().equals("2017-08-01T01:00:00Z"));		
 		assertTrue("Rate is wrong", lineItem.getRate().equals("0.2632173639"));		
 		assertTrue("Cost is wrong", lineItem.getCost().equals("0.26321736"));		
 		assertTrue("Resource is wrong", lineItem.getResource().equals("i-02345901991a472d6"));		
 		assertTrue("HasResources is wrong", lineItem.hasResources());		
-		assertTrue("Start millis is wrong " + lineItem.getStartMillis(), lineItem.getStartMillis() == 1501545600000L);		
-		assertTrue("End millis is wrong " + lineItem.getEndMillis(), lineItem.getEndMillis() == 1501549200000L); 
+		assertEquals("Start millis is wrong " + lineItem.getStartMillis(), lineItem.getStartMillis(), 1501545600000L);		
+		assertEquals("End millis is wrong " + lineItem.getEndMillis(), lineItem.getEndMillis(), 1501549200000L); 
 		
 		String tagsHeader = StringUtils.join(lineItem.getResourceTagsHeader(), ",");
 		assertTrue("Resource tags header is wrong " + tagsHeader, tagsHeader.equals(
 				"resourceTags/aws:createdBy,resourceTags/user:Environment,resourceTags/user:Email,resourceTags/user:BusinessUnit,resourceTags/user:Name,resourceTags/user:Project,resourceTags/user:Product"));
 		
 		// items defined above starts out with no tags
-		assertTrue("Resource tag size is wrong: " + lineItem.getResourceTagsSize(), lineItem.getResourceTagsSize() == 0);		
+		assertEquals("Resource tag size is wrong: " + lineItem.getResourceTagsSize(), lineItem.getResourceTagsSize(), 0);		
 		assertTrue("ResourceTag is wrong", lineItem.getResourceTag(0).equals(""));		
 		assertTrue("ResourceTagString is wrong", lineItem.getResourceTagsString().equals(""));		
 		assertTrue("IsReserved is wrong", lineItem.isReserved());

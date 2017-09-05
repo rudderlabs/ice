@@ -47,6 +47,7 @@ public class BasicDataManager extends Poller implements DataManager {
     protected String dbName;
     protected ConsolidateType consolidateType;
     protected Product product;
+    protected InstanceMetrics instanceMetrics;
 
     protected Map<DateTime, File> fileCache = Maps.newConcurrentMap();
     protected LoadingCache<DateTime, ReadOnlyData> data = CacheBuilder.newBuilder()
@@ -64,10 +65,11 @@ public class BasicDataManager extends Poller implements DataManager {
                    }
                });
 
-    public BasicDataManager(Product product, ConsolidateType consolidateType, boolean isCost) {
+    public BasicDataManager(Product product, ConsolidateType consolidateType, boolean isCost, InstanceMetrics instanceMetrics) {
         this.product = product;
         this.consolidateType = consolidateType;
         this.dbName = (isCost ? "cost_" : "usage_") + consolidateType + "_" + (product == null ? "all" : product.getFileName());
+        this.instanceMetrics = instanceMetrics;
 
         start();
     }
@@ -286,14 +288,14 @@ public class BasicDataManager extends Poller implements DataManager {
     		return value;
     	
     	case ECUs:
-    		multiplier = InstanceMetrics.getECU(usageType);
+    		multiplier = instanceMetrics.getECU(usageType);
     		break;
     		
     	case vCPUs:
-    		multiplier = InstanceMetrics.getVCpu(usageType);
+    		multiplier = instanceMetrics.getVCpu(usageType);
     		break;
     	case Normalized:
-    		multiplier = InstanceMetrics.getCostMultiplier(usageType);
+    		multiplier = instanceMetrics.getNormalizationFactor(usageType);
     		break;
     	}
     	return value * multiplier;    		

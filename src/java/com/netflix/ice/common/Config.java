@@ -57,8 +57,8 @@ public abstract class Config {
         String[] yearMonth = properties.getProperty(IceOptions.START_MONTH).split("-");
         DateTime startDate = new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
         workS3BucketName = properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME);
-        workS3BucketPrefix = properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX, "ice/");
-        localDir = properties.getProperty(IceOptions.LOCAL_DIR, "/mnt/ice");
+        workS3BucketPrefix = properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX);
+        localDir = properties.getProperty(IceOptions.LOCAL_DIR);
 
         if (workS3BucketName == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_NAME must be specified");
 

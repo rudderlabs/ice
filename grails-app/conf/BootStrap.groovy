@@ -37,6 +37,7 @@ import com.netflix.ice.basic.BasicProductService
 import com.netflix.ice.basic.BasicReservationService
 import com.netflix.ice.basic.BasicLineItemProcessor
 import com.netflix.ice.processor.Ec2InstanceReservationPrice
+import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.basic.BasicS3ApplicationGroupService
 import com.netflix.ice.basic.BasicManagers
 
@@ -153,7 +154,7 @@ class BootStrap {
 					}
                 }
 
-                properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.processor.localDir"));
+                properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.processor.localDir", "/mnt/ice"));
                 properties.setProperty(IceOptions.BILLING_S3_BUCKET_NAME, prop.getProperty(IceOptions.BILLING_S3_BUCKET_NAME));
                 properties.setProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, ""));
                 properties.setProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, prop.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, ""));
@@ -190,6 +191,11 @@ class BootStrap {
 
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
 				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null);
+				PriceListService priceListService = new PriceListService(
+					properties.getProperty(IceOptions.LOCAL_DIR), 
+					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 
+					properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
+				
 				
                 processorConfig = new ProcessorConfig(
                         properties,
@@ -199,12 +205,13 @@ class BootStrap {
                         reservationService,
                         resourceService,
                         lineItemProcessor,
+						priceListService,
                         null)
                 processorConfig.start(reservationCapacityPoller);
             }
 
             if ("true".equals(prop.getProperty("ice.reader"))) {
-                properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.reader.localDir"));
+                properties.setProperty(IceOptions.LOCAL_DIR, prop.getProperty("ice.reader.localDir", "/mnt/ice"));
                 if (prop.getProperty(IceOptions.MONTHLY_CACHE_SIZE) != null)
                     properties.setProperty(IceOptions.MONTHLY_CACHE_SIZE, prop.getProperty(IceOptions.MONTHLY_CACHE_SIZE));
                 if (prop.getProperty(IceOptions.CURRENCY_RATE) != null)

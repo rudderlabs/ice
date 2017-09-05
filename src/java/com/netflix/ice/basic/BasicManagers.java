@@ -41,6 +41,7 @@ public class BasicManagers extends Poller implements Managers {
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
+    private InstanceMetricsService instanceMetricsService = null;
 
     public void shutdown() {
         for (BasicTagGroupManager tagGroupManager: tagGroupManagers.values()) {
@@ -56,6 +57,7 @@ public class BasicManagers extends Poller implements Managers {
 
     public void init() {
         config = ReaderConfig.getInstance();
+        instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
         doWork();
         start();
     }
@@ -82,7 +84,6 @@ public class BasicManagers extends Poller implements Managers {
     }
 
     private void doWork() {
-
         logger.info("trying to find new tag group and data managers...");
         Set<Product> products = Sets.newHashSet(this.products);
         Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap(this.tagGroupManagers);
@@ -111,8 +112,8 @@ public class BasicManagers extends Poller implements Managers {
             tagGroupManagers.put(product, new BasicTagGroupManager(product));
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
-                costManagers.put(key, new BasicDataManager(product, consolidateType, true));
-                usageManagers.put(key, new BasicDataManager(product, consolidateType, false));
+                costManagers.put(key, new BasicDataManager(product, consolidateType, true, null));
+                usageManagers.put(key, new BasicDataManager(product, consolidateType, false, instanceMetricsService.getInstanceMetrics()));
             }
         }
 

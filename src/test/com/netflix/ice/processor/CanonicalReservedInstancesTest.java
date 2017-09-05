@@ -50,8 +50,8 @@ public class CanonicalReservedInstancesTest {
 		String e = LineItem.amazonBillingDateFormat.print(new DateTime(cri.getEnd().getTime()));
 		assertTrue("End doesn't match", end.equals(e));
 		assertTrue("Duration doesn't match", duration.equals(cri.getDuration().toString()));
-		assertTrue("UsagePrice doesn't match", Double.parseDouble(usagePrice) - cri.getUsagePrice() < 0.001);
-		assertTrue("FixedPrice doesn't match", Double.parseDouble(fixedPrice) - cri.getFixedPrice() < 0.001);
+		assertEquals("UsagePrice doesn't match", Double.parseDouble(usagePrice), cri.getUsagePrice(), 0.001);
+		assertEquals("FixedPrice doesn't match", Double.parseDouble(fixedPrice), cri.getFixedPrice(), 0.001);
 		assertTrue("InstanceCount doesn't match", instanceCount.equals(cri.getInstanceCount().toString()));
 		assertTrue("Description doesn't match", description.equals(cri.getProductDescription()));
 		assertTrue("State doesn't match", state.equals(cri.getState()));
@@ -59,11 +59,11 @@ public class CanonicalReservedInstancesTest {
 		assertTrue("OfferingType doesn't match", offeringType.equals(cri.getOfferingType()));
 		List<RecurringCharge> rcsA = cri.getRecurringCharges();
 		String[] rcsB = recurringCharges.split("\\|");
-		assertTrue("Number of recurring charges is wrong", rcsA.size() == numRecurring);
+		assertEquals("Number of recurring charges is wrong", rcsA.size(), numRecurring);
 		for (int i = 0; i < numRecurring; i++) {
 			String[] rcB = rcsB[i].split(":");
 			assertTrue("Recurrence frequency for index " + i + " doesn't match", rcB[0].equals(rcsA.get(i).frequency));
-			assertTrue("Recurrence cost for index " + i + " doesn't match", Double.parseDouble(rcB[1]) - rcsA.get(i).cost < 0.001);
+			assertEquals("Recurrence cost for index " + i + " doesn't match", Double.parseDouble(rcB[1]), rcsA.get(i).cost, 0.001);
 		}
 		assertTrue("ParentReservationId doesn't match", parentReservationId.equals(cri.getParentReservationId()));
 	}

@@ -19,6 +19,7 @@ package com.netflix.ice.processor;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.pricelist.PriceListService;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -31,7 +32,7 @@ public class ProcessorConfig extends Config {
     private static final Logger logger = LoggerFactory.getLogger(ProcessorConfig.class);
     private static ProcessorConfig instance;
     private static ReservationCapacityPoller reservationCapacityPoller;
-    private static BillingFileProcessor billingFileProcessor;
+    protected static BillingFileProcessor billingFileProcessor;
 
     public final String[] billingAccountIds;
     public final String[] billingS3BucketNames;
@@ -43,6 +44,7 @@ public class ProcessorConfig extends Config {
     public final String[] customTags;
     public final ReservationService reservationService;
     public final LineItemProcessor lineItemProcessor;
+    public final PriceListService priceListService;
     public final Randomizer randomizer;
     public final double costPerMonitorMetricPerHour;
     public final boolean useBlended;
@@ -70,7 +72,8 @@ public class ProcessorConfig extends Config {
             ReservationService reservationService,
             ResourceService resourceService,
             LineItemProcessor lineItemProcessor,
-            Randomizer randomizer) {
+            PriceListService priceListService,
+            Randomizer randomizer) throws Exception {
 
         super(properties, credentialsProvider, accountService, productService, resourceService);
 
@@ -79,6 +82,7 @@ public class ProcessorConfig extends Config {
 
         this.reservationService = reservationService;
         this.lineItemProcessor = lineItemProcessor;
+        this.priceListService = priceListService;
         this.randomizer = randomizer;
 
         if (properties.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR) != null)

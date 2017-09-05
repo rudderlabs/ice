@@ -22,6 +22,8 @@ import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.PriceListService.ServiceCode;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
+import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.tag.UsageType;
 
 public class PriceListServiceTest {
 	private static final String resourceDir = "src/test/resources/";
@@ -42,7 +44,8 @@ public class PriceListServiceTest {
         stream.close();
 
        	InstancePrices prices = new InstancePrices(id, version.getBeginDate(), version.getEndDate());
-       	prices.importPriceList(priceList, PriceListService.tenancies);
+		InstanceMetrics instanceMetrics = new InstanceMetrics();
+       	prices.importPriceList(priceList, PriceListService.tenancies, instanceMetrics);
        	
        	verify(prices.prices.entrySet().iterator().next().getValue());
 
@@ -56,12 +59,12 @@ public class PriceListServiceTest {
         DataInputStream in = new DataInputStream(inBuf);
         InstancePrices ip = InstancePrices.Serializer.deserialize(in);
         
-        assertTrue("No object returned from readObject", ip != null);
+        assertNotEquals("No object returned from readObject", ip, null);
        	verify(ip.prices.entrySet().iterator().next().getValue());
 	}
 	
 	private void verify(Product p) {
-		assertTrue("OnDemand rate doesn't match, expected 0.023, got " + p.onDemandRate, Math.abs(p.onDemandRate - 0.023) < 0.001);
+		assertEquals("OnDemand rate doesn't match, expected 0.023, got " + p.onDemandRate, p.onDemandRate, 0.023, 0.001);
 		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.noUpfront, OfferingClass.standard, 0, 0.0168);
 		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard, 70, 0.008);
 		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.allUpfront, 	OfferingClass.standard, 137, 0);
@@ -76,13 +79,13 @@ public class PriceListServiceTest {
 	private void verifyRate(Product p, LeaseContractLength lcl, PurchaseOption po, OfferingClass oc, double fixed, double hourly) {
 		RateKey rateKey = new RateKey(lcl, po, oc);
 		Rate rate = p.reservationRates.get(rateKey);
-		assertTrue("No rate for " + rateKey, rate != null);
-		assertTrue("Reservation fixed rate for " + rateKey + " doesn't match, expected " + fixed + ", got " + rate.fixed, Math.abs(rate.fixed - fixed) < 0.001);
-		assertTrue("Reservation hourly rate for " + rateKey + " doesn't match, expected " + hourly + ", got " + rate.hourly, Math.abs(rate.hourly - hourly) < 0.001);		
+		assertNotEquals("No rate for " + rateKey, rate, null);
+		assertEquals("Reservation fixed rate for " + rateKey + " doesn't match, expected " + fixed + ", got " + rate.fixed, rate.fixed, fixed, 0.001);
+		assertEquals("Reservation hourly rate for " + rateKey + " doesn't match, expected " + hourly + ", got " + rate.hourly, rate.hourly, hourly, 0.001);		
 	}
 
 	class TestService extends PriceListService {
-		public TestService() {
+		public TestService() throws Exception {
 			super(null, null, null);
 		}
 
@@ -95,6 +98,15 @@ public class PriceListServiceTest {
 	    protected void archive(InstancePrices prices, String name) throws IOException {
 			return;
 		}
+		
+		@Override
+	    protected void loadInstanceMetrics() throws IOException {
+			return;
+		}
+		@Override
+	    protected void archiveInstanceMetrics() throws IOException {
+			return;
+		}
 	}
 
 	@Test
@@ -102,6 +114,11 @@ public class PriceListServiceTest {
 		
 		TestService s = new TestService();
 		s.getPrices(DateTime.now(), ServiceCode.AmazonEC2);
+		
+		// Spot check some instance metrics
+		InstanceMetrics im = s.getInstanceMetrics();
+		assertEquals("m1.small should have normalization of 1", 1.0, im.getNormalizationFactor(UsageType.getUsageType("m1.small", "hours")), 0.1);
+		assertEquals("m1.xlarge should have normalization of 8", 8.0, im.getNormalizationFactor(UsageType.getUsageType("m1.xlarge", "hours")), 0.1);
 	}
 	@Test
 	public void testImportCurrentRdsPriceList() throws Exception {

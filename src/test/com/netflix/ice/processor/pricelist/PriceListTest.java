@@ -50,7 +50,7 @@ public class PriceListTest {
     		Rate rate = term.priceDimensions.entrySet().iterator().next().getValue();
 			Double pricePerUnitUSD = Double.parseDouble(rate.pricePerUnit.get("USD"));
 			double expected = 0.023;
-			assertTrue("OnDemand Price wrong, got " + pricePerUnitUSD + ", expected " + expected, Math.abs(pricePerUnitUSD - expected) < 0.001);
+			assertEquals("OnDemand Price wrong, got " + pricePerUnitUSD + ", expected " + expected, pricePerUnitUSD, expected, 0.001);
 			
 			// Now check reserved instance prices
 			offerTerms = terms.Reserved.get(p.sku);
@@ -92,11 +92,11 @@ public class PriceListTest {
 					hrs = Double.parseDouble(rate.pricePerUnit.get("USD"));
 			}
 			if (!purchaseOption.equals("No Upfront")) {
-				assertTrue("No fixed price dimension for " + permutation, quantity != null);
-				assertTrue("Wrong fixed price for " + permutation + ": expected " + fixed + ", got " + quantity, Math.abs(quantity - fixed) < 0.0001);
+				assertNotEquals("No fixed price dimension for " + permutation, quantity, null);
+				assertEquals("Wrong fixed price for " + permutation + ": expected " + fixed + ", got " + quantity, quantity, fixed, 0.0001);
 			}
-			assertTrue("No hourly price dimension " + permutation, hrs != null);
-			assertTrue("Wrong hourly price for " + permutation + ": expected " + hourly + ", got " + hrs, Math.abs(hrs - hourly) < 0.0001);
+			assertNotEquals("No hourly price dimension " + permutation, hrs, null);
+			assertEquals("Wrong hourly price for " + permutation + ": expected " + hourly + ", got " + hrs, hrs, hourly, 0.0001);
 			
 			return;
 		}

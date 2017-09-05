@@ -28,7 +28,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.processor.pricelist.PriceListService.ServiceCode;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
@@ -68,20 +67,24 @@ public class BillingFileProcessor extends Poller {
     private String urlPrefix;
     
     ReservationProcessor reservationProcessor;
-    PriceListService priceListService;
     private MonthlyReportProcessor dbrProcessor;
     private MonthlyReportProcessor cauProcessor;
+	private InstancePrices ec2Prices = null;
+	private InstancePrices rdsPrices = null;
+	private InstancePrices redshiftPrices = null;
     
 
-    public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails) {
+    public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails) throws Exception {
     	this.config = config;
         this.ondemandThreshold = ondemandThreshold;
         this.fromEmail = fromEmail;
         this.alertEmails = alertEmails;
         this.urlPrefix = urlPrefix;
         
-        reservationProcessor = new ReservationProcessor(config.accountService.getPayerAccounts(), config.accountService.getReservationAccounts().keySet());
-        priceListService = new PriceListService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+        reservationProcessor = new ReservationProcessor(
+        							config.accountService.getPayerAccounts(),
+        							config.accountService.getReservationAccounts().keySet(),
+        							config.priceListService.getInstanceMetrics());
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
     }
@@ -114,6 +117,8 @@ public class BillingFileProcessor extends Poller {
                 logger.info("data has been processed. ignoring all files at " + AwsUtils.monthDateFormat.print(dataTime));
                 continue;
             }
+            
+            getPriceLists(dataTime);
             
             for (MonthlyReport report: reportsToProcess.get(dataTime)) {
             	List<File> files = report.getProcessor().downloadReport(report, config.localDir, lastProcessed);
@@ -189,15 +194,17 @@ public class BillingFileProcessor extends Poller {
         }
     }
     
-    private void addSavingsData(DateTime month, ReadWriteData usageData, ReadWriteData costData) throws Exception {
-    	InstancePrices ec2Prices = priceListService.getPrices(month, ServiceCode.AmazonEC2);
-    	InstancePrices rdsPrices = null;
-    	InstancePrices redshiftPrices = null;
+    private void getPriceLists(DateTime month) throws Exception {
+    	ec2Prices = config.priceListService.getPrices(month, ServiceCode.AmazonEC2);
+    	rdsPrices = null;
+    	redshiftPrices = null;
     	if (config.reservationService.hasRdsReservations())
-    		rdsPrices = priceListService.getPrices(month, ServiceCode.AmazonRDS);
+    		rdsPrices = config.priceListService.getPrices(month, ServiceCode.AmazonRDS);
     	if (config.reservationService.hasRedshiftReservations())
-    		redshiftPrices = priceListService.getPrices(month, ServiceCode.AmazonRedshift);
-    	    	
+    		redshiftPrices = config.priceListService.getPrices(month, ServiceCode.AmazonRedshift);
+    }
+    
+    private void addSavingsData(DateTime month, ReadWriteData usageData, ReadWriteData costData) {
     	/*
     	 * Run through all the spot instance usage and add savings data
     	 */

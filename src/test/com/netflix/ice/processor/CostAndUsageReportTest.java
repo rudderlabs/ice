@@ -56,7 +56,7 @@ public class CostAndUsageReportTest {
                 "resourceTags/user:Product",
         };
         String[] got = manifest.getCategoryHeader("resourceTags");
-        assertTrue("Incorrect header length", expect.length == got.length);
+        assertEquals("Incorrect header length", expect.length, got.length);
         for (int i = 0; i < expect.length; i++)
         	assertTrue("Incorrect header at position " + i, expect[i].equals(got[i]));
         
@@ -65,6 +65,7 @@ public class CostAndUsageReportTest {
 	@Test
 	public void testISOTimeFormatter() {
 		Long millis = LineItem.amazonBillingDateFormatISO.parseMillis("2017-07-01T00:00:00Z");
-		assertTrue("Error parsing time in ISO format", millis == 1498867200000L);
+		Long expect = 1498867200000L;
+		assertEquals("Error parsing time in ISO format", millis, expect);
 	}
 }

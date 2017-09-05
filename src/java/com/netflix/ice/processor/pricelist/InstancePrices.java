@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.netflix.ice.processor.pricelist.PriceList.Product.Attributes;
 import com.netflix.ice.processor.pricelist.PriceList.Term;
+import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.InstanceDb;
 import com.netflix.ice.tag.InstanceOs;
 import com.netflix.ice.tag.Region;
@@ -50,7 +51,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		return prices.get(productKey);
 	}
 	
-	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies) {
+	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies, InstanceMetrics instanceMetrics) {
         Map<String, PriceList.Product> products = priceList.getProducts();
         for (String sku: products.keySet()) {
         	PriceList.Product p = products.get(sku);
@@ -95,6 +96,9 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	Product product = new Product(p, onDemandRate, reservationOfferTerms);
         	
         	prices.put(key, product);
+        	
+        	// Add stats to InstanceMetrics
+        	instanceMetrics.add(product.instanceType, product.vcpu, product.ecu, product.normalizationSizeFactor);
         }
     }
     
@@ -261,8 +265,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 				logger.error("Found PriceList entry with product memory using non-GiB units: " + memoryParts[1] + ", usageType: " + product.getAttribute(Attributes.usagetype));
 			this.memory = Double.parseDouble(memoryParts[0].replace(",", ""));
 			String ecu = product.getAttribute(Attributes.ecu);
-			this.ecu = ecu.isEmpty() ? 0 : ecu.equals("Variable") ? 0 : ecu.equals("NA") ? 0 : Double.parseDouble(ecu);
 			this.vcpu = Integer.parseInt(product.getAttribute(Attributes.vcpu));
+			this.ecu = ecu.isEmpty() ? 0 : ecu.equals("Variable") ? 3 * this.vcpu : ecu.equals("NA") ? 0 : Double.parseDouble(ecu);
 			String nsf = product.getAttribute(Attributes.normalizationSizeFactor);
 			this.normalizationSizeFactor = nsf.isEmpty() ? 0 : Double.parseDouble(nsf);
 			this.instanceType = product.getAttribute(Attributes.instanceType);

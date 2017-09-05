@@ -47,8 +47,11 @@ public class ReservationProcessor {
     private String debugFamily = "t2";
     private String[] debugAccounts = null; // { "AccountName" };
     private Ec2InstanceReservationPrice.ReservationUtilization debugUtilization = ReservationUtilization.FIXED;
+    private InstanceMetrics instanceMetrics = null;
 
-    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners) {        
+    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners, InstanceMetrics instanceMetrics) {
+    	this.instanceMetrics = instanceMetrics;
+    	
         // Initialize the reservation owner and borrower account lists
         reservationBorrowers = Maps.newHashMap();
         // Associate all the accounts in a consolidated billing group with the reservation owner
@@ -315,7 +318,7 @@ public class ReservationProcessor {
 	}
 	
 	private double convertFamilyUnits(double units, UsageType from, UsageType to) {
-		return units * InstanceMetrics.getCostMultiplier(from) / InstanceMetrics.getCostMultiplier(to);
+		return units * instanceMetrics.getNormalizationFactor(from) / instanceMetrics.getNormalizationFactor(to);
 	}
 
 	private void family(int i, long time,
@@ -483,7 +486,7 @@ public class ReservationProcessor {
 			ReadWriteData usageData,
 			ReadWriteData costData,
 			Long startMilli) {
-	
+		
 		if (reservationService.getTagGroups(utilization).size() == 0)
 			return;
 	
