@@ -54,11 +54,12 @@ public class PriceListService {
 			Map<String, InstancePrices> versionedPrices = Maps.newHashMap();
 			versionedPriceLists.put(code, versionedPrices);
 		}
-		instanceMetrics = new InstanceMetrics();
-		loadInstanceMetrics();
+		instanceMetrics = null;
 	}
 	
-	public InstanceMetrics getInstanceMetrics() {
+	public InstanceMetrics getInstanceMetrics() throws IOException {
+		if (instanceMetrics == null)
+			loadInstanceMetrics();
 		return instanceMetrics;
 	}
 	
@@ -87,7 +88,7 @@ public class PriceListService {
 	            PriceList priceList = new PriceList(stream);
 	            
 	           	prices = new InstancePrices(id, version.getBeginDate(), version.getEndDate());
-	           	prices.importPriceList(priceList, tenancies, instanceMetrics);
+	           	prices.importPriceList(priceList, tenancies, getInstanceMetrics());
 	           	
 	            logger.info("archiving price list for " + serviceCode + "...");
 	           	archive(prices, getFilename(serviceCode, id));
@@ -144,6 +145,7 @@ public class PriceListService {
     }
     
 	protected void loadInstanceMetrics() throws IOException {
+		instanceMetrics = new InstanceMetrics();
 		File file = new File(localDir, InstanceMetrics.dbName);
 		logger.info("downloading " + file + "...");
 		AwsUtils.downloadFileIfNotExist(workS3BucketName, workS3BucketPrefix, file);
@@ -162,6 +164,9 @@ public class PriceListService {
 	}
 	
     protected void archiveInstanceMetrics() throws IOException {
+    	if (instanceMetrics == null)
+    		return;
+    	
         File file = new File(localDir, InstanceMetrics.dbName);
         DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
         try {
