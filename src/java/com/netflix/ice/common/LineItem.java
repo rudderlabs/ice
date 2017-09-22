@@ -180,6 +180,14 @@ public abstract class LineItem {
 	public int getResourceIndex() {
 		return resourceIndex;
 	}
+	
+	/**
+	 * BillType
+	 */
+	public static enum BillType {
+		Anniversary,
+		Purchase;
+	}
 
 	/**
 	 * LineItemType is one of the columns from AWS Cost and Usage reports

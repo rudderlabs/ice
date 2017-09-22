@@ -11,6 +11,7 @@ import com.netflix.ice.common.LineItem;
 public class CostAndUsageReportLineItem extends LineItem {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
+    private int billTypeIndex;
     private final int resourceTagStartIndex;
 	private final String[] resourceTagsHeader;
 	private int purchaseOptionIndex;
@@ -33,7 +34,8 @@ public class CostAndUsageReportLineItem extends LineItem {
 		normalizationFactors.put("xlarge", 8.0);
 	}
 	    	
-    public CostAndUsageReportLineItem(boolean useBlended, CostAndUsageReport report) {        	
+    public CostAndUsageReportLineItem(boolean useBlended, CostAndUsageReport report) {
+    	billTypeIndex = report.getColumnIndex("bill", "BillType");
         accountIdIndex = report.getColumnIndex("lineItem", "UsageAccountId");
         productIndex = report.getColumnIndex("product", "ProductName");
         zoneIndex = report.getColumnIndex("lineItem", "AvailabilityZone");
@@ -76,6 +78,10 @@ public class CostAndUsageReportLineItem extends LineItem {
     
     public int size() {
     	return resourceTagStartIndex + resourceTagsHeader.length;
+    }
+    
+    public BillType getBillType() {
+    	return BillType.valueOf(items[billTypeIndex]);
     }
 
     @Override

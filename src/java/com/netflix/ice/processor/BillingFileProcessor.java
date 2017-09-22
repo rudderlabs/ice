@@ -127,12 +127,15 @@ public class BillingFileProcessor extends Poller {
                 		usageDataByProduct, costDataByProduct, instances);
                 endMilli = Math.max(endMilli, end);
 
-                logger.info("done processing " + fileKey);
+                logger.info("done processing " + fileKey + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(end)));
             }
         	
             if (dataTime.equals(reportsToProcess.lastKey())) {
                 int hours = (int) ((endMilli - startMilli)/3600000L);
-                logger.info("cut hours to " + hours);
+    	        String start = LineItem.amazonBillingDateFormat.print(new DateTime(startMilli));
+    	        String end = LineItem.amazonBillingDateFormat.print(new DateTime(endMilli));
+
+                logger.info("cut hours to " + hours + ", " + start + " to " + end);
                 cutData(hours);
             }
             

@@ -90,16 +90,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.ignore;
 
         Product product = productService.getProductByAwsName(lineItem.getProduct());
-        double usageValue = 0.0;
-        if (!product.isSupport()) {
-        	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-                StringUtils.isEmpty(lineItem.getOperation()) ||
-                StringUtils.isEmpty(lineItem.getUsageQuantity())) {
-        		return Result.ignore;
-        	}
-            usageValue = Double.parseDouble(lineItem.getUsageQuantity());
+        
+        if (product.isSupport()) {
+        	// Don't try and deal with support. Line items have lots of craziness
+        	return Result.ignore;
         }
-
+        
+    	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
+            StringUtils.isEmpty(lineItem.getOperation()) ||
+            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
+    		return Result.ignore;
+    	}
+    	double usageValue = Double.parseDouble(lineItem.getUsageQuantity());
         double costValue = Double.parseDouble(lineItem.getCost());
 
         long millisStart = lineItem.getStartMillis();
@@ -143,10 +145,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 //            if (startIndex == 0 && reservationUsage) {
 //            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
 //            }
-        }
-        else if (product.isSupport()) {
-        	result = Result.monthly;
-        	//logger.info("Support lineitem: " + costValue);
         }
 
         if (result == Result.ignore || result == Result.delay)

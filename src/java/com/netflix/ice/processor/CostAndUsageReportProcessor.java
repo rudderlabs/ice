@@ -28,6 +28,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.LineItem.BillType;
 import com.netflix.ice.tag.Product;
 
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
@@ -153,7 +154,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		
 		CostAndUsageReport cau = (CostAndUsageReport) report;
 		
-		LineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
+		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
         if (config.resourceService != null)
         	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
         List<String[]> delayedItems = Lists.newArrayList();
@@ -164,7 +165,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				processReportZip(file, lineItem, delayedItems);
 			else
 				processReportGzip(file, lineItem, delayedItems);
-            logger.info("done processing " + file.getName());
+            logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
 		}
 
         for (String[] items: delayedItems) {
@@ -174,7 +175,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return endMilli;
 	}
 	
-	private void processReportZip(File file, LineItem lineItem, List<String[]> delayedItems) throws IOException {
+	private void processReportZip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) throws IOException {
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
 
@@ -208,7 +209,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         }
 	}
 
-	private void processReportGzip(File file, LineItem lineItem, List<String[]> delayedItems) throws IOException {
+	private void processReportGzip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) throws IOException {
         InputStream input = new FileInputStream(file);
         GZIPInputStream gzipInput = new GZIPInputStream(input);
 
@@ -217,7 +218,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         input.close();
 	}
 
-	private void processReportFile(String fileName, InputStream in, LineItem lineItem, List<String[]> delayedItems) {
+	private void processReportFile(String fileName, InputStream in, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) {
 
         CsvReader reader = new CsvReader(new InputStreamReader(in), ',');
 
@@ -260,8 +261,12 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         }
 	}
 
-    private void processOneLine(List<String[]> delayedItems, LineItem lineItem) {
-
+    private void processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem) {
+    	if (lineItem.getBillType() == BillType.Purchase) {
+        	// Skip purchases
+    		return;
+    	}
+    	
         LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, true, lineItem, usageDataByProduct, costDataByProduct, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
