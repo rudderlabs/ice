@@ -61,18 +61,6 @@ public class UsageType extends Tag {
         return getUsageType(name, unit);
     }
 
-    public static UsageType getUsageType(String name, Operation operation, String description) {
-        String unit = "";
-        // Lambda unit for memory consumption is Lambda-GB-Second
-        // May want to split that out as separate unit type from GB -jroth
-        if (name.contains("Bytes") || name.contains("ByteHrs") || name.contains("-GB") || description.contains("GB"))
-            unit = "GB";
-        if (operation instanceof Operation.ReservationOperation)
-            unit = "hours";
-        
-        return getUsageType(name, unit);
-    }
-
     public static UsageType getUsageType(String name, String unit) {
         UsageType usageType = usageTypes.get(name);
         if (usageType == null) {

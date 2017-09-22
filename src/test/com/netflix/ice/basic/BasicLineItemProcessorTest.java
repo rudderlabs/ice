@@ -15,6 +15,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicLineItemProcessor.ReformedMetaData;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.CostAndUsageReportLineItem;
@@ -58,52 +59,52 @@ public class BasicLineItemProcessorTest {
     
 	@Test
 	public void testReformEC2Spot() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), false, "RunInstances:SV001", "USW2-SpotUsage:c4.large", "c4.large Linux/UNIX Spot Instance-hour in US West (Oregon) in VPC Zone #1", 0.02410000, null);
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), false, "RunInstances:SV001", "USW2-SpotUsage:c4.large", "c4.large Linux/UNIX Spot Instance-hour in US West (Oregon) in VPC Zone #1", 0.02410000, null, "");
 	    assertTrue("Operation should be spot instance but got " + rmd.operation, rmd.operation == Operation.spotInstances);
 	}
 
 	@Test
 	public void testReformEC2ReservedPartialUpfront() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, null);
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, null, "");
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	}
 
 	@Test
 	public void testReformEC2ReservedPartialUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, "Partial Upfront");
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, "Partial Upfront", "");
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	}
 
 	@Test
 	public void testReformRDSReservedAllUpfront() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.FIXED, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, null);
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.FIXED, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, null, "");
 	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
 	}
 
 	@Test
 	public void testReformRDSReservedAllUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, "All Upfront");
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, "All Upfront", "");
 	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
 	}
 
 	@Test
 	public void testReformRDSReservedPartialUpfront() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, null);
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, null, "");
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 
-	    rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, null);	    
+	    rmd = lineItemProcessor.reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, null, "");	    
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 	}
 	
 	@Test
 	public void testReformRDSReservedPartialUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, "Partial Upfront");
+	    ReformedMetaData rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, "Partial Upfront", "");
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 
-	    rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, "Partial Upfront");	    
+	    rmd = lineItemProcessor.reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, "Partial Upfront", "");	    
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 	}
@@ -144,13 +145,6 @@ public class BasicLineItemProcessorTest {
 		none
 	}
 	
-	public static enum LineItemType {
-		Fee,
-		RIFee,
-		DiscountedUsage,
-		Usage
-	}
-
 	public class Line {
 		static final int numDbrItems = 21;
 		static final int numCauItems = 141;
@@ -214,11 +208,13 @@ public class BasicLineItemProcessorTest {
 			items[cauLineItem.getProductIndex()] = product;
 			items[cauLineItem.getOperationIndex()] = operation;
 			items[cauLineItem.getUsageTypeIndex()] = type;
+			items[cauLineItem.getProductUsageTypeIndex()] = type;
 			items[cauLineItem.getDescriptionIndex()] = description;
 			items[cauLineItem.getReservedIndex()] = term == PricingTerm.reserved ? "Reserved" : term == PricingTerm.spot ? "" : term == PricingTerm.onDemand ? "OnDemand" : "";
 			items[cauLineItem.getStartTimeIndex()] = start;
 			items[cauLineItem.getEndTimeIndex()] = end;
 			items[cauLineItem.getUsageQuantityIndex()] = quantity;
+			items[cauLineItem.getLineItemTypeIndex()] = lineItemType.name();
 			if (lineItemType == LineItemType.DiscountedUsage)
 				items[cauLineItem.getCostIndex()] = "0"; // Discounted usage doesn't carry cost
 			else

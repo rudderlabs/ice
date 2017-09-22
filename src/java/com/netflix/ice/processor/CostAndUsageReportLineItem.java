@@ -20,6 +20,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int productUsageTypeIndex;
 	private int publicOnDemandCostIndex;
 	private LineItemType lineItemType;
+	private int pricingUnitIndex;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -57,7 +58,8 @@ public class CostAndUsageReportLineItem extends LineItem {
         productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor"); // First appeared in 07-2017
         productUsageTypeIndex = report.getColumnIndex("product",  "usagetype"); 
         
-        publicOnDemandCostIndex = report.getColumnIndex("pricing", "publicOnDemandCost");
+        publicOnDemandCostIndex = report.getColumnIndex("pricing", "publicOnDemandCost");        
+        pricingUnitIndex = report.getColumnIndex("pricing", "unit");
     }
     
     @Override
@@ -179,6 +181,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 	public String getPublicOnDemandCost() {
 		return items[publicOnDemandCostIndex];
 	}
+	
+	public int getLineItemTypeIndex() {
+		return lineItemTypeIndex;
+	}
 
 	public int getResourceTagStartIndex() {
 		return resourceTagStartIndex;
@@ -200,5 +206,24 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return productUsageTypeIndex;
 	}
 	
+	public String getPricingUnit() {
+		String unit = items[pricingUnitIndex];
+		if (unit.equals("Hrs")) {
+			unit = "hours";
+		}
+		if (unit.equals("GB-Mo")) {
+			unit = "GB";
+		}
+		else {
+			// Don't bother with any other units as AWS is extremely inconsistent
+			unit = "";
+	    	String usageType = getUsageType();
+	    	if (usageType.contains("Lambda-GB-Second"))
+	    		unit = "GB";
+	    	else if (usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB"))
+	            unit = "GB";
+		}
+		return unit;
+	}
 }
 

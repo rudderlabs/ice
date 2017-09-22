@@ -185,6 +185,7 @@ public abstract class LineItem {
 	 * LineItemType is one of the columns from AWS Cost and Usage reports
 	 */
 	public static enum LineItemType {
+		Credit,
 		DiscountedUsage,
 		Fee,
 		RIFee,
@@ -195,4 +196,6 @@ public abstract class LineItem {
 	public LineItemType getLineItemType() {
 		return null;
 	}
+	
+	abstract public String getPricingUnit();
 }

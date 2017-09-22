@@ -110,7 +110,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         		
         ReformedMetaData reformedMetaData = reform(reservationService.getDefaultReservationUtilization(millisStart), 
         		product, reservationUsage, lineItem.getOperation(), lineItem.getUsageType(), description, costValue,
-        		lineItem.getPurchaseOption());
+        		lineItem.getPurchaseOption(), lineItem.getPricingUnit());
         product = reformedMetaData.product;
         Operation operation = reformedMetaData.operation;
         final UsageType usageType = reformedMetaData.usageType;
@@ -377,7 +377,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		String usageTypeStr, 
     		String description, 
     		double cost,
-    		String purchaseOption) {
+    		String purchaseOption,
+    		String pricingUnit) {
 
         Operation operation = null;
         UsageType usageType = null;
@@ -529,7 +530,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (usageType == null) {
-            usageType = UsageType.getUsageType(usageTypeStr, operation, description);
+        	String unit = (operation instanceof Operation.ReservationOperation) ? "hours" : pricingUnit; 
+            usageType = UsageType.getUsageType(usageTypeStr, unit);
 //            if (StringUtils.isEmpty(usageType.unit)) {
 //            	logger.info("No units for " + usageTypeStr + ", " + operation + ", " + description + ", " + product);
 //            }

@@ -221,17 +221,8 @@ public class BasicReservationService extends Poller implements ReservationServic
     }
 
     private UsageType getUsageType(String type, String productDescription) {
-        return UsageType.getUsageType(type + InstanceOs.withDescription(productDescription).usageType, Operation.reservedInstancesHeavy, "");
+        return UsageType.getUsageType(type + InstanceOs.withDescription(productDescription).usageType, "hours");
     }
-
-//    private UsageType getUsageType(String type, String size, boolean isWindows) {
-//        type = instanceTypes.get(type);
-//        size = instanceSizes.get(size);
-//
-//        if (type.equals("cc1") && size.equals("8xlarge"))
-//            type = "cc2";
-//        return UsageType.getUsageType(type + "." + size + (isWindows ? "." + InstanceOs.windows : ""), Operation.reservedInstances, "");
-//    }
 
     public static class Serializer {
         public static void serialize(DataOutput out,
