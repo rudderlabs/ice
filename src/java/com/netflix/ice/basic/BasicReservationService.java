@@ -429,11 +429,16 @@ public class BasicReservationService extends Poller implements ReservationServic
 
             ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
             
-            // AWS reservations start at the beginning of the hour in which the reservation was purchased.
-            // Likewise, they end at the start of the hour as well.
-            long startTime = getEffectiveReservationTime(reservedInstances.getStart());
-            long endTime = getEffectiveReservationTime(reservedInstances.getEnd());
+            long startTime = 0;
+            long endTime = 0;
+        	// AWS Reservations start being applied at the beginning of the hour in which the reservation was purchased.
+            // The reservations stop being applied at the beginning of the hour in which the reservation expires.
+            startTime = getEffectiveReservationTime(reservedInstances.getStart());
+            endTime = getEffectiveReservationTime(reservedInstances.getEnd());
+            
+            // Modified reservations don't have updated durations
             endTime = Math.min(endTime, startTime + reservedInstances.getDuration() * 1000);
+                        
             if (endTime <= startMillis) {
             	//logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + " has expired");
                 continue;

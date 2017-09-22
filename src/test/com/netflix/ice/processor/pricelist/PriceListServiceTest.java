@@ -8,10 +8,10 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 import org.joda.time.DateTime;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
@@ -20,13 +20,20 @@ import com.netflix.ice.processor.pricelist.InstancePrices.Product;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
-import com.netflix.ice.processor.pricelist.PriceListService.ServiceCode;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
 import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.UsageType;
 
 public class PriceListServiceTest {
 	private static final String resourceDir = "src/test/resources/";
+	private static PriceListService priceListService = null;
+	
+	@BeforeClass
+	public static void init() throws Exception {
+		priceListService = new PriceListService(resourceDir, null, null);
+		priceListService.init();
+	}
 
 	@Test
 	public void testPriceListService() throws Exception {
@@ -43,11 +50,10 @@ public class PriceListServiceTest {
         PriceList priceList = new PriceList(stream);
         stream.close();
 
-       	InstancePrices prices = new InstancePrices(id, version.getBeginDate(), version.getEndDate());
-		InstanceMetrics instanceMetrics = new InstanceMetrics();
-       	prices.importPriceList(priceList, PriceListService.tenancies, instanceMetrics);
+       	InstancePrices prices = new InstancePrices(ServiceCode.AmazonEC2, id, version.getBeginDate(), version.getEndDate());
+       	prices.importPriceList(priceList, PriceListService.tenancies);
        	
-       	verify(prices.prices.entrySet().iterator().next().getValue());
+       	verify(prices.getPrices().entrySet().iterator().next().getValue());
 
        	ByteArrayOutputStream buf = new ByteArrayOutputStream();
        	DataOutputStream out = new DataOutputStream(buf);
@@ -60,7 +66,7 @@ public class PriceListServiceTest {
         InstancePrices ip = InstancePrices.Serializer.deserialize(in);
         
         assertNotEquals("No object returned from readObject", ip, null);
-       	verify(ip.prices.entrySet().iterator().next().getValue());
+       	verify(ip.getPrices().entrySet().iterator().next().getValue());
 	}
 	
 	private void verify(Product p) {
@@ -84,52 +90,29 @@ public class PriceListServiceTest {
 		assertEquals("Reservation hourly rate for " + rateKey + " doesn't match, expected " + hourly + ", got " + rate.hourly, rate.hourly, hourly, 0.001);		
 	}
 
-	class TestService extends PriceListService {
-		public TestService() throws Exception {
-			super(null, null, null);
-		}
-
-		@Override
-	    protected InstancePrices load(ServiceCode serviceCode, String versionId, Version version) throws Exception {
-			return null;
-		}
-		
-		@Override
-	    protected void archive(InstancePrices prices, String name) throws IOException {
-			return;
-		}
-		
-		@Override
-	    protected void loadInstanceMetrics() throws IOException {
-			return;
-		}
-		@Override
-	    protected void archiveInstanceMetrics() throws IOException {
-			return;
-		}
-	}
-
 	@Test
 	public void testImportCurrentEc2PriceList() throws Exception {
 		
-		TestService s = new TestService();
-		s.getPrices(DateTime.now(), ServiceCode.AmazonEC2);
+		priceListService.getPrices(DateTime.now(), ServiceCode.AmazonEC2);
 		
 		// Spot check some instance metrics
-		InstanceMetrics im = s.getInstanceMetrics();
+		InstanceMetrics im = priceListService.getInstanceMetrics();
 		assertEquals("m1.small should have normalization of 1", 1.0, im.getNormalizationFactor(UsageType.getUsageType("m1.small", "hours")), 0.1);
 		assertEquals("m1.xlarge should have normalization of 8", 8.0, im.getNormalizationFactor(UsageType.getUsageType("m1.xlarge", "hours")), 0.1);
 	}
 	@Test
 	public void testImportCurrentRdsPriceList() throws Exception {
 		
-		TestService s = new TestService();
-		s.getPrices(DateTime.now(), ServiceCode.AmazonRDS);
+		priceListService.getPrices(DateTime.now(), ServiceCode.AmazonRDS);
 	}
 	@Test
 	public void testImportCurrentRedshiftPriceList() throws Exception {
 		
-		TestService s = new TestService();
-		s.getPrices(DateTime.now(), ServiceCode.AmazonRedshift);
+		priceListService.getPrices(DateTime.now(), ServiceCode.AmazonRedshift);
+	}
+	
+	@Test
+	public void testInit() throws Exception {
+		priceListService.init();
 	}
 }

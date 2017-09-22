@@ -17,11 +17,13 @@
  */
 package com.netflix.ice.processor;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,11 +31,18 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+import com.netflix.ice.processor.pricelist.InstancePrices.Key;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
+import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
@@ -42,15 +51,26 @@ public class ReservationProcessor {
 
     private final Map<Account, List<Account>> reservationBorrowers;
     
-    // hour of data to print debug statements. Set to -1 to turn off.
+    // hour of data to print debug statements. Set to -1 to turn off all debug logging.
     private int debugHour = -1;
-    private String debugFamily = "t2";
+    private String debugFamily = "c4";
+    // debugAccounts - will print all accounts if null
     private String[] debugAccounts = null; // { "AccountName" };
-    private Ec2InstanceReservationPrice.ReservationUtilization debugUtilization = ReservationUtilization.FIXED;
+    // debugUtilization - will print all utilization if null
+    private Ec2InstanceReservationPrice.ReservationUtilization debugUtilization = ReservationUtilization.PARTIAL;
+    // debugRegion - will print all regions if null
+    private Region[] debugRegions = null; // { Region.EU_WEST_1 };
+    
+    private ProductService productService;
+    private PriceListService priceListService;
+    
+    // The following are initialzed on each call to process()
     private InstanceMetrics instanceMetrics = null;
+    private Map<Product, InstancePrices> prices;
 
-    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners, InstanceMetrics instanceMetrics) {
-    	this.instanceMetrics = instanceMetrics;
+    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners, ProductService productService, PriceListService priceListService) throws IOException {
+    	this.productService = productService;
+    	this.priceListService = priceListService;
     	
         // Initialize the reservation owner and borrower account lists
         reservationBorrowers = Maps.newHashMap();
@@ -124,27 +144,55 @@ public class ReservationProcessor {
     	return debugAccounts;
     }
     
-	private boolean debugReservations(int i, UsageType ut, Account a, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public void setDebugRegions(Region[] regions) {
+    	debugRegions = regions;
+    }
+    
+    public Region[] getDebugRegions() {
+    	return debugRegions;
+    }
+    
+	private boolean debugReservations(int i, TagGroup tg, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+		// Must have match on debugHour
 		if (i != debugHour)
 			return false;
+		
+		// Must have match on debugUtilization if it isn't null
 		if (debugUtilization != null && utilization != debugUtilization)
 			return false;
-		if (debugFamily.isEmpty()) {
-			if (debugAccounts == null)
-				return true;
-			for (String account: debugAccounts) {
-				if (account.equals(a.name))
-					return true;
+		
+		// Must have match on region if debugRegions isn't null
+		if (debugRegions != null) {
+			boolean match = false;
+			for (Region r: debugRegions) {
+				if (r == tg.region) {
+					match = true;
+					break;
+				}
 			}
+			if (!match)
+				return false;
 		}
-		String family = ut.name.split("\\.")[0];
-		if (family.equals(debugFamily)) {
-			if (debugAccounts == null)
-				return true;
-			for (String account: debugAccounts) {
-				if (account.equals(a.name))
-					return true;
+		
+		// Must have match on account if debugAccounts isn't null
+		if (debugAccounts != null) {
+			boolean match = false;
+			for (String a: debugAccounts) {
+				if (a.equals(tg.account.name)) {
+					match = true;
+					break;
+				}
 			}
+			if (!match)
+				return false;
+		}
+		
+		if (debugFamily.isEmpty()) {
+			return true;
+		}
+		String family = tg.usageType.name.split("\\.")[0];
+		if (family.equals(debugFamily)) {
+			return true;
 		}
 		return false;
 	}
@@ -156,13 +204,16 @@ public class ReservationProcessor {
             TagGroup tagGroup,
             Ec2InstanceReservationPrice.ReservationUtilization utilization,
             ReservationService reservationService,
-            Set<TagGroup> reservationTagGroups,
-            boolean debug) {
+            Set<TagGroup> reservationTagGroups) {
 
+	    boolean debug = debugReservations(i, tagGroup, utilization);
 		Double existing = usageMap.get(tagGroup);
-		
+
+		if (debug)
+			logger.info("      borrow from accounts: " + fromAccounts + ", existing: " + existing + " from tagGroup " + tagGroup);
 		if (existing != null && fromAccounts != null) {
 		
+			// process borrowing of matching usage type
 			for (Account from: fromAccounts) {
 			    if (existing <= 0)
 			        break;
@@ -326,11 +377,14 @@ public class ReservationProcessor {
 		Map<TagGroup, Double> costMap,
 		TagGroup tagGroup,
 		Ec2InstanceReservationPrice.ReservationUtilization utilization,
-		Set<TagGroup> bonusTags,
-		boolean debug) {
+		Set<TagGroup> bonusTags) {
 	
+	    boolean debug = debugReservations(i, tagGroup, utilization);
 		TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 		Double unused = usageMap.get(unusedTagGroup);
+
+		if (debug)
+			logger.info("      family - " + bonusTags.size() + " bonus tags, unused: " + unused + " for tagGroup " + tagGroup);
 		
 		if (unused != null && unused > 0) {
 	        Double resHourlyCost = costMap.get(unusedTagGroup);
@@ -342,8 +396,8 @@ public class ReservationProcessor {
 			
 			// Scan bonus reservations for this account
 			for (TagGroup tg: bonusTags) {
-				// only look within the same account
-				if (tg.account != tagGroup.account)
+				// only look within the same account and region
+				if (tg.account != tagGroup.account || tg.region != tagGroup.region)
 					continue;
 				
 				// Don't process equivalent instance types within the owner account. That will have
@@ -371,6 +425,7 @@ public class ReservationProcessor {
 				        
 			            Double existingFamilyUsage = usageMap.get(familyTagGroup);
 			            double totalFamilyUsage = existingFamilyUsage == null ? familyUsed : familyUsed + existingFamilyUsage;
+			            
 				        usageMap.put(familyTagGroup, totalFamilyUsage);			            
 			            
 			            Double existingFamilyCost = costMap.get(familyTagGroup);
@@ -398,6 +453,8 @@ public class ReservationProcessor {
 					}
 				}
 			}
+			if (debug)
+				logger.info("      family - update unused: " + unused + " for unused tagGroup " + unusedTagGroup);
 			// Updated whatever remains unused if any
 			if (unused > 0) {
 				usageMap.put(unusedTagGroup, unused);
@@ -475,17 +532,33 @@ public class ReservationProcessor {
 	 * 
 	 * When called, all usage data is flagged as bonusReserved. The job of this method is to
 	 * walk through all the bonus tags and convert them to the proper reservation usage type
-	 * based on the association the the actual reservations. Since the detailed billing reports
+	 * based on the association of the actual reservations. Since the detailed billing reports
 	 * don't tell us which reservation was actually used for each line item, we mimic the AWS rules
 	 * as best we can. The actual usage in AWS may be slightly different. Only the AWS Cost and Usage
 	 * reports fully provide the reservation ARN that is associated with each usage, but ICE doesn't
-	 * use those reports.
+	 * use those reports. (Added support recently for processing based on cost and usage reports, but
+	 * haven't done the work to grab and use the reservation ARNs.)
+	 * 
+	 * Amortization of upfront costs is assigned to the reservations instance type in the account that purchased
+	 * the reservation regarless of how it was used - either by a different family type or borrowed by another account.
+	 * 
+	 * Savings values, like amortization are assigned to the reservation instance type in the account that purchased
+	 * the reservation. Savings is computed as the difference between the on-demand cost and the sum of the upfront amortization
+	 * and hourly rate. Any unused instance costs are subtracted from the savings.
+	 * 
+	 * We initially calculate the max savings possible:
+	 * 
+	 * 	max_savings = reservation.capacity * (onDemand_rate - hourly_rate - hourly_amortization)
+	 * 
+	 * We then subtract off the onDemand cost of unused reservations to get actual savings
+	 * 
+	 * actual_savings = max_savings - (onDemand_rate * unusedCount)
 	 */
 	public void process(Ec2InstanceReservationPrice.ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
 			ReadWriteData costData,
-			Long startMilli) {
+			DateTime start) throws Exception {
 		
 		if (reservationService.getTagGroups(utilization).size() == 0)
 			return;
@@ -495,12 +568,27 @@ public class ReservationProcessor {
 		if (debugHour >= 0)
 			printUsage("before", usageData, costData);
 		
+		// Initialize the price lists
+    	prices = Maps.newHashMap();
+    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(start, ServiceCode.AmazonEC2));
+    	if (reservationService.hasRdsReservations())
+    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(start, ServiceCode.AmazonRDS));
+    	if (reservationService.hasRedshiftReservations())
+    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(start, ServiceCode.AmazonRedshift));
+		
+    	instanceMetrics = priceListService.getInstanceMetrics();
+		
+		long startMilli = start.getMillis();
 		processAvailabilityZoneReservations(utilization, reservationService, usageData, costData, startMilli);
+		if (debugHour >= 0)
+			printUsage("between AZ and Regional", usageData, costData);		
 		processRegionalReservations(utilization, reservationService, usageData, costData, startMilli);
+		removeUnusedFromSavings(utilization, usageData, costData);
+		
 		if (debugHour >= 0)
 			printUsage("after", usageData, costData);		
 	}
-	
+		
 	private void processAvailabilityZoneReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
@@ -518,11 +606,22 @@ public class ReservationProcessor {
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
 		reservations.addAll(reservationService.getTagGroups(utilization));
+		
+		if (debugHour >= 0)
+			logger.info("--------------- processAvailabilityZoneReservations ----------- " + reservations.size() + " reservations");
+		
 		for (TagGroup tagGroup: reservations) {
 			// For each of the owner AZ reservation tag groups...
 			if (tagGroup.zone == null)
 				continue;
 			
+		    TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
+		    TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
+	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
+	        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
+	        
+	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+		    
 			for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
 			
@@ -531,11 +630,10 @@ public class ReservationProcessor {
 			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
-			    boolean debug = debugReservations(i, tagGroup.usageType, tagGroup.account, utilization);
+			    boolean debug = debugReservations(i, tagGroup, utilization);
 
 			    // Do we have any usage from the current reservation?
 			    // Usage is initially tagged as Bonus, then we work through the allocations.
-			    TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
 			    Double existing = usageMap.get(bonusTagGroup);
 			    double bonusReserved = existing == null ? 0 : existing;
 			    
@@ -546,7 +644,7 @@ public class ReservationProcessor {
 
 			    if (reservedUsed > 0) {
 			        usageMap.put(tagGroup, reservedUsed);
-			        costMap.put(tagGroup, reservedUsed * reservation.reservationHourlyCost);								
+			        costMap.put(tagGroup, reservedUsed * reservation.reservationHourlyCost);
 			    }
 			    
 			    if (debug) {
@@ -554,7 +652,6 @@ public class ReservationProcessor {
 			    }
 			    
 			    if (reservedUnused > 0) {
-			        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 			        usageMap.put(unusedTagGroup, reservedUnused);
 			        costMap.put(unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
 			        if (debug) {
@@ -569,8 +666,10 @@ public class ReservationProcessor {
 		        }
 			
 			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {
-			        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 			        costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			        
+			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
+				    costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
 			    }
 			}
 			
@@ -592,6 +691,9 @@ public class ReservationProcessor {
 		if (regional) {
 			Set<TagGroup> unassignedUsage = getUnassignedUsage(usageData, bonusOperation);
 					
+			if (debugHour >= 0)
+				logger.info("--------------- process family-based sharing within same account ----------- " + unassignedUsage.size() + " unassigned tags");
+			
 			// Scan bonus reservations and handle non-zone-specific and family-based usage of regionally-scoped reservations
 			// within each owner account (region-scoped reservations new as of 11/1/2016, family-based credits are new as of 3/1/2017)
 			for (TagGroup tagGroup: reservationTagGroups) {
@@ -604,27 +706,31 @@ public class ReservationProcessor {
 				    Map<TagGroup, Double> usageMap = usageData.getData(i);
 				    Map<TagGroup, Double> costMap = costData.getData(i);
 				    
-				    boolean debug = debugReservations(i, tagGroup.usageType, tagGroup.account, utilization);
-				    family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, utilization, unassignedUsage, debug);
+				    family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, utilization, unassignedUsage);
 				}
 			}
 		}
+		
+		if (debugHour >= 0)
+			printUsage("before processing family-based borrowing across accounts", usageData, costData);
 			
-		for (TagGroup tagGroup: getUnassignedUsage(usageData, bonusOperation)) {
+		Set<TagGroup> unassignedUsage = getUnassignedUsage(usageData, bonusOperation);
+		if (debugHour >= 0)
+			logger.info("--------------- process family-based borrowing across accounts ----------- " + unassignedUsage.size() + " unassigned tags");
+		
+		for (TagGroup tagGroup: unassignedUsage) {
 			for (int i = 0; i < usageData.getNum(); i++) {
 			
 			    Map<TagGroup, Double> usageMap = usageData.getData(i);
 			    Map<TagGroup, Double> costMap = costData.getData(i);
 			
-			    boolean debug = debugReservations(i, tagGroup.usageType, tagGroup.account, utilization);
 			    borrow(i, startMilli + i * AwsUtils.hourMillis,
 			    		usageMap, costMap,
 			           reservationBorrowers.get(tagGroup.account),
 			           tagGroup,
 			           utilization,
 			           reservationService,
-			           reservationTagGroups,
-			           debug);
+			           reservationTagGroups);
 			}
 		}		
 	}
@@ -639,11 +745,20 @@ public class ReservationProcessor {
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
 		reservations.addAll(reservationService.getTagGroups(utilization));
+		if (debugHour >= 0)
+			logger.info("--------------- processRegionalReservations ----------- " + reservations.size() + " reservations");
 		for (TagGroup tagGroup: reservations) {
 			// For each of the owner Region reservation tag groups...
 			if (tagGroup.zone != null)
 				continue;
-			for (int i = 0; i < usageData.getNum(); i++) {
+			
+	        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
+	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
+	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
+	        
+	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+			
+	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
 			
 			    Map<TagGroup, Double> usageMap = usageData.getData(i);
@@ -651,7 +766,7 @@ public class ReservationProcessor {
 			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
-			    boolean debug = debugReservations(i, tagGroup.usageType, tagGroup.account, utilization);
+			    boolean debug = debugReservations(i, tagGroup, utilization);
 
 			    UsedUnused uu = new UsedUnused(0.0, reservation.capacity);
 			    
@@ -673,7 +788,6 @@ public class ReservationProcessor {
 			    }
 			    
 			    if (uu.unused > 0) {
-			        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 			        usageMap.put(unusedTagGroup, uu.unused);
 			        costMap.put(unusedTagGroup, uu.unused * reservation.reservationHourlyCost);
 			        if (debug) {
@@ -681,14 +795,53 @@ public class ReservationProcessor {
 			        }
 			    }
 			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {
-			        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 			        costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
+			        costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
 			    }			
 			}
 			reservationTagGroups.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null));
 		}
 		
+		if (debugHour >= 0)
+			printUsage("before regional family sharing and borrowing", usageData, costData);
 		processFamilySharingAndBorrowing(utilization, reservationService, usageData, costData, startMilli, reservationTagGroups, true);
+	}
+	
+	private void removeUnusedFromSavings(
+			Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			ReadWriteData usageData,
+			ReadWriteData costData) {
+		
+		Operation unusedOp = Operation.getUnusedInstances(utilization);
+		
+		for (TagGroup tagGroup: usageData.getTagGroups()) {
+			if (tagGroup.operation != unusedOp)
+				continue;
+			
+	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
+			
+	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+
+	        for (int i = 0; i < usageData.getNum(); i++) {
+				// For each hour of usage...
+			
+			    Map<TagGroup, Double> usageMap = usageData.getData(i);
+			    Map<TagGroup, Double> costMap = costData.getData(i);
+			    
+			    Double unused = usageMap.get(tagGroup);
+	        	if (unused != null && unused > 0.0) {
+		        	Double savings = costMap.get(savingsTagGroup);
+		        	if (savings == null) {
+		        		logger.error("Savings record not found for " + tagGroup);
+		        	}
+		        	else {
+		        		savings -= unused * onDemandRate;
+		        		costMap.put(savingsTagGroup, savings);
+		        	}
+	        	}
+	        }
+		}
 	}
 	
 	private Set<TagGroup> getUnassignedUsage(ReadWriteData usageData, Operation bonusOperation) {
@@ -710,7 +863,7 @@ public class ReservationProcessor {
 	
 	
 	private void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
-		logger.info("---------- usage for hour " + debugHour + " " + when + " processing ----------------");
+		logger.info("---------- usage and cost for hour " + debugHour + " " + when + " processing ----------------");
 	    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);
 		
 		SortedSet<TagGroup> usageTags = Sets.newTreeSet();
@@ -718,8 +871,11 @@ public class ReservationProcessor {
 		for (TagGroup tagGroup: usageTags) {
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if (tagGroup.product.isEc2Instance() && usageMap.get(tagGroup) != null && debugReservations(debugHour, tagGroup.usageType, tagGroup.account, ((Operation.ReservationOperation) tagGroup.operation).getUtilization()))
+			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+					&& usageMap.get(tagGroup) != null 
+					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
+			}
 		}
 
 		Map<TagGroup, Double> costMap = costData.getData(debugHour);
@@ -729,9 +885,13 @@ public class ReservationProcessor {
 		for (TagGroup tagGroup: costTags) {
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if (tagGroup.product.isEc2Instance() && costMap.get(tagGroup) != null && debugReservations(debugHour, tagGroup.usageType, tagGroup.account, ((Operation.ReservationOperation) tagGroup.operation).getUtilization()))
+			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+					&& costMap.get(tagGroup) != null 
+					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
+			}
 		}
+		logger.info("---------- end of usage and cost report ----------------");
 	}
 }
 

@@ -126,9 +126,11 @@ public class ProcessorConfig extends Config {
             properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS));
     }
 
-    public void start (ReservationCapacityPoller reservationCapacityPoller) {
+    public void start (ReservationCapacityPoller reservationCapacityPoller) throws Exception {
         logger.info("starting up...");
 
+        priceListService.init();
+        
         ProcessorConfig.reservationCapacityPoller = reservationCapacityPoller;
         if (reservationCapacityPoller != null)
             reservationCapacityPoller.start();

@@ -4,24 +4,24 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.google.common.collect.Maps;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.UsageType;
 
 public class InstanceMetrics {
     public static final String dbName = "instanceMetrics";
 
+    private Map<ServiceCode, String> priceListVersions = Maps.newHashMap();
+    
     private Map<String, Metrics> metrics = Maps.newHashMap();
     
-    public void load(DataInput in) throws IOException {
-    	metrics = Serializer.deserialize(in);
-    }
-    
-    public void archive(DataOutput out) throws IOException {
-    	Serializer.serialize(out, metrics);
-    }
-    
-    public void add(String name, int vCPU, double ecu, double normalizationSizeFactor) {
+	public String getPriceListVersion(ServiceCode sc) {
+		return priceListVersions.get(sc);
+	}
+
+	public void add(String name, int vCPU, double ecu, double normalizationSizeFactor) {
     	metrics.put(name, new Metrics(name, vCPU, ecu, normalizationSizeFactor));
     }
     
@@ -101,22 +101,37 @@ public class InstanceMetrics {
     
     public static class Serializer {
     	
-        public static void serialize(DataOutput out, Map<String, Metrics> metrics) throws IOException {
-        	out.writeInt(metrics.size());
-        	for (Metrics m: metrics.values()) {
+        public static void serialize(DataOutput out, InstanceMetrics im) throws IOException {
+        	out.writeInt(im.priceListVersions.size());
+        	for (Entry<ServiceCode, String> v: im.priceListVersions.entrySet()) {
+            	out.writeUTF(v.getKey().name());
+            	out.writeUTF(v.getValue());
+        	}
+        	
+        	out.writeInt(im.metrics.size());
+        	for (Metrics m: im.metrics.values()) {
         		Metrics.Serializer.serialize(out, m);
         	}
         }
     	
-        public static Map<String, Metrics> deserialize(DataInput in) throws IOException {
-        	Map<String, Metrics> metrics = Maps.newHashMap();
+        public static InstanceMetrics deserialize(DataInput in) throws IOException {
+        	InstanceMetrics im = new InstanceMetrics();
         	
+        	im.priceListVersions = Maps.newHashMap();
         	int size = in.readInt();
         	for (int i = 0; i < size; i++) {
-	        	Metrics m = Metrics.Serializer.deserialize(in);
-	        	metrics.put(m.name, m);
+        		ServiceCode sc = ServiceCode.valueOf(in.readUTF());
+        		im.priceListVersions.put(sc, in.readUTF());
         	}
-        	return metrics;
+        	
+        	im.metrics = Maps.newHashMap();
+        	
+        	size = in.readInt();
+        	for (int i = 0; i < size; i++) {
+	        	Metrics m = Metrics.Serializer.deserialize(in);
+	        	im.metrics.put(m.name, m);
+        	}
+        	return im;
         }
     }	
 

@@ -28,7 +28,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.PriceListService.ServiceCode;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Product;
@@ -39,6 +39,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Months;
 import org.joda.time.Weeks;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.text.NumberFormat;
@@ -48,6 +50,7 @@ import java.util.*;
  * Class to process billing files and produce tag, usage, cost output files for reader/UI.
  */
 public class BillingFileProcessor extends Poller {
+    protected static Logger staticLogger = LoggerFactory.getLogger(BillingFileProcessor.class);
 
     private ProcessorConfig config;
     private Long startMilli;
@@ -69,9 +72,6 @@ public class BillingFileProcessor extends Poller {
     ReservationProcessor reservationProcessor;
     private MonthlyReportProcessor dbrProcessor;
     private MonthlyReportProcessor cauProcessor;
-	private InstancePrices ec2Prices = null;
-	private InstancePrices rdsPrices = null;
-	private InstancePrices redshiftPrices = null;
     
 
     public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails) throws Exception {
@@ -84,7 +84,8 @@ public class BillingFileProcessor extends Poller {
         reservationProcessor = new ReservationProcessor(
         							config.accountService.getPayerAccounts(),
         							config.accountService.getReservationAccounts().keySet(),
-        							config.priceListService.getInstanceMetrics());
+        							config.productService,
+        							config.priceListService);
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
     }
@@ -118,8 +119,6 @@ public class BillingFileProcessor extends Poller {
                 continue;
             }
             
-            getPriceLists(dataTime);
-            
             for (MonthlyReport report: reportsToProcess.get(dataTime)) {
             	List<File> files = report.getProcessor().downloadReport(report, config.localDir, lastProcessed);
             	String fileKey = report.getReportKey();
@@ -149,7 +148,7 @@ public class BillingFileProcessor extends Poller {
             // now get reservation capacity to calculate upfront and un-used cost
             for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
             	// We no longer support Light and Medium
-            	reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), startMilli);
+            	reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), dataTime);
             }
             
             logger.info("adding savings data for " + dataTime + "...");
@@ -194,17 +193,10 @@ public class BillingFileProcessor extends Poller {
         }
     }
     
-    private void getPriceLists(DateTime month) throws Exception {
-    	ec2Prices = config.priceListService.getPrices(month, ServiceCode.AmazonEC2);
-    	rdsPrices = null;
-    	redshiftPrices = null;
-    	if (config.reservationService.hasRdsReservations())
-    		rdsPrices = config.priceListService.getPrices(month, ServiceCode.AmazonRDS);
-    	if (config.reservationService.hasRedshiftReservations())
-    		redshiftPrices = config.priceListService.getPrices(month, ServiceCode.AmazonRedshift);
-    }
-    
-    private void addSavingsData(DateTime month, ReadWriteData usageData, ReadWriteData costData) {
+    private void addSavingsData(DateTime month, ReadWriteData usageData, ReadWriteData costData) throws Exception {
+        // Get price list
+    	InstancePrices ec2Prices = config.priceListService.getPrices(month, ServiceCode.AmazonEC2);
+        
     	/*
     	 * Run through all the spot instance usage and add savings data
     	 */
@@ -221,47 +213,9 @@ public class BillingFileProcessor extends Poller {
     				}
     			}
     		}
-    		else if (tg.product.isEc2Instance()) {
-    			addReservationSavingsForTagGroup(tg, usageData, costData, ec2Prices);
-    		}
-    		else if (rdsPrices != null && tg.product.isRdsInstance()) {
-    			addReservationSavingsForTagGroup(tg, usageData, costData, rdsPrices);
-    		}
-    		else if (redshiftPrices != null && tg.product.isRedshift()) {
-    			addReservationSavingsForTagGroup(tg, usageData, costData, redshiftPrices);
-    		}
     	}
     }
     
-    private void addReservationSavingsForTagGroup(TagGroup tg, ReadWriteData usageData, ReadWriteData costData, InstancePrices prices) {
-		if (
-				tg.operation == ReservationOperation.ondemandInstances ||
-				tg.operation == ReservationOperation.lentInstancesFixed ||
-				tg.operation == ReservationOperation.lentInstancesHeavy ||
-				tg.operation == ReservationOperation.lentInstancesPartial ||
-				tg.operation == ReservationOperation.unusedInstancesFixed ||
-				tg.operation == ReservationOperation.unusedInstancesHeavy ||
-				tg.operation == ReservationOperation.unusedInstancesPartial) {
-			return;
-		}
-		ReservationOperation resOp = (ReservationOperation) tg.operation;
-		if (resOp == null)
-			logger.error("tg.operation isn't a ReservationOperation: " + tg.operation);
-		Ec2InstanceReservationPrice.ReservationUtilization utilization = resOp.getUtilization();
-		if (utilization == null) {
-			logger.error("utilization is null for operation: " + resOp);
-		}
-		TagGroup savingsTag = new TagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getSavings(utilization), tg.usageType, tg.resourceGroup);
-		for (int i = 0; i < usageData.getNum(); i++) {
-			// For each hour of usage...
-			Double usage = usageData.getData(i).get(tg);
-			if (usage != null) {
-				double onDemandRate = prices.getProduct(new InstancePrices.Key(tg.region, tg.usageType)).getOnDemandRate();
-				costData.getData(i).put(savingsTag, onDemandRate * usage);
-			}
-		}
-    }
-
     void cutData(int hours) {
         for (ReadWriteData data: usageDataByProduct.values()) {
             data.cutData(hours);

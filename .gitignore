@@ -9,3 +9,4 @@ target-eclipse
 src/test/resources/report
 instanceMetrics
 src/java/ice.properties
+src/test/resources/prices_*

@@ -11,6 +11,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.processor.pricelist.Index.Offer;
+import com.netflix.ice.processor.pricelist.InstancePrices.OperatingSystem;
+import com.netflix.ice.processor.pricelist.InstancePrices.Product;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.InstancePrices.Tenancy;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
 import com.netflix.ice.reader.InstanceMetrics;
@@ -28,17 +32,35 @@ public class PriceListService {
 	private static final String domain = "https://pricing.us-east-1.amazonaws.com";
 	private static final String priceListIndexUrl = "/offers/v1.0/aws/index.json";
 
-	public enum ServiceCode {
-		AmazonEC2,
-		AmazonRDS,
-		AmazonRedshift;
-	}
 	// Add other Tenancy values when needed - must also add to Key if more than one
-	protected static Set<Tenancy> tenancies = Sets.newHashSet(Tenancy.Shared);
+	public static Set<Tenancy> tenancies = Sets.newHashSet(Tenancy.Shared);
 	
 	private final String localDir;
 	private final String workS3BucketName;
 	private final String workS3BucketPrefix;
+
+	/**
+	 * A generic cached item with a timestamp indicating when it was last read
+	 * An item older than one hour is assumed out-of-date.
+	 *
+	 * @param <I>
+	 */
+	class CachedItem<I> {
+		public I item;
+		public DateTime lastReadAt;
+		
+		public CachedItem(I item, DateTime lastReadAt) {
+			this.item = item;
+			this.lastReadAt = lastReadAt;
+		}
+		
+		public boolean isCurrent() {
+			return lastReadAt.isAfter(DateTime.now().minusHours(1));
+		}
+	}
+	private CachedItem<Index> index = null;
+	
+	private Map<String, CachedItem<VersionIndex>> versionIndecies; // Key is URL to version Index
 	
 	private Map<ServiceCode, Map<String, InstancePrices>> versionedPriceLists; // Keyed by service code. Second key is version ID
 	protected InstanceMetrics instanceMetrics;
@@ -49,6 +71,7 @@ public class PriceListService {
 		this.workS3BucketName = workS3BucketName;
 		this.workS3BucketPrefix = workS3BucketPrefix;
 		
+		versionIndecies = Maps.newHashMap();
 		versionedPriceLists = Maps.newHashMap();
 		for (ServiceCode code: ServiceCode.values()) {
 			Map<String, InstancePrices> versionedPrices = Maps.newHashMap();
@@ -57,24 +80,85 @@ public class PriceListService {
 		instanceMetrics = null;
 	}
 	
+	public void init() throws Exception {
+		// Build the instance metrics from the latest price lists for EC2 and Redshift.
+		// (RDS doesn't contribute anything that EC2 doesn't have)
+		// Load our cached copy if we have one and then see what price list versions
+		// it was built from.
+		loadInstanceMetrics();
+		
+		ServiceCode[] serviceCodes = { ServiceCode.AmazonEC2, ServiceCode.AmazonRedshift };
+		boolean current = true;
+		DateTime now = DateTime.now();
+		Index index = getIndex();
+		
+		for (ServiceCode sc: serviceCodes) {
+			VersionIndex vi = getVersionIndex(index, sc);
+			String id = vi.getVersionId(now);
+			if (!StringUtils.equals(instanceMetrics.getPriceListVersion(sc), id)) {
+				current = false;
+				break;
+			}
+		}
+		
+		if (current) {
+			// Price lists haven't changed since we last generated the metrics
+			return;
+		}
+		
+		// Regenerate metrics from scratch
+		instanceMetrics = new InstanceMetrics();
+		
+		// Load latest price lists
+		for (ServiceCode sc: serviceCodes) {
+			InstancePrices prices = getPrices(now, sc);
+			// scan all the products and grab the metrics
+        	for (Product p: prices.getPrices().values()) {
+	        	// Add stats to InstanceMetrics
+        		if (sc == ServiceCode.AmazonEC2 && OperatingSystem.valueOf(p.operatingSystem) != OperatingSystem.Linux)
+        			continue;
+	        	instanceMetrics.add(p.instanceType, p.vcpu, p.ecu, p.normalizationSizeFactor);
+        	}
+		}
+	}
+	
 	public InstanceMetrics getInstanceMetrics() throws IOException {
-		if (instanceMetrics == null)
-			loadInstanceMetrics();
 		return instanceMetrics;
 	}
 	
-    public InstancePrices getPrices(DateTime month, ServiceCode serviceCode) throws Exception {
-        
+	private Index getIndex() throws Exception {
+		if (index != null && index.isCurrent() ) {
+			// Current cached copy is less than an hour old, so use it.
+			return index.item;
+		}
+		DateTime readTime = DateTime.now();
 		InputStream stream = new URL(domain + priceListIndexUrl).openStream();
-        Index index = new Index(stream);
+        index = new CachedItem<Index>(new Index(stream), readTime);
         stream.close();
-        
+        return index.item;
+	}
+	
+	private VersionIndex getVersionIndex(Index index, ServiceCode serviceCode) throws Exception {
         Offer offer = index.getOffer(serviceCode.name());
-        stream = new URL(domain + offer.versionIndexUrl).openStream();        
+        
+        // See if we can use the one in the cache
+        CachedItem<VersionIndex> vi = versionIndecies.get(offer.versionIndexUrl);
+        if (vi != null && vi.isCurrent()) {
+        	return vi.item;
+        }
+                
+		DateTime readTime = DateTime.now();
+        InputStream stream = new URL(domain + offer.versionIndexUrl).openStream();        
         VersionIndex versionIndex = new VersionIndex(stream);
         stream.close();
+        versionIndecies.put(offer.versionIndexUrl, new CachedItem<VersionIndex>(versionIndex, readTime));
+        return versionIndex;
+	}
+	
+    public InstancePrices getPrices(DateTime start, ServiceCode serviceCode) throws Exception {
+        VersionIndex versionIndex = getVersionIndex(getIndex(), serviceCode);
 	       
-        String id = versionIndex.getVersionId(month);
+        String id = versionIndex.getVersionId(start);
         Version version = versionIndex.getVersion(id);
         
         // Is the current version in our cache?
@@ -82,21 +166,6 @@ public class PriceListService {
         if (prices == null) {        
 	        // See if we've already processed the current version
 	        prices = load(serviceCode, id, version);
-	        if (prices == null) {
-	            logger.info("fetching price list for " + serviceCode + "...");
-	            stream = new URL(domain + version.offerVersionUrl).openStream();
-	            PriceList priceList = new PriceList(stream);
-	            
-	           	prices = new InstancePrices(id, version.getBeginDate(), version.getEndDate());
-	           	prices.importPriceList(priceList, tenancies, getInstanceMetrics());
-	           	
-	            logger.info("archiving price list for " + serviceCode + "...");
-	           	archive(prices, getFilename(serviceCode, id));
-	           	
-	           	logger.info("archiving instance metrics...");
-	           	archiveInstanceMetrics();
-	        }
-           	versionedPriceLists.get(serviceCode).put(id, prices);
         }
         
        	return prices;
@@ -107,29 +176,56 @@ public class PriceListService {
     }
     
     protected InstancePrices load(ServiceCode serviceCode, String versionId, Version version) throws Exception {
-    	String name = getFilename(serviceCode, versionId);
-        File file = new File(localDir, name);
-        logger.info("downloading " + file + "...");
-        AwsUtils.downloadFileIfNotExist(workS3BucketName, workS3BucketPrefix, file);
-
         InstancePrices ip = null;
         
-        if (file.exists()) {
-        	logger.info("downloaded " + file);
-        	
-            DataInputStream in = new DataInputStream(new FileInputStream(file));
-            try {
-                ip = InstancePrices.Serializer.deserialize(in);
-            }
-            finally {
-                if (in != null)
-                    in.close();
-            }
-        }
+    	if (localDir != null) {    	
+	    	String name = getFilename(serviceCode, versionId);
+	        File file = new File(localDir, name);
+	        
+	        if (workS3BucketName != null) {
+		        logger.info("downloading " + file + "...");
+		        AwsUtils.downloadFileIfNotExist(workS3BucketName, workS3BucketPrefix, file);
+	        	logger.info("downloaded " + file);
+	        }
+	
+	        if (file.exists()) {        	
+	            DataInputStream in = new DataInputStream(new FileInputStream(file));
+	            try {
+	                ip = InstancePrices.Serializer.deserialize(in);
+	            }
+	            finally {
+	                if (in != null)
+	                    in.close();
+	            }
+	           	versionedPriceLists.get(serviceCode).put(versionId, ip);
+	            return ip;
+	        }
+    	}
+
+        ip = fetch(serviceCode, versionId, version);
+       	versionedPriceLists.get(serviceCode).put(versionId, ip);
         return ip;
     }
     
+    protected InstancePrices fetch(ServiceCode serviceCode, String versionId, Version version) throws Exception {
+        logger.info("fetching price list for " + serviceCode + " from " + domain + version.offerVersionUrl + "...");
+        InputStream stream = new URL(domain + version.offerVersionUrl).openStream();
+        PriceList priceList = new PriceList(stream);
+        
+       	InstancePrices prices = new InstancePrices(serviceCode, versionId, version.getBeginDate(), version.getEndDate());
+       	prices.importPriceList(priceList, tenancies);
+       	
+       	archive(prices, getFilename(serviceCode, versionId));
+       	
+       	archiveInstanceMetrics();
+       	return prices;
+    }
+    
     protected void archive(InstancePrices prices, String name) throws IOException {
+    	if (localDir == null)
+    		return;
+    	
+        logger.info("archiving price list " + name + "...");
         File file = new File(localDir, name);
         DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
         try {
@@ -139,22 +235,30 @@ public class PriceListService {
             out.close();
         }
         
-        logger.info(name + " uploading to s3...");
-        AwsUtils.upload(workS3BucketName, workS3BucketPrefix, localDir, name);
-        logger.info(name + " uploading done.");
+        if (workS3BucketName != null) {
+	        logger.info(name + " uploading to s3...");
+	        AwsUtils.upload(workS3BucketName, workS3BucketPrefix, localDir, name);
+	        logger.info(name + " uploading done.");
+        }
     }
     
 	protected void loadInstanceMetrics() throws IOException {
 		instanceMetrics = new InstanceMetrics();
+		if (localDir == null)
+			return;
+		
 		File file = new File(localDir, InstanceMetrics.dbName);
-		logger.info("downloading " + file + "...");
-		AwsUtils.downloadFileIfNotExist(workS3BucketName, workS3BucketPrefix, file);
+		
+		if (workS3BucketName != null) {
+			logger.info("downloading " + file + "...");
+			AwsUtils.downloadFileIfNotExist(workS3BucketName, workS3BucketPrefix, file);
+		}
 	
 		if (file.exists()) {
 		    logger.info("trying to load " + file);
 	        DataInputStream in = new DataInputStream(new FileInputStream(file));
 	        try {
-	            instanceMetrics.load(in);
+	            instanceMetrics = InstanceMetrics.Serializer.deserialize(in);
 	            logger.info("done loading " + file);
 	        }
 	        finally {
@@ -164,21 +268,24 @@ public class PriceListService {
 	}
 	
     protected void archiveInstanceMetrics() throws IOException {
-    	if (instanceMetrics == null)
+    	if (instanceMetrics == null || localDir == null)
     		return;
     	
+       	logger.info("archiving instance metrics " + InstanceMetrics.dbName + "...");
         File file = new File(localDir, InstanceMetrics.dbName);
         DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
         try {
-        	instanceMetrics.archive(out);
+        	InstanceMetrics.Serializer.serialize(out, instanceMetrics);
         }
         finally {
             out.close();
         }
         
-        logger.info(InstanceMetrics.dbName + " uploading to s3...");
-        AwsUtils.upload(workS3BucketName, workS3BucketPrefix, localDir, InstanceMetrics.dbName);
-        logger.info(InstanceMetrics.dbName + " uploading done.");
+        if (workS3BucketName != null) {
+	        logger.info(InstanceMetrics.dbName + " uploading to s3...");
+	        AwsUtils.upload(workS3BucketName, workS3BucketPrefix, localDir, InstanceMetrics.dbName);
+	        logger.info(InstanceMetrics.dbName + " uploading done.");
+        }
     }
     
 }

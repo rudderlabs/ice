@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.netflix.ice.processor.pricelist.PriceList.Product.Attributes;
 import com.netflix.ice.processor.pricelist.PriceList.Term;
-import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.InstanceDb;
 import com.netflix.ice.tag.InstanceOs;
 import com.netflix.ice.tag.Region;
@@ -27,14 +26,31 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	private final String versionId;
 	private final DateTime effectiveBeginDate;
 	private final DateTime effectiveEndDate;
-	protected Map<Key, Product> prices = Maps.newHashMap();
+	private Map<Key, Product> prices = Maps.newHashMap();
+
+	public enum ServiceCode {
+		AmazonEC2,
+		AmazonRDS,
+		AmazonRedshift;
+	}
+
+	private final ServiceCode serviceCode;
 	
-	public InstancePrices(String versionId, DateTime begin, DateTime end) {
+	public InstancePrices(ServiceCode serviceCode, String versionId, DateTime begin, DateTime end) {
+		this.serviceCode = serviceCode;
 		this.versionId = versionId;
 		effectiveBeginDate = begin;
 		effectiveEndDate = end;
 	}
 	
+    public Map<Key, Product> getPrices() {
+		return prices;
+	}
+
+    public ServiceCode getServiceCode() {
+		return serviceCode;
+	}
+
     public String getVersionId() {
 		return versionId;
 	}
@@ -51,14 +67,14 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		return prices.get(productKey);
 	}
 	
-	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies, InstanceMetrics instanceMetrics) {
+	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies) {
         Map<String, PriceList.Product> products = priceList.getProducts();
         for (String sku: products.keySet()) {
         	PriceList.Product p = products.get(sku);
         	String location = p.getAttribute(Attributes.location);
         	// There is one entry for RDS db.t1.micro with location of "Any". We'll ignore that one.
         	// Also skip GovCloud and non-instance SKUs.
-        	if (!p.productFamily.contains("Instance") || location.contains("GovCloud") || location.equals("Any"))
+        	if (p.productFamily == null || !p.productFamily.contains("Instance") || location.contains("GovCloud") || location.equals("Any"))
         		continue;
         	String t = p.getAttribute(Attributes.tenancy);
         	if (p.productFamily.equals("Compute Instance") && !t.isEmpty()) {
@@ -71,9 +87,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	Region region = Region.US_EAST_1;
         	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ"))
         		region = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
-        	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), p.getAttribute(Attributes.operation), p.getAttribute(Attributes.deploymentOption));
+        	String operationStr = p.getAttribute(Attributes.operation);
+        	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), operationStr, p.getAttribute(Attributes.deploymentOption));
         	Key key = new Key(region, usageType);
-
+        	
     		PriceList.Terms terms = priceList.getTerms();
 
         	// Find the OnDemand Rate
@@ -87,7 +104,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	    		onDemandRate = term.priceDimensions.entrySet().iterator().next().getValue();
     		}
     		else {
-    			logger.info("No OnDemand rate for SKU " + p.sku + ", " + region + ", " + usageTypeStr + ", " + p.getAttribute(Attributes.operation));
+    			logger.info("No OnDemand rate for SKU " + p.sku + ", " + region + ", " + usageTypeStr + ", " + 
+    					p.getAttribute(Attributes.operation) + " " + 
+    					p.getAttribute(Attributes.operatingSystem) +
+    					p.getAttribute(Attributes.databaseEngine));
     		}
         	
         	// Find the Reservation Offers
@@ -96,9 +116,6 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	Product product = new Product(p, onDemandRate, reservationOfferTerms);
         	
         	prices.put(key, product);
-        	
-        	// Add stats to InstanceMetrics
-        	instanceMetrics.add(product.instanceType, product.vcpu, product.ecu, product.normalizationSizeFactor);
         }
     }
     
@@ -133,6 +150,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
     public static class Serializer {
     	
         public static void serialize(DataOutput out, InstancePrices ip) throws IOException {
+        	out.writeUTF(ip.serviceCode.name());
         	out.writeUTF(ip.versionId);
         	out.writeLong(ip.effectiveBeginDate.getMillis());
         	if (ip.effectiveEndDate == null)
@@ -149,11 +167,12 @@ public class InstancePrices implements Comparable<InstancePrices> {
         }
     	
         public static InstancePrices deserialize(DataInput in) throws IOException {
+        	ServiceCode sc = ServiceCode.valueOf(in.readUTF());
         	String versionId = in.readUTF();
         	DateTime begin = new DateTime(in.readLong(), DateTimeZone.UTC);
         	Long endMillis = in.readLong();
         	DateTime end = endMillis == 0 ? null : new DateTime(endMillis, DateTimeZone.UTC);
-        	InstancePrices ip = new InstancePrices(versionId, begin, end);
+        	InstancePrices ip = new InstancePrices(sc, versionId, begin, end);
         	
         	// Read Product map
         	int size = in.readInt();
@@ -242,18 +261,20 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		public final double normalizationSizeFactor;
 		public final int vcpu;
 		public final String instanceType;
+		public final String operatingSystem;
 		public final String operation;
 		public final double onDemandRate;
 		public final Map<RateKey, Rate> reservationRates;
 		
 		private Product(double memory, double ecu, double normalizationSizeFactor,
-				int vcpu, String instanceType, String operation, double onDemandRate,
+				int vcpu, String instanceType, String operatingSystem, String operation, double onDemandRate,
 				Map<RateKey, Rate> reservationRates) {
 			this.memory = memory;
 			this.ecu = ecu;
 			this.normalizationSizeFactor = normalizationSizeFactor;
 			this.vcpu = vcpu;
 			this.instanceType = instanceType;
+			this.operatingSystem = operatingSystem;
 			this.operation = operation;
 			this.onDemandRate = onDemandRate;
 			this.reservationRates = reservationRates;
@@ -268,8 +289,9 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			this.vcpu = Integer.parseInt(product.getAttribute(Attributes.vcpu));
 			this.ecu = ecu.isEmpty() ? 0 : ecu.equals("Variable") ? 3 * this.vcpu : ecu.equals("NA") ? 0 : Double.parseDouble(ecu);
 			String nsf = product.getAttribute(Attributes.normalizationSizeFactor);
-			this.normalizationSizeFactor = nsf.isEmpty() ? 0 : Double.parseDouble(nsf);
+			this.normalizationSizeFactor = nsf.isEmpty() ? 1.0 : nsf.equals("NA") ? 1.0 : Double.parseDouble(nsf);
 			this.instanceType = product.getAttribute(Attributes.instanceType);
+			this.operatingSystem = product.getAttribute(Attributes.operatingSystem);
 			this.operation = product.getAttribute(Attributes.operation);
 			this.onDemandRate = onDemandRate == null ? 0.0 : Double.parseDouble(onDemandRate.pricePerUnit.get("USD"));
 			this.reservationRates = Maps.newHashMap();
@@ -304,6 +326,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
             	out.writeDouble(product.normalizationSizeFactor);
             	out.writeInt(product.vcpu);
             	out.writeUTF(product.instanceType);
+            	out.writeUTF(product.operatingSystem);
             	out.writeUTF(product.operation);
             	out.writeDouble(product.onDemandRate);
             	
@@ -321,6 +344,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         		double normalizationSizeFactor = in.readDouble();
         		int vcpu = in.readInt();
         		String instanceType = in.readUTF();
+        		String operatingSystem = in.readUTF();
         		String operation = in.readUTF();
         		double onDemandRate = in.readDouble();
         		
@@ -332,7 +356,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         			reservationRates.put(k, r);
         		}
         		
-        		return new Product(memory, ecu, normalizationSizeFactor, vcpu, instanceType, operation, onDemandRate, reservationRates);            	
+        		return new Product(memory, ecu, normalizationSizeFactor, vcpu, instanceType, operatingSystem, operation, onDemandRate, reservationRates);            	
             }
         }
 	}
@@ -447,7 +471,15 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	Dedicated,
     	Host,
     	Shared,
+    	Reserved,	// Deprecated?
     	NA;
+    }
+    
+    public static enum OperatingSystem {
+    	Linux,
+    	RHEL,
+    	SUSE,
+    	Windows;
     }
 
 }

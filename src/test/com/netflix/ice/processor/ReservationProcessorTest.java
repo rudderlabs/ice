@@ -2,9 +2,6 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +27,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
-import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -70,19 +67,18 @@ public class ReservationProcessorTest {
 	
 	private static ProductService productService = new BasicProductService(null);
 	public static AccountService accountService;
-	private static InstanceMetrics instanceMetrics = new InstanceMetrics();
+	private static PriceListService priceListService;
 
 	@BeforeClass
-	public static void loadInstanceMetrics() throws IOException {
-		File testFile = new File(resourceDir + "instanceMetrics");
-		DataInputStream in = new DataInputStream(new FileInputStream(testFile));
-		instanceMetrics.load(in);
+	public static void init() throws Exception {
+		priceListService = new PriceListService(resourceDir, null, null);
+		priceListService.init();
 	}
 	
 	@Test
-	public void testConstructor() {
+	public void testConstructor() throws IOException {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
-		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet(), null);
+		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet(), null, null);
 		assertNotNull("Contructor returned null", rp);
 	}
 	
@@ -116,7 +112,7 @@ public class ReservationProcessorTest {
 		}
 		return m;
 	}
-	private void runOneHourTest(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) {
+	private void runOneHourTest(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) throws Exception {
 		runOneHourTestWithOwners(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, reservationOwners.keySet());
 	}
 	
@@ -128,7 +124,7 @@ public class ReservationProcessorTest {
 			Datum[] expectedUsage, 
 			Datum[] expectedCost, 
 			String debugFamily,
-			Set<Account> rsvOwners) {
+			Set<Account> rsvOwners) throws Exception {
 		
 		Map<TagGroup, Double> hourUsageData = makeDataMap(usageData);
 		Map<TagGroup, Double> hourCostData = makeDataMap(costData);
@@ -174,7 +170,7 @@ public class ReservationProcessorTest {
 		return StringUtils.join(fields, ",");
 	}
 	
-	public static void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) {
+	public static void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) throws Exception {
 		Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
@@ -184,20 +180,21 @@ public class ReservationProcessorTest {
 				
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
 		reservationService.updateReservations(reservations, accountService, startMillis, productService);
-
-		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners, instanceMetrics);
+		
+		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService);
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, startMillis);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.PARTIAL, reservationService, usage, cost, startMillis);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.FIXED, reservationService, usage, cost, startMillis);		
+		DateTime start = new DateTime(startMillis);
+		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, start);
+		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.PARTIAL, reservationService, usage, cost, start);
+		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.FIXED, reservationService, usage, cost, start);		
 	}
 	
 	/*
 	 * Test one AZ scoped full-upfront reservation that's used by the owner.
 	 */
 	@Test
-	public void testUsedFixedAZ() {
+	public void testUsedFixedAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -217,6 +214,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -226,7 +224,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservation that isn't used.
 	 */
 	@Test
-	public void testUnusedFixedAZ() {
+	public void testUnusedFixedAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -245,6 +243,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.unusedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 1.3345),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", -1.3345),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -254,7 +253,7 @@ public class ReservationProcessorTest {
 	 * Test two AZ scoped reservations - one HEAVY and one FIXED that are both used by the owner account.
 	 */
 	@Test
-	public void testTwoUsedHeavyFixedAZ() {
+	public void testTwoUsedHeavyFixedAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -277,7 +276,8 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesHeavy, "m1.large", 0.112),
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -288,7 +288,7 @@ public class ReservationProcessorTest {
 	 * Test two equivalent AZ scoped full-upfront reservation that are both used by the owner account.
 	 */
 	@Test
-	public void testTwoUsedSameFixedAZ() {
+	public void testTwoUsedSameFixedAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -309,6 +309,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.190),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 * 2.0 - 0.190),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -318,7 +319,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservations where one instance is used by the owner account and one borrowed by a second account. Three instances are unused.
 	 */
 	@Test
-	public void testFixedAZ() {
+	public void testFixedAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -344,6 +345,7 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.unusedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.small", 0.044 * 2.0 - 0.1176),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.small", 0.0),
 		};
 
@@ -354,7 +356,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where one instance is used by the owner account in each of several AZs.
 	 */
 	@Test
-	public void testFixedRegionalMultiAZ() {
+	public void testFixedRegionalMultiAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -382,6 +384,7 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1C, Operation.reservedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 3.0 - 0.1176),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -391,7 +394,7 @@ public class ReservationProcessorTest {
 	 * Test two full-upfront reservations - one AZ, one Region that are both used by the owner account.
 	 */
 	@Test
-	public void testTwoUsedOneAZOneRegion() {
+	public void testTwoUsedOneAZOneRegion() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -412,7 +415,71 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+	}
+
+	/*
+	 * Test two full-upfront reservations - both AZ that are both used by the owner account.
+	 */
+	@Test
+	public void testTwoUsedAZ() throws Exception {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 2.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 2.0 * 0.175 - 2.0 * 0.095),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+	}
+
+	/*
+	 * Test two full-upfront reservations - both Region that are both used by the owner account.
+	 */
+	@Test
+	public void testTwoUsedRegion() throws Exception {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 2.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 2.0 * 0.175 - 2.0 * 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -422,7 +489,7 @@ public class ReservationProcessorTest {
 	 * Test two full-upfront reservations - one AZ, one Region that are both used by a borrowing account.
 	 */
 	@Test
-	public void testTwoUsedOneAZOneRegionBorrowed() {
+	public void testTwoUsedOneAZOneRegionBorrowed() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -448,7 +515,9 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1B, Operation.borrowedInstancesFixed, "m1.large", 0.0),
 		};
@@ -460,7 +529,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where four small instance reservations are used by one large instance in the owner account.
 	 */
 	@Test
-	public void testFixedRegionalFamily() {
+	public void testFixedRegionalFamily() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -480,6 +549,37 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.familyReservedInstancesFixed, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4.0 - 0.094),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+	}
+
+	/*
+	 * Test one Region scoped partial-upfront reservation where four small instance reservations are used by one large instance in the owner account.
+	 */
+	@Test
+	public void testPartialRegionalFamily() throws Exception {
+		long startMillis = 1491004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,1464699998099,1496235997000,31536000,0.0,123.0,4,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesPartial, "m1.large", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.familyReservedInstancesPartial, "m1.large", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.familyReservedInstancesPartial, "m1.large", 4.0 * 0.01),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartial, "m1.small", 4.0 * 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartial, "m1.small", 4.0 * (0.044 - 0.014 - 0.01)),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
@@ -489,7 +589,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where one instance is used by the owner account and one borrowed by a second account.
 	 */
 	@Test
-	public void testFixedRegional() {
+	public void testFixedRegional() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -513,6 +613,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 2 - 0.1176),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.small", 0.0),
@@ -525,7 +626,7 @@ public class ReservationProcessorTest {
 	 * Test two Region scoped full-upfront reservations where one instance from each is family borrowed by a third account.
 	 */
 	@Test
-	public void testFixedTwoRegionalFamilyBorrowed() {
+	public void testFixedTwoRegionalFamilyBorrowed() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -547,7 +648,9 @@ public class ReservationProcessorTest {
 		};
 		Datum[] expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4 - 0.094),
 				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
+				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4 - 0.094),
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
 				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
 				new Datum(accounts.get(2), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.xlarge", 0.0),
@@ -560,7 +663,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront RDS reservation where the instance is used.
 	 */
 	@Test
-	public void testFixedRDS() {
+	public void testFixedRDS() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -581,6 +684,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", 0.0223),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.savingsFixed, "db.t2.small.mysql", 0.034 - 0.0223),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
@@ -591,7 +695,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront RDS reservation where the instance is used.
 	 */
 	@Test
-	public void testPartialRDS() {
+	public void testPartialRDS() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -612,6 +716,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgresql", 0.024),
 			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartial, "db.t2.micro.postgresql", 0.018),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.savingsPartial, "db.t2.micro.postgresql", 2.0 * 0.028 - 0.018 - 2.0 * 0.012),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
@@ -622,7 +727,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped partial-upfront reservation that's used by the owner.
 	 */
 	@Test
-	public void testUsedPartialRegion() {
+	public void testUsedPartialRegion() throws Exception {
 		long startMillis = 1494004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -642,18 +747,114 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesPartial, "c4.2xlarge", 0.121),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartial, "c4.2xlarge", 0.398 - 0.121 - 0.121),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
 	}
 
+	/*
+	 * Test one Region scoped partial-upfront reservation that's used by the owner in last hour of reservation.
+	 * Reservation really ends at start of hour.
+	 */
 	@Test
-	public void testUsedAndBorrowedPartialRegion() {
+	public void testUsedPartialRegionLastHour() throws Exception {
+		long startMillis = DateTime.parse("2017-08-01T00:00:00Z").getMillis();
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2016-08-01 00:05:35,2017-08-01 00:05:34,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesPartial, "c4.2xlarge", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesPartial, "c4.2xlarge", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
+	}
+
+	/*
+	 * Test one Region scoped partial-upfront reservation for Windows that's used by the owner.
+	 */
+	@Test
+	public void testUsedPartialRegionWindows() throws Exception {
 		long startMillis = 1494004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2,us-west-2,e098729a-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,1492041221000,1523577220000,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
-			"222222222222,EC2,us-west-2,8c587942-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,1475509708914,1507045707000,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
+			"111111111111,EC2,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,t2.medium,Region,,false,2017-02-01 06:00:35,2018-02-01 06:00:34,31536000,0.0,289.0,1,Windows,active,USD,Partial Upfront,Hourly:0.033,",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.bonusReservedInstancesPartial, "t2.medium.windows", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesPartial, "t2.medium.windows", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesPartial, "t2.medium.windows", 0.033),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Operation.upfrontAmortizedPartial, "t2.medium.windows", 0.033),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, Operation.savingsPartial, "t2.medium.windows", 0.082 - 0.033 - 0.033),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "t2");		
+	}
+
+	@Test
+	public void testUsedUnusedDifferentRegionAndBorrowedFamilyPartialRegion() throws Exception {
+		long startMillis = DateTime.parse("2017-08-01").getMillis();
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-west-2,aaaaaaaa-382f-40b9-b2d3-8641b05313f9,,c4.large,Region,,false,2017-04-12 21:29:39,2018-04-12 21:29:38,31536000,0.0,249.85000610351562,20,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.0285",
+			"222222222222,EC2,eu-west-1,bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd,,c4.xlarge,Region,,false,2017-03-08 09:00:00,2017-08-18 06:07:40,31536000,0.0,340.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.039",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.EU_WEST_1, Zone.EU_WEST_1B, Operation.bonusReservedInstancesPartial, "c4.2xlarge", 0.25),
+			new Datum(accounts.get(1), Region.EU_WEST_1, Zone.EU_WEST_1C, Operation.bonusReservedInstancesPartial, "c4.xlarge", 1.5),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.EU_WEST_1, Zone.EU_WEST_1B, Operation.borrowedInstancesPartial, "c4.2xlarge", 0.25),
+			new Datum(accounts.get(1), Region.EU_WEST_1, Zone.EU_WEST_1C, Operation.reservedInstancesPartial, "c4.xlarge", 1.5),
+			new Datum(accounts.get(1), Region.EU_WEST_1, null, Operation.lentInstancesPartial, "c4.xlarge", 0.5),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.unusedInstancesPartial, "c4.large", 20.0),
+		};
+		
+		Datum[] costData = new Datum[]{
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.EU_WEST_1, Zone.EU_WEST_1B, Operation.borrowedInstancesPartial, "c4.2xlarge", 0.039 * 0.50),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.unusedInstancesPartial, "c4.large", 0.0285 * 20.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c4.large", 0.0285 * 20.0),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.savingsPartial, "c4.large", (-0.0285 - 0.0285) * 20.0),
+			new Datum(accounts.get(1), Region.EU_WEST_1, Zone.EU_WEST_1C, Operation.reservedInstancesPartial, "c4.xlarge", 0.039 * 1.5),
+			new Datum(accounts.get(1), Region.EU_WEST_1, null, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.039 * 2.0),
+			new Datum(accounts.get(1), Region.EU_WEST_1, null, Operation.savingsPartial, "c4.xlarge", (0.226 - 0.039 - 0.039) * 2.0),
+			new Datum(accounts.get(1), Region.EU_WEST_1, null, Operation.lentInstancesPartial, "c4.xlarge", 0.5 * 0.039),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+	}	
+
+	@Test
+	public void testUsedAndBorrowedPartialRegion() throws Exception {
+		long startMillis = 1494004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-west-2,aaaaaaaa-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,1492041221000,1523577220000,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
+			"222222222222,EC2,us-west-2,bbbbbbbb-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,1475509708914,1507045707000,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -673,20 +874,22 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, Operation.borrowedInstancesPartial, "c3.4xlarge", 0.209),
 			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.lentInstancesPartial, "c3.4xlarge", 0.209),
 			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c3.4xlarge", 0.283),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.savingsPartial, "c3.4xlarge", 0.84 - 0.283 - 0.199),
 			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c3.4xlarge", 0.298),
+			new Datum(accounts.get(1), Region.US_WEST_2, null, Operation.savingsPartial, "c3.4xlarge", 0.84 - 0.298 - 0.209),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c3");
 	}
 	
 	@Test
-	public void testUsedAndBorrowedPartialRegionAndAZ() {
+	public void testUsedAndBorrowedPartialRegionAndAZ() throws Exception {
 		long startMillis = 1494004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2,us-west-2,2e73d4b7-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,1492033482000,1523569481000,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
-			"222222222222,EC2,us-west-2,46852280-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,1474587867448,1506123866000,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
-			"222222222222,EC2,us-west-2,b6876c3a-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,1474587867022,1506123866000,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"111111111111,EC2,us-west-2,aaaaaaaa-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,1492033482000,1523569481000,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
+			"222222222222,EC2,us-west-2,bbbbbbbb-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,1474587867448,1506123866000,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"222222222222,EC2,us-west-2,cccccccc-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,1474587867022,1506123866000,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -716,18 +919,21 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.lentInstancesPartial, "c4.xlarge", 0.134),
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.lentInstancesPartial, "c4.xlarge", 0.067),
 			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.862),
+			new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.savingsPartial, "c4.xlarge", 15.0 * 0.199 - 0.862 - 15.0 * 0.057),
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.134),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2B, Operation.savingsPartial, "c4.xlarge", 2.0 * 0.199 - 0.134 - 2.0 * 0.067),
 			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.upfrontAmortizedPartial, "c4.xlarge", 0.067),
+			new Datum(accounts.get(1), Region.US_WEST_2, Zone.US_WEST_2A, Operation.savingsPartial, "c4.xlarge", 0.199 - 0.067 - 0.067),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
 	
 	/*
-	 * Test one AZ scoped full-upfront reservation that's used by the owner.
+	 * Test one AZ scoped full-upfront reservation that's used by the owner and has an additional bonus.
 	 */
 	@Test
-	public void testBonusFixed() {
+	public void testBonusFixed() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -748,7 +954,8 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 		
 		Set<Account> owners = Sets.newHashSet(accounts.get(0));
@@ -757,10 +964,10 @@ public class ReservationProcessorTest {
 	}
 
 	/*
-	 * Test one AZ scoped full-upfront reservation that's used by the owner.
+	 * Test one AZ scoped full-upfront reservation that's borrowed by another account and has an additional bonus reservation.
 	 */
 	@Test
-	public void testBonusBorrowedFixed() {
+	public void testBonusBorrowedFixed() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -784,6 +991,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
 				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.lentInstancesFixed, "m1.large", 0.0),
 				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
 		Set<Account> owners = Sets.newHashSet(accounts.get(1));

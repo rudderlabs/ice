@@ -16,7 +16,7 @@ public class InstanceMetricsService extends Poller {
     	this.localDir = localDir;
 		this.workS3BucketName = workS3BucketName;
 		this.workS3BucketPrefix = workS3BucketPrefix;
-		this.instanceMetrics = new InstanceMetrics();
+		this.instanceMetrics = null;
 		
 		start();
     }
@@ -45,7 +45,7 @@ public class InstanceMetricsService extends Poller {
         logger.info("trying to load data from " + file);
         DataInputStream in = new DataInputStream(new FileInputStream(file));
         try {
-            instanceMetrics.load(in);
+            instanceMetrics = InstanceMetrics.Serializer.deserialize(in);
             logger.info("done loading data from " + file);
         }
         finally {

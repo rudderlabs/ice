@@ -2,8 +2,8 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
@@ -46,10 +46,7 @@ import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilizat
 import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationProcessorTest.Datum;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
-import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
-import com.netflix.ice.processor.pricelist.VersionIndex.Version;
-import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -61,16 +58,12 @@ public class BillingFileProcessorTest {
     
     private static final String resourcesDir = "src/test/resources/";
     private static final String resourcesReportDir = resourcesDir + "report/";
-	private static InstanceMetrics instanceMetrics = new InstanceMetrics();
-    
-	@BeforeClass
-	public static void loadInstanceMetrics() throws IOException {
-		File testFile = new File(resourcesDir, "instanceMetrics");
-		DataInputStream in = new DataInputStream(new FileInputStream(testFile));
-		instanceMetrics.load(in);
-	}
-	
 
+    @BeforeClass
+    public static void init() throws Exception {
+		ReservationProcessorTest.init();
+    }
+    
 	private Properties getProperties() throws IOException {
 		Properties prop = new Properties();
 		File file = new File(resourcesReportDir, "ice.properties");
@@ -155,27 +148,9 @@ public class BillingFileProcessorTest {
 		@SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
 		
-		class TestPriceListService extends PriceListService {
-			public TestPriceListService() throws Exception {
-				super(null, null, null);
-			}
-
-			@Override
-		    protected InstancePrices load(ServiceCode serviceCode, String versionId, Version version) throws Exception {
-				return null;
-			}
-			
-			@Override
-		    protected void archive(InstancePrices prices, String name) throws IOException {
-				return;
-			}
-			
-			@Override
-		    protected void loadInstanceMetrics() throws IOException {
-				this.instanceMetrics = BillingFileProcessorTest.instanceMetrics;
-			}
-		}
-
+		PriceListService priceListService = new PriceListService(null, null, null);
+		priceListService.init();
+		
 		ProcessorConfig config = new ProcessorConfig(
 										properties,
 										credentialsProvider,
@@ -184,7 +159,7 @@ public class BillingFileProcessorTest {
 										reservationService,
 										null,
 										new BasicLineItemProcessor(accountService, productService, reservationService, null, null),
-										new TestPriceListService(),
+										priceListService,
 										null);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
 		bfp.init();
@@ -219,7 +194,7 @@ public class BillingFileProcessorTest {
         purgeSupportTags(costDataByProduct.get(null));
 		
         for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
-        	bfp.reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), startMilli);
+        	bfp.reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), config.startDate);
         }
         
         logger.info("Finished processing reports, ready to compare results on " + 
@@ -404,7 +379,7 @@ public class BillingFileProcessorTest {
 	}
 	
 	@Test
-	public void testAllUpfrontUsage() {
+	public void testAllUpfrontUsage() throws Exception {
 		BasicLineItemProcessorTest.processSetup();
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
@@ -423,6 +398,7 @@ public class BillingFileProcessorTest {
 		};
 		
 		ReservationProcessorTest resTest = new ReservationProcessorTest();
+
 		Datum[] expectedUsage = new Datum[]{
 			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesFixed, "c4.2xlarge", 1.0),
 		};
@@ -430,6 +406,7 @@ public class BillingFileProcessorTest {
 		Datum[] expectedCost = new Datum[]{
 			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesFixed, "c4.2xlarge", 0.0),
 			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.upfrontAmortizedFixed, "c4.2xlarge", 0.095),
+			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.savingsFixed, "c4.2xlarge", 0.522 - 0.095),
 		};
 
 		Map<TagGroup, Double> hourUsageData = BasicLineItemProcessorTest.usageDataByProduct.get(null).getData(0);
@@ -459,5 +436,4 @@ public class BillingFileProcessorTest {
 		}
 
 	}
-
 }
