@@ -19,8 +19,7 @@ package com.netflix.ice.tag;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
@@ -72,7 +71,7 @@ public class Operation extends Tag {
     public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("Unused RIs - All Upfront", 25, ReservationUtilization.FIXED);
     public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("Amortized RIs - All Upfront", 26, ReservationUtilization.FIXED);
 
-    public static ReservationOperation getReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return reservedInstancesFixed;
             case HEAVY: return reservedInstancesHeavy;
@@ -81,7 +80,7 @@ public class Operation extends Tag {
         }
     }
 
-    public static ReservationOperation getFamilyReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getFamilyReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return familyReservedInstancesFixed;
             case HEAVY: return familyReservedInstancesHeavy;
@@ -90,7 +89,7 @@ public class Operation extends Tag {
         }
     }
 
-    public static ReservationOperation getBonusReservedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getBonusReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return bonusReservedInstancesFixed;
             case HEAVY: return bonusReservedInstancesHeavy;
@@ -99,7 +98,7 @@ public class Operation extends Tag {
         }
     }
 
-    public static ReservationOperation getBorrowedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getBorrowedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return borrowedInstancesFixed;
             case HEAVY: return borrowedInstancesHeavy;
@@ -112,7 +111,7 @@ public class Operation extends Tag {
         return Lists.newArrayList(lentInstancesFixed, lentInstancesHeavy, lentInstancesPartial);
     }
 
-    public static ReservationOperation getLentInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getLentInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return lentInstancesFixed;
             case HEAVY: return lentInstancesHeavy;
@@ -121,7 +120,7 @@ public class Operation extends Tag {
         }
     }
 
-    public static ReservationOperation getUnusedInstances(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getUnusedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return unusedInstancesFixed;
             case HEAVY: return unusedInstancesHeavy;
@@ -134,7 +133,7 @@ public class Operation extends Tag {
         return Lists.newArrayList(upfrontAmortizedHeavy, upfrontAmortizedPartial, upfrontAmortizedFixed);
     }
 
-    public static ReservationOperation getUpfrontAmortized(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getUpfrontAmortized(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return upfrontAmortizedFixed;
             case HEAVY: return upfrontAmortizedHeavy;
@@ -147,7 +146,7 @@ public class Operation extends Tag {
         return Lists.newArrayList(spotInstanceSavings, savingsFixed, savingsHeavy, savingsPartial);
     }
 
-    public static ReservationOperation getSavings(Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    public static ReservationOperation getSavings(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return savingsFixed;
             case HEAVY: return savingsHeavy;
@@ -179,16 +178,16 @@ public class Operation extends Tag {
 
     public static class ReservationOperation extends Operation {
 		private static final long serialVersionUID = 1L;
-		private Ec2InstanceReservationPrice.ReservationUtilization utilization = null;
+		private ReservationUtilization utilization = null;
 
-		private ReservationOperation(String name, int seq, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+		private ReservationOperation(String name, int seq, ReservationUtilization utilization) {
             super(name);
             this.seq = seq;
             this.utilization = utilization;
             operations.put(name, this);
         }
 		
-		public Ec2InstanceReservationPrice.ReservationUtilization getUtilization() {
+		public ReservationUtilization getUtilization() {
 			return utilization;
 		}
     }

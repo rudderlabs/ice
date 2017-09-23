@@ -31,7 +31,6 @@ import java.util.Properties;
 public class ProcessorConfig extends Config {
     private static final Logger logger = LoggerFactory.getLogger(ProcessorConfig.class);
     private static ProcessorConfig instance;
-    private static ReservationCapacityPoller reservationCapacityPoller;
     protected static BillingFileProcessor billingFileProcessor;
 
     public final String[] billingAccountIds;
@@ -114,11 +113,6 @@ public class ProcessorConfig extends Config {
 
         ProcessorConfig.instance = this;
 
-        lineItemProcessor.init(useCostForResourceGroup.equals("modeled"), costPerMonitorMetricPerHour);
-        reservationService.init();
-        if (resourceService != null)
-            resourceService.init(customTags);
-
         billingFileProcessor = new BillingFileProcessor(this,
             properties.getProperty(IceOptions.URL_PREFIX),
             properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD) == null ? null :  Double.parseDouble(properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD)),
@@ -126,23 +120,15 @@ public class ProcessorConfig extends Config {
             properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS));
     }
 
-    public void start (ReservationCapacityPoller reservationCapacityPoller) throws Exception {
+    public void start () throws Exception {
         logger.info("starting up...");
 
+        lineItemProcessor.init(useCostForResourceGroup.equals("modeled"), costPerMonitorMetricPerHour);
+        reservationService.init();
+        if (resourceService != null)
+            resourceService.init(customTags);
+
         priceListService.init();
-        
-        ProcessorConfig.reservationCapacityPoller = reservationCapacityPoller;
-        if (reservationCapacityPoller != null)
-            reservationCapacityPoller.start();
-
-        while (reservationCapacityPoller != null && !reservationCapacityPoller.updatedConfig()) {
-            try {
-                Thread.sleep(10000L);
-            }
-            catch (InterruptedException e) {
-            }
-        }
-
         billingFileProcessor.start();
     }
 
@@ -150,7 +136,7 @@ public class ProcessorConfig extends Config {
         logger.info("Shutting down...");
 
         billingFileProcessor.shutdown();
-        reservationCapacityPoller.shutdown();
+        reservationService.shutdown();
     }
 
     /**

@@ -39,10 +39,11 @@ import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
+import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationPeriod;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationProcessorTest.Datum;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
@@ -133,7 +134,7 @@ public class BillingFileProcessorTest {
 		ProductService productService = new BasicProductService(null);
 		class BasicTestReservationService extends BasicReservationService {
 			BasicTestReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
-				super(term, defaultUtilization);
+				super(term, defaultUtilization, false);
 			}
 			
 			@Override
@@ -143,7 +144,7 @@ public class BillingFileProcessorTest {
 		}
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
         ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
-		ReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
+		BasicReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
 		
 		@SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
@@ -175,7 +176,7 @@ public class BillingFileProcessorTest {
         Instances instances = new Instances();
         
 		Long startMilli = config.startDate.getMillis();
-		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
+		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		reservationService.updateReservations(reservations, accountService, startMilli, productService);
 		
 		Long endMilli = reportTest.Process(config, config.startDate, usageDataByProduct, costDataByProduct, instances);
@@ -193,7 +194,7 @@ public class BillingFileProcessorTest {
         purgeSupportTags(usageDataByProduct.get(null));
         purgeSupportTags(costDataByProduct.get(null));
 		
-        for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
+        for (ReservationUtilization utilization: ReservationUtilization.values()) {
         	bfp.reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), config.startDate);
         }
         
@@ -384,7 +385,7 @@ public class BillingFileProcessorTest {
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
 		lineItemTest.newBasicLineItemProcessor();
-		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(BasicLineItemProcessorTest.LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
+		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
 		String[] tag = new String[] { "Account1", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge", null };
 		ProcessTest test = lineItemTest.new ProcessTest(Which.both, line, tag, 1, 0.0, Result.hourly);
 		

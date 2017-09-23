@@ -120,6 +120,7 @@ public class PriceListService {
 	        	instanceMetrics.add(p.instanceType, p.vcpu, p.ecu, p.normalizationSizeFactor);
         	}
 		}
+       	archiveInstanceMetrics();
 	}
 	
 	public InstanceMetrics getInstanceMetrics() throws IOException {
@@ -217,7 +218,6 @@ public class PriceListService {
        	
        	archive(prices, getFilename(serviceCode, versionId));
        	
-       	archiveInstanceMetrics();
        	return prices;
     }
     

@@ -1,4 +1,4 @@
-package com.netflix.ice.processor;
+package com.netflix.ice.basic;
 
 import static org.junit.Assert.*;
 
@@ -14,10 +14,11 @@ import com.amazonaws.services.ec2.model.ReservedInstancesModification;
 import com.amazonaws.services.ec2.model.ReservedInstancesModificationResult;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.netflix.ice.processor.ReservationCapacityPoller.Ec2Mods;
+import com.netflix.ice.basic.BasicReservationService.Ec2Mods;
+import com.netflix.ice.processor.CanonicalReservedInstances;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 
-public class ReservationCapacityPollerTest {
+public class ReservationServiceTest {
 	static Ec2Mods ec2mods;
 
 	@BeforeClass
@@ -35,7 +36,7 @@ public class ReservationCapacityPollerTest {
 			.withModificationResults(modificationResults);
 		
 		mods.add(mod);
-		ec2mods = new ReservationCapacityPoller().new Ec2Mods(mods);
+		ec2mods = new BasicReservationService(null, null, false).new Ec2Mods(mods);
 	}
 	
 	@Test
@@ -69,8 +70,8 @@ public class ReservationCapacityPollerTest {
 		ReservationKey childKey = new ReservationKey("1", "us-east-1", "0bd43db3-dd52-4d5f-8770-642d2198ceb9");
 		reservations.put(parentKey, new CanonicalReservedInstances("1", "us-east-1", parentRI, ""));
 		reservations.put(childKey, new CanonicalReservedInstances("1", "us-east-1", childRI, ""));
-		ReservationCapacityPoller poller = new ReservationCapacityPoller();
-		poller.handleEC2Modifications(reservations, ec2mods);
+		BasicReservationService rs = new BasicReservationService(null, null, false);
+		rs.handleEC2Modifications(reservations, ec2mods);
 		
 		CanonicalReservedInstances child = reservations.get(childKey);
 		assertEquals("Wrong fixed price, expected " + 100.0 + ", got " + child.getFixedPrice(), child.getFixedPrice(), 50.0, 0.001);		
@@ -78,7 +79,7 @@ public class ReservationCapacityPollerTest {
 	
 	@Test
 	public void testMultiplier() {
-		ReservationCapacityPoller rcp = new ReservationCapacityPoller();
+		BasicReservationService rcp = new BasicReservationService(null, null, false);
 		assertEquals("Wrong multipliers converting micro to xlarge", rcp.multiplier("xlarge") / rcp.multiplier("micro"), 16.0, 0.001);
 		assertEquals("Wrong multipliers converting small to 4xlarge", rcp.multiplier("4xlarge") / rcp.multiplier("small"), 32.0, 0.001);
 	}

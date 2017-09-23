@@ -21,7 +21,8 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.*;
 
 import org.apache.commons.lang.StringUtils;
@@ -211,7 +212,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                     usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);
                 }
                 try {
-                    resourceCostValue = usageValue * reservationService.getLatestHourlyTotalPrice(millisStart, tagGroup.region, usageTypeForPrice, reservationService.getDefaultReservationUtilization(0L));
+                    resourceCostValue = usageValue * reservationService.getLatestHourlyTotalPrice(
+                    							millisStart, tagGroup.region, usageTypeForPrice, 
+                    							reservationService.getDefaultReservationUtilization(0L).getPurchaseOption(),
+                    							ServiceCode.AmazonEC2);
                 }
                 catch (Exception e) {
                     logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice + " " + operation);
@@ -550,7 +554,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return InstanceDb.withCode(osStr);
     }
 
-    private Operation getOperation(String operationStr, boolean reservationUsage, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+    private Operation getOperation(String operationStr, boolean reservationUsage, ReservationUtilization utilization) {
         if (operationStr.startsWith("RunInstances") ||
         		operationStr.startsWith("RunComputeNode") ||
         		operationStr.startsWith("CreateDBInstance")) {

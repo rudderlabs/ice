@@ -25,7 +25,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import com.netflix.ice.common.IceOptions
-import com.netflix.ice.processor.ReservationCapacityPoller
 import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.auth.InstanceProfileCredentialsProvider
 import com.netflix.ice.basic.BasicAccountService
@@ -36,7 +35,6 @@ import com.google.common.collect.Maps
 import com.netflix.ice.basic.BasicProductService
 import com.netflix.ice.basic.BasicReservationService
 import com.netflix.ice.basic.BasicLineItemProcessor
-import com.netflix.ice.processor.Ec2InstanceReservationPrice
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.basic.BasicS3ApplicationGroupService
 import com.netflix.ice.basic.BasicManagers
@@ -175,21 +173,17 @@ class BootStrap {
                 if (prop.getProperty(IceOptions.URL_PREFIX) != null)
                     properties.setProperty(IceOptions.URL_PREFIX, prop.getProperty(IceOptions.URL_PREFIX));
 
-                ReservationCapacityPoller reservationCapacityPoller = null;
-                if ("true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER))) {
-                    reservationCapacityPoller = new ReservationCapacityPoller();
-                }
-                Ec2InstanceReservationPrice.ReservationPeriod reservationPeriod =
-                    Ec2InstanceReservationPrice.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
-                Ec2InstanceReservationPrice.ReservationUtilization reservationUtilization =
-                    Ec2InstanceReservationPrice.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
+                ReservationService.ReservationPeriod reservationPeriod =
+                    ReservationService.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
+                ReservationService.ReservationUtilization reservationUtilization =
+                    ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
 				ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
                 ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 
-				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
 				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
@@ -207,7 +201,7 @@ class BootStrap {
                         lineItemProcessor,
 						priceListService,
                         null)
-                processorConfig.start(reservationCapacityPoller);
+				processorConfig.start();
             }
 
             if ("true".equals(prop.getProperty("ice.reader"))) {

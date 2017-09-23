@@ -22,8 +22,8 @@ import com.netflix.ice.processor.CostAndUsageReportLineItem;
 import com.netflix.ice.processor.CostAndUsageReportProcessor;
 import com.netflix.ice.processor.CostAndUsageReport;
 import com.netflix.ice.processor.DetailedBillingReportLineItem;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationPeriod;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReadWriteData;
@@ -52,7 +52,7 @@ public class BasicLineItemProcessorTest {
     
     @Before
     public void newBasicLineItemProcessor() {
-		ReservationService reservationService = new BasicReservationService(Ec2InstanceReservationPrice.ReservationPeriod.oneyear, ReservationUtilization.PARTIAL);
+		ReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
     	
     	lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, null, null);
     }

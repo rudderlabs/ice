@@ -33,9 +33,8 @@ import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationUtilization;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.InstancePrices.Key;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
@@ -57,7 +56,7 @@ public class ReservationProcessor {
     // debugAccounts - will print all accounts if null
     private String[] debugAccounts = null; // { "AccountName" };
     // debugUtilization - will print all utilization if null
-    private Ec2InstanceReservationPrice.ReservationUtilization debugUtilization = ReservationUtilization.PARTIAL;
+    private ReservationUtilization debugUtilization = ReservationUtilization.PARTIAL;
     // debugRegion - will print all regions if null
     private Region[] debugRegions = null; // { Region.EU_WEST_1 };
     
@@ -152,7 +151,7 @@ public class ReservationProcessor {
     	return debugRegions;
     }
     
-	private boolean debugReservations(int i, TagGroup tg, Ec2InstanceReservationPrice.ReservationUtilization utilization) {
+	private boolean debugReservations(int i, TagGroup tg, ReservationUtilization utilization) {
 		// Must have match on debugHour
 		if (i != debugHour)
 			return false;
@@ -202,7 +201,7 @@ public class ReservationProcessor {
             Map<TagGroup, Double> costMap,
             List<Account> fromAccounts,
             TagGroup tagGroup,
-            Ec2InstanceReservationPrice.ReservationUtilization utilization,
+            ReservationUtilization utilization,
             ReservationService reservationService,
             Set<TagGroup> reservationTagGroups) {
 
@@ -376,7 +375,7 @@ public class ReservationProcessor {
 		Map<TagGroup, Double> usageMap,
 		Map<TagGroup, Double> costMap,
 		TagGroup tagGroup,
-		Ec2InstanceReservationPrice.ReservationUtilization utilization,
+		ReservationUtilization utilization,
 		Set<TagGroup> bonusTags) {
 	
 	    boolean debug = debugReservations(i, tagGroup, utilization);
@@ -477,7 +476,7 @@ public class ReservationProcessor {
 		}
 	}
 	
-	private UsedUnused processUsage(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+	private UsedUnused processUsage(ReservationUtilization utilization,
 			TagGroup tagGroup,
 			Zone zone,
 			Map<TagGroup, Double> usageMap,
@@ -554,7 +553,7 @@ public class ReservationProcessor {
 	 * 
 	 * actual_savings = max_savings - (onDemand_rate * unusedCount)
 	 */
-	public void process(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+	public void process(ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
 			ReadWriteData costData,
@@ -589,7 +588,7 @@ public class ReservationProcessor {
 			printUsage("after", usageData, costData);		
 	}
 		
-	private void processAvailabilityZoneReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+	private void processAvailabilityZoneReservations(ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
 			ReadWriteData costData,
@@ -620,7 +619,7 @@ public class ReservationProcessor {
 	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 	        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 	        
-	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
 		    
 			for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
@@ -678,7 +677,7 @@ public class ReservationProcessor {
 		processFamilySharingAndBorrowing(utilization, reservationService, usageData, costData, startMilli, reservationTagGroups, false);
 	}
 	
-	private void processFamilySharingAndBorrowing(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+	private void processFamilySharingAndBorrowing(ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
 			ReadWriteData costData,
@@ -735,7 +734,7 @@ public class ReservationProcessor {
 		}		
 	}
 		
-	private void processRegionalReservations(Ec2InstanceReservationPrice.ReservationUtilization utilization,
+	private void processRegionalReservations(ReservationUtilization utilization,
 			ReservationService reservationService,
 			ReadWriteData usageData,
 			ReadWriteData costData,
@@ -756,7 +755,7 @@ public class ReservationProcessor {
 	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 	        
-	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
 			
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
@@ -809,7 +808,7 @@ public class ReservationProcessor {
 	}
 	
 	private void removeUnusedFromSavings(
-			Ec2InstanceReservationPrice.ReservationUtilization utilization,
+			ReservationUtilization utilization,
 			ReadWriteData usageData,
 			ReadWriteData costData) {
 		
@@ -821,7 +820,7 @@ public class ReservationProcessor {
 			
 	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 			
-	        double onDemandRate = prices.get(tagGroup.product).getProduct(new Key(tagGroup.region, tagGroup.usageType)).getOnDemandRate();
+	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
 
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...

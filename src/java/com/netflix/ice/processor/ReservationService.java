@@ -17,13 +17,14 @@
  */
 package com.netflix.ice.processor;
 
-import com.netflix.ice.common.AccountService;
-import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -31,20 +32,21 @@ import java.util.Map;
  */
 public interface ReservationService {
 
-    void init();
+    void init() throws Exception;
+    public void shutdown();
 
     /**
      * Get all tag groups with reservations
      * @param utilization
      * @return
      */
-    Collection<TagGroup> getTagGroups(Ec2InstanceReservationPrice.ReservationUtilization utilization);
+    Collection<TagGroup> getTagGroups(ReservationUtilization utilization);
 
     /**
      *
      * @return
      */
-    Ec2InstanceReservationPrice.ReservationUtilization getDefaultReservationUtilization(long time);
+    ReservationUtilization getDefaultReservationUtilization(long time);
 
     /**
      * Get reservation info.
@@ -56,7 +58,7 @@ public interface ReservationService {
     ReservationInfo getReservation(
             long time,
             TagGroup tagGroup,
-            Ec2InstanceReservationPrice.ReservationUtilization utilization);
+            ReservationUtilization utilization);
 
     /**
      * Some companies may get different price tiers at different times depending on reservation cost.
@@ -71,13 +73,8 @@ public interface ReservationService {
             long time,
             Region region,
             UsageType usageType,
-            Ec2InstanceReservationPrice.ReservationUtilization utilization);
-
-    /**
-     * Called by ReservationCapacityPoller to update reservations.
-     * @param reservations
-     */
-    void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService);
+            PurchaseOption purchaseOption,
+            ServiceCode serviceCode);
 
     /**
      * Methods to indicate that we have reservations for each corresponding service.
@@ -103,7 +100,7 @@ public interface ReservationService {
     	public String region;
     	public String reservationId;
     	
-    	ReservationKey(String account, String region, String reservationId) {
+    	public ReservationKey(String account, String region, String reservationId) {
     		this.account = account;
     		this.region = region;
     		this.reservationId = reservationId;
@@ -130,6 +127,65 @@ public interface ReservationService {
 		public int hashCode() {
 			return account.hashCode() * region.hashCode() * reservationId.hashCode();
 		}
+    }
+
+    public static enum ReservationPeriod {
+        oneyear(1, "yrTerm1"),
+        threeyear(3, "yrTerm3");
+
+        public final int years;
+        public final String jsonTag;
+
+        private ReservationPeriod(int years, String jsonTag) {
+            this.years = years;
+            this.jsonTag = jsonTag;
+        }
+
+    }
+
+    public static enum ReservationUtilization {
+        HEAVY, 		// The new "No Upfront" Reservations
+        PARTIAL,	// The new "Partial Upfront" Reservations
+        FIXED;		// The new "Full Upfront" Reservations
+
+        static final Map<String, String> reservationTypeMap = new HashMap<String, String>();
+        static {
+            reservationTypeMap.put("ALL", "FIXED");
+            reservationTypeMap.put("PARTIAL", "PARTIAL");
+            reservationTypeMap.put("NO", "HEAVY");
+        }
+
+        public static ReservationUtilization get(String offeringType) {
+            int idx = offeringType.indexOf(" ");
+            if (idx > 0) {
+            	// We've been called with a reservationInstance record offering type field
+                offeringType = offeringType.substring(0, idx).toUpperCase();
+                String mappedValue = reservationTypeMap.get(offeringType);
+                if (mappedValue != null)
+                    offeringType = mappedValue;
+                return valueOf(offeringType);
+            }
+            else {
+            	// We've been called with a billing report line item usage type field
+                for (ReservationUtilization utilization: values()) {
+                    if (offeringType.toUpperCase().startsWith(utilization.name()))
+                        return utilization;
+                }
+                throw new RuntimeException("Unknown ReservationUtilization " + offeringType);
+            }
+        }
+        
+        public PurchaseOption getPurchaseOption() {
+            switch (this) {
+            case HEAVY:
+            	return PurchaseOption.noUpfront;
+            case PARTIAL:
+            	return PurchaseOption.partialUpfront;
+            case FIXED:
+            default:
+            	return PurchaseOption.allUpfront;
+            }
+        }
     }
 
 }

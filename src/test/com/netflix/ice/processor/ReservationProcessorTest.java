@@ -25,8 +25,9 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.Ec2InstanceReservationPrice.ReservationPeriod;
+import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
@@ -178,16 +179,16 @@ public class ReservationProcessorTest {
 			reservations.put(new ReservationKey(fields[0], fields[2], fields[3]), new CanonicalReservedInstances(res));
 		}
 				
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, Ec2InstanceReservationPrice.ReservationUtilization.FIXED);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.FIXED, false);
 		reservationService.updateReservations(reservations, accountService, startMillis, productService);
 		
 		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService);
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
 		DateTime start = new DateTime(startMillis);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.HEAVY, reservationService, usage, cost, start);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.PARTIAL, reservationService, usage, cost, start);
-		rp.process(Ec2InstanceReservationPrice.ReservationUtilization.FIXED, reservationService, usage, cost, start);		
+		rp.process(ReservationUtilization.HEAVY, reservationService, usage, cost, start);
+		rp.process(ReservationUtilization.PARTIAL, reservationService, usage, cost, start);
+		rp.process(ReservationUtilization.FIXED, reservationService, usage, cost, start);		
 	}
 	
 	/*

@@ -27,6 +27,7 @@ import com.amazonaws.services.simpleemail.model.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation;
@@ -149,7 +150,7 @@ public class BillingFileProcessor extends Poller {
 //            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " before reservation processing");
             
             // now get reservation capacity to calculate upfront and un-used cost
-            for (Ec2InstanceReservationPrice.ReservationUtilization utilization: Ec2InstanceReservationPrice.ReservationUtilization.values()) {
+            for (ReservationUtilization utilization: ReservationUtilization.values()) {
             	// We no longer support Light and Medium
             	reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), dataTime);
             }
@@ -211,7 +212,7 @@ public class BillingFileProcessor extends Poller {
     				Double usage = usageData.getData(i).get(tg);
     				Double cost = costData.getData(i).get(tg);
     				if (usage != null && cost != null) {
-    					double onDemandRate = ec2Prices.getProduct(new InstancePrices.Key(tg.region, tg.usageType)).getOnDemandRate();
+    					double onDemandRate = ec2Prices.getOnDemandRate(tg.region, tg.usageType);
     					costData.getData(i).put(savingsTag, onDemandRate * usage - cost);
     				}
     			}
@@ -360,8 +361,8 @@ public class BillingFileProcessor extends Poller {
     }
 
 
-    private Map<Long, Map<Ec2InstanceReservationPrice.Key, Double>> getOndemandCosts(long fromMillis) {
-        Map<Long, Map<Ec2InstanceReservationPrice.Key, Double>> ondemandCostsByHour = Maps.newHashMap();
+    private Map<Long, Map<InstancePrices.Key, Double>> getOndemandCosts(long fromMillis) {
+        Map<Long, Map<InstancePrices.Key, Double>> ondemandCostsByHour = Maps.newHashMap();
         ReadWriteData costs = costDataByProduct.get(null);
 
         Collection<TagGroup> tagGroups = costs.getTagGroups();
@@ -370,14 +371,14 @@ public class BillingFileProcessor extends Poller {
             if (millis < fromMillis)
                 continue;
 
-            Map<Ec2InstanceReservationPrice.Key, Double> ondemandCosts = Maps.newHashMap();
+            Map<InstancePrices.Key, Double> ondemandCosts = Maps.newHashMap();
             ondemandCostsByHour.put(millis, ondemandCosts);
 
             Map<TagGroup, Double> data = costs.getData(i);
             for (TagGroup tagGroup : tagGroups) {
                 if (tagGroup.product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances &&
                     data.get(tagGroup) != null) {
-                    Ec2InstanceReservationPrice.Key key = new Ec2InstanceReservationPrice.Key(tagGroup.region, tagGroup.usageType);
+                	InstancePrices.Key key = new InstancePrices.Key(tagGroup.region, tagGroup.usageType);
                     if (ondemandCosts.get(key) != null)
                         ondemandCosts.put(key, data.get(tagGroup) + ondemandCosts.get(key));
                     else
@@ -433,7 +434,7 @@ public class BillingFileProcessor extends Poller {
             endMilli < lastAlertMillis() + AwsUtils.hourMillis * 24)
             return;
 
-        Map<Long, Map<Ec2InstanceReservationPrice.Key, Double>> ondemandCosts = getOndemandCosts(lastAlertMillis() + AwsUtils.hourMillis);
+        Map<Long, Map<InstancePrices.Key, Double>> ondemandCosts = getOndemandCosts(lastAlertMillis() + AwsUtils.hourMillis);
         Long maxHour = null;
         double maxTotal = ondemandThreshold;
 
@@ -456,7 +457,7 @@ public class BillingFileProcessor extends Poller {
             body.append(String.format("Total ondemand cost $%s at %s:<br><br>",
                     numberFormat.format(maxTotal), AwsUtils.dateFormatter.print(maxHour)));
             TreeMap<Double, String> costs = Maps.newTreeMap();
-            for (Map.Entry<Ec2InstanceReservationPrice.Key, Double> entry: ondemandCosts.get(maxHour).entrySet()) {
+            for (Map.Entry<InstancePrices.Key, Double> entry: ondemandCosts.get(maxHour).entrySet()) {
                 costs.put(entry.getValue(), entry.getKey().region + " " + entry.getKey().usageType + ": ");
             }
             for (Double cost: costs.descendingKeySet()) {

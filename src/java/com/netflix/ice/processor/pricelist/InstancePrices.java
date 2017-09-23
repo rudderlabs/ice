@@ -67,6 +67,22 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		return prices.get(productKey);
 	}
 	
+	public Product getProduct(Region region, UsageType usageType) {
+		return getProduct(new Key(region, usageType));
+	}
+	
+	public double getOnDemandRate(Region region, UsageType usageType) {
+		return getProduct(region, usageType).getOnDemandRate();
+	}
+	
+	public Rate getReservationRate(Region region, UsageType usageType, LeaseContractLength lcl, PurchaseOption po, OfferingClass oc) {
+		return getReservationRate(new Key(region, usageType), new RateKey(lcl, po, oc));
+	}
+	
+	public Rate getReservationRate(Key productKey, RateKey rateKey) {
+		return getProduct(productKey).getReservationRate(rateKey);
+	}
+	
 	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies) {
         Map<String, PriceList.Product> products = priceList.getProducts();
         for (String sku: products.keySet()) {
@@ -196,6 +212,12 @@ public class InstancePrices implements Comparable<InstancePrices> {
     		this.hourly = hourly;
     	}
     	
+    	public double getHourlyUpfrontAmortized(LeaseContractLength lcl) {
+            int hours = 365 * 24 * lcl.years;
+            return fixed / hours;
+
+    	}
+    	
         public static class Serializer {
             public static void serialize(DataOutput out, Rate rate) throws IOException {
                 out.writeDouble(rate.fixed);
@@ -319,6 +341,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			return onDemandRate;
 		}
 		
+		public Rate getReservationRate(RateKey key) {
+			return reservationRates.get(key);
+		}
+		
         public static class Serializer {
             public static void serialize(DataOutput out, Product product) throws IOException {
             	out.writeDouble(product.memory);
@@ -361,7 +387,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         }
 	}
 
-	public static class Key {
+	public static class Key implements Comparable<Key> {
         public final Region region;
         public final UsageType usageType;
         // public final Tenancy; // Add this if we ever start using Host or Dedicated instances
@@ -438,7 +464,14 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	}
         	return none;
         }
-
+        
+        public static LeaseContractLength getByYears(int years) {
+        	for (LeaseContractLength lcl: LeaseContractLength.values()) {
+        		if (lcl.years == years)
+        			return lcl;
+        	}
+        	return none;
+        }
     }
     
     public static enum PurchaseOption {
