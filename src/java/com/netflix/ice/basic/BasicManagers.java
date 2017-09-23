@@ -36,6 +36,7 @@ import java.util.TreeMap;
  */
 public class BasicManagers extends Poller implements Managers {
     private ReaderConfig config;
+    private boolean compress;
 
     private Set<Product> products = Sets.newHashSet();
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
@@ -43,6 +44,10 @@ public class BasicManagers extends Poller implements Managers {
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
 
+    BasicManagers(boolean compress) {
+    	this.compress = compress;
+    }
+    
     public void shutdown() {
         for (BasicTagGroupManager tagGroupManager: tagGroupManagers.values()) {
             tagGroupManager.shutdown();
@@ -112,8 +117,8 @@ public class BasicManagers extends Poller implements Managers {
             tagGroupManagers.put(product, new BasicTagGroupManager(product));
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
-                costManagers.put(key, new BasicDataManager(product, consolidateType, true, null));
-                usageManagers.put(key, new BasicDataManager(product, consolidateType, false, instanceMetricsService.getInstanceMetrics()));
+                costManagers.put(key, new BasicDataManager(product, consolidateType, true, compress, null));
+                usageManagers.put(key, new BasicDataManager(product, consolidateType, false, compress, instanceMetricsService.getInstanceMetrics()));
             }
         }
 

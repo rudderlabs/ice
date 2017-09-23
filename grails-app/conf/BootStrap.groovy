@@ -200,7 +200,8 @@ class BootStrap {
                         resourceService,
                         lineItemProcessor,
 						priceListService,
-                        null)
+                        null,
+						true)
 				processorConfig.start();
             }
 
@@ -238,7 +239,7 @@ class BootStrap {
                 readerConfig = new ReaderConfig(
                         properties,
                         credentialsProvider,
-                        new BasicManagers(),
+                        new BasicManagers(true),
                         accountService,
                         productService,
                         resourceService,

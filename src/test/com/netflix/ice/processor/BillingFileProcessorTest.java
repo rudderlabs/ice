@@ -161,7 +161,8 @@ public class BillingFileProcessorTest {
 										null,
 										new BasicLineItemProcessor(accountService, productService, reservationService, null, null),
 										priceListService,
-										null);
+										null,
+										false);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
 		bfp.init();
 		
@@ -435,6 +436,6 @@ public class BillingFileProcessorTest {
 			assertNotNull("should have cost tag group " + datum.tagGroup, hourCostData.get(datum.tagGroup));	
 			assertEquals("should have cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
 		}
-
 	}
+	
 }

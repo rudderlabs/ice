@@ -54,6 +54,7 @@ public class BillingFileProcessor extends Poller {
     protected static Logger staticLogger = LoggerFactory.getLogger(BillingFileProcessor.class);
 
     private ProcessorConfig config;
+    private boolean compress;
     private Long startMilli;
     private Long endMilli;
     /**
@@ -75,8 +76,9 @@ public class BillingFileProcessor extends Poller {
     private MonthlyReportProcessor cauProcessor;
     
 
-    public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails) throws Exception {
+    public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails, boolean compress) throws Exception {
     	this.config = config;
+    	this.compress = compress;
         this.ondemandThreshold = ondemandThreshold;
         this.fromEmail = fromEmail;
         this.alertEmails = alertEmails;
@@ -265,7 +267,7 @@ public class BillingFileProcessor extends Poller {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
             String prodName = product == null ? "all" : product.getFileName();
-            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false);
+            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
             writer.archive(dataMap.get(product));
         }
     }
@@ -293,7 +295,7 @@ public class BillingFileProcessor extends Poller {
             List<Map<TagGroup, Double>> monthly = Lists.newArrayList();
 
             // get last month data
-            ReadWriteData lastMonthData = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), true).getData();
+            ReadWriteData lastMonthData = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), true, compress).getData();
 
             // aggregate to daily, weekly and monthly
             int dayOfWeek = monthDateTime.getDayOfWeek();
@@ -327,19 +329,19 @@ public class BillingFileProcessor extends Poller {
 
             // archive daily
             int year = monthDateTime.getYear();
-            DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true);
+            DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true, compress);
             ReadWriteData dailyData = writer.getData();
             dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
             writer.archive();
 
             // archive monthly
-            writer = new DataWriter(prefix + "monthly_" + prodName, true);
+            writer = new DataWriter(prefix + "monthly_" + prodName, true, compress);
             ReadWriteData monthlyData = writer.getData();
             monthlyData.setData(monthly, Months.monthsBetween(config.startDate, monthDateTime).getMonths(), false);
             writer.archive();
 
             // archive weekly
-            writer = new DataWriter(prefix + "weekly_" + prodName, true);
+            writer = new DataWriter(prefix + "weekly_" + prodName, true, compress);
             ReadWriteData weeklyData = writer.getData();
             DateTime weekStart = monthDateTime.withDayOfWeek(1);
             int index;

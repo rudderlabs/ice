@@ -34,17 +34,21 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.zip.GZIPInputStream;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
 public class BasicDataManager extends Poller implements DataManager {
+    private static final String compressExtension = ".gz";
 
     protected ReaderConfig config = ReaderConfig.getInstance();
-    protected String dbName;
+    protected final String dbName;
+    protected final boolean compress;
     protected ConsolidateType consolidateType;
     protected Product product;
     protected InstanceMetrics instanceMetrics;
@@ -65,10 +69,11 @@ public class BasicDataManager extends Poller implements DataManager {
                    }
                });
 
-    public BasicDataManager(Product product, ConsolidateType consolidateType, boolean isCost, InstanceMetrics instanceMetrics) {
+    public BasicDataManager(Product product, ConsolidateType consolidateType, boolean isCost, boolean compress, InstanceMetrics instanceMetrics) {
         this.product = product;
         this.consolidateType = consolidateType;
         this.dbName = (isCost ? "cost_" : "usage_") + consolidateType + "_" + (product == null ? "all" : product.getFileName());
+        this.compress = compress;
         this.instanceMetrics = instanceMetrics;
 
         start();
@@ -134,13 +139,13 @@ public class BasicDataManager extends Poller implements DataManager {
     }
 
     private File getFile(DateTime monthDate) {
-        File file = new File(config.localDir, this.dbName);
+    	String filename = dbName;
         if (consolidateType == ConsolidateType.hourly)
-            file = new File(config.localDir, this.dbName + "_" + AwsUtils.monthDateFormat.print(monthDate));
+        	filename += "_" + AwsUtils.monthDateFormat.print(monthDate);
         else if (consolidateType == ConsolidateType.daily)
-            file = new File(config.localDir, this.dbName + "_" + monthDate.getYear());
-
-        return file;
+            filename += "_" + monthDate.getYear();
+        
+        return new File(config.localDir, filename + (compress ? compressExtension : ""));
     }
 
     private synchronized boolean downloadFile(File file) {
@@ -155,7 +160,10 @@ public class BasicDataManager extends Poller implements DataManager {
 
     private ReadOnlyData loadDataFromFile(File file) throws Exception {
         logger.info("trying to load data from " + file);
-        DataInputStream in = new DataInputStream(new FileInputStream(file));
+        InputStream is = new FileInputStream(file);
+        if (compress)
+        	is = new GZIPInputStream(is);
+        DataInputStream in = new DataInputStream(is);
         try {
             ReadOnlyData result = ReadOnlyData.Serializer.deserialize(in);
             logger.info("done loading data from " + file);

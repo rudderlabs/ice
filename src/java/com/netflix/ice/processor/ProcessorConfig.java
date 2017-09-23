@@ -72,7 +72,8 @@ public class ProcessorConfig extends Config {
             ResourceService resourceService,
             LineItemProcessor lineItemProcessor,
             PriceListService priceListService,
-            Randomizer randomizer) throws Exception {
+            Randomizer randomizer,
+            boolean compress) throws Exception {
 
         super(properties, credentialsProvider, accountService, productService, resourceService);
 
@@ -117,7 +118,8 @@ public class ProcessorConfig extends Config {
             properties.getProperty(IceOptions.URL_PREFIX),
             properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD) == null ? null :  Double.parseDouble(properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD)),
             properties.getProperty(IceOptions.FROM_EMAIL),
-            properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS));
+            properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS),
+            compress);
     }
 
     public void start () throws Exception {
