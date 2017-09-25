@@ -67,4 +67,12 @@ public class ProductTest {
 		assertFalse("isSupport() returned true, but should be false", product.isSupport());
 	}
 	
+	@Test
+	public void testIsRds() {
+		Product productRds = new Product(Product.rds);
+		Product productRdsFull = new Product(Product.rdsFull);
+		assertTrue("isRDS() returned false, but should be true", productRds.isRds());
+		assertTrue("isRDS() returned false, but should be true", productRdsFull.isRds());
+	}
+	
 }

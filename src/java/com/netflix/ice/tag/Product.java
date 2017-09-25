@@ -52,6 +52,7 @@ public class Product extends Tag {
 	public static final String dataTransfer = "Data Transfer";
 	public static final String ec2          = "Elastic Compute Cloud";
 	public static final String rds          = "RDS Service";
+	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
 	public static final String redshift     = "Redshift";
 	public static final String s3           = "Simple Storage Service";
 	public static final String monitor      = "Monitor"; // seems to refer to EC2 metrics, but I've never seen this in any reports -jimroth
@@ -146,7 +147,7 @@ public class Product extends Tag {
     }
     
     public boolean isRds() {
-    	return name.equals(getAlternate(rds));
+    	return name.equals(getAlternate(rds)) || name.equals(getAlternate(rdsFull));
     }
     
     public boolean isRedshift() {
