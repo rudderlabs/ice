@@ -8,6 +8,10 @@ import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -43,7 +47,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private Long endMilli;
     
     // For debugging, set the number of files to process. Set to 0 to disable.
-    private int debugLimit = 0;
+    //private int debugLimit = 0;
 
     private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
 
@@ -136,10 +140,83 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
         return filesToProcess;
 	}
-
+	
+	private final ExecutorService pool = Executors.newFixedThreadPool(1);
+	
+	private Future<File> download(final MonthlyReport report, final String localDir, final String fileKey, final long lastProcessed) {
+		return pool.submit(new Callable<File>() {
+			@Override
+			public File call() throws Exception {
+				String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
+				String filename = fileKey.substring(prefix.length());
+		        File file = new File(localDir, filename);
+		        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + "/" + file.getName() + "...");
+		        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), prefix, file, lastProcessed,
+		                report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
+		        if (downloaded)
+		            logger.info("downloaded " + fileKey);
+		        else
+		            logger.info("file already downloaded " + fileKey + "...");
+		        return file;
+			}
+		});
+	}
 	
 	@Override
-	public Long processReport(
+	public long downloadAndProcessReport(
+			DateTime dataTime,
+			MonthlyReport report,
+			String localDir,
+			long lastProcessed,
+			Map<Product, ReadWriteData> usageDataByProduct,
+		    Map<Product, ReadWriteData> costDataByProduct,
+		    Instances instances) throws Exception {
+		
+		this.usageDataByProduct = usageDataByProduct;
+		this.costDataByProduct = costDataByProduct;
+		this.instances = instances;
+		startMilli = endMilli = dataTime.getMillis();
+		
+		CostAndUsageReport cau = (CostAndUsageReport) report;
+		
+		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
+        if (config.resourceService != null)
+        	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
+        List<String[]> delayedItems = Lists.newArrayList();
+ 
+        
+		String[] reportKeys = report.getReportKeys();
+		
+		if (reportKeys.length == 0)
+			return dataTime.getMillis();
+		
+        Future<File> futureFile = download(report, localDir, reportKeys[0], lastProcessed);
+		
+		for (int i = 0; i < reportKeys.length; i++) {
+			// Wait for file
+	        File file = futureFile.get();
+	        // Start the next file
+	        if (reportKeys.length > i + 1) {
+	        	futureFile = download(report, localDir, reportKeys[i + 1], lastProcessed);
+	        }
+	        // process the file we have
+	        logger.info("processing " + file.getName() + "...");
+			if (file.getName().endsWith(".zip"))
+				processReportZip(file, lineItem, delayedItems);
+			else
+				processReportGzip(file, lineItem, delayedItems);
+	        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
+		}
+		
+        for (String[] items: delayedItems) {
+        	lineItem.setItems(items);
+            processOneLine(null, lineItem);
+        }
+        return endMilli;
+	}
+
+	// Used for unit testing
+	protected long processReport(
 			DateTime dataTime,
 			MonthlyReport report,
 			List<File> files,
@@ -277,6 +354,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         }
     }
 
+    /*
 	@Override
 	public List<File> downloadReport(MonthlyReport report, String localDir, long lastProcessed) {
 		List<File> files = Lists.newArrayList();
@@ -301,5 +379,5 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		}
 		return files;
 	}
-
+*/
 }

@@ -118,11 +118,10 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         return filesToProcess;
 	}
 	
-	@Override
-	public Long processReport(
+	protected long processReport(
 			DateTime dataTime,
 			MonthlyReport report,
-			List<File> files,
+			File file,
 			Map<Product, ReadWriteData> usageDataByProduct,
 		    Map<Product, ReadWriteData> costDataByProduct,
 		    Instances instances) throws IOException {
@@ -132,7 +131,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		this.instances = instances;
 		startMilli = endMilli = dataTime.getMillis();
 		
-        processBillingZipFile(files.get(0), report.hasTags());
+        processBillingZipFile(file, report.hasTags());
         return endMilli;
 	}
 	
@@ -237,9 +236,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
 
-	@Override
-	public List<File> downloadReport(MonthlyReport report, String localDir, long lastProcessed) {
-		List<File> files = Lists.newArrayList();
+	private File downloadReport(MonthlyReport report, String localDir, long lastProcessed) {
         String fileKey = report.getS3ObjectSummary().getKey();
         File file = new File(localDir, fileKey.substring(report.getPrefix().length()));
         logger.info("trying to download " + fileKey + "...");
@@ -250,9 +247,8 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         else {
             logger.info("file already downloaded " + fileKey + "...");
         }
-        files.add(file);
 
-        return files;
+        return file;
 	}	
 	
 
@@ -280,4 +276,20 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 			return null;
 		}
     }
+
+
+	@Override
+	public long downloadAndProcessReport(DateTime dataTime,
+			MonthlyReport report, String localDir, long lastProcessed,
+			Map<Product, ReadWriteData> usageDataByProduct,
+			Map<Product, ReadWriteData> costDataByProduct, Instances instances)
+			throws Exception {
+		
+		File file = downloadReport(report, localDir, lastProcessed);
+    	String fileKey = report.getReportKey();
+        logger.info("processing " + fileKey + "...");
+		long end = processReport(dataTime, report, file, usageDataByProduct, costDataByProduct, instances);
+        logger.info("done processing " + fileKey + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(end)));
+        return end;
+	}
 }

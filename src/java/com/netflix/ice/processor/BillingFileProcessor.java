@@ -123,14 +123,8 @@ public class BillingFileProcessor extends Poller {
             }
             
             for (MonthlyReport report: reportsToProcess.get(dataTime)) {
-            	List<File> files = report.getProcessor().downloadReport(report, config.localDir, lastProcessed);
-            	String fileKey = report.getReportKey();
-                logger.info("processing " + fileKey + "...");
-                Long end = report.getProcessor().processReport(dataTime, report, files,
-                		usageDataByProduct, costDataByProduct, instances);
+            	long end = report.getProcessor().downloadAndProcessReport(dataTime, report, config.localDir, lastProcessed, usageDataByProduct, costDataByProduct, instances);
                 endMilli = Math.max(endMilli, end);
-
-                logger.info("done processing " + fileKey + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(end)));
             }
         	
             if (dataTime.equals(reportsToProcess.lastKey())) {

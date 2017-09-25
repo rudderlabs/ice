@@ -77,13 +77,13 @@ public class BillingFileProcessorTest {
 	
 	
 	interface ReportTest {
-		public Long Process(ProcessorConfig config, DateTime start,
+		public long Process(ProcessorConfig config, DateTime start,
 				Map<Product, ReadWriteData> usageDataByProduct,
 				Map<Product, ReadWriteData> costDataByProduct,
 				Instances instances) throws IOException;
 	}
 	class CostAndUsageTest implements ReportTest {
-		public Long Process(ProcessorConfig config, DateTime start,
+		public long Process(ProcessorConfig config, DateTime start,
 				Map<Product, ReadWriteData> usageDataByProduct,
 				Map<Product, ReadWriteData> costDataByProduct,
 				Instances instances) throws IOException {
@@ -108,7 +108,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	class DetailedBillingReportTest implements ReportTest {
-		public Long Process(ProcessorConfig config, DateTime start,
+		public long Process(ProcessorConfig config, DateTime start,
 				Map<Product, ReadWriteData> usageDataByProduct,
 				Map<Product, ReadWriteData> costDataByProduct,
 				Instances instances) throws IOException {
@@ -119,10 +119,7 @@ public class BillingFileProcessorTest {
 			s3ObjectSummary.setKey("/aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
 			DetailedBillingReportProcessor.BillingFile report = dbrProcessor.new BillingFile(s3ObjectSummary, dbrProcessor);
 			
-            List<File> files = Lists.newArrayList();
-            files.add(dbr);
-			
-	        return dbrProcessor.processReport(start, report, files,
+	        return dbrProcessor.processReport(start, report, dbr,
 	        		usageDataByProduct, costDataByProduct, instances);
 		}
 	}

@@ -1,7 +1,5 @@
 package com.netflix.ice.processor;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -15,13 +13,14 @@ import com.netflix.ice.tag.Product;
  */
 public interface MonthlyReportProcessor {
 	public TreeMap<DateTime, List<MonthlyReport>> getReportsToProcess();
-	public Long processReport(
+	
+	abstract public long downloadAndProcessReport(
 			DateTime dataTime,
 			MonthlyReport report,
-			List<File> files,
+			String localDir,
+			long lastProcessed,
 			Map<Product, ReadWriteData> usageDataByProduct,
 		    Map<Product, ReadWriteData> costDataByProduct,
-		    Instances instances) throws IOException;
+		    Instances instances) throws Exception;
 
-	abstract public List<File> downloadReport(MonthlyReport report, String localDir, long lastProcessed);
 }
