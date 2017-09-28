@@ -39,15 +39,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
-import com.netflix.ice.tag.Product;
 
 public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private static Map<String, Double> ondemandRate = Maps.newHashMap();
     private ProcessorConfig config;
 
-	private Map<Product, ReadWriteData> usageDataByProduct;
-    private Map<Product, ReadWriteData> costDataByProduct;
     private Instances instances;
     private Long startMilli;
     private Long endMilli;
@@ -122,22 +119,19 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 			DateTime dataTime,
 			MonthlyReport report,
 			File file,
-			Map<Product, ReadWriteData> usageDataByProduct,
-		    Map<Product, ReadWriteData> costDataByProduct,
+			CostAndUsageData costAndUsageData,
 		    Instances instances) throws IOException {
 		
-		this.usageDataByProduct = usageDataByProduct;
-		this.costDataByProduct = costDataByProduct;
 		this.instances = instances;
 		startMilli = endMilli = dataTime.getMillis();
 		
-        processBillingZipFile(file, report.hasTags());
+        processBillingZipFile(file, report.hasTags(), costAndUsageData);
         return endMilli;
 	}
 	
 	
     private void processBillingZipFile(
-    		File file, boolean withTags) throws IOException {
+    		File file, boolean withTags, CostAndUsageData costAndUsageData) throws IOException {
 
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
@@ -148,7 +142,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                processBillingFile(entry.getName(), zipInput, withTags);
+                processBillingFile(entry.getName(), zipInput, withTags, costAndUsageData);
             }
         }
         catch (IOException e) {
@@ -172,7 +166,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
     
-    private void processBillingFile(String fileName, InputStream tempIn, boolean withTags) {
+    private void processBillingFile(String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData) {
 
         CsvReader reader = new CsvReader(new InputStreamReader(tempIn), ',');
 
@@ -191,7 +185,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, lineItem);
+                    processOneLine(delayedItems, lineItem, costAndUsageData);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -220,13 +214,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, lineItem);
+            processOneLine(null, lineItem, costAndUsageData);
         }
     }
 
-    private void processOneLine(List<String[]> delayedItems, LineItem lineItem) {
+    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData) {
 
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, usageDataByProduct, costDataByProduct, ondemandRate, instances);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
@@ -281,14 +275,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 	@Override
 	public long downloadAndProcessReport(DateTime dataTime,
 			MonthlyReport report, String localDir, long lastProcessed,
-			Map<Product, ReadWriteData> usageDataByProduct,
-			Map<Product, ReadWriteData> costDataByProduct, Instances instances)
+			CostAndUsageData costAndUsageData, Instances instances)
 			throws Exception {
 		
 		File file = downloadReport(report, localDir, lastProcessed);
     	String fileKey = report.getReportKey();
         logger.info("processing " + fileKey + "...");
-		long end = processReport(dataTime, report, file, usageDataByProduct, costDataByProduct, instances);
+		long end = processReport(dataTime, report, file, costAndUsageData, instances);
         logger.info("done processing " + fileKey + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(end)));
         return end;
 	}

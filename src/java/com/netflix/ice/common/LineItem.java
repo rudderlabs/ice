@@ -9,6 +9,8 @@ public abstract class LineItem {
     public static final DateTimeFormatter amazonBillingDateFormat2 = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm:ss").withZone(DateTimeZone.UTC);
     public static final DateTimeFormatter amazonBillingDateFormatISO = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ").withZone(DateTimeZone.UTC);
 
+    private int lineNumber = 0;
+    
 	protected int accountIdIndex;
 	protected int productIndex;
 	protected int zoneIndex;
@@ -31,6 +33,11 @@ public abstract class LineItem {
 	
     public void setItems(String[] items) {
     	this.items = items;
+    	lineNumber++;
+    }
+    
+    public int getLineNumber() {
+    	return lineNumber;
     }
     
     public String getAccountId() {
@@ -206,4 +213,6 @@ public abstract class LineItem {
 	}
 	
 	abstract public String getPricingUnit();
+	
+	abstract public String getLineItemId();
 }

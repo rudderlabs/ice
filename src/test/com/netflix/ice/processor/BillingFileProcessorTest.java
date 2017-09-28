@@ -11,7 +11,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -50,7 +49,6 @@ import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
-import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
@@ -78,14 +76,12 @@ public class BillingFileProcessorTest {
 	
 	interface ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
-				Map<Product, ReadWriteData> usageDataByProduct,
-				Map<Product, ReadWriteData> costDataByProduct,
+				CostAndUsageData costAndUsageData,
 				Instances instances) throws IOException;
 	}
 	class CostAndUsageTest implements ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
-				Map<Product, ReadWriteData> usageDataByProduct,
-				Map<Product, ReadWriteData> costDataByProduct,
+				CostAndUsageData costAndUsageData,
 				Instances instances) throws IOException {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
@@ -104,13 +100,12 @@ public class BillingFileProcessorTest {
 	        	return 0L;
 	        }
 	        return cauProcessor.processReport(report.getStartTime(), report, files,
-	        		usageDataByProduct, costDataByProduct, instances);
+	        		costAndUsageData, instances);
 		}
 	}
 	class DetailedBillingReportTest implements ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
-				Map<Product, ReadWriteData> usageDataByProduct,
-				Map<Product, ReadWriteData> costDataByProduct,
+				CostAndUsageData costAndUsageData,
 				Instances instances) throws IOException {
 			
 			DetailedBillingReportProcessor dbrProcessor = new DetailedBillingReportProcessor(config);
@@ -120,7 +115,7 @@ public class BillingFileProcessorTest {
 			DetailedBillingReportProcessor.BillingFile report = dbrProcessor.new BillingFile(s3ObjectSummary, dbrProcessor);
 			
 	        return dbrProcessor.processReport(start, report, dbr,
-	        		usageDataByProduct, costDataByProduct, instances);
+	        		costAndUsageData, instances);
 		}
 	}
 	
@@ -167,38 +162,26 @@ public class BillingFileProcessorTest {
 		//bfp.reservationProcessor.setDebugHour(0);
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
-    	Map<Product, ReadWriteData> usageDataByProduct = new HashMap<Product, ReadWriteData>();
-    	Map<Product, ReadWriteData> costDataByProduct = new HashMap<Product, ReadWriteData>();
-        usageDataByProduct.put(null, new ReadWriteData());
-        costDataByProduct.put(null, new ReadWriteData());
+		CostAndUsageData costAndUsageData = new CostAndUsageData();
         Instances instances = new Instances();
         
 		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		reservationService.updateReservations(reservations, accountService, startMilli, productService);
 		
-		Long endMilli = reportTest.Process(config, config.startDate, usageDataByProduct, costDataByProduct, instances);
+		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    
         int hours = (int) ((endMilli - startMilli)/3600000L);
         logger.info("cut hours to " + hours);
-        for (ReadWriteData data: usageDataByProduct.values()) {
-            data.cutData(hours);
-        }
-        for (ReadWriteData data: costDataByProduct.values()) {
-            data.cutData(hours);
-        }
-        
-        // Support line items differ between the two reference reports, so purge all Support tags from both the cost and usage data
-        purgeSupportTags(usageDataByProduct.get(null));
-        purgeSupportTags(costDataByProduct.get(null));
-		
+        costAndUsageData.cutData(hours);
+        		
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
-        	bfp.reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), config.startDate);
+        	bfp.reservationProcessor.process(utilization, config.reservationService, costAndUsageData.getUsage(null), costAndUsageData.getCost(null), config.startDate);
         }
         
         logger.info("Finished processing reports, ready to compare results on " + 
-        		usageDataByProduct.get(null).getTagGroups().size() + " usage tags and " + 
-        		costDataByProduct.get(null).getTagGroups().size() + " cost tags");
+        		costAndUsageData.getUsage(null).getTagGroups().size() + " usage tags and " + 
+        		costAndUsageData.getCost(null).getTagGroups().size() + " cost tags");
         
 		// Read the file with tags to ignore if present
         File ignoreFile = new File(resourcesReportDir, "ignore.csv");
@@ -217,38 +200,26 @@ public class BillingFileProcessorTest {
         if (!expectedUsage.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference usage data...");
-            writeData(usageDataByProduct.get(null), "Cost", expectedUsage);
+            writeData(costAndUsageData.getUsage(null), "Cost", expectedUsage);
         }
         else {
         	// Compare results against the expected data
         	logger.info("Comparing against reference usage data...");
-        	compareData(usageDataByProduct.get(null), "Usage", expectedUsage, accountService, productService, ignore);
+        	compareData(costAndUsageData.getUsage(null), "Usage", expectedUsage, accountService, productService, ignore);
         }
         File expectedCost = new File(resourcesReportDir, "cost.csv");
         if (!expectedCost.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference cost data...");
-            writeData(costDataByProduct.get(null), "Cost", expectedCost);
+            writeData(costAndUsageData.getCost(null), "Cost", expectedCost);
         }
         else {
         	// Compare results against the expected data
         	logger.info("Comparing against reference cost data...");
-        	compareData(costDataByProduct.get(null), "Cost", expectedCost, accountService, productService, ignore);
+        	compareData(costAndUsageData.getCost(null), "Cost", expectedCost, accountService, productService, ignore);
         }
 	}
-	
-	private void purgeSupportTags(ReadWriteData data) {
-		for (int i = 0; i < data.getNum(); i++) {
-			Map<TagGroup, Double> hourData = data.getData(i);
-			Set<TagGroup> tagGroups = Sets.newTreeSet();
-			tagGroups.addAll(hourData.keySet());
-			for (TagGroup tg: tagGroups) {
-				if (tg.product.isSupport())
-					hourData.remove(tg);
-			}
-		}
-	}
-	
+		
 	private void writeData(ReadWriteData data, String dataType, File outputFile) {
 		FileWriter out;
 		try {
@@ -385,7 +356,7 @@ public class BillingFileProcessorTest {
 		lineItemTest.newBasicLineItemProcessor();
 		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
 		String[] tag = new String[] { "Account1", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge", null };
-		ProcessTest test = lineItemTest.new ProcessTest(Which.both, line, tag, 1, 0.0, Result.hourly);
+		ProcessTest test = lineItemTest.new ProcessTest(Which.both, line, tag, 1.0, 0.0, Result.hourly, 30);
 		
 		BasicLineItemProcessorTest.cauLineItem.setItems(test.cauItems);
 		lineItemTest.runProcessTest(test, BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true);

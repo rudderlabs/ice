@@ -105,5 +105,10 @@ public class DetailedBillingReportLineItem extends LineItem {
         // Won't indicate "hours" for instance usage, so clients must handle that themselves.
         return unit;
 	}
+
+	@Override
+	public String getLineItemId() {
+		return null;
+	}
 }
 

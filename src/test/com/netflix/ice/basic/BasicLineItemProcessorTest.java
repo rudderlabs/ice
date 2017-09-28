@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.util.Map;
 
+import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,6 +19,7 @@ import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.CostAndUsageReportLineItem;
 import com.netflix.ice.processor.CostAndUsageReportProcessor;
 import com.netflix.ice.processor.CostAndUsageReport;
@@ -234,21 +236,23 @@ public class BasicLineItemProcessorTest {
 		private String[] dbrItems;
 		public String[] cauItems;
 		private String[] expectedTag;
-		private double usage;
-		private double cost;
+		private Double usage; // non-null if we expect a usageTag
+		private Double cost; // non-null if we expect a costTag
 		private Result result;
+		private int daysInMonth;
 		
 				
-		ProcessTest(String[] dbrItems, String[] cauItems, String[] expectedTag, double usage, double cost, Result result) {
+		ProcessTest(String[] dbrItems, String[] cauItems, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth) {
 			this.dbrItems = dbrItems;
 			this.cauItems = cauItems;
 			this.expectedTag = expectedTag;
 			this.usage = usage;
 			this.cost = cost;
 			this.result = result;
+			this.daysInMonth = daysInMonth;
 		}
 		
-		public ProcessTest(Which which, Line line, String[] expectedTag, double usage, double cost, Result result) {
+		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth) {
 			if (which == Which.dbr || which == Which.both)
 				this.dbrItems = line.getDbrLine();
 			if (which == Which.cau || which == Which.both)
@@ -257,6 +261,7 @@ public class BasicLineItemProcessorTest {
 			this.usage = usage;
 			this.cost = cost;
 			this.result = result;
+			this.daysInMonth = daysInMonth;
 		}		
 	}
 	
@@ -284,21 +289,24 @@ public class BasicLineItemProcessorTest {
 	}
 	
 	public void runProcessTest(ProcessTest t, LineItem lineItem, String reportName, boolean isCostAndUsageReport) {
-		long startMilli = 1496275200000L;
-		boolean processDelayed = false;
+		long startMilli = DateTime.parse("2017-06-01T00:00:00Z").getMillis();
         Map<String, Double> ondemandRate = Maps.newHashMap();
 		Instances instances = null;
-		usageDataByProduct = Maps.newHashMap();
-		costDataByProduct = Maps.newHashMap();
-        usageDataByProduct.put(null, new ReadWriteData());
-        costDataByProduct.put(null, new ReadWriteData());
+		CostAndUsageData costAndUsageData = new CostAndUsageData();
         
-		Result result = lineItemProcessor.process(startMilli, processDelayed, isCostAndUsageReport, lineItem, usageDataByProduct, costDataByProduct, ondemandRate, instances);
+		Result result = lineItemProcessor.process(startMilli, false, isCostAndUsageReport, lineItem, costAndUsageData, ondemandRate, instances);
 		assertTrue(reportName + " Incorrect result. Expected " + t.result + ", got " + result, result == t.result);
+		
+		if (result == Result.delay) {
+			// Expand the data by number of hours in month
+			usageDataByProduct.get(null).getData(t.daysInMonth * 24 - 1);
+			costDataByProduct.get(null).getData(t.daysInMonth * 24 - 1);
+			result = lineItemProcessor.process(startMilli, true, isCostAndUsageReport, lineItem, costAndUsageData, ondemandRate, instances);
+		}
 		
 		// Check usage data
 		int gotLen = usageDataByProduct.get(null).getTagGroups().size();
-		int expectLen = t.expectedTag == null ? 0 : 1;
+		int expectLen = t.expectedTag == null || t.usage == null ? 0 : 1;
 		assertTrue(reportName + " Incorrect number of usage tags. Expected " + (t.expectedTag == null ? 0 : 1) + ", got " + gotLen, gotLen == expectLen);
 		if (gotLen > 0) {
 			TagGroup got = (TagGroup) usageDataByProduct.get(null).getTagGroups().toArray()[0];
@@ -310,7 +318,7 @@ public class BasicLineItemProcessorTest {
 		}
 		// Check cost data
 		gotLen = costDataByProduct.get(null).getTagGroups().size();
-		expectLen = t.expectedTag == null ? 0 : 1;
+		expectLen = t.expectedTag == null || t.cost == null ? 0 : 1;
 		assertTrue(reportName + " Incorrect number of usage tags. Expected " + (t.expectedTag == null ? 0 : 1) + ", got " + gotLen, gotLen == expectLen);
 		if (gotLen > 0) {
 			TagGroup got = (TagGroup) costDataByProduct.get(null).getTagGroups().toArray()[0];
@@ -325,7 +333,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedAllUpfrontUsage() {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.both, line, tag, 1, 0.0, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.both, line, tag, 1.0, 0.0, Result.hourly, 30);
 		run(test);
 	}
 	
@@ -333,7 +341,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontUsage() {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 1, 0.34, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 1.0, 0.34, Result.hourly, 30);
 		run(test);
 	}
 	
@@ -341,7 +349,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontUsageFamily() {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "0.25", "0.085", "Partial Upfront");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 0.25, 0.085, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 0.25, 0.085, Result.hourly, 30);
 		run(test);
 	}
 	
@@ -349,7 +357,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontDiscountedUsage() {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1, 0.0, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
 		run(test);
 	}
 	
@@ -357,28 +365,44 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontDiscountedUsageFamily() {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1, 0.0, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
 		run(test);
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontMonthlyFeeDBR() {
 		Line line = new Line(LineItemType.RIFee, "234567890123", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "");
-		ProcessTest test = new ProcessTest(Which.dbr, line, null, 1, 0.34, Result.ignore);
+		ProcessTest test = new ProcessTest(Which.dbr, line, null, 1.0, 0.34, Result.ignore, 30);
 		run(test);
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontMonthlyFee() {
 		Line line = new Line(LineItemType.RIFee, "234567890123", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "");
-		ProcessTest test = new ProcessTest(Which.cau, line, null, 0, 0.34, Result.ignore);
+		ProcessTest test = new ProcessTest(Which.cau, line, null, 0.0, 0.34, Result.ignore, 30);
+		run(test);
+	}
+	
+	@Test
+	public void testReservedPartialUpfrontMonthlyFeeRDS() {
+		Line line = new Line(LineItemType.RIFee, "234567890123", "", "Amazon Relational Database Service", "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "1440", "17.28", "");
+		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgresql", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, 0.024, Result.delay, 30);
+		run(test);
+	}
+	
+	@Test
+	public void testReservedPartialUpfrontHourlyUsageRDS() {
+		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "", "Amazon Relational Database Service", "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0014", "PostgreSQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "Partial Upfront");
+		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgresql", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
 		run(test);
 	}
 	
 	@Test
 	public void testRIPurchase() {
 		Line line = new Line(LineItemType.Fee, "234567890123", "", "Amazon Elastic Compute Cloud", "", "", "Sign up charge for subscription: 647735683, planId: 2195643", PricingTerm.reserved, "2017-06-09T21:21:37Z", "2018-06-09T21:21:36Z", "150.0", "9832.500000", "");
-		ProcessTest test = new ProcessTest(Which.both, line, null, 0, 0, Result.ignore);
+		ProcessTest test = new ProcessTest(Which.both, line, null, 0.0, 0.0, Result.ignore, 30);
 		run(test);
 	}
 	
@@ -386,7 +410,7 @@ public class BasicLineItemProcessorTest {
 	public void testSpot() {
 		Line line = new Line(LineItemType.Usage, "234567890123", "", "Amazon Elastic Compute Cloud", "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "");
 		String[] tag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
-		ProcessTest test = new ProcessTest(Which.both, line, tag, 1, 0.349, Result.hourly);
+		ProcessTest test = new ProcessTest(Which.both, line, tag, 1.0, 0.349, Result.hourly, 30);
 		run(test);
 	}
 	

@@ -88,6 +88,10 @@ public class ReadWriteData {
             }
         }
     }
+    
+    void putAll(ReadWriteData data) {
+    	setData(data.data, 0, true);
+    }
 
     static Map<TagGroup, Double> getCreateData(List<Map<TagGroup, Double>> data, int i) {
         if (i >= data.size()) {

@@ -18,8 +18,6 @@
 package com.netflix.ice.processor;
 
 import com.netflix.ice.common.LineItem;
-import com.netflix.ice.tag.Product;
-
 import java.util.Map;
 
 /**
@@ -32,8 +30,7 @@ public interface LineItemProcessor {
     		boolean processAll, 
     		boolean isCostAndUsageReport,
     		LineItem lineItem, 
-    		Map<Product, ReadWriteData> usageDataByProduct, 
-    		Map<Product, ReadWriteData> costDataByProduct, 
+    		CostAndUsageData costAndUsageData,
     		Map<String, Double> ondemandRate, 
     		Instances instances);
 

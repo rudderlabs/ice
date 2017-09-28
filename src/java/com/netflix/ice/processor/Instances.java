@@ -21,12 +21,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 
 public class Instances {
@@ -45,10 +45,10 @@ public class Instances {
 			return type + "," + tags;
 		}
 	}
-	private Map<String, InstanceData> data;
+	private ConcurrentMap<String, InstanceData> data;
 
 	Instances() {
-		data = new HashMap<String, InstanceData>();
+		data = Maps.newConcurrentMap();
 	}
 	
 	public void add(String id, String type, String tags) {

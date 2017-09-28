@@ -52,13 +52,13 @@ public class ReservationProcessor {
     
     // hour of data to print debug statements. Set to -1 to turn off all debug logging.
     private int debugHour = -1;
-    private String debugFamily = "c4";
+    private String debugFamily = "db";
     // debugAccounts - will print all accounts if null
     private String[] debugAccounts = null; // { "AccountName" };
     // debugUtilization - will print all utilization if null
     private ReservationUtilization debugUtilization = ReservationUtilization.PARTIAL;
     // debugRegion - will print all regions if null
-    private Region[] debugRegions = null; // { Region.EU_WEST_1 };
+    private Region[] debugRegions = { Region.AP_SOUTHEAST_2 };
     
     private ProductService productService;
     private PriceListService priceListService;

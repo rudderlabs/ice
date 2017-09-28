@@ -11,6 +11,7 @@ import com.netflix.ice.common.LineItem;
 public class CostAndUsageReportLineItem extends LineItem {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
+    private int lineItemIdIndex;
     private int billTypeIndex;
     private final int resourceTagStartIndex;
 	private final String[] resourceTagsHeader;
@@ -35,6 +36,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	}
 	    	
     public CostAndUsageReportLineItem(boolean useBlended, CostAndUsageReport report) {
+    	lineItemIdIndex = report.getColumnIndex("identity",  "LineItemId");
     	billTypeIndex = report.getColumnIndex("bill", "BillType");
         accountIdIndex = report.getColumnIndex("lineItem", "UsageAccountId");
         productIndex = report.getColumnIndex("product", "ProductName");
@@ -51,7 +53,6 @@ public class CostAndUsageReportLineItem extends LineItem {
         reservedIndex = report.getColumnIndex("pricing", "term");
         
         resourceTagStartIndex = report.getCategoryStartIndex("resourceTags");
-        report.getCategoryEndIndex("resourceTags");           
         resourceTagsHeader = report.getCategoryHeader("resourceTags");
         
         purchaseOptionIndex = report.getColumnIndex("pricing", "PurchaseOption");
@@ -79,7 +80,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     public int size() {
     	return resourceTagStartIndex + resourceTagsHeader.length;
     }
-    
+        
     public BillType getBillType() {
     	return BillType.valueOf(items[billTypeIndex]);
     }
@@ -155,7 +156,14 @@ public class CostAndUsageReportLineItem extends LineItem {
 	}
 	
 	private double computeProductNormalizedSizeFactor(String usageType) {
-		String[] usageParts = usageType.split("\\.");
+		String ut = usageType;
+		if (ut.contains(":"))
+			ut = ut.split(":")[1];
+		
+		if (ut.startsWith("db."))
+			ut = ut.substring("db.".length());
+		
+		String[] usageParts = ut.split("\\.");
 		if (usageParts.length < 2)
 			return 1.0;
 		String size = usageParts[1];
@@ -170,14 +178,15 @@ public class CostAndUsageReportLineItem extends LineItem {
 	@Override
 	public String getUsageQuantity() {
     	String purchaseOption = getPurchaseOption();
-    	if (purchaseOption.isEmpty() || purchaseOption.equals("All Upfront"))
+    	if (purchaseOption.isEmpty() || purchaseOption.equals("All Upfront")) {
     		return super.getUsageQuantity();
+    	}
 
     	if (lineItemType == LineItemType.DiscountedUsage) {
 			double usageAmount = Double.parseDouble(items[usageQuantityIndex]);
 			double normFactor = items[lineItemNormalizationFactorIndex].isEmpty() ? computeProductNormalizedSizeFactor(items[usageTypeIndex]) : Double.parseDouble(items[lineItemNormalizationFactorIndex]);
 			double productFactor = items[productNormalizationSizeFactorIndex].isEmpty() ? computeProductNormalizedSizeFactor(items[productUsageTypeIndex]) : Double.parseDouble(items[productNormalizationSizeFactorIndex]);
-			Double actualUsage = usageAmount * normFactor / productFactor;
+			Double actualUsage = usageAmount * normFactor / productFactor;			
 			return actualUsage.toString();
 		}
 		return super.getUsageQuantity();
@@ -230,6 +239,11 @@ public class CostAndUsageReportLineItem extends LineItem {
 	            unit = "GB";
 		}
 		return unit;
+	}
+	
+	@Override
+	public String getLineItemId() {
+		return items[lineItemIdIndex];
 	}
 }
 

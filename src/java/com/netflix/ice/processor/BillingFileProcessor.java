@@ -32,14 +32,10 @@ import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
-import com.netflix.ice.tag.Product;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.Months;
-import org.joda.time.Weeks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,8 +59,7 @@ public class BillingFileProcessor extends Poller {
      * key entry for aggregated data for "all" services.
      * i.e. the null key means "all"
      */
-    private Map<Product, ReadWriteData> usageDataByProduct;
-    private Map<Product, ReadWriteData> costDataByProduct;
+    private CostAndUsageData costAndUsageData;
     private Instances instances;
     private Double ondemandThreshold;
     private String fromEmail;
@@ -123,7 +118,7 @@ public class BillingFileProcessor extends Poller {
             }
             
             for (MonthlyReport report: reportsToProcess.get(dataTime)) {
-            	long end = report.getProcessor().downloadAndProcessReport(dataTime, report, config.localDir, lastProcessed, usageDataByProduct, costDataByProduct, instances);
+            	long end = report.getProcessor().downloadAndProcessReport(dataTime, report, config.localDir, lastProcessed, costAndUsageData, instances);
                 endMilli = Math.max(endMilli, end);
             }
         	
@@ -133,7 +128,7 @@ public class BillingFileProcessor extends Poller {
     	        String end = LineItem.amazonBillingDateFormat.print(new DateTime(endMilli));
 
                 logger.info("cut hours to " + hours + ", " + start + " to " + end);
-                cutData(hours);
+                costAndUsageData.cutData(hours);
             }
             
             
@@ -148,11 +143,11 @@ public class BillingFileProcessor extends Poller {
             // now get reservation capacity to calculate upfront and un-used cost
             for (ReservationUtilization utilization: ReservationUtilization.values()) {
             	// We no longer support Light and Medium
-            	reservationProcessor.process(utilization, config.reservationService, usageDataByProduct.get(null), costDataByProduct.get(null), dataTime);
+            	reservationProcessor.process(utilization, config.reservationService, costAndUsageData.getUsage(null), costAndUsageData.getCost(null), dataTime);
             }
             
             logger.info("adding savings data for " + dataTime + "...");
-            addSavingsData(dataTime, usageDataByProduct.get(null), costDataByProduct.get(null));
+            addSavingsData(dataTime, costAndUsageData.getUsage(null), costAndUsageData.getCost(null));
 
             /***** Debugging */
 //            used = costMap.get(redshiftHeavyTagGroup);
@@ -162,7 +157,11 @@ public class BillingFileProcessor extends Poller {
                 config.resourceService.commit();
 
             logger.info("archiving results for " + dataTime + "...");
-            archive();
+            costAndUsageData.archive(startMilli, config.startDate, compress);
+            
+            logger.info("archiving instance data...");
+            archiveInstances();
+            
             logger.info("done archiving " + dataTime);
 
             updateProcessTime(AwsUtils.monthDateFormat.print(dataTime), processTime);
@@ -216,150 +215,21 @@ public class BillingFileProcessor extends Poller {
     	}
     }
     
-    void cutData(int hours) {
-        for (ReadWriteData data: usageDataByProduct.values()) {
-            data.cutData(hours);
-        }
-        for (ReadWriteData data: costDataByProduct.values()) {
-            data.cutData(hours);
-        }
+
+    void init() {
+    	costAndUsageData = new CostAndUsageData();
+        instances = new Instances();
     }
 
-    private void archive() throws Exception {
-
-        logger.info("archiving tag data...");
-
-        for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName());
-            writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
-            // Debugging file output
-            //writer.outputCsv(config.localDir + "/csv");
-        }
-
-        logger.info("archiving summary data...");
-
-        archiveSummary(usageDataByProduct, "usage_");
-        archiveSummary(costDataByProduct, "cost_");
-
-        logger.info("archiving hourly data...");
-
-        archiveHourly(usageDataByProduct, "usage_");
-        archiveHourly(costDataByProduct, "cost_");
-        
-        logger.info("archiving instance data...");
-        archiveInstances();
-        
-        logger.info("archiving data done.");
-    }
-    
     private void archiveInstances() throws Exception {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         instances.archive(config, "instances_" + AwsUtils.monthDateFormat.print(monthDateTime)); 	
     }
 
-    private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix) throws Exception {
-        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-        for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.getFileName();
-            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
-            writer.archive(dataMap.get(product));
-        }
-    }
-
-    private void addValue(List<Map<TagGroup, Double>> list, int index, TagGroup tagGroup, double v) {
-        Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, index);
-        Double existedV = map.get(tagGroup);
-        map.put(tagGroup, existedV == null ? v : existedV + v);
-    }
-
-
-    private void archiveSummary(Map<Product, ReadWriteData> dataMap, String prefix) throws Exception {
-
-        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-
-        for (Product product: dataMap.keySet()) {
-
-            String prodName = product == null ? "all" : product.getFileName();
-            ReadWriteData data = dataMap.get(product);
-            Collection<TagGroup> tagGroups = data.getTagGroups();
-
-            // init daily, weekly and monthly
-            List<Map<TagGroup, Double>> daily = Lists.newArrayList();
-            List<Map<TagGroup, Double>> weekly = Lists.newArrayList();
-            List<Map<TagGroup, Double>> monthly = Lists.newArrayList();
-
-            // get last month data
-            ReadWriteData lastMonthData = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), true, compress).getData();
-
-            // aggregate to daily, weekly and monthly
-            int dayOfWeek = monthDateTime.getDayOfWeek();
-            int daysFromLastMonth = dayOfWeek - 1;
-            int lastMonthNumHours = monthDateTime.minusMonths(1).dayOfMonth().getMaximumValue() * 24;
-            for (int hour = 0 - daysFromLastMonth * 24; hour < data.getNum(); hour++) {
-                if (hour < 0) {
-                    // handle data from last month, add to weekly
-                    Map<TagGroup, Double> prevData = lastMonthData.getData(lastMonthNumHours + hour);
-                    for (TagGroup tagGroup: tagGroups) {
-                        Double v = prevData.get(tagGroup);
-                        if (v != null && v != 0) {
-                            addValue(weekly, 0, tagGroup, v);
-                        }
-                    }
-                }
-                else {
-                    // this month, add to weekly, monthly and daily
-                    Map<TagGroup, Double> map = data.getData(hour);
-
-                    for (TagGroup tagGroup: tagGroups) {
-                        Double v = map.get(tagGroup);
-                        if (v != null && v != 0) {
-                            addValue(monthly, 0, tagGroup, v);
-                            addValue(daily, hour/24, tagGroup, v);
-                            addValue(weekly, (hour + daysFromLastMonth*24) / 24/7, tagGroup, v);
-                        }
-                    }
-                }
-            }
-
-            // archive daily
-            int year = monthDateTime.getYear();
-            DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true, compress);
-            ReadWriteData dailyData = writer.getData();
-            dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
-            writer.archive();
-
-            // archive monthly
-            writer = new DataWriter(prefix + "monthly_" + prodName, true, compress);
-            ReadWriteData monthlyData = writer.getData();
-            monthlyData.setData(monthly, Months.monthsBetween(config.startDate, monthDateTime).getMonths(), false);
-            writer.archive();
-
-            // archive weekly
-            writer = new DataWriter(prefix + "weekly_" + prodName, true, compress);
-            ReadWriteData weeklyData = writer.getData();
-            DateTime weekStart = monthDateTime.withDayOfWeek(1);
-            int index;
-            if (!weekStart.isAfter(config.startDate))
-                index = 0;
-            else
-                index = Weeks.weeksBetween(config.startDate, weekStart).getWeeks() + (config.startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
-            weeklyData.setData(weekly, index, true);
-            writer.archive();
-        }
-    }
-
-    void init() {
-        usageDataByProduct = new HashMap<Product, ReadWriteData>();
-        costDataByProduct = new HashMap<Product, ReadWriteData>();
-        usageDataByProduct.put(null, new ReadWriteData());
-        costDataByProduct.put(null, new ReadWriteData());
-        instances = new Instances();
-    }
-
 
     private Map<Long, Map<InstancePrices.Key, Double>> getOndemandCosts(long fromMillis) {
         Map<Long, Map<InstancePrices.Key, Double>> ondemandCostsByHour = Maps.newHashMap();
-        ReadWriteData costs = costDataByProduct.get(null);
+        ReadWriteData costs = costAndUsageData.getCost(null);
 
         Collection<TagGroup> tagGroups = costs.getTagGroups();
         for (int i = 0; i < costs.getNum(); i++) {

@@ -55,6 +55,8 @@ public class CostAndUsageReport extends MonthlyReport {
 	 */
 	public CostAndUsageReport(File manifest, MonthlyReportProcessor processor) {
 		super(null, null, null, null, null, processor);
+		if (manifest == null)
+			return;
 		
         Reader reader;
         try {

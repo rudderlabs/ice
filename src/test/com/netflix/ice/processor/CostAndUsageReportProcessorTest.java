@@ -36,14 +36,19 @@ public class CostAndUsageReportProcessorTest {
 		assertEquals("Returned time is null", dataTime, null);
 	}
 	
-	@Test
-	public void testLineItem() {
-		String cau1 = "somelineitemid,2017-08-01T00:00:00Z/2017-08-01T01:00:00Z,,AWS,Anniversary,123456789012,2017-08-01T00:00:00Z,2017-09-01T00:00:00Z,234567890123,DiscountedUsage,2017-08-01T00:00:00Z,2017-08-01T01:00:00Z,AmazonEC2,USW2-BoxUsage:c3.4xlarge,RunInstances,us-west-2a,i-02345901991a472d6,1.00000000,32.0,32.0,USD,0.0000000000,0.00000000,0.2632173639,0.26321736,\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\",,Amazon Elastic Compute Cloud,,,,,,,,,,2.8 GHz,,Yes,,,,,,,,,,,,55,,,Yes,,,,,,,,,,,,,Compute optimized,c3.4xlarge,,,No License required,US West (Oregon),AWS Region,,,,,,,30 GiB,,,,,,High,32,Linux,RunInstances,,,Intel Xeon E5-2680 v2 (Ivy Bridge),,NA,,64-bit,Intel AVX; Intel Turbo,Compute Instance,,,,,,,,,,,,AmazonEC2,9GHZN7VCNV2MGV4N,,,,2 x 160 SSD,,,,,Shared,,,,,,USW2-BoxUsage:c3.4xlarge,16,,,,,,1yr,standard,Partial Upfront,0.8400000000,0.8400000000,Reserved,Hrs,,,,arn:aws:ec2:us-west-2:123456789012:reserved-instances/aaaaaaaa-1942-qqqq-xxxx-cec03ddb1234,,,,,,,,,,";
+	private LineItem getLineItem(String line) {
 		CostAndUsageReportProcessor cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir + "/manifestTest.json");
         CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
         LineItem lineItem = new CostAndUsageReportLineItem(true, cauReport);
-		lineItem.setItems(cau1.split(","));
+		lineItem.setItems(line.split(","));
+		return lineItem;
+	}
+	
+	@Test
+	public void testLineItem() {
+		String cau1 = "somelineitemid,2017-08-01T00:00:00Z/2017-08-01T01:00:00Z,,AWS,Anniversary,123456789012,2017-08-01T00:00:00Z,2017-09-01T00:00:00Z,234567890123,DiscountedUsage,2017-08-01T00:00:00Z,2017-08-01T01:00:00Z,AmazonEC2,USW2-BoxUsage:c3.4xlarge,RunInstances,us-west-2a,i-02345901991a472d6,1.00000000,32.0,32.0,USD,0.0000000000,0.00000000,0.2632173639,0.26321736,\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\",,Amazon Elastic Compute Cloud,,,,,,,,,,2.8 GHz,,Yes,,,,,,,,,,,,55,,,Yes,,,,,,,,,,,,,Compute optimized,c3.4xlarge,,,No License required,US West (Oregon),AWS Region,,,,,,,30 GiB,,,,,,High,32,Linux,RunInstances,,,Intel Xeon E5-2680 v2 (Ivy Bridge),,NA,,64-bit,Intel AVX; Intel Turbo,Compute Instance,,,,,,,,,,,,AmazonEC2,9GHZN7VCNV2MGV4N,,,,2 x 160 SSD,,,,,Shared,,,,,,USW2-BoxUsage:c3.4xlarge,16,,,,,,1yr,standard,Partial Upfront,0.8400000000,0.8400000000,Reserved,Hrs,,,,arn:aws:ec2:us-west-2:123456789012:reserved-instances/aaaaaaaa-1942-qqqq-xxxx-cec03ddb1234,,,,,,,,,,";
+		LineItem lineItem = getLineItem(cau1);
 		
 		assertTrue("AccountID wrong", lineItem.getAccountId().equals("234567890123"));	    
 		assertTrue("Product is wrong", lineItem.getProduct().equals("Amazon Elastic Compute Cloud"));	    
@@ -72,6 +77,5 @@ public class CostAndUsageReportProcessorTest {
 		assertTrue("ResourceTagString is wrong", lineItem.getResourceTagsString().equals(""));		
 		assertTrue("IsReserved is wrong", lineItem.isReserved());
 	}
-
 
 }

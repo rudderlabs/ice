@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -33,18 +33,14 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.LineItem.BillType;
-import com.netflix.ice.tag.Product;
 
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private ProcessorConfig config;
 
-    private static Map<String, Double> ondemandRate = Maps.newHashMap();
-	private Map<Product, ReadWriteData> usageDataByProduct;
-    private Map<Product, ReadWriteData> costDataByProduct;
+    private static ConcurrentMap<String, Double> ondemandRate = Maps.newConcurrentMap();
     private Instances instances;
     private Long startMilli;
-    private Long endMilli;
     
     // For debugging, set the number of files to process. Set to 0 to disable.
     //private int debugLimit = 0;
@@ -141,12 +137,24 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return filesToProcess;
 	}
 	
-	private final ExecutorService pool = Executors.newFixedThreadPool(1);
+	class FileData {
+		public CostAndUsageData costAndUsageData;
+		public List<String[]> delayedItems;
+		long endMilli;
+		
+		FileData() {
+			costAndUsageData = new CostAndUsageData();
+			delayedItems = Lists.newArrayList();
+			endMilli = startMilli;
+		}
+	}
 	
-	private Future<File> download(final MonthlyReport report, final String localDir, final String fileKey, final long lastProcessed) {
-		return pool.submit(new Callable<File>() {
+	private final ExecutorService pool = Executors.newFixedThreadPool(5);
+	
+	private Future<FileData> downloadAndProcessOneFile(final CostAndUsageReport report, final String localDir, final String fileKey, final long lastProcessed) {
+		return pool.submit(new Callable<FileData>() {
 			@Override
-			public File call() throws Exception {
+			public FileData call() throws Exception {
 				String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
 				String filename = fileKey.substring(prefix.length());
 		        File file = new File(localDir, filename);
@@ -157,7 +165,22 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		            logger.info("downloaded " + fileKey);
 		        else
 		            logger.info("file already downloaded " + fileKey + "...");
-		        return file;
+		        
+		        FileData data = new FileData();
+		        
+		        // process the file
+		        logger.info("processing " + file.getName() + "...");
+		        
+				CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, report);
+		        
+				if (file.getName().endsWith(".zip"))
+					data.endMilli = processReportZip(file, lineItem, data.delayedItems, data.costAndUsageData);
+				else
+					data.endMilli = processReportGzip(file, lineItem, data.delayedItems, data.costAndUsageData);
+				
+		        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(data.endMilli)));
+		        
+		        return data;
 			}
 		});
 	}
@@ -168,66 +191,62 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			MonthlyReport report,
 			String localDir,
 			long lastProcessed,
-			Map<Product, ReadWriteData> usageDataByProduct,
-		    Map<Product, ReadWriteData> costDataByProduct,
+			CostAndUsageData costAndUsageData,
 		    Instances instances) throws Exception {
-		
-		this.usageDataByProduct = usageDataByProduct;
-		this.costDataByProduct = costDataByProduct;
+
 		this.instances = instances;
-		startMilli = endMilli = dataTime.getMillis();
+		startMilli = dataTime.getMillis();
 		
-		CostAndUsageReport cau = (CostAndUsageReport) report;
-		
-		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
-        if (config.resourceService != null)
-        	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
-        List<String[]> delayedItems = Lists.newArrayList();
- 
+		CostAndUsageReport cau = (CostAndUsageReport) report; 
         
 		String[] reportKeys = report.getReportKeys();
 		
 		if (reportKeys.length == 0)
 			return dataTime.getMillis();
-		
-        Future<File> futureFile = download(report, localDir, reportKeys[0], lastProcessed);
+
+		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
+        if (config.resourceService != null)
+        	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
+        long endMilli = startMilli;
+
+
+		// Queue up all the files
+		List<Future<FileData>> fileData = Lists.newArrayList();
 		
 		for (int i = 0; i < reportKeys.length; i++) {
-			// Wait for file
-	        File file = futureFile.get();
-	        // Start the next file
-	        if (reportKeys.length > i + 1) {
-	        	futureFile = download(report, localDir, reportKeys[i + 1], lastProcessed);
-	        }
-	        // process the file we have
-	        logger.info("processing " + file.getName() + "...");
-			if (file.getName().endsWith(".zip"))
-				processReportZip(file, lineItem, delayedItems);
-			else
-				processReportGzip(file, lineItem, delayedItems);
-	        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
+			// Queue up the files for download and processing
+	        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKeys[i], lastProcessed));
+	    }
+
+		// Wait for completion and merge the results together
+		for (Future<FileData> ffd: fileData) {
+			FileData fd = ffd.get();
+			costAndUsageData.putAll(fd.costAndUsageData);
+            endMilli = Math.max(endMilli, fd.endMilli);			
 		}
 		
-        for (String[] items: delayedItems) {
-        	lineItem.setItems(items);
-            processOneLine(null, lineItem);
-        }
+		// Process the delayed items		
+		for (Future<FileData> ffd: fileData) {
+			FileData fd = ffd.get();
+	        for (String[] items: fd.delayedItems) {
+	        	lineItem.setItems(items);
+	            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli);
+	        }
+		}
         return endMilli;
 	}
 
-	// Used for unit testing
+	// Used for unit testing only.
 	protected long processReport(
 			DateTime dataTime,
 			MonthlyReport report,
 			List<File> files,
-			Map<Product, ReadWriteData> usageDataByProduct,
-		    Map<Product, ReadWriteData> costDataByProduct,
+			CostAndUsageData costAndUsageData,
 		    Instances instances) throws IOException {
 		
-		this.usageDataByProduct = usageDataByProduct;
-		this.costDataByProduct = costDataByProduct;
 		this.instances = instances;
-		startMilli = endMilli = dataTime.getMillis();
+		startMilli = dataTime.getMillis();
+		long endMilli = startMilli;
 		
 		CostAndUsageReport cau = (CostAndUsageReport) report;
 		
@@ -239,22 +258,23 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		for (File file: files) {
             logger.info("processing " + file.getName() + "...");
 			if (file.getName().endsWith(".zip"))
-				processReportZip(file, lineItem, delayedItems);
+				endMilli = processReportZip(file, lineItem, delayedItems, costAndUsageData);
 			else
-				processReportGzip(file, lineItem, delayedItems);
+				endMilli = processReportGzip(file, lineItem, delayedItems, costAndUsageData);
             logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
 		}
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, lineItem);
+            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli);
         }
         return endMilli;
 	}
 	
-	private void processReportZip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) throws IOException {
+	private long processReportZip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) throws IOException {
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
+        long endMilli = startMilli;
 
         try {
             ArchiveEntry entry;
@@ -262,7 +282,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                processReportFile(entry.getName(), zipInput, lineItem, delayedItems);
+                endMilli = processReportFile(entry.getName(), zipInput, lineItem, delayedItems, costAndUsageData);
             }
         }
         catch (IOException e) {
@@ -284,21 +304,41 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 logger.error("Cannot close input for " + file, e1);
             }
         }
+        return endMilli;
 	}
 
-	private void processReportGzip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) throws IOException {
-        InputStream input = new FileInputStream(file);
-        GZIPInputStream gzipInput = new GZIPInputStream(input);
-
-        processReportFile(file.getName(), gzipInput, lineItem, delayedItems);
-        gzipInput.close();
-        input.close();
+	private long processReportGzip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) {
+        GZIPInputStream gzipInput = null;
+        long endMilli = startMilli;
+        
+        try {
+            InputStream input = new FileInputStream(file);
+            gzipInput = new GZIPInputStream(input);
+        	endMilli = processReportFile(file.getName(), gzipInput, lineItem, delayedItems, costAndUsageData);
+        }
+        catch (IOException e) {
+            if (e.getMessage().equals("Stream closed"))
+                logger.info("reached end of file.");
+            else
+                logger.error("Error processing " + file, e);
+        }
+        finally {
+        	try {
+        		if (gzipInput != null)
+        			gzipInput.close();
+        	}
+        	catch (IOException e) {
+        		logger.error("Error closing " + file, e);
+        	}
+        }
+        return endMilli;
 	}
 
-	private void processReportFile(String fileName, InputStream in, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems) {
+	private long processReportFile(String fileName, InputStream in, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) {
 
         CsvReader reader = new CsvReader(new InputStreamReader(in), ',');
 
+        long endMilli = startMilli;
         long lineNumber = 0;
         try {
             reader.readRecord();
@@ -310,7 +350,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, lineItem);
+                    endMilli = processOneLine(delayedItems, lineItem, costAndUsageData, endMilli);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -336,15 +376,16 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 logger.error("Cannot close BufferedReader...", e);
             }
         }
+        return endMilli;
 	}
 
-    private void processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem) {
+    private long processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli) {
     	if (lineItem.getBillType() == BillType.Purchase) {
         	// Skip purchases
-    		return;
+    		return endMilli;
     	}
     	
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, true, lineItem, usageDataByProduct, costDataByProduct, ondemandRate, instances);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, true, lineItem, costAndUsageData, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
@@ -352,6 +393,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         else if (result == LineItemProcessor.Result.hourly) {
             endMilli = Math.max(endMilli, lineItem.getEndMillis());
         }
+        
+        return endMilli;
     }
 
     /*

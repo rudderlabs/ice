@@ -38,7 +38,7 @@ import java.util.Map;
  * based on it's usage by the ReservationProcessor.
  */
 public class BasicLineItemProcessor implements LineItemProcessor {
-    private Logger logger = LoggerFactory.getLogger(BasicLineItemProcessor.class);
+    protected Logger logger = LoggerFactory.getLogger(getClass());
     
     private AccountService accountService;
     private ProductService productService;
@@ -71,9 +71,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		long startMilli, 
     		boolean processDelayed,
     		boolean isCostAndUsageReport,
-    		LineItem lineItem, 
-    		Map<Product, ReadWriteData> usageDataByProduct, 
-    		Map<Product, ReadWriteData> costDataByProduct, 
+    		LineItem lineItem,
+    		CostAndUsageData costAndUsageData,
     		Map<String, Double> ondemandRate, 
     		Instances instances) {
     	
@@ -156,10 +155,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         boolean monthlyCost = StringUtils.isEmpty(description) ? false : description.toLowerCase().contains("-month");
 
-        ReadWriteData usageData = usageDataByProduct.get(null);
-        ReadWriteData costData = costDataByProduct.get(null);
-        ReadWriteData usageDataOfProduct = usageDataByProduct.get(product);
-        ReadWriteData costDataOfProduct = costDataByProduct.get(product);
+        ReadWriteData usageData = costAndUsageData.getUsage(null);
+        ReadWriteData costData = costAndUsageData.getCost(null);
+        ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(product);
+        ReadWriteData costDataOfProduct = costAndUsageData.getCost(product);
 
         if (result == Result.daily) {
             millisStart = new DateTime(millisStart, DateTimeZone.UTC).withTimeAtStartOfDay().getMillis();
@@ -179,6 +178,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageValue = usageValue * numHoursInMonth;
         }
 
+        TagGroup tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
+        TagGroup resourceTagGroup = null;
+
         int[] indexes;
         if (endIndex - startIndex > 1) {
             usageValue = usageValue / (endIndex - startIndex);
@@ -190,9 +192,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else {
             indexes = new int[]{startIndex};
         }
-
-        TagGroup tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
-        TagGroup resourceTagGroup = null;
 
         if (costValue > 0 && !reservationUsage && product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances) {
             String key = operation + "|" + tagGroup.region + "|" + usageType;
@@ -230,8 +229,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 if (usageDataOfProduct == null) {
                     usageDataOfProduct = new ReadWriteData();
                     costDataOfProduct = new ReadWriteData();
-                    usageDataByProduct.put(product, usageDataOfProduct);
-                    costDataByProduct.put(product, costDataOfProduct);
+                    costAndUsageData.putUsage(product, usageDataOfProduct);
+                    costAndUsageData.putCost(product, costDataOfProduct);
                 }
             }
         }
@@ -242,7 +241,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return result;
 
         for (int i : indexes) {
-
             if (randomizer != null) {
 
                 if (!tagGroup.product.isRds() && !tagGroup.product.isS3() && usageData.getData(i).get(tagGroup) != null)
@@ -263,7 +261,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 // 	but we don't want to add the monthly line items to the usage.
                 // The reservation processor handles determination on what's unused.
                 if (result != Result.monthly || !(product.isRedshift() || product.isRdsInstance() || (product.isEc2Instance() && isCostAndUsageReport))) {
-                	addValue(usages, tagGroup, usageValue,  randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());
+                	addValue(usages, tagGroup, usageValue,  randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());                	
                 }
 
                 addValue(costs, tagGroup, costValue, randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());

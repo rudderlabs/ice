@@ -17,7 +17,7 @@
  */
 package com.netflix.ice.tag;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.Maps;
 
@@ -68,8 +68,8 @@ public class Product extends Tag {
 	/*
 	 * Map of product names used to replace the AWS name
 	 */
-    private static Map<String, String> alternateNames = Maps.newHashMap();
-    private static Map<String, String> awsNames = Maps.newHashMap();
+    private static ConcurrentMap<String, String> alternateNames = Maps.newConcurrentMap();
+    private static ConcurrentMap<String, String> awsNames = Maps.newConcurrentMap();
 
     /*
      * Product constructor should only be called by the ProductService.
