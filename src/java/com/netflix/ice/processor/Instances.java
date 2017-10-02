@@ -17,11 +17,14 @@
  */
 package com.netflix.ice.processor;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.concurrent.ConcurrentMap;
+import java.util.zip.GZIPOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,26 +62,21 @@ public class Instances {
 	}
 	
     public void archive(ProcessorConfig config, String filename) throws IOException {
-        File file = new File(config.localDir, filename + ".csv");
-
-        // archive to disk
-        BufferedWriter writer = null;
+        File file = new File(config.localDir, filename + ".csv.gz");
+    	OutputStream os = new FileOutputStream(file);
+		os = new GZIPOutputStream(os);        
+		Writer out = new OutputStreamWriter(os);
+        
         try {
-            writer = new BufferedWriter(new FileWriter(file));
-            // Write the header
-            writer.write("InstanceID,InstanceType,Tags");
-            writer.newLine();
+        	// Write the header
+        	out.write("InstanceID,InstanceType,Tags\n");
             for (String key: data.keySet()) {
-                writer.write(key + "," + data.get(key).csv());
-                writer.newLine();
+                out.write(key + "," + data.get(key).csv() + "\n");
             }
-        }
-        catch (Exception e) {
-            logger.error("",  e);
+        	out.flush();
         }
         finally {
-            if (writer != null)
-                try {writer.close();} catch (Exception e) {}
+            out.close();
         }
 
         // archive to s3

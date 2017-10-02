@@ -7,9 +7,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -181,7 +184,7 @@ public class PriceListService {
         
     	if (localDir != null) {    	
 	    	String name = getFilename(serviceCode, versionId);
-	        File file = new File(localDir, name);
+	        File file = new File(localDir, name + ".gz");
 	        
 	        if (workS3BucketName != null) {
 		        logger.info("downloading " + file + "...");
@@ -189,8 +192,10 @@ public class PriceListService {
 	        	logger.info("downloaded " + file);
 	        }
 	
-	        if (file.exists()) {        	
-	            DataInputStream in = new DataInputStream(new FileInputStream(file));
+	        if (file.exists()) {
+	        	InputStream is = new FileInputStream(file);
+	        	is = new GZIPInputStream(is);
+	            DataInputStream in = new DataInputStream(is);
 	            try {
 	                ip = InstancePrices.Serializer.deserialize(in);
 	            }
@@ -226,8 +231,10 @@ public class PriceListService {
     		return;
     	
         logger.info("archiving price list " + name + "...");
-        File file = new File(localDir, name);
-        DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
+        File file = new File(localDir, name + ".gz");
+    	OutputStream os = new FileOutputStream(file);
+		os = new GZIPOutputStream(os);
+        DataOutputStream out = new DataOutputStream(os);
         try {
             InstancePrices.Serializer.serialize(out, prices);
         }
