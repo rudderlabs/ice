@@ -43,6 +43,23 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		effectiveEndDate = end;
 	}
 	
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("{\n");
+		sb.append("\tserviceCode: " + serviceCode + "\n");
+		sb.append("\tversionId: " + versionId + "\n");
+		sb.append("\teffectiveBeginDate: " + effectiveBeginDate + "\n");
+		sb.append("\teffectiveEndDate: " + effectiveEndDate + "\n");
+		sb.append("\tprices: {\n");
+		sb.append("\t\tsize: " + prices.size() + "\n");
+		for (Entry<Key, Product> entry: prices.entrySet()) {
+			sb.append("\t\t" + entry.getKey() + ": " + entry.getValue() + "\n");
+		}
+		sb.append("\t}\n");
+		sb.append("}\n");
+		return sb.toString();
+	}
+	
     public Map<Key, Product> getPrices() {
 		return prices;
 	}
@@ -98,6 +115,16 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	        	if (!tenancies.contains(tenancy))
 	        		continue;
         	}
+        	switch (serviceCode) {
+	        	case AmazonEC2:
+	        		if (!p.getAttribute(Attributes.operation).startsWith("RunInstances") ||
+	        				p.getAttribute(Attributes.operatingSystem).equals("NA")) {
+	        			continue;
+	        		}
+        			break;
+        		default:
+        			break;
+        	}
         
         	String usageTypeStr = p.getAttribute(Attributes.usagetype);
         	Region region = Region.US_EAST_1;
@@ -125,7 +152,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
     					p.getAttribute(Attributes.operatingSystem) +
     					p.getAttribute(Attributes.databaseEngine));
     		}
-        	
+    		
         	// Find the Reservation Offers
 			Map<String, Term> reservationOfferTerms = terms.Reserved.get(p.sku);
 
@@ -331,12 +358,31 @@ public class InstancePrices implements Comparable<InstancePrices> {
 							hrs = Double.parseDouble(rate.pricePerUnit.get("USD"));
 					}
 					
-					RateKey key = new RateKey(term.termAttributes.LeaseContractLength, term.termAttributes.PurchaseOption, term.termAttributes.OfferingClass);
+					// only standard offering class was available before March 2017
+					String offeringClass = term.termAttributes.OfferingClass.isEmpty() ? OfferingClass.standard.name() : term.termAttributes.OfferingClass;
+					RateKey key = new RateKey(term.termAttributes.LeaseContractLength, term.termAttributes.PurchaseOption, offeringClass);
 					this.reservationRates.put(key, new Rate(quantity, hrs));
 				}
 			}
 		}
 		
+        @Override
+        public String toString() {
+        	StringBuilder sb = new StringBuilder();
+        	sb.append("{");
+			sb.append("memory:" + memory);
+			sb.append(",ecu:" + ecu);
+			sb.append(",normalizationSizeFactor:" + normalizationSizeFactor);
+			sb.append(",vcpu:" + vcpu);
+			sb.append(",instanceType:" + instanceType);
+			sb.append(",operatingSystem:" + operatingSystem);
+			sb.append(",operation:" + operation);
+			sb.append(",onDemandRate:" + onDemandRate);
+			sb.append(",reservationRates:" + reservationRates.size());
+        	sb.append("}");
+            return sb.toString();
+        }
+
 		public double getOnDemandRate() {
 			return onDemandRate;
 		}

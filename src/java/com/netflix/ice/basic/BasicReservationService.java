@@ -41,6 +41,7 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
@@ -169,13 +170,19 @@ public class BasicReservationService extends Poller implements ReservationServic
             Region region,
             UsageType usageType,
             PurchaseOption purchaseOption,
-            ServiceCode serviceCode) {
+            ServiceCode serviceCode,
+            InstancePrices prices) {
     	
 		try {
-			Rate rate = config.priceListService.getPrices(new DateTime(time), serviceCode).getReservationRate(region, usageType, LeaseContractLength.getByYears(term.years), purchaseOption, OfferingClass.standard);
+			if (prices == null) {
+				logger.error("No prices for " + serviceCode + " at " + AwsUtils.dateFormatter.print(time));
+				return 0.0;
+			}
+			Rate rate = prices.getReservationRate(region, usageType, LeaseContractLength.getByYears(term.years), purchaseOption, OfferingClass.standard);
 	        return rate.fixed + rate.hourly;
 		} catch (Exception e) {
-			logger.error("No reservation rate for " + purchaseOption + " " + usageType + " in " + region + "");
+			logger.error("No reservation rate for " + purchaseOption + " " + usageType + " in " + region + " at " + AwsUtils.dateFormatter.print(time) + " " + serviceCode);
+			e.printStackTrace();
 		}
         return 0.0;
     }
@@ -183,7 +190,8 @@ public class BasicReservationService extends Poller implements ReservationServic
     public ReservationInfo getReservation(
         long time,
         TagGroup tagGroup,
-        ReservationUtilization utilization) {
+        ReservationUtilization utilization,
+        InstancePrices instancePrices) {
 
 	    double upfrontAmortized = 0;
 	    double hourlyCost = 0;
@@ -210,8 +218,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	    	// for this usage. Pull the prices from the price list.
 	        if (tagGroup.product.isEc2Instance()) {
 				try {
-					Rate rate = config.priceListService.getPrices(new DateTime(time), ServiceCode.AmazonEC2).
-							getReservationRate(tagGroup.region, tagGroup.usageType, LeaseContractLength.getByYears(term.years), utilization.getPurchaseOption(), OfferingClass.standard);
+					Rate rate = instancePrices.getReservationRate(tagGroup.region, tagGroup.usageType, LeaseContractLength.getByYears(term.years), utilization.getPurchaseOption(), OfferingClass.standard);
 					upfrontAmortized = rate.getHourlyUpfrontAmortized(LeaseContractLength.getByYears(term.years));
 					hourlyCost = rate.hourly;
 				} catch (Exception e) {

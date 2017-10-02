@@ -39,16 +39,16 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 
 public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private static Map<String, Double> ondemandRate = Maps.newHashMap();
     private ProcessorConfig config;
+    private long startMilli;
+    private long endMilli;
 
-    private Instances instances;
-    private Long startMilli;
-    private Long endMilli;
-    
 	public DetailedBillingReportProcessor(ProcessorConfig config) {
 		this.config = config;
 	}
@@ -120,18 +120,22 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 			MonthlyReport report,
 			File file,
 			CostAndUsageData costAndUsageData,
-		    Instances instances) throws IOException {
+		    Instances instances) throws Exception {
 		
-		this.instances = instances;
 		startMilli = endMilli = dataTime.getMillis();
 		
-        processBillingZipFile(file, report.hasTags(), costAndUsageData);
+        processBillingZipFile(dataTime, file, report.hasTags(), costAndUsageData, instances);
+        
         return endMilli;
 	}
 	
 	
     private void processBillingZipFile(
-    		File file, boolean withTags, CostAndUsageData costAndUsageData) throws IOException {
+			DateTime dataTime,
+    		File file,
+    		boolean withTags,
+    		CostAndUsageData costAndUsageData,
+    		Instances instances) throws Exception {
 
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
@@ -142,7 +146,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                processBillingFile(entry.getName(), zipInput, withTags, costAndUsageData);
+                processBillingFile(dataTime, entry.getName(), zipInput, withTags, costAndUsageData, instances);
             }
         }
         catch (IOException e) {
@@ -166,9 +170,10 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
     
-    private void processBillingFile(String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData) {
+    private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData, Instances instances) throws Exception {
 
         CsvReader reader = new CsvReader(new InputStreamReader(tempIn), ',');
+        InstancePrices ec2Prices = config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2);
 
         long lineNumber = 0;
         List<String[]> delayedItems = Lists.newArrayList();
@@ -185,7 +190,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, lineItem, costAndUsageData);
+                    processOneLine(delayedItems, lineItem, costAndUsageData, instances, ec2Prices);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -214,13 +219,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, lineItem, costAndUsageData);
+            processOneLine(null, lineItem, costAndUsageData, instances, ec2Prices);
         }
     }
 
-    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData) {
+    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances, InstancePrices ec2Prices) {
 
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, ondemandRate, instances);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, ec2Prices, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

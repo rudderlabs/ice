@@ -95,11 +95,10 @@ public class DetailedBillingReportLineItem extends LineItem {
     @Override
 	public String getPricingUnit() {
     	String usageType = getUsageType();
-        String unit = "";
-        // Lambda unit for memory consumption is Lambda-GB-Second
-        if (usageType.contains("-GB-Seconds"))
-        	unit = "seconds";
-        else if (usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB"))
+		String unit = "";
+    	if (usageType.contains("Lambda-GB-Second"))
+    		unit = "GB";
+    	else if (usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB"))
             unit = "GB";
         
         // Won't indicate "hours" for instance usage, so clients must handle that themselves.

@@ -22,6 +22,7 @@ import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
+import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.*;
 
@@ -73,6 +74,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		boolean isCostAndUsageReport,
     		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
+    		InstancePrices ec2Prices,
     		Map<String, Double> ondemandRate, 
     		Instances instances) {
     	
@@ -214,7 +216,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                     resourceCostValue = usageValue * reservationService.getLatestHourlyTotalPrice(
                     							millisStart, tagGroup.region, usageTypeForPrice, 
                     							reservationService.getDefaultReservationUtilization(0L).getPurchaseOption(),
-                    							ServiceCode.AmazonEC2);
+                    							ServiceCode.AmazonEC2, ec2Prices);
                 }
                 catch (Exception e) {
                     logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice + " " + operation);

@@ -13,6 +13,8 @@ import java.io.InputStream;
 import org.joda.time.DateTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
@@ -23,9 +25,11 @@ import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
 import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
 public class PriceListServiceTest {
+	protected static Logger logger = LoggerFactory.getLogger(PriceListService.class);
 	private static final String resourceDir = "src/test/resources/";
 	private static PriceListService priceListService = null;
 	
@@ -114,5 +118,17 @@ public class PriceListServiceTest {
 	@Test
 	public void testInit() throws Exception {
 		priceListService.init();
+	}
+	
+	@Test
+	public void testImportJan2017Ec2PriceList() throws Exception {
+		
+		InstancePrices ip = priceListService.getPrices(DateTime.parse("2017-01-01T00:00:00Z"), ServiceCode.AmazonEC2);
+		//logger.info(ip.toString());
+		
+		// Spot check some reservation rates
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c4.2xlarge", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 1060.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.121, rate.hourly, 0.0001);
 	}
 }

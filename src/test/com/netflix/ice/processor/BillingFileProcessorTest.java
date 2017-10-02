@@ -46,6 +46,8 @@ import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationProcessorTest.Datum;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
@@ -57,11 +59,15 @@ public class BillingFileProcessorTest {
     
     private static final String resourcesDir = "src/test/resources/";
     private static final String resourcesReportDir = resourcesDir + "report/";
+	private static PriceListService priceListService = null;
 
     @BeforeClass
     public static void init() throws Exception {
 		ReservationProcessorTest.init();
+		priceListService = new PriceListService(resourcesDir, null, null);
+		priceListService.init();
     }
+    
     
 	private Properties getProperties() throws IOException {
 		Properties prop = new Properties();
@@ -77,12 +83,14 @@ public class BillingFileProcessorTest {
 	interface ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				Instances instances) throws IOException;
+				InstancePrices ec2Prices,
+				Instances instances) throws Exception;
 	}
 	class CostAndUsageTest implements ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				Instances instances) throws IOException {
+				InstancePrices ec2Prices,
+				Instances instances) throws Exception {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
 			File manifest = new File(resourcesReportDir, "hourly-cost-and-usage-Manifest.json");
@@ -100,13 +108,14 @@ public class BillingFileProcessorTest {
 	        	return 0L;
 	        }
 	        return cauProcessor.processReport(report.getStartTime(), report, files,
-	        		costAndUsageData, instances);
+	        		costAndUsageData, ec2Prices, instances);
 		}
 	}
 	class DetailedBillingReportTest implements ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				Instances instances) throws IOException {
+				InstancePrices ec2Prices,
+				Instances instances) throws Exception {
 			
 			DetailedBillingReportProcessor dbrProcessor = new DetailedBillingReportProcessor(config);
 			File dbr = new File(resourcesReportDir, "aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
@@ -169,7 +178,9 @@ public class BillingFileProcessorTest {
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		reservationService.updateReservations(reservations, accountService, startMilli, productService);
 		
-		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
+		InstancePrices ec2Prices = priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2);
+		
+		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, ec2Prices, instances);
 		    
         int hours = (int) ((endMilli - startMilli)/3600000L);
         logger.info("cut hours to " + hours);
@@ -359,7 +370,7 @@ public class BillingFileProcessorTest {
 		ProcessTest test = lineItemTest.new ProcessTest(Which.both, line, tag, 1.0, 0.0, Result.hourly, 30);
 		
 		BasicLineItemProcessorTest.cauLineItem.setItems(test.cauItems);
-		lineItemTest.runProcessTest(test, BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true);
+		CostAndUsageData costAndUsageData = lineItemTest.runProcessTest(test, BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true, priceListService);
 
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
@@ -379,8 +390,8 @@ public class BillingFileProcessorTest {
 			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.savingsFixed, "c4.2xlarge", 0.522 - 0.095),
 		};
 
-		Map<TagGroup, Double> hourUsageData = BasicLineItemProcessorTest.usageDataByProduct.get(null).getData(0);
-		Map<TagGroup, Double> hourCostData = BasicLineItemProcessorTest.costDataByProduct.get(null).getData(0);
+		Map<TagGroup, Double> hourUsageData = costAndUsageData.getUsage(null).getData(0);
+		Map<TagGroup, Double> hourCostData = costAndUsageData.getCost(null).getData(0);
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);

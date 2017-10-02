@@ -18,6 +18,8 @@
 package com.netflix.ice.processor;
 
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+
 import java.util.Map;
 
 /**
@@ -31,6 +33,7 @@ public interface LineItemProcessor {
     		boolean isCostAndUsageReport,
     		LineItem lineItem, 
     		CostAndUsageData costAndUsageData,
+    		InstancePrices ec2Prices,
     		Map<String, Double> ondemandRate, 
     		Instances instances);
 

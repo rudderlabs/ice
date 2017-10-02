@@ -203,7 +203,8 @@ public class ReservationProcessor {
             TagGroup tagGroup,
             ReservationUtilization utilization,
             ReservationService reservationService,
-            Set<TagGroup> reservationTagGroups) {
+            Set<TagGroup> reservationTagGroups,
+            InstancePrices instancePrices) {
 
 	    boolean debug = debugReservations(i, tagGroup, utilization);
 		Double existing = usageMap.get(tagGroup);
@@ -345,7 +346,7 @@ public class ReservationProcessor {
 		// the rest is bonus
 		if (existing != null && existing > 0) {
 	        TagGroup resTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, null);
-			ReservationService.ReservationInfo reservation = reservationService.getReservation(time, resTagGroup, utilization);
+			ReservationService.ReservationInfo reservation = reservationService.getReservation(time, resTagGroup, utilization, instancePrices);
 			TagGroup bonusTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
 			if (debug) {
 				logger.info("** bonus(" + i + ") **   bonus     quantity: " + existing + ", tag: " + bonusTagGroup);
@@ -619,7 +620,8 @@ public class ReservationProcessor {
 	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 	        TagGroup upfrontTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 	        
-	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
+	        InstancePrices instancePrices = prices.get(tagGroup.product);
+	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
 		    
 			for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
@@ -628,7 +630,7 @@ public class ReservationProcessor {
 			    Map<TagGroup, Double> costMap = costData.getData(i);
 			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
-			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
+			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization, instancePrices);
 			    boolean debug = debugReservations(i, tagGroup, utilization);
 
 			    // Do we have any usage from the current reservation?
@@ -718,6 +720,7 @@ public class ReservationProcessor {
 			logger.info("--------------- process family-based borrowing across accounts ----------- " + unassignedUsage.size() + " unassigned tags");
 		
 		for (TagGroup tagGroup: unassignedUsage) {
+			InstancePrices instancePrices = prices.get(tagGroup.product);
 			for (int i = 0; i < usageData.getNum(); i++) {
 			
 			    Map<TagGroup, Double> usageMap = usageData.getData(i);
@@ -729,7 +732,8 @@ public class ReservationProcessor {
 			           tagGroup,
 			           utilization,
 			           reservationService,
-			           reservationTagGroups);
+			           reservationTagGroups,
+			           instancePrices);
 			}
 		}		
 	}
@@ -755,7 +759,8 @@ public class ReservationProcessor {
 	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 	        TagGroup unusedTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 	        
-	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
+	        InstancePrices instancePrices = prices.get(tagGroup.product);
+	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
 			
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
@@ -764,7 +769,7 @@ public class ReservationProcessor {
 			    Map<TagGroup, Double> costMap = costData.getData(i);
 			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
-			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization);
+			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization, instancePrices);
 			    boolean debug = debugReservations(i, tagGroup, utilization);
 
 			    UsedUnused uu = new UsedUnused(0.0, reservation.capacity);

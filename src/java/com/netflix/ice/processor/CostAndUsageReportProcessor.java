@@ -33,6 +33,8 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.LineItem.BillType;
+import com.netflix.ice.processor.pricelist.InstancePrices;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -151,7 +153,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	
 	private final ExecutorService pool = Executors.newFixedThreadPool(5);
 	
-	private Future<FileData> downloadAndProcessOneFile(final CostAndUsageReport report, final String localDir, final String fileKey, final long lastProcessed) {
+	private Future<FileData> downloadAndProcessOneFile(final CostAndUsageReport report, final String localDir, final String fileKey, final long lastProcessed, final InstancePrices ec2Prices) {
 		return pool.submit(new Callable<FileData>() {
 			@Override
 			public FileData call() throws Exception {
@@ -174,9 +176,9 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, report);
 		        
 				if (file.getName().endsWith(".zip"))
-					data.endMilli = processReportZip(file, lineItem, data.delayedItems, data.costAndUsageData);
+					data.endMilli = processReportZip(file, lineItem, data.delayedItems, data.costAndUsageData, ec2Prices);
 				else
-					data.endMilli = processReportGzip(file, lineItem, data.delayedItems, data.costAndUsageData);
+					data.endMilli = processReportGzip(file, lineItem, data.delayedItems, data.costAndUsageData, ec2Prices);
 				
 		        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(data.endMilli)));
 		        
@@ -208,14 +210,16 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         if (config.resourceService != null)
         	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
         long endMilli = startMilli;
-
+        
+        // Get the EC2 price list
+        InstancePrices ec2Prices = config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2);
 
 		// Queue up all the files
 		List<Future<FileData>> fileData = Lists.newArrayList();
 		
 		for (int i = 0; i < reportKeys.length; i++) {
 			// Queue up the files for download and processing
-	        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKeys[i], lastProcessed));
+	        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKeys[i], lastProcessed, ec2Prices));
 	    }
 
 		// Wait for completion and merge the results together
@@ -230,7 +234,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			FileData fd = ffd.get();
 	        for (String[] items: fd.delayedItems) {
 	        	lineItem.setItems(items);
-	            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli);
+	            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli, ec2Prices);
 	        }
 		}
         return endMilli;
@@ -242,6 +246,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			MonthlyReport report,
 			List<File> files,
 			CostAndUsageData costAndUsageData,
+			InstancePrices ec2Prices,
 		    Instances instances) throws IOException {
 		
 		this.instances = instances;
@@ -258,20 +263,20 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		for (File file: files) {
             logger.info("processing " + file.getName() + "...");
 			if (file.getName().endsWith(".zip"))
-				endMilli = processReportZip(file, lineItem, delayedItems, costAndUsageData);
+				endMilli = processReportZip(file, lineItem, delayedItems, costAndUsageData, ec2Prices);
 			else
-				endMilli = processReportGzip(file, lineItem, delayedItems, costAndUsageData);
+				endMilli = processReportGzip(file, lineItem, delayedItems, costAndUsageData, ec2Prices);
             logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
 		}
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli);
+            endMilli = processOneLine(null, lineItem, costAndUsageData, endMilli, ec2Prices);
         }
         return endMilli;
 	}
 	
-	private long processReportZip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) throws IOException {
+	private long processReportZip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData, InstancePrices ec2Prices) throws IOException {
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
         long endMilli = startMilli;
@@ -282,7 +287,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                endMilli = processReportFile(entry.getName(), zipInput, lineItem, delayedItems, costAndUsageData);
+                endMilli = processReportFile(entry.getName(), zipInput, lineItem, delayedItems, costAndUsageData, ec2Prices);
             }
         }
         catch (IOException e) {
@@ -307,14 +312,14 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return endMilli;
 	}
 
-	private long processReportGzip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) {
+	private long processReportGzip(File file, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData, InstancePrices ec2Prices) {
         GZIPInputStream gzipInput = null;
         long endMilli = startMilli;
         
         try {
             InputStream input = new FileInputStream(file);
             gzipInput = new GZIPInputStream(input);
-        	endMilli = processReportFile(file.getName(), gzipInput, lineItem, delayedItems, costAndUsageData);
+        	endMilli = processReportFile(file.getName(), gzipInput, lineItem, delayedItems, costAndUsageData, ec2Prices);
         }
         catch (IOException e) {
             if (e.getMessage().equals("Stream closed"))
@@ -334,7 +339,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return endMilli;
 	}
 
-	private long processReportFile(String fileName, InputStream in, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData) {
+	private long processReportFile(String fileName, InputStream in, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData, InstancePrices ec2Prices) {
 
         CsvReader reader = new CsvReader(new InputStreamReader(in), ',');
 
@@ -350,7 +355,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    endMilli = processOneLine(delayedItems, lineItem, costAndUsageData, endMilli);
+                    endMilli = processOneLine(delayedItems, lineItem, costAndUsageData, endMilli, ec2Prices);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -379,13 +384,13 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return endMilli;
 	}
 
-    private long processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli) {
+    private long processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, InstancePrices ec2Prices) {
     	if (lineItem.getBillType() == BillType.Purchase) {
         	// Skip purchases
     		return endMilli;
     	}
     	
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, true, lineItem, costAndUsageData, ondemandRate, instances);
+        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, true, lineItem, costAndUsageData, ec2Prices, ondemandRate, instances);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

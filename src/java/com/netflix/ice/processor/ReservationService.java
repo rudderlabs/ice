@@ -18,6 +18,7 @@
 package com.netflix.ice.processor;
 
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Region;
@@ -58,7 +59,8 @@ public interface ReservationService {
     ReservationInfo getReservation(
             long time,
             TagGroup tagGroup,
-            ReservationUtilization utilization);
+            ReservationUtilization utilization,
+            InstancePrices instancePrices);
 
     /**
      * Some companies may get different price tiers at different times depending on reservation cost.
@@ -74,7 +76,8 @@ public interface ReservationService {
             Region region,
             UsageType usageType,
             PurchaseOption purchaseOption,
-            ServiceCode serviceCode);
+            ServiceCode serviceCode,
+            InstancePrices prices);
 
     /**
      * Methods to indicate that we have reservations for each corresponding service.

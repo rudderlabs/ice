@@ -42,7 +42,7 @@ public class PriceList {
 	static public class Product {
 		String sku;
 		String productFamily;
-		private Map<String, String> attributes;
+		protected Map<String, String> attributes;
 		
 		public enum Attributes {
 	        servicecode,
