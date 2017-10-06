@@ -85,7 +85,7 @@ public class SampleMapDbResourceService extends ResourceService {
     @Override
     public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
 
-        if (product.isEc2() || product.isEc2Instance() || product.isEbs() || product.isEC2CloudWatch()) {
+        if (product.isEc2() || product.isEc2Instance() || product.isEbs()) {
             return getEc2Resource(account, region, lineItem, millisStart);
         }
         else if (product.isRds() || product.isRdsInstance()) {

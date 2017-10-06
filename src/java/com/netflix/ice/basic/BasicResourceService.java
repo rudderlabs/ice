@@ -25,7 +25,7 @@ public class BasicResourceService extends ResourceService {
     
     @SuppressWarnings("unchecked")
 	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
-            Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs, Product.ec2CloudWatch),
+            Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs),
             Lists.newArrayList(Product.rds, Product.rdsInstance),
             Lists.newArrayList(Product.redshift),
             Lists.newArrayList(Product.s3));

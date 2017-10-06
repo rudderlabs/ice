@@ -48,7 +48,10 @@ public class Product extends Tag {
 	/*
 	 * Standard product name strings needed to test identity in the "is" methods.
 	 */
+	public static final String apiGateway   = "API Gateway";
+	public static final String cloudFront   = "CloudFront";
 	public static final String cloudhsm     = "CloudHSM";
+    public static final String cloudWatch   = "CloudWatch";
 	public static final String dataTransfer = "Data Transfer";
 	public static final String ec2          = "Elastic Compute Cloud";
 	public static final String rds          = "RDS Service";
@@ -60,7 +63,6 @@ public class Product extends Tag {
      * ICE-defined product sub-category strings used to test identity in the "is" methods.
      */
     public static final String ebs           = "Elastic Block Storage";
-    public static final String ec2CloudWatch = "EC2 CloudWatch";
     public static final String ec2Instance   = "EC2 Instance";
     public static final String eip           = "Elastic IP";
     public static final String rdsInstance   = "RDS Instance";
@@ -134,6 +136,14 @@ public class Product extends Tag {
     	return getAwsName().contains("Support");
     }
     
+    public boolean isApiGateway() {
+    	return name.equals(getAlternate(apiGateway));
+    }
+    
+    public boolean isCloudFront() {
+    	return name.equals(getAlternate(cloudFront));
+    }
+    
     public boolean isCloudHsm() {
     	return name.equals(getAlternate(cloudhsm));
     }
@@ -166,8 +176,8 @@ public class Product extends Tag {
     	return name.equals(getAlternate(ebs));
     }
     
-    public boolean isEC2CloudWatch() {
-    	return name.equals(getAlternate(ec2CloudWatch));
+    public boolean isCloudWatch() {
+    	return name.equals(getAlternate(cloudWatch));
     }
     
     public boolean isEc2Instance() {

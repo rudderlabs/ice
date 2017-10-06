@@ -234,7 +234,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 	sb.append(",");
                 	sb.append(tagGroup.zone == null ? "" : tagGroup.zone.toString());
                 	sb.append(",");
-                	sb.append(tagGroup.product.toString());
+                	sb.append(tagGroup.product.getAwsName());
                 	sb.append(",");
                 	sb.append(tagGroup.operation.toString());
                 	sb.append(",");

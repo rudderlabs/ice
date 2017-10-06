@@ -410,7 +410,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (usageTypeStr.startsWith("EBSOptimized:"))
             product = productService.getProductByName(Product.ebs);
         else if (usageTypeStr.startsWith("CW:"))
-            product = productService.getProductByName(Product.ec2CloudWatch);
+            product = productService.getProductByName(Product.cloudWatch);
         else if ((usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
         	boolean spot = usageTypeStr.startsWith("SpotUsage");
@@ -506,6 +506,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	            operation = getOperation(operationStr, reservationUsage, defaultReservationUtilization);
             }
             os = getInstanceOs(operationStr);
+        }
+        
+        // Re-map all Data Transfer costs except API Gateway and CouldFront to Data Transfer (same as the AWS Billing Page Breakout)
+        if (!product.isCloudFront() && !product.isApiGateway()) {
+        	if (usageTypeStr.equals("DataTransfer-Regional-Bytes") || usageTypeStr.endsWith("-In-Bytes") || usageTypeStr.endsWith("-Out-Bytes"))
+        		product = productService.getProductByName(Product.dataTransfer);
         }
 
         // Usage type string is empty for Support recurring fees.

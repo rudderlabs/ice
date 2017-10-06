@@ -164,7 +164,17 @@ public class CostAndUsageData {
                     }
                 }
             }
-
+            
+/*            if (product == null) {
+            	Double total = 0.0;
+	            Map<TagGroup, Double> firstDay = daily.get(0);
+	            for (TagGroup tg: firstDay.keySet()) {
+	            	if (tg.product.isS3())
+	            		total += firstDay.get(tg);
+	            }
+	            logger.info(" ++++++ First day of daily aggregrated data for S3 = " + total);
+            }
+*/
             // archive daily
             int year = monthDateTime.getYear();
             DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true, compress);
