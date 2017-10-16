@@ -52,15 +52,15 @@ public class BasicProductServiceTest {
 	@Test
 	public void testAlternateProductName() {
 		Properties alts = new Properties();
-		alts.setProperty("S3", "Simple Storage Service");
+		alts.setProperty("SGS", "Simple Gravity Service");
 		
 		ProductService ps = new BasicProductService(alts);
 		
-		Product product = ps.getProductByName("Simple Storage Service");
-		assertEquals("Wrong product name", "S3", product.name);
-		assertEquals("Wrong product file name", product.getFileName(), "Simple_Storage_Service");
+		Product product = ps.getProductByName("Simple Gravity Service");
+		assertEquals("Wrong product name", "SGS", product.name);
+		assertEquals("Wrong product file name", product.getFileName(), "Simple_Gravity_Service");
 		
-		Product product2 = ps.getProductByName("Simple Storage Service");
+		Product product2 = ps.getProductByName("Simple Gravity Service");
 		assertEquals("Products don't match", product, product2);
 		assertTrue("Products don't match using ==", product == product2);
 	}
