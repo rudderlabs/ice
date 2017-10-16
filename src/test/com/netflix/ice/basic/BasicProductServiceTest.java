@@ -51,11 +51,18 @@ public class BasicProductServiceTest {
 
 	@Test
 	public void testAlternateProductName() {
-		ProductService ps = new BasicProductService(null);
-		Product.addAlternate("Alternate Product", "Alternate Product (AP)");
-		Product product = ps.getProductByName("Alternate Product");
-		assertTrue("Wrong product name, expected Alternate Product (AP), got " + product.name, product.name.equals("Alternate Product (AP)"));
-		assertTrue("Wrong product file name, expected product, got " + product.getFileName(), product.getFileName().equals("Alternate_Product"));
+		Properties alts = new Properties();
+		alts.setProperty("S3", "Simple Storage Service");
+		
+		ProductService ps = new BasicProductService(alts);
+		
+		Product product = ps.getProductByName("Simple Storage Service");
+		assertEquals("Wrong product name", "S3", product.name);
+		assertEquals("Wrong product file name", product.getFileName(), "Simple_Storage_Service");
+		
+		Product product2 = ps.getProductByName("Simple Storage Service");
+		assertEquals("Products don't match", product, product2);
+		assertTrue("Products don't match using ==", product == product2);
 	}
 	
 }

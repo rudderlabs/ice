@@ -86,8 +86,6 @@ public class CostAndUsageData {
         for (Product product: costDataByProduct.keySet()) {
             TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName());
             writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
-            // Debugging file output
-            //writer.outputCsv(config.localDir + "/csv");
         }
 
         logger.info("archiving summary data...");
@@ -165,16 +163,6 @@ public class CostAndUsageData {
                 }
             }
             
-/*            if (product == null) {
-            	Double total = 0.0;
-	            Map<TagGroup, Double> firstDay = daily.get(0);
-	            for (TagGroup tg: firstDay.keySet()) {
-	            	if (tg.product.isS3())
-	            		total += firstDay.get(tg);
-	            }
-	            logger.info(" ++++++ First day of daily aggregrated data for S3 = " + total);
-            }
-*/
             // archive daily
             int year = monthDateTime.getYear();
             DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true, compress);
@@ -185,7 +173,8 @@ public class CostAndUsageData {
             // archive monthly
             writer = new DataWriter(prefix + "monthly_" + prodName, true, compress);
             ReadWriteData monthlyData = writer.getData();
-            monthlyData.setData(monthly, Months.monthsBetween(startDate, monthDateTime).getMonths(), false);
+            int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
+            monthlyData.setData(monthly, numMonths, false);            
             writer.archive();
 
             // archive weekly
@@ -201,5 +190,4 @@ public class CostAndUsageData {
             writer.archive();
         }
     }
-
 }

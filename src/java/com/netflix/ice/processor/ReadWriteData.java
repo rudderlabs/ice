@@ -23,7 +23,6 @@ import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
-
 import java.io.BufferedReader;
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -34,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ReadWriteData is a list of maps that hold usage and cost data for AWS products.
@@ -113,6 +115,7 @@ public class ReadWriteData {
     }
 
     public static class Serializer {
+        protected static Logger logger = LoggerFactory.getLogger(Serializer.class);
         public static void serialize(DataOutput out, ReadWriteData data) throws IOException {
 
             Collection<TagGroup> keys = data.getTagGroups();
@@ -163,7 +166,7 @@ public class ReadWriteData {
         
         public static void serializeCsv(OutputStreamWriter out, ReadWriteData data) throws IOException {
         	// write the header
-        	out.write("hour,");
+        	out.write("index,");
         	TagGroup.Serializer.serializeCsvHeader(out);
         	out.write(",data\n");
             for (int i = 0; i < data.data.size(); i++) {

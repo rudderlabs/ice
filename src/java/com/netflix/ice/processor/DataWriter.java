@@ -81,20 +81,42 @@ public class DataWriter {
     }
 
     void archive() throws IOException {
-        archive(data);
+        archive(data, false);
+    }
+
+    void archiveCsv(ReadWriteData data) throws IOException {
+        archive(data, true);
     }
 
     void archive(ReadWriteData data) throws IOException {
+    	archive(data, false);
+    }
+       
+    void archive(ReadWriteData data, boolean csv) throws IOException {
     	OutputStream os = new FileOutputStream(file);
     	if (compress)
     		os = new GZIPOutputStream(os);
-        DataOutputStream out = new DataOutputStream(os);
+    	DataOutputStream out = null;
+    	OutputStreamWriter writer = null;
+    	if (csv)
+    		writer = new OutputStreamWriter(os);
+    	else
+    		out = new DataOutputStream(os);
         try {
-            ReadWriteData.Serializer.serialize(out, data);
-        	out.flush();
+        	if (csv) {
+        		ReadWriteData.Serializer.serializeCsv(writer, data);
+        		writer.flush();
+        	}
+        	else {
+        		ReadWriteData.Serializer.serialize(out, data);
+        		out.flush();
+        	}
         }
         finally {
-            out.close();
+        	if (out != null)
+        		out.close();
+        	if (writer != null)
+        		writer.close();
         }
 
         logger.info(this.dbName + " uploading to s3...");

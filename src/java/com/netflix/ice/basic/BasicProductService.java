@@ -28,13 +28,20 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 
 public class BasicProductService implements ProductService {
-
 	/*
 	 * Product lookup maps built dynamically as we encounter the product names while
 	 * processing billing reports or reading tagdb files.
+	 * 
+	 * Map of products keyed by the full Amazon name including the AWS and Amazon prefix
 	 */
     private static ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
+    /*
+     * Map of products keyed by the name without the AWS or Amazon prefix
+     */
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
+    /*
+     * Map of products keyed by the filename used for saving the data
+     */
     private static ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
        
     public BasicProductService(Properties alternateProductNames) {
@@ -62,7 +69,7 @@ public class BasicProductService implements ProductService {
     	if (product == null) {
     		String name = Product.getNameFromFileName(fileName);
     		product = new Product(name);
-    		addProduct(name, product);
+    		addProduct(product);
     	}
     	return product;
     }
@@ -71,16 +78,21 @@ public class BasicProductService implements ProductService {
         Product product = productsByName.get(name);
         if (product == null) {
             product = new Product(name);
-            addProduct(name, product);
+            addProduct(product);
         }
         return product;
     }
     
-    private void addProduct(String name, Product product) {
+    private void addProduct(Product product) {
         productsByName.put(product.name, product);
         productsByFileName.put(product.getFileName(), product);
 
         String awsName = product.getAwsName();
+        if (!awsName.equals(product.name)) {
+        	// Product is using an alternate name, also save the original AWS name
+        	productsByName.put(awsName, product);
+        }
+        
         productsByAwsName.put("AWS " + awsName, product);
         productsByAwsName.put("Amazon " + awsName, product);
     }
