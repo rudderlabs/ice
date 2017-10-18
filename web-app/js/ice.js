@@ -293,12 +293,12 @@ ice.factory('usage_db', function($window, $http, $filter) {
     var result = [];
     if (selected) {
       for (var i in selected)
-        if (!filter || selected[i].name.toLowerCase().indexOf(filter.toLowerCase()) >= 0)
+        if (!filter || selected[i].name.toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
           result.push(selected[i].name);
     }
     else {
       for (var i in preselected)
-        if (!filter || preselected[i].toLowerCase().indexOf(filter.toLowerCase()) >= 0)
+        if (!filter || preselected[i].toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
           result.push(preselected[i]);
     }
     return result.join(",");
