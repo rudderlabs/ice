@@ -1,20 +1,3 @@
-/*
- *
- *  Copyright 2016 TiVo, Inc.
- *
- *     Licensed under the Apache License, Version 2.0 (the "License");
- *     you may not use this file except in compliance with the License.
- *     You may obtain a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- *     Unless required by applicable law or agreed to in writing, software
- *     distributed under the License is distributed on an "AS IS" BASIS,
- *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *     See the License for the specific language governing permissions and
- *     limitations under the License.
- *
- */
 package com.netflix.ice.processor;
 
 import java.io.File;
@@ -31,6 +14,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.tag.Account;
+import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.Zone;
 
 public class Instances {
     private final static Logger logger = LoggerFactory.getLogger(Instances.class);
@@ -38,14 +24,20 @@ public class Instances {
     class InstanceData {
     	private String type;
     	private String tags;
+    	private Account account;
+    	private Region region;
+    	private Zone zone;
     	
-    	InstanceData(String type, String tags) {
+    	InstanceData(String type, String tags, Account account, Region region, Zone zone) {
     		this.type = type;
     		this.tags = tags;
+    		this.account = account;
+    		this.region = region;
+    		this.zone = zone;
     	}
     	
 		protected String csv() {
-			return type + "," + tags;
+			return type + "," + tags + "," + account.id + "," + account.name + "," + region + "," + (zone == null ? "" : zone);
 		}
 	}
 	private ConcurrentMap<String, InstanceData> data;
@@ -54,11 +46,11 @@ public class Instances {
 		data = Maps.newConcurrentMap();
 	}
 	
-	public void add(String id, String type, String tags) {
+	public void add(String id, String type, String tags, Account account, Region region, Zone zone) {
 		if (id.isEmpty()) {
 			return;
 		}
-		data.put(id, new InstanceData(type, tags));
+		data.put(id, new InstanceData(type, tags, account, region, zone));
 	}
 	
     public void archive(ProcessorConfig config, String filename) throws IOException {
@@ -69,7 +61,7 @@ public class Instances {
         
         try {
         	// Write the header
-        	out.write("InstanceID,InstanceType,Tags\n");
+        	out.write("InstanceID,InstanceType,Tags,AccountId,AccountName,Region,Zone\n");
             for (String key: data.keySet()) {
                 out.write(key + "," + data.get(key).csv() + "\n");
             }

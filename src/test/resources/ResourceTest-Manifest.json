@@ -1,0 +1,32 @@
+{
+  "assemblyId":"9797f397-5193-4295-8ddf-ed4a1d37fe95",
+  "account":"661443485395",
+  "columns":[{
+    "category":"lineItem",
+    "name":"LineItemType"
+  },{
+    "category":"resourceTags",
+    "name":"user:Email"
+  },{
+    "category":"resourceTags",
+    "name":"user:Environment"
+  },{
+    "category":"resourceTags",
+    "name":"user:environment"
+  },{
+    "category":"resourceTags",
+    "name":"user:Product"
+  }],
+  "charset":"UTF-8",
+  "compression":"GZIP",
+  "contentType":"text/csv",
+  "reportId":"abcd",
+  "reportName":"hourly-cost-and-usage",
+  "billingPeriod":{
+    "start":"20170801T000000.000Z",
+    "end":"20170901T000000.000Z"
+  },
+  "bucket":"foo-bar",
+  "reportKeys":[],
+  "additionalArtifactKeys":[]
+}

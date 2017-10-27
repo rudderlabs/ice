@@ -105,7 +105,11 @@ public class CostAndUsageReportLineItem extends LineItem {
     
     @Override
     public String[] getResourceTagsHeader() {
-    	return resourceTagsHeader;
+    	String[] header = new String[resourceTagsHeader.length];
+    	for (int i = 0; i < resourceTagsHeader.length; i++)
+    		header[i] = resourceTagsHeader[i].substring("resourceTags/".length());
+    		
+    	return header;
     }
 
     @Override
@@ -130,7 +134,10 @@ public class CostAndUsageReportLineItem extends LineItem {
     		if (items[i+resourceTagStartIndex].isEmpty()) {
     			continue;
     		}
-    		sb.append((first ? "" : "|") + resourceTagsHeader[i].substring("user:".length()) + "=" + items[i+resourceTagStartIndex]);
+    		String tag = resourceTagsHeader[i].substring("resourceTags/".length());
+    		if (tag.startsWith("user:"))
+    			tag = tag.substring("user:".length());
+    		sb.append((first ? "" : "|") + tag + "=" + items[i+resourceTagStartIndex]);
     		first = false;
     	}
     	return sb.toString();
