@@ -48,19 +48,16 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private double costPerMonitorMetricPerHour;
 
     private ResourceService resourceService;
-    private Randomizer randomizer;
     
     public BasicLineItemProcessor(
     		AccountService accountService, 
     		ProductService productService, 
     		ReservationService reservationService, 
-    		ResourceService resourceService, 
-    		Randomizer randomizer) {
+    		ResourceService resourceService) {
     	this.accountService = accountService;
     	this.productService = productService;
     	this.reservationService = reservationService;
     	this.resourceService = resourceService;
-    	this.randomizer = randomizer;
     }
     
     public void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour) {
@@ -237,21 +234,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
         }
 
-        // Does the following code need to check for Product.cloudwatch in addition to Product.monitor?
-        // I have a suspicion that Amazon renamed the service. -jroth
-        if (randomizer != null && product.isMonitor())
-            return result;
-
         for (int i : indexes) {
-            if (randomizer != null) {
-
-                if (!tagGroup.product.isRds() && !tagGroup.product.isS3() && usageData.getData(i).get(tagGroup) != null)
-                    break;
-
-                long time = millisStart + i * AwsUtils.hourMillis;
-                usageValue = randomizer.randomizeUsage(time, resourceTagGroup == null ? tagGroup : resourceTagGroup, usageValue);
-                costValue = usageValue * randomizer.randomizeCost(tagGroup);
-            }
             if (!product.isMonitor()) {
                 Map<TagGroup, Double> usages = usageData.getData(i);
                 Map<TagGroup, Double> costs = costData.getData(i);
@@ -263,10 +246,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 // 	but we don't want to add the monthly line items to the usage.
                 // The reservation processor handles determination on what's unused.
                 if (result != Result.monthly || !(product.isRedshift() || product.isRdsInstance() || (product.isEc2Instance() && isCostAndUsageReport))) {
-                	addValue(usages, tagGroup, usageValue,  randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());                	
+                	addValue(usages, tagGroup, usageValue,  true);                	
                 }
 
-                addValue(costs, tagGroup, costValue, randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3());
+                addValue(costs, tagGroup, costValue, true);
             }
             else {
                 resourceCostValue = usageValue * costPerMonitorMetricPerHour;
@@ -276,29 +259,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
                 Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
 
-                if (randomizer == null || tagGroup.product.isRds() || tagGroup.product.isS3()) {
-                    if (!((product.isRedshift() || product.isRds()) && result == Result.monthly)) {
-                    	addValue(usagesOfResource, resourceTagGroup, usageValue, !product.isMonitor());
-                    }
-                    
-                    if (!modeledCostForResourceGroup || resourceCostValue < 0) {
-                        addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
-                    } else {
-                        addValue(costsOfResource, resourceTagGroup, resourceCostValue, !product.isMonitor());
-                    }
+                if (!((product.isRedshift() || product.isRds()) && result == Result.monthly)) {
+                	addValue(usagesOfResource, resourceTagGroup, usageValue, !product.isMonitor());
                 }
-                else {
-                    Map<String, Double> distribution = randomizer.getDistribution(tagGroup);
-                    for (Map.Entry<String, Double> entry : distribution.entrySet()) {
-                        String app = entry.getKey();
-                        double dist = entry.getValue();
-                        resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, ResourceGroup.getResourceGroup(app));
-                        double usage = usageValue * dist;
-                        if (product.isEc2Instance())
-                            usage = (int)usageValue * dist;
-                        addValue(usagesOfResource, resourceTagGroup, usage, false);
-                        addValue(costsOfResource, resourceTagGroup, usage * randomizer.randomizeCost(tagGroup), false);
-                    }
+                
+                if (!modeledCostForResourceGroup || resourceCostValue < 0) {
+                    addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
+                } else {
+                    addValue(costsOfResource, resourceTagGroup, resourceCostValue, !product.isMonitor());
                 }
             }
         }

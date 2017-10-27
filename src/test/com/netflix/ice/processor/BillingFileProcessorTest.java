@@ -160,9 +160,8 @@ public class BillingFileProcessorTest {
 										productService,
 										reservationService,
 										null,
-										new BasicLineItemProcessor(accountService, productService, reservationService, null, null),
+										new BasicLineItemProcessor(accountService, productService, reservationService, null),
 										priceListService,
-										null,
 										false);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
 		bfp.init();

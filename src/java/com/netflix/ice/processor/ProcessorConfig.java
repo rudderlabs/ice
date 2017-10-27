@@ -44,7 +44,6 @@ public class ProcessorConfig extends Config {
     public final ReservationService reservationService;
     public final LineItemProcessor lineItemProcessor;
     public final PriceListService priceListService;
-    public final Randomizer randomizer;
     public final double costPerMonitorMetricPerHour;
     public final boolean useBlended;
     public final boolean processOnce;
@@ -72,7 +71,6 @@ public class ProcessorConfig extends Config {
             ResourceService resourceService,
             LineItemProcessor lineItemProcessor,
             PriceListService priceListService,
-            Randomizer randomizer,
             boolean compress) throws Exception {
 
         super(properties, credentialsProvider, accountService, productService, resourceService);
@@ -83,7 +81,6 @@ public class ProcessorConfig extends Config {
         this.reservationService = reservationService;
         this.lineItemProcessor = lineItemProcessor;
         this.priceListService = priceListService;
-        this.randomizer = randomizer;
 
         if (properties.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR) != null)
             this.costPerMonitorMetricPerHour = Double.parseDouble(properties.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR));

@@ -63,7 +63,7 @@ public class BasicLineItemProcessorTest {
     public void newBasicLineItemProcessor() {
 		ReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
     	
-    	lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, null, null);    	
+    	lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, null);    	
     }
     
 	@Test

@@ -184,7 +184,7 @@ class BootStrap {
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
-				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService, null);
+				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
 					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 
@@ -200,7 +200,6 @@ class BootStrap {
                         resourceService,
                         lineItemProcessor,
 						priceListService,
-                        null,
 						true)
 				processorConfig.start();
             }
