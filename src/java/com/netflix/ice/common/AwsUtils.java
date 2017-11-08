@@ -228,6 +228,8 @@ public class AwsUtils {
                 if (output != null) try {output.close();} catch (IOException e){}
             }
             
+            try { s3Object.close(); } catch (Exception e) {}
+            
             return output.toByteArray();
         }
         finally {
@@ -398,6 +400,8 @@ public class AwsUtils {
                 if (input != null) try {input.close();} catch (IOException e){}
                 if (output != null) try {output.close();} catch (IOException e){}
             }
+            
+            try { s3Object.close(); } catch (Exception e) {}
 
             if (downloaded) {
             	// Set modified time of local file to match the time of the file in S3
