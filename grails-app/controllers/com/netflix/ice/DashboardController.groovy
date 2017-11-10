@@ -80,6 +80,32 @@ class DashboardController {
     def index = {
         redirect(action: "summary")
     }
+	
+	def getReservationOps = {
+		List<Operation> resOps = Operation.getReservationOperations();
+		def data = [];
+		for (Operation op: resOps) {
+			if (!op.isFamily() || getConfig().familyRiBreakout)
+				data.add(op.name);
+		}
+		
+        def result = [status: 200, data: data]
+        render result as JSON
+	}
+	
+	def getUtilizationOps = {
+		List<Operation> resOps = Operation.getReservationOperations();
+		def data = [];
+		for (Operation op: resOps) {
+			if (op.isOnDemand() || op.isSpot() || op.isUsed() || op.isBorrowed() ||
+						(op.isFamily() && getConfig().familyRiBreakout)) {
+				data.add(op.name);
+			}
+		}
+		
+		def result = [status: 200, data: data]
+		render result as JSON
+	}
 
     def getAccounts = {
         TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);

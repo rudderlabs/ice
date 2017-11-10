@@ -38,6 +38,7 @@ public class Operation extends Tag {
     }
     
     private static ConcurrentMap<String, Operation> operations = Maps.newConcurrentMap();
+    private static List<Operation> reservationOperations = Lists.newArrayList();
 
     public static final ReservationOperation spotInstanceSavings = new ReservationOperation("Savings - Spot", 0, null);
     public static final ReservationOperation spotInstances = new ReservationOperation("Spot Instances", 1, null);
@@ -176,6 +177,10 @@ public class Operation extends Tag {
         return result;
     }
 
+    public static List<Operation> getReservationOperations() {
+        return reservationOperations;
+    }
+
     public static class ReservationOperation extends Operation {
 		private static final long serialVersionUID = 1L;
 		private ReservationUtilization utilization = null;
@@ -185,6 +190,7 @@ public class Operation extends Tag {
             this.seq = seq;
             this.utilization = utilization;
             operations.put(name, this);
+            reservationOperations.add(this);
         }
 		
 		public ReservationUtilization getUtilization() {
@@ -205,5 +211,20 @@ public class Operation extends Tag {
     
     public boolean isBonus() {
     	return name.startsWith("Bonus RIs - ");
+    }
+    public boolean isBorrowed() {
+    	return name.startsWith("Borrowed RIs - ");
+    }
+    public boolean isFamily() {
+    	return name.startsWith("Family RIs - ");
+    }
+    public boolean isUsed() {
+    	return name.startsWith("Used RIs -");
+    }
+    public boolean isOnDemand() {
+    	return this == ondemandInstances;
+    }
+    public boolean isSpot() {
+    	return this == spotInstances;
     }
 }

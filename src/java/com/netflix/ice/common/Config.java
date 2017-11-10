@@ -18,6 +18,7 @@
 package com.netflix.ice.common;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -33,6 +34,7 @@ public abstract class Config {
     public final ResourceService resourceService;
     public final DateTime startDate;
     public final AWSCredentialsProvider credentialsProvider;
+    public final boolean familyRiBreakout;
 
     /**
      *
@@ -59,6 +61,10 @@ public abstract class Config {
         workS3BucketName = properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME);
         workS3BucketPrefix = properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX);
         localDir = properties.getProperty(IceOptions.LOCAL_DIR);
+        
+        // whether to separate out the family RI usage into its own operation category
+        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
+
 
         if (workS3BucketName == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_NAME must be specified");
 

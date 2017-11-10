@@ -50,7 +50,6 @@ public class ProcessorConfig extends Config {
     public final String processorInstanceId;
 
     public final String useCostForResourceGroup;
-    public final boolean familyRiBreakout;
 
     /**
      *
@@ -105,9 +104,6 @@ public class ProcessorConfig extends Config {
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
         processorInstanceId = properties.getProperty(IceOptions.PROCESSOR_INSTANCE_ID);
         
-        // whether to separate out the family RI usage into its own operation category
-        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
-
         ProcessorConfig.instance = this;
 
         billingFileProcessor = new BillingFileProcessor(this,

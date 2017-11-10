@@ -848,38 +848,10 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
   }
 }
 
-function reservationCtrl($scope, $location, usage_db, highchart) {
+function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
-  var reservationOps = [
-    "Savings - Spot",
-    "Spot Instances",
-    "On-Demand Instances",
-    "Savings - All Upfront",
-    "Used RIs - All Upfront",
-    "Family RIs - All Upfront",
-    "Bonus RIs - All Upfront",
-    "Borrowed RIs - All Upfront",
-    "Lent RIs - All Upfront",
-    "Unused RIs - All Upfront",
-    "Amortized RIs - All Upfront",
-    "Savings - Partial Upfront",
-    "Used RIs - Partial Upfront",
-    "Family RIs - Partial Upfront",
-    "Bonus RIs - Partial Upfront",
-    "Borrowed RIs - Partial Upfront",
-    "Lent RIs - Partial Upfront",
-    "Unused RIs - Partial Upfront",
-    "Amortized RIs - Partial Upfront",
-    "Savings - No Upfront",
-    "Used RIs - No Upfront",
-    "Family RIs - No Upfront",
-    "Bonus RIs - No Upfront",
-    "Borrowed RIs - No Upfront",
-    "Lent RIs - No Upfront",
-    "Unused RIs - No Upfront",
-    "Amortized RIs - No Upfront"];
-
-  var predefinedQuery = {operation: reservationOps.join(",")};
+  var reservationOps = [];
+  var predefinedQuery = {};
   $scope.legends = [];
   $scope.usage_cost = "cost";
   $scope.usageUnit = "Instances";
@@ -989,42 +961,50 @@ function reservationCtrl($scope, $location, usage_db, highchart) {
     usage_db.getUsageTypes($scope, null, query);
   }
 
-  usage_db.getParams($location.hash(), $scope);
-
-  usage_db.getAccounts($scope, null, {});
-  if ($scope.showZones)
-    usage_db.getZones($scope, null, {});
-  else
-    usage_db.getRegions($scope, null, {});
-
-  var query = $scope.showZones ? jQuery.extend({showZones: true}, predefinedQuery) : predefinedQuery;
-  usage_db.getProducts($scope, function() {
-    updateOperations();
-    updateUsageTypes();
-  }, query);
-
-  $scope.getData();
-
-  jQuery("#start, #end" ).datetimepicker({
-        showTime: false,
-        showMinute: false,
-        ampm: true,
-        timeFormat: 'hhTT',
-        dateFormat: 'yy-mm-dd'
-      });
-  jQuery('#end').datetimepicker().val($scope.end);
-  jQuery('#start').datetimepicker().val($scope.start);
+  var fn = function() {
+	  usage_db.getParams($location.hash(), $scope);
+	
+	  usage_db.getAccounts($scope, null, {});
+	  if ($scope.showZones)
+	    usage_db.getZones($scope, null, {});
+	  else
+	    usage_db.getRegions($scope, null, {});
+	
+	  var query = $scope.showZones ? jQuery.extend({showZones: true}, predefinedQuery) : predefinedQuery;
+	  usage_db.getProducts($scope, function() {
+	    updateOperations();
+	    updateUsageTypes();
+	  }, query);
+	
+	  $scope.getData();
+	
+	  jQuery("#start, #end" ).datetimepicker({
+	        showTime: false,
+	        showMinute: false,
+	        ampm: true,
+	        timeFormat: 'hhTT',
+	        dateFormat: 'yy-mm-dd'
+	      });
+	  jQuery('#end').datetimepicker().val($scope.end);
+	  jQuery('#start').datetimepicker().val($scope.start);
+  }
+  
+  $http({
+      method: "GET",
+      url: "getReservationOps",
+      params: {}
+    }).success(function(result) {
+      if (result.status === 200 && result.data) {
+        reservationOps = result.data;
+        predefinedQuery = {operation: reservationOps.join(",")};
+      }
+      fn();
+    });
 }
 
-function utilizationCtrl($scope, $location, usage_db, highchart) {
+function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
-  var utilizationOps = [
-    "On-Demand Instances",
-    "Spot Instances",
-    "Used RIs - All Upfront",
-    "Used RIs - No Upfront",
-    "Used RIs - Partial Upfront"];
-
+  var utilizationOps = [];
   var predefinedQuery = {operation: utilizationOps.join(",")};
   $scope.legends = [];
   $scope.usage_cost = "usage";
@@ -1132,31 +1112,45 @@ function utilizationCtrl($scope, $location, usage_db, highchart) {
     usage_db.getUsageTypes($scope, null, query);
   }
 
-  usage_db.getParams($location.hash(), $scope);
-
-  usage_db.getAccounts($scope, null, {});
-  if ($scope.showZones)
-    usage_db.getZones($scope, null, {});
-  else
-    usage_db.getRegions($scope, null, {});
-
-  var query = $scope.showZones ? jQuery.extend({showZones: true}, predefinedQuery) : predefinedQuery;
-  usage_db.getProducts($scope, function() {
-    updateOperations();
-    updateUsageTypes();
-  }, query);
-
-  $scope.getData();
-
-  jQuery("#start, #end" ).datetimepicker({
-      showTime: false,
-      showMinute: false,
-      ampm: true,
-      timeFormat: 'hhTT',
-      dateFormat: 'yy-mm-dd'
+  var fn = function() {
+	  usage_db.getParams($location.hash(), $scope);
+	
+	  usage_db.getAccounts($scope, null, {});
+	  if ($scope.showZones)
+	    usage_db.getZones($scope, null, {});
+	  else
+	    usage_db.getRegions($scope, null, {});
+	
+	  var query = $scope.showZones ? jQuery.extend({showZones: true}, predefinedQuery) : predefinedQuery;
+	  usage_db.getProducts($scope, function() {
+	    updateOperations();
+	    updateUsageTypes();
+	  }, query);
+	
+	  $scope.getData();
+	
+	  jQuery("#start, #end" ).datetimepicker({
+	      showTime: false,
+	      showMinute: false,
+	      ampm: true,
+	      timeFormat: 'hhTT',
+	      dateFormat: 'yy-mm-dd'
+	    });
+	  jQuery('#end').datetimepicker().val($scope.end);
+	  jQuery('#start').datetimepicker().val($scope.start);
+  }
+  
+  $http({
+      method: "GET",
+      url: "getUtilizationOps",
+      params: {}
+    }).success(function(result) {
+      if (result.status === 200 && result.data) {
+    	  utilizationOps = result.data;
+        predefinedQuery = {operation: utilizationOps.join(",")};
+      }
+      fn();
     });
-  jQuery('#end').datetimepicker().val($scope.end);
-  jQuery('#start').datetimepicker().val($scope.start);
 }
 
 function detailCtrl($scope, $location, $http, usage_db, highchart) {
