@@ -215,4 +215,8 @@ public abstract class LineItem {
 	abstract public String getPricingUnit();
 	
 	abstract public String getLineItemId();
+
+	public String getReservationId() {
+		return "";
+	}
 }

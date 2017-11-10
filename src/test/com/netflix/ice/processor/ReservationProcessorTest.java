@@ -25,6 +25,7 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
@@ -33,12 +34,16 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
 public class ReservationProcessorTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 	private static final String resourceDir = "src/test/resources/";
+
+	private final Product ec2Instance = productService.getProductByName(Product.ec2Instance);
+	private final Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 
     // reservationAccounts is a cross-linked list of accounts where each account
 	// can borrow reservations from any other.
@@ -79,7 +84,7 @@ public class ReservationProcessorTest {
 	@Test
 	public void testConstructor() throws IOException {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
-		ReservationProcessor rp = new ReservationProcessor(payerAccounts, reservationOwners.keySet(), null, null);
+		ReservationProcessor rp = new DetailedBillingReservationProcessor(payerAccounts, reservationOwners.keySet(), null, null, true);
 		assertNotNull("Contructor returned null", rp);
 	}
 	
@@ -95,13 +100,24 @@ public class ReservationProcessorTest {
 		
 		public Datum(Account account, Region region, Zone zone, Operation operation, String usageType, double value)
 		{
-			this.tagGroup = new TagGroup(account, region, zone, productService.getProductByName(Product.ec2Instance), operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.tagGroup = new TagGroup(account, region, zone, ec2Instance, operation, UsageType.getUsageType(usageType, "hours"), null);
 			this.value = value;
 		}
 
 		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, double value)
 		{
 			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.value = value;
+		}
+		
+		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, double value)
+		{
+			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource);
+			this.value = value;
+		}
+		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, String rsvArn, double value)
+		{
+			this.tagGroup = new TagGroupRI(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource, rsvArn);
 			this.value = value;
 		}
 	}
@@ -113,10 +129,10 @@ public class ReservationProcessorTest {
 		}
 		return m;
 	}
-	private void runOneHourTest(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) throws Exception {
-		runOneHourTestWithOwners(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, reservationOwners.keySet());
-	}
 	
+	private void runOneHourTest(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) throws Exception {
+		runOneHourTestWithOwners(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, reservationOwners.keySet(), null);
+	}
 	private void runOneHourTestWithOwners(
 			long startMillis, 
 			String[] reservationsCSV, 
@@ -125,31 +141,72 @@ public class ReservationProcessorTest {
 			Datum[] expectedUsage, 
 			Datum[] expectedCost, 
 			String debugFamily,
-			Set<Account> rsvOwners) throws Exception {
+			Set<Account> rsvOwners,
+			Product product) throws Exception {
+		ReservationProcessor rp = new DetailedBillingReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService, true);
+		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, product);
+	}	
+	private void runOneHourTestCostAndUsage(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) throws Exception {
+		runOneHourTestCostAndUsageWithOwners(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, reservationOwners.keySet(), null);
+	}
+	private void runOneHourTestCostAndUsageWithOwners(
+			long startMillis, 
+			String[] reservationsCSV, 
+			Datum[] usageData, 
+			Datum[] costData, 
+			Datum[] expectedUsage, 
+			Datum[] expectedCost, 
+			String debugFamily,
+			Set<Account> rsvOwners,
+			Product product) throws Exception {
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService, true);
+		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, null);
+	}
+	
+	private void runOneHourTestWithOwnersAndProcessor(
+			long startMillis, 
+			String[] reservationsCSV, 
+			Datum[] usageData, 
+			Datum[] costData, 
+			Datum[] expectedUsage, 
+			Datum[] expectedCost, 
+			String debugFamily,
+			ReservationProcessor reservationProcessor,
+			Product product) throws Exception {
+		
+		CostAndUsageData caud = new CostAndUsageData();
+		if (product != null) {
+			caud.putUsage(product, new ReadWriteData());
+			caud.putCost(product, new ReadWriteData());
+		}
 		
 		Map<TagGroup, Double> hourUsageData = makeDataMap(usageData);
 		Map<TagGroup, Double> hourCostData = makeDataMap(costData);
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);
-		ReadWriteData usage = new ReadWriteData();
-		usage.setData(ud, 0, false);
+		caud.getUsage(product).setData(ud, 0, false);
 		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
 		cd.add(hourCostData);
-		ReadWriteData cost = new ReadWriteData();
-		cost.setData(cd, 0, false);
+		caud.getCost(product).setData(cd, 0, false);
+		
+		Region debugRegion = null;
+		if (usageData.length > 0)
+			debugRegion = usageData[0].tagGroup.region;
+		else if (expectedUsage.length > 0)
+			debugRegion = expectedUsage[0].tagGroup.region;
 
-		runTest(startMillis, reservationsCSV, usage, cost, debugFamily, rsvOwners);
+		runTest(startMillis, reservationsCSV, caud, product, debugFamily, debugRegion, reservationProcessor);
 
-		assertEquals("usage size should be " + expectedUsage.length + ", got " + hourUsageData.size(), hourUsageData.size(), expectedUsage.length);
+		assertEquals("usage size wrong", expectedUsage.length, hourUsageData.size());
 		for (Datum datum: expectedUsage) {
 			assertNotNull("should have usage tag group " + datum.tagGroup, hourUsageData.get(datum.tagGroup));	
-			assertEquals("should have usage value " + datum.value + " for tag " + datum.tagGroup + ", got " + hourUsageData.get(datum.tagGroup), hourUsageData.get(datum.tagGroup), datum.value, 0.001);
+			assertEquals("wrong usage value for tag " + datum.tagGroup, datum.value, hourUsageData.get(datum.tagGroup), 0.001);
 		}
-		assertEquals("cost size should be " + expectedCost.length + ", got " + hourCostData.size(), hourCostData.size(), expectedCost.length);
+		assertEquals("cost size wrong", expectedCost.length, hourCostData.size());
 		for (Datum datum: expectedCost) {
 			assertNotNull("should have cost tag group " + datum.tagGroup, hourCostData.get(datum.tagGroup));	
-			assertEquals("should have cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
+			assertEquals("wrong cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
 		}
 	}
 	
@@ -171,7 +228,15 @@ public class ReservationProcessorTest {
 		return StringUtils.join(fields, ",");
 	}
 	
-	public static void runTest(long startMillis, String[] reservationsCSV, ReadWriteData usage, ReadWriteData cost, String debugFamily, Set<Account> rsvOwners) throws Exception {
+	public static void runTest(
+			long startMillis, 
+			String[] reservationsCSV, 
+			CostAndUsageData data, 
+			Product product, 
+			String debugFamily, 
+			Region debugRegion, 
+			ReservationProcessor rp) throws Exception {
+		
 		Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
@@ -182,13 +247,12 @@ public class ReservationProcessorTest {
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.FIXED, false);
 		reservationService.updateReservations(reservations, accountService, startMillis, productService);
 		
-		ReservationProcessor rp = new ReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService);
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
+		Region[] debugRegions = new Region[]{ debugRegion };
+		rp.setDebugRegions(debugRegions);
 		DateTime start = new DateTime(startMillis);
-		rp.process(ReservationUtilization.HEAVY, reservationService, usage, cost, start);
-		rp.process(ReservationUtilization.PARTIAL, reservationService, usage, cost, start);
-		rp.process(ReservationUtilization.FIXED, reservationService, usage, cost, start);		
+		rp.process(reservationService, data, product, start);
 	}
 	
 	/*
@@ -211,6 +275,7 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] costData = new Datum[]{				
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
 		};
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.reservedInstancesFixed, "m1.large", 0.0),
@@ -218,7 +283,16 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		costData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -247,7 +321,10 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", -1.3345),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -281,7 +358,14 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 
@@ -313,7 +397,14 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, Operation.savingsFixed, "m1.large", 0.175 * 2.0 - 0.190),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -350,7 +441,14 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, Operation.borrowedInstancesFixed, "m1.small", 0.0),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -389,7 +487,15 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
-	}
+
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1B, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1C, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+}
 	
 	/*
 	 * Test two full-upfront reservations - one AZ, one Region that are both used by the owner account.
@@ -421,7 +527,14 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
 		};
 
-		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -453,6 +566,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -484,6 +604,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -524,6 +651,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1B, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -554,6 +688,12 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -584,6 +724,12 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesPartial, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -621,6 +767,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -658,6 +811,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(2), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
+				new Datum(accounts.get(2), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*
@@ -670,7 +830,6 @@ public class ReservationProcessorTest {
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
 			"111111111111,RDS,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,1463763023778,1495299023778,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
 		};
-		Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 		
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", 1.0),
@@ -690,6 +849,11 @@ public class ReservationProcessorTest {
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 	}
 	
 	/*
@@ -703,7 +867,6 @@ public class ReservationProcessorTest {
 			"111111111111,RDS,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,1485929307960,1517465307960,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
 		};
 		
-		Product rdsInstance = productService.getProductByName(Product.rdsInstance);
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgresql", 2.0),
 		};
@@ -722,6 +885,11 @@ public class ReservationProcessorTest {
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgresql", null, "ri-2017-02-01-06-08-23-918", 2.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 	}
 	
 	/*
@@ -752,6 +920,12 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
 
 	/*
@@ -810,6 +984,12 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "t2");		
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, ec2Instance, Operation.bonusReservedInstancesPartial, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
 
 	@Test
@@ -847,6 +1027,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.EU_WEST_1, Zone.EU_WEST_1B, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.25),
+				new Datum(accounts.get(1), Region.EU_WEST_1, Zone.EU_WEST_1C, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}	
 
 	@Test
@@ -881,6 +1068,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c3");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, ec2Instance, Operation.bonusReservedInstancesPartial, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 1.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, ec2Instance, Operation.bonusReservedInstancesPartial, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
 	
 	@Test
@@ -928,6 +1122,16 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 1.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2A, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2B, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, Zone.US_WEST_2C, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
 	}
 	
 	/*
@@ -961,7 +1165,7 @@ public class ReservationProcessorTest {
 		
 		Set<Account> owners = Sets.newHashSet(accounts.get(0));
 
-		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners);		
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners, null);		
 	}
 
 	/*
@@ -997,7 +1201,37 @@ public class ReservationProcessorTest {
 
 		Set<Account> owners = Sets.newHashSet(accounts.get(1));
 
-		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners);		
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", owners, null);		
 	}
+	
+	/*
+	 * Test one Region scoped partial-upfront reservation that's used by the owner in a resource Group.
+	 */
+	@Test
+	public void testUsedPartialRegionResourceGroup() throws Exception {
+		long startMillis = 1494004800000L;
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,1493283689633,1524819688000,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+		};
+		
+		ResourceGroup rg = ResourceGroup.getResourceGroup("Prod_MyAPI");
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", rg, 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", null, 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.savingsPartial, "c4.2xlarge", null, 0.398 - 0.121 - 0.121),
+		};
 
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);		
+	}
 }

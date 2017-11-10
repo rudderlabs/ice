@@ -36,6 +36,7 @@ import com.amazonaws.services.redshift.model.DescribeReservedNodesResult;
 import com.amazonaws.services.redshift.model.ReservedNode;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
@@ -68,6 +69,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     protected ProcessorConfig config;
     protected boolean runCapacityPoller;
     protected Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations;
+    protected Map<String, Reservation> reservationsById;
     protected ReservationPeriod term;
     protected ReservationUtilization defaultUtilization;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
@@ -106,6 +108,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservations.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
+        reservationsById = Maps.newHashMap();
     }
 
     public void init() throws Exception {
@@ -130,6 +133,8 @@ public class BasicReservationService extends Poller implements ReservationServic
     }
 
     public static class Reservation {
+    	final String id;
+    	final TagGroup tagGroup;
         final int count;
         final long start; // Reservation start time rounded down to starting hour mark where it takes effect
         final long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
@@ -138,12 +143,16 @@ public class BasicReservationService extends Poller implements ReservationServic
         final double usagePrice; // usage price plus the recurring hourly charge
 
         public Reservation(
+        		String id,
+        		TagGroup tagGroup,
                 int count,
                 long start,
                 long end,
                 ReservationUtilization utilization,
                 double hourlyFixedPrice,
                 double usagePrice) {
+        	this.id = id;
+        	this.tagGroup = tagGroup;
             this.count = count;
             this.start = start;
             this.end = end;
@@ -178,13 +187,35 @@ public class BasicReservationService extends Poller implements ReservationServic
 				logger.error("No prices for " + serviceCode + " at " + AwsUtils.dateFormatter.print(time));
 				return 0.0;
 			}
-			Rate rate = prices.getReservationRate(region, usageType, LeaseContractLength.getByYears(term.years), purchaseOption, OfferingClass.standard);
-	        return rate.fixed + rate.hourly;
+			LeaseContractLength lcl = LeaseContractLength.getByYears(term.years);
+			Rate rate = prices.getReservationRate(region, usageType, lcl, purchaseOption, OfferingClass.standard);
+			double hourlyFixed = rate.getHourlyUpfrontAmortized(lcl);
+	        return hourlyFixed + rate.hourly;
 		} catch (Exception e) {
 			logger.error("No reservation rate for " + purchaseOption + " " + usageType + " in " + region + " at " + AwsUtils.dateFormatter.print(time) + " " + serviceCode);
 			e.printStackTrace();
 		}
         return 0.0;
+    }
+    
+    /*
+     * Get ReservationInfo for the given reservation id
+     */
+    public ReservationInfo getReservation(String id) {
+    	Reservation reservation = reservationsById.get(id);
+	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.hourlyFixedPrice, reservation.usagePrice);
+    }
+    
+    /*
+     * Get the set of reservation IDs that are active for the given time.
+     */
+    public Set<String> getReservations(long time) {
+    	Set<String> ids = Sets.newHashSet();
+    	for (Reservation r: reservationsById.values()) {
+    		if (time >= r.start && time < r.end)
+    			ids.add(r.id);
+    	}
+    	return ids;
     }
     
     public ReservationInfo getReservation(
@@ -231,7 +262,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        hourlyCost = hourlyCost / count;
 	    }
 	    
-	    return new ReservationInfo(count, upfrontAmortized, hourlyCost);
+	    return new ReservationInfo(tagGroup, count, upfrontAmortized, hourlyCost);
 	}
     
     private long getEffectiveReservationTime(Date d) {
@@ -500,6 +531,8 @@ public class BasicReservationService extends Poller implements ReservationServic
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
+        Map<String, Reservation> reservationsByIdMap = Maps.newHashMap();
+
         hasEc2Reservations = false;
         hasRdsReservations = false;
         hasRedshiftReservations = false;
@@ -537,7 +570,6 @@ public class BasicReservationService extends Poller implements ReservationServic
             // logger.info("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
             
             double hourlyFixedPrice = fixedPrice / (reservedInstances.getDuration() / 3600); // duration is in seconds, we need hours
-            Reservation reservation = new Reservation(reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             UsageType usageType;
             Product product;
@@ -577,6 +609,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             }
 
             TagGroup reservationKey = new TagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);
+            Reservation reservation = new Reservation(reservedInstances.getReservationId(), reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             List<Reservation> reservations = reservationMap.get(utilization).get(reservationKey);
             if (reservations == null) {
@@ -585,11 +618,14 @@ public class BasicReservationService extends Poller implements ReservationServic
             else {
                 reservations.add(reservation);
             }
+            reservationsByIdMap.put(reservation.id, reservation);
+
             //logger.info("Add reservation " + utilization.name() + " for key " + reservationKey.toString());
 
         }
 
         this.reservations = reservationMap;
+        this.reservationsById = reservationsByIdMap;
     }
     
 	public class Ec2Mods {

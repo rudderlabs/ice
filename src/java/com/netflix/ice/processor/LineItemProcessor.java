@@ -26,7 +26,6 @@ import java.util.Map;
  * Interface to process each line item in billing file.
  */
 public interface LineItemProcessor {
-    void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour);
     Result process(
     		long startMilli, 
     		boolean processAll, 

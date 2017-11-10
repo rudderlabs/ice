@@ -27,11 +27,12 @@ import com.amazonaws.services.simpleemail.model.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Product;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -66,7 +67,6 @@ public class BillingFileProcessor extends Poller {
     private String alertEmails;
     private String urlPrefix;
     
-    ReservationProcessor reservationProcessor;
     private MonthlyReportProcessor dbrProcessor;
     private MonthlyReportProcessor cauProcessor;
     
@@ -79,11 +79,6 @@ public class BillingFileProcessor extends Poller {
         this.alertEmails = alertEmails;
         this.urlPrefix = urlPrefix;
         
-        reservationProcessor = new ReservationProcessor(
-        							config.accountService.getPayerAccounts(),
-        							config.accountService.getReservationAccounts().keySet(),
-        							config.productService,
-        							config.priceListService);
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
     }
@@ -141,10 +136,14 @@ public class BillingFileProcessor extends Poller {
 //            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " before reservation processing");
             
             // now get reservation capacity to calculate upfront and un-used cost
-            for (ReservationUtilization utilization: ReservationUtilization.values()) {
-            	// We no longer support Light and Medium
-            	reservationProcessor.process(utilization, config.reservationService, costAndUsageData.getUsage(null), costAndUsageData.getCost(null), dataTime);
-            }
+            
+            // Get the reservation processor from the first report
+            ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
+            
+        	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), dataTime);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.rdsInstance), dataTime);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime);
             
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData.getUsage(null), costAndUsageData.getCost(null));

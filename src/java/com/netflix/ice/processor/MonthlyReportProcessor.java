@@ -19,4 +19,5 @@ public interface MonthlyReportProcessor {
 			CostAndUsageData costAndUsageData,
 		    Instances instances) throws Exception;
 
+	abstract public ReservationProcessor getReservationProcessor();
 }

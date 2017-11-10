@@ -46,11 +46,18 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private static Map<String, Double> ondemandRate = Maps.newHashMap();
     private ProcessorConfig config;
+    private ReservationProcessor reservationProcessor;
     private long startMilli;
     private long endMilli;
 
-	public DetailedBillingReportProcessor(ProcessorConfig config) {
+	public DetailedBillingReportProcessor(ProcessorConfig config) throws IOException {
 		this.config = config;
+        reservationProcessor = new DetailedBillingReservationProcessor(
+				config.accountService.getPayerAccounts(),
+				config.accountService.getReservationAccounts().keySet(),
+				config.productService,
+				config.priceListService,
+				config.familyRiBreakout);
 	}
 	
 	@Override
@@ -289,5 +296,10 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		long end = processReport(dataTime, report, file, costAndUsageData, instances);
         logger.info("done processing " + fileKey + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(end)));
         return end;
+	}
+
+	@Override
+	public ReservationProcessor getReservationProcessor() {
+		return reservationProcessor;
 	}
 }

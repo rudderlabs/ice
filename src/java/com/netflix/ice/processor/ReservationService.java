@@ -27,6 +27,7 @@ import com.netflix.ice.tag.UsageType;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Interface for reservations.
@@ -48,6 +49,16 @@ public interface ReservationService {
      * @return
      */
     ReservationUtilization getDefaultReservationUtilization(long time);
+    
+    /*
+     * Get ReservationInfo for the given reservation id
+     */
+    ReservationInfo getReservation(String id);
+    
+    /*
+     * Get the set of reservation IDs that are active for the given time.
+     */
+    Set<String> getReservations(long time);
 
     /**
      * Get reservation info.
@@ -87,11 +98,13 @@ public interface ReservationService {
     boolean hasRedshiftReservations();
 
     public static class ReservationInfo {
+    	public final TagGroup tagGroup;
         public final int capacity;
         public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
         public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
-        public ReservationInfo(int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        public ReservationInfo(TagGroup tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        	this.tagGroup = tagGroup;
             this.capacity = capacity;
             this.upfrontAmortized = upfrontAmortized;
             this.reservationHourlyCost = reservationHourlyCost;

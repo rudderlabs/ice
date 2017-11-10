@@ -44,13 +44,13 @@ public class ProcessorConfig extends Config {
     public final ReservationService reservationService;
     public final LineItemProcessor lineItemProcessor;
     public final PriceListService priceListService;
-    public final double costPerMonitorMetricPerHour;
     public final boolean useBlended;
     public final boolean processOnce;
     public final String processorRegion;
     public final String processorInstanceId;
 
     public final String useCostForResourceGroup;
+    public final boolean familyRiBreakout;
 
     /**
      *
@@ -82,11 +82,6 @@ public class ProcessorConfig extends Config {
         this.lineItemProcessor = lineItemProcessor;
         this.priceListService = priceListService;
 
-        if (properties.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR) != null)
-            this.costPerMonitorMetricPerHour = Double.parseDouble(properties.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR));
-        else
-            this.costPerMonitorMetricPerHour = 0;
-
         billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
         billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
@@ -103,11 +98,15 @@ public class ProcessorConfig extends Config {
         customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
         useBlended = properties.getProperty(IceOptions.USE_BLENDED) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.USE_BLENDED));
 
-        useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
+        //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
+        useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "");
         
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
         processorInstanceId = properties.getProperty(IceOptions.PROCESSOR_INSTANCE_ID);
+        
+        // whether to separate out the family RI usage into its own operation category
+        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
 
         ProcessorConfig.instance = this;
 
@@ -122,7 +121,6 @@ public class ProcessorConfig extends Config {
     public void start () throws Exception {
         logger.info("starting up...");
 
-        lineItemProcessor.init(useCostForResourceGroup.equals("modeled"), costPerMonitorMetricPerHour);
         reservationService.init();
         if (resourceService != null)
             resourceService.init(customTags);

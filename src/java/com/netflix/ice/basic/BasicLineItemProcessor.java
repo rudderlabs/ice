@@ -23,9 +23,7 @@ import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.*;
-
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -44,8 +42,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private AccountService accountService;
     private ProductService productService;
     private ReservationService reservationService;
-    private boolean modeledCostForResourceGroup;
-    private double costPerMonitorMetricPerHour;
 
     private ResourceService resourceService;
     
@@ -60,11 +56,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	this.resourceService = resourceService;
     }
     
-    public void init(boolean modeledCostForResourceGroup, double costPerMonitorMetricPerHour) {
-    	this.modeledCostForResourceGroup = modeledCostForResourceGroup;
-    	this.costPerMonitorMetricPerHour = costPerMonitorMetricPerHour;
-    }
-
     public Result process(
     		long startMilli, 
     		boolean processDelayed,
@@ -177,8 +168,15 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageValue = usageValue * numHoursInMonth;
         }
 
-        TagGroup tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
+        TagGroup tagGroup = null;
         TagGroup resourceTagGroup = null;
+        String reservationId = lineItem.getReservationId();
+        if (operation instanceof Operation.ReservationOperation && !reservationId.isEmpty()) {
+        	tagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null, reservationId);
+        }
+        else {
+        	tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
+        }
 
         int[] indexes;
         if (endIndex - startIndex > 1) {
@@ -197,34 +195,17 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             ondemandRate.put(key, costValue/usageValue);
         }
 
-        double resourceCostValue = costValue;
         if (lineItem.hasResources() && !lineItem.getResource().isEmpty() && resourceService != null) {
-        	
-            if (modeledCostForResourceGroup && product.isEc2Instance())
-                operation = Operation.getBonusReservedInstances(reservationService.getDefaultReservationUtilization(0L));
-
-            if (product.isEc2Instance() && operation instanceof Operation.ReservationOperation &&
-            		operation != Operation.ondemandInstances && operation != Operation.spotInstances) {
-                UsageType usageTypeForPrice = usageType;
-                if (usageType.name.endsWith(InstanceOs.others.name())) {
-                    usageTypeForPrice = UsageType.getUsageType(usageType.name.replace(InstanceOs.others.name(), InstanceOs.windows.name()), usageType.unit);
-                }
-                try {
-                    resourceCostValue = usageValue * reservationService.getLatestHourlyTotalPrice(
-                    							millisStart, tagGroup.region, usageTypeForPrice, 
-                    							reservationService.getDefaultReservationUtilization(0L).getPurchaseOption(),
-                    							ServiceCode.AmazonEC2, ec2Prices);
-                }
-                catch (Exception e) {
-                    logger.error("failed to get RI price for " + tagGroup.region + " " + usageTypeForPrice + " " + operation);
-                    resourceCostValue = -1;
-                }
-            }
-
             String resourceGroupStr = resourceService.getResource(account, reformedMetaData.region, product, lineItem, millisStart);
             if (!StringUtils.isEmpty(resourceGroupStr)) {
                 ResourceGroup resourceGroup = ResourceGroup.getResourceGroup(resourceGroupStr);
-                resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
+                if (tagGroup instanceof TagGroupRI) {
+                	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
+                }
+                else {
+                	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
+                }
+
                 if (usageDataOfProduct == null) {
                     usageDataOfProduct = new ReadWriteData();
                     costDataOfProduct = new ReadWriteData();
@@ -251,9 +232,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
                 addValue(costs, tagGroup, costValue, true);
             }
-            else {
-                resourceCostValue = usageValue * costPerMonitorMetricPerHour;
-            }
 
             if (resourceTagGroup != null) {
                 Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
@@ -263,11 +241,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 	addValue(usagesOfResource, resourceTagGroup, usageValue, !product.isMonitor());
                 }
                 
-                if (!modeledCostForResourceGroup || resourceCostValue < 0) {
-                    addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
-                } else {
-                    addValue(costsOfResource, resourceTagGroup, resourceCostValue, !product.isMonitor());
-                }
+                addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
             }
         }
 

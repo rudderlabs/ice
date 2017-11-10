@@ -2,6 +2,7 @@ package com.netflix.ice.processor;
 
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +24,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int publicOnDemandCostIndex;
 	private LineItemType lineItemType;
 	private int pricingUnitIndex;
+	private int reservationArnIndex;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -63,6 +65,35 @@ public class CostAndUsageReportLineItem extends LineItem {
         
         publicOnDemandCostIndex = report.getColumnIndex("pricing", "publicOnDemandCost");        
         pricingUnitIndex = report.getColumnIndex("pricing", "unit");
+        reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
+    }
+    
+    public String toString() {
+    	String[] values = new String[]{
+    			items[lineItemIdIndex],
+    			items[billTypeIndex],
+    			items[accountIdIndex],
+    			items[zoneIndex],
+    			items[productIndex],
+    			items[operationIndex],
+    			items[usageTypeIndex],
+    			items[descriptionIndex],
+    			items[usageQuantityIndex],
+    			items[startTimeIndex],
+    			items[endTimeIndex],
+    			items[rateIndex],
+    			items[costIndex],
+    			items[resourceIndex],
+    			items[reservedIndex],
+    			items[purchaseOptionIndex],
+    			items[lineItemTypeIndex],
+    			items[lineItemNormalizationFactorIndex],
+    			items[productUsageTypeIndex],
+    			items[publicOnDemandCostIndex],
+    			items[pricingUnitIndex],
+    			items[reservationArnIndex],
+    	};
+    	return StringUtils.join(values, ",");
     }
     
     @Override
@@ -228,6 +259,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return productUsageTypeIndex;
 	}
 	
+	public int getReservationArnIndex() {
+		return reservationArnIndex;
+	}
+
 	public String getPricingUnit() {
 		String unit = items[pricingUnitIndex];
 		if (unit.equals("Hrs")) {
@@ -251,6 +286,19 @@ public class CostAndUsageReportLineItem extends LineItem {
 	@Override
 	public String getLineItemId() {
 		return items[lineItemIdIndex];
+	}
+	
+	@Override
+	public String getReservationId() {
+		String arn = items[reservationArnIndex];
+		// First try the form for ec2 reservations
+		// Note: Prior to October 2017 RDS reservation IDs used the EC2 form and did not match the RDS RI ID.
+		int i = arn.indexOf("/");
+		if (i < 0) {
+			// try the rds form
+			i = arn.lastIndexOf(":");
+		}
+		return i > 0 ? arn.substring(i + 1) : arn;
 	}
 }
 

@@ -27,6 +27,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicLineItemProcessor;
@@ -85,14 +86,19 @@ public class BillingFileProcessorTest {
 				CostAndUsageData costAndUsageData,
 				InstancePrices ec2Prices,
 				Instances instances) throws Exception;
+		
+		public ReservationProcessor getReservationProcessor();
 	}
 	class CostAndUsageTest implements ReportTest {
+		private ReservationProcessor reservationProcessor = null;
+		
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
 				InstancePrices ec2Prices,
 				Instances instances) throws Exception {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
+			reservationProcessor = cauProcessor.getReservationProcessor();
 			File manifest = new File(resourcesReportDir, "hourly-cost-and-usage-Manifest.json");
 			CostAndUsageReport report = new CostAndUsageReport(manifest, cauProcessor);
 			
@@ -110,14 +116,21 @@ public class BillingFileProcessorTest {
 	        return cauProcessor.processReport(report.getStartTime(), report, files,
 	        		costAndUsageData, ec2Prices, instances);
 		}
+		
+		public ReservationProcessor getReservationProcessor() {
+			return reservationProcessor;
+		}
 	}
 	class DetailedBillingReportTest implements ReportTest {
+		private ReservationProcessor reservationProcessor = null;
+
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
 				InstancePrices ec2Prices,
 				Instances instances) throws Exception {
 			
 			DetailedBillingReportProcessor dbrProcessor = new DetailedBillingReportProcessor(config);
+			reservationProcessor = dbrProcessor.getReservationProcessor();
 			File dbr = new File(resourcesReportDir, "aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
 			S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
 			s3ObjectSummary.setKey("/aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
@@ -125,6 +138,10 @@ public class BillingFileProcessorTest {
 			
 	        return dbrProcessor.processReport(start, report, dbr,
 	        		costAndUsageData, instances);
+		}
+		
+		public ReservationProcessor getReservationProcessor() {
+			return reservationProcessor;
 		}
 	}
 	
@@ -185,9 +202,7 @@ public class BillingFileProcessorTest {
         logger.info("cut hours to " + hours);
         costAndUsageData.cutData(hours);
         		
-        for (ReservationUtilization utilization: ReservationUtilization.values()) {
-        	bfp.reservationProcessor.process(utilization, config.reservationService, costAndUsageData.getUsage(null), costAndUsageData.getCost(null), config.startDate);
-        }
+        reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate);
         
         logger.info("Finished processing reports, ready to compare results on " + 
         		costAndUsageData.getUsage(null).getTagGroups().size() + " usage tags and " + 
@@ -272,28 +287,43 @@ public class BillingFileProcessorTest {
 	        if (expectedLen != gotLen)
 	        	logger.info(dataType+" number of items for hour " + i + " doesn't match, expected " + expectedLen + ", got " + gotLen);
 			
-			// Count all the tags found vs. not found
+			// Count all the tags found vs. not found and output the error printouts in sorted order
 			int numFound = 0;
 			int numNotFound = 0;
+			Set<TagGroup> notFound = Sets.newTreeSet();
 			for (Entry<TagGroup, Double> entry: expected.entrySet()) {
 				Double gotValue = got.get(entry.getKey());
 				if (gotValue == null) {
-					if (numNotFound < 100 && (debugFamily == null || entry.getKey().usageType.name.contains(debugFamily)))
-						logger.info("Tag not found: " + entry.getKey() + ", value: " + entry.getValue());
+					if (debugFamily == null || entry.getKey().usageType.name.contains(debugFamily))
+						notFound.add(entry.getKey());
 					numNotFound++;
 				}
 				else
 					numFound++;
 			}
+			int numPrinted = 0;
+			for (TagGroup tg: notFound) {
+				logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
+				if (numPrinted++ > 100)
+					break;
+			}
+				
 			// Scan for values in got but not in expected
 			int numExtra = 0;
+			Set<TagGroup> extras = Sets.newTreeSet();
 			for (Entry<TagGroup, Double> entry: got.entrySet()) {
 				Double expectedValue = expected.get(entry.getKey());
 				if (expectedValue == null) {
-					if (numExtra < 100 && (debugFamily == null || entry.getKey().usageType.name.contains(debugFamily)))
-						logger.info("Extra tag found: " + entry.getKey() + ", value: " + entry.getValue());
+					if (debugFamily == null || entry.getKey().usageType.name.contains(debugFamily))
+						extras.add(entry.getKey());
 					numExtra++;
 				}
+			}
+			numPrinted = 0;
+			for (TagGroup tg: extras) {
+				logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
+				if (numPrinted++ > 100)
+					break;
 			}
 			if (numNotFound > 0 || numExtra > 0)
 				logger.info("Hour "+i+" Tags not found: " + numNotFound + ", found " + numFound + ", extra " + numExtra);
@@ -319,9 +349,9 @@ public class BillingFileProcessorTest {
 					}
 				}
 				logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
-				assertEquals("Hour "+i+" has " + numMismatches + " incorrect data values", numMismatches, 0);
+				assertEquals("Hour "+i+" has " + numMismatches + " incorrect data values", 0, numMismatches);
 			}
-			assertEquals("Hour "+i+" has " + numNotFound + " tags that were not found", numNotFound, 0);
+			assertEquals("Hour "+i+" has " + numNotFound + " tags that were not found", 0, numNotFound);
 			assertEquals(dataType+" number of items for hour " + i + " doesn't match, expected " + expectedLen + ", got " + gotLen, expectedLen, gotLen);			
 		}
 	}
@@ -364,9 +394,9 @@ public class BillingFileProcessorTest {
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
 		lineItemTest.newBasicLineItemProcessor();
-		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
+		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront", "reserved-instances/2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		String[] tag = new String[] { "Account1", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge", null };
-		ProcessTest test = lineItemTest.new ProcessTest(Which.both, line, tag, 1.0, 0.0, Result.hourly, 30);
+		ProcessTest test = lineItemTest.new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
 		
 		BasicLineItemProcessorTest.cauLineItem.setItems(test.cauItems);
 		CostAndUsageData costAndUsageData = lineItemTest.runProcessTest(test, BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true, priceListService);
@@ -394,25 +424,30 @@ public class BillingFileProcessorTest {
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);
-		ReadWriteData usage = new ReadWriteData();
-		usage.setData(ud, 0, false);
+		CostAndUsageData caud = new CostAndUsageData();
+		caud.getUsage(null).setData(ud, 0, false);
 		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
 		cd.add(hourCostData);
-		ReadWriteData cost = new ReadWriteData();
-		cost.setData(cd, 0, false);
+		caud.getCost(null).setData(cd, 0, false);
 
 		Set<Account> owners = Sets.newHashSet(ReservationProcessorTest.accounts.get(1));
-		ReservationProcessorTest.runTest(startMillis, resCSV, usage, cost, "c4", owners);
+		List<Account> linked = Lists.newArrayList();
+		linked.add(ReservationProcessorTest.accounts.get(1));
+		Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
+		
+		payerAccounts.put(ReservationProcessorTest.accounts.get(0), linked);
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(payerAccounts, owners, new BasicProductService(null), priceListService, true);
+		ReservationProcessorTest.runTest(startMillis, resCSV, caud, null, "c4", Region.AP_SOUTHEAST_2, rp);
 
-		assertEquals("usage size should be " + expectedUsage.length + ", got " + hourUsageData.size(), hourUsageData.size(), expectedUsage.length);
+		assertEquals("usage size wrong", expectedUsage.length, hourUsageData.size());
 		for (Datum datum: expectedUsage) {
 			assertNotNull("should have usage tag group " + datum.tagGroup, hourUsageData.get(datum.tagGroup));	
-			assertEquals("should have usage value " + datum.value + " for tag " + datum.tagGroup + ", got " + hourUsageData.get(datum.tagGroup), hourUsageData.get(datum.tagGroup), datum.value, 0.001);
+			assertEquals("wrong usage value for tag " + datum.tagGroup, datum.value, hourUsageData.get(datum.tagGroup), 0.001);
 		}
-		assertEquals("cost size should be " + expectedCost.length + ", got " + hourCostData.size(), hourCostData.size(), expectedCost.length);
+		assertEquals("cost size wrong", expectedCost.length, hourCostData.size());
 		for (Datum datum: expectedCost) {
 			assertNotNull("should have cost tag group " + datum.tagGroup, hourCostData.get(datum.tagGroup));	
-			assertEquals("should have cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
+			assertEquals("wrong cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
 		}
 	}
 	

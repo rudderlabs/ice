@@ -39,6 +39,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private ProcessorConfig config;
+    private ReservationProcessor reservationProcessor = null;
 
     private static ConcurrentMap<String, Double> ondemandRate = Maps.newConcurrentMap();
     private Instances instances;
@@ -49,8 +50,16 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
     private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
 
-	public CostAndUsageReportProcessor(ProcessorConfig config) {
+	public CostAndUsageReportProcessor(ProcessorConfig config) throws IOException {
 		this.config = config;
+		if (config != null) {
+	        reservationProcessor = new CostAndUsageReservationProcessor(
+					config.accountService.getPayerAccounts(),
+					config.accountService.getReservationAccounts().keySet(),
+					config.productService,
+					config.priceListService,
+					config.familyRiBreakout);
+		}
 	}
 	
 	protected static Pattern getPattern(String reportName) {
@@ -401,6 +410,11 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         
         return endMilli;
     }
+
+	@Override
+	public ReservationProcessor getReservationProcessor() {
+		return reservationProcessor;
+	}
 
     /*
 	@Override

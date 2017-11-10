@@ -195,5 +195,10 @@ public class IceOptions {
      */
     public static final String RESERVATION_CAPACITY_POLLER = "ice.reservationCapacityPoller";
 
+    /**
+     * Reservation capacity poller: whether or not to start reservation capacity poller
+     */
+    public static final String FAMILY_RI_BREAKOUT = "ice.breakoutFamilyReservationUsage";
+
 
 }
