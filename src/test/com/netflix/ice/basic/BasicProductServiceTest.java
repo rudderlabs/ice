@@ -16,7 +16,7 @@ public class BasicProductServiceTest {
 		Properties alts = new Properties();
 		alts.setProperty("VN", "Verbose Name");
 		ProductService ps = new BasicProductService(alts);
-		Product vn = ps.getProductByAwsName("Verbose Name");
+		Product vn = ps.getProductByAwsName("Amazon Verbose Name");
 		assertTrue("Alternate name not registered by constructor", vn.name.equals("VN"));
 	}
 
@@ -36,7 +36,7 @@ public class BasicProductServiceTest {
 		assertTrue("Didn't get the same product the second time", ps.getProductByAwsName("Amazon ProductA") == product2);
 		
 		// Should automatically match AWS and Amazon prefixes
-		assertEquals("Both product strings should not refer to the same object", product1, product2);
+		assertEquals("Both product strings should refer to the same object", product1, product2);
 	}
 
 	@Test
@@ -50,13 +50,13 @@ public class BasicProductServiceTest {
 	}
 
 	@Test
-	public void testAlternateProductName() {
-		Properties alts = new Properties();
-		alts.setProperty("SGS", "Simple Gravity Service");
+	public void testOverrideProductNameFromAwsName() {
+		Properties overrides = new Properties();
+		overrides.setProperty("SGS", "Simple Gravity Service");
 		
-		ProductService ps = new BasicProductService(alts);
+		ProductService ps = new BasicProductService(overrides);
 		
-		Product product = ps.getProductByName("Simple Gravity Service");
+		Product product = ps.getProductByAwsName("Amazon Simple Gravity Service");
 		assertEquals("Wrong product name", "SGS", product.name);
 		assertEquals("Wrong product file name", product.getFileName(), "Simple_Gravity_Service");
 		
@@ -65,4 +65,24 @@ public class BasicProductServiceTest {
 		assertTrue("Products don't match using ==", product == product2);
 	}
 	
+	@Test
+	public void testOverrideProductNameFromCanonicalName() {
+		Properties overrides = new Properties();
+		overrides.setProperty("SGS", "Simple Gravity Service");
+		
+		ProductService ps = new BasicProductService(overrides);
+		
+		Product product = ps.getProductByName("Simple Gravity Service");
+		assertEquals("Wrong product name", "SGS", product.name);
+		assertEquals("Wrong product file name", product.getFileName(), "Simple_Gravity_Service");
+		
+		Product product2 = ps.getProductByName("Simple Gravity Service");
+		assertEquals("Products don't match", product, product2);
+		assertTrue("Products don't match using ==", product == product2);
+		
+		product2 = ps.getProductByName("SGS");
+		
+		assertEquals("Products don't match", product, product2);
+		assertTrue("Products don't match using ==", product == product2);
+	}
 }

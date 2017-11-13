@@ -25,6 +25,8 @@ import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -38,6 +40,7 @@ import java.util.TreeMap;
 
 public class TagGroup implements Comparable<TagGroup>, Serializable {
 	private static final long serialVersionUID = 3L;
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public final Account account;
     public final Product product;
@@ -96,10 +99,13 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
     @Override
     public boolean equals(Object o) {
+    	if (this == o)
+    		return true;
         if (o == null)
             return false;
         TagGroup other = (TagGroup)o;
-        return
+
+        boolean match = 
                 this.zone == other.zone &&
                 this.account == other.account &&
                 this.region == other.region &&
@@ -107,6 +113,25 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 this.operation == other.operation &&
                 this.usageType == other.usageType &&
                 this.resourceGroup == other.resourceGroup;
+        
+        if (!match) {
+        	// Check for value match
+            boolean valueMatch = 
+            		this.account.equals(other.account) &&
+            		this.region.equals(other.region) &&
+            		(this.zone == null && other.zone == null) || (this.zone != null && other.zone != null && this.zone.equals(other.zone)) &&
+            		this.product.equals(other.product) &&
+            		this.operation.equals(other.operation) &&
+            		this.usageType.equals(other.usageType) &&
+            		(this.resourceGroup == null && other.resourceGroup == null) || (this.resourceGroup != null && other.resourceGroup != null && this.resourceGroup.equals(other.resourceGroup));
+            
+            if (match != valueMatch) {
+            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + System.identityHashCode(this.product) + ", " + System.identityHashCode(other.product));
+            	match = valueMatch;
+            }          
+        }
+        
+        return match;
     }
 
     @Override
@@ -116,9 +141,6 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         if (this.zone != null)
             result = prime * result + this.zone.hashCode();
         result = prime * result + this.account.hashCode();
-        if (this.region == null || this.product == null) {
-           // int iii = 0;
-        }
         result = prime * result + this.region.hashCode();
         result = prime * result + this.product.hashCode();
         result = prime * result + this.operation.hashCode();
@@ -162,7 +184,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.region.toString());
             out.writeUTF(tagGroup.zone == null ? "" : tagGroup.zone.toString());
             // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.writeUTF(tagGroup.product.getAwsName());
+            out.writeUTF(tagGroup.product.getCanonicalName());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
             out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
@@ -179,7 +201,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.write(tagGroup.region.toString() + ",");
             out.write(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
             // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.write(tagGroup.product.getAwsName() + ",");
+            out.write(tagGroup.product.getCanonicalName() + ",");
             out.write(tagGroup.operation.toString() + ",");
             UsageType.serializeCsv(out, tagGroup.usageType);
             out.write(",");
@@ -234,7 +256,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 	sb.append(",");
                 	sb.append(tagGroup.zone == null ? "" : tagGroup.zone.toString());
                 	sb.append(",");
-                	sb.append(tagGroup.product.getAwsName());
+                	sb.append(tagGroup.product.getCanonicalName());
                 	sb.append(",");
                 	sb.append(tagGroup.operation.toString());
                 	sb.append(",");

@@ -36,7 +36,7 @@ public class BasicProductService implements ProductService {
 	 */
     private static ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
     /*
-     * Map of products keyed by the name without the AWS or Amazon prefix
+     * Map of products keyed by the name without the AWS or Amazon prefix. Also has entries for override names
      */
     private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
     /*
@@ -44,11 +44,11 @@ public class BasicProductService implements ProductService {
      */
     private static ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
        
-    public BasicProductService(Properties alternateProductNames) {
+    public BasicProductService(Properties overrideProductNames) {
 		super();
-		if (alternateProductNames != null) {
-			for (String altName: alternateProductNames.stringPropertyNames())
-				Product.addAlternate(alternateProductNames.getProperty(altName), altName);
+		if (overrideProductNames != null) {
+			for (String overrideName: overrideProductNames.stringPropertyNames())
+				Product.addOverride(overrideProductNames.getProperty(overrideName), overrideName);
 		}
 	}
 
@@ -56,9 +56,7 @@ public class BasicProductService implements ProductService {
         Product product = productsByAwsName.get(awsName);
         if (product == null) {
             product = new Product(awsName);
-            productsByAwsName.put(awsName, product);
-            productsByName.put(product.name, product);
-            productsByFileName.put(product.getFileName(), product);
+            addProduct(product);
         }
         return product;
     }
@@ -87,14 +85,16 @@ public class BasicProductService implements ProductService {
         productsByName.put(product.name, product);
         productsByFileName.put(product.getFileName(), product);
 
-        String awsName = product.getAwsName();
-        if (!awsName.equals(product.name)) {
-        	// Product is using an alternate name, also save the original AWS name
-        	productsByName.put(awsName, product);
+        String canonicalName = product.getCanonicalName();
+        if (!canonicalName.equals(product.name)) {
+        	// Product is using an alternate name, also save the canonical name
+        	productsByName.put(canonicalName, product);
         }
         
-        productsByAwsName.put("AWS " + awsName, product);
-        productsByAwsName.put("Amazon " + awsName, product);
+        productsByAwsName.put("AWS " + canonicalName, product);
+        productsByAwsName.put("Amazon " + canonicalName, product);
+        // AmazonCloudWatch is at least one of the product names that doesn't use a space. There may be others...
+        productsByAwsName.put("Amazon" + canonicalName, product);
     }
 
     public Collection<Product> getProducts() {

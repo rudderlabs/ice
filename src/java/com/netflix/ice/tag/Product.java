@@ -31,13 +31,14 @@ public class Product extends Tag {
 	 * by the DataManager which are ultimately displayed in the
 	 * browser UI.
 	 * 
-	 * By default the name is the Amazon/AWS name pulled from the billing
+	 * By default the name is the canonical name for the product which
+	 * is the Amazon/AWS name pulled from the billing
 	 * reports with the AWS or Amazon prefix removed. For some products
 	 * we break down the usage into sub-categories as defined below.
-	 * In addition, a few of the product's names are modified to include
-	 * the common usage acronym such as EC2 for Elastic Compute Cloud and
-	 * S3 for Simple Storage Service. This is helpful when using the
-	 * product filter in the browser UI.
+	 *
+	 * The product's names can also be overridden to use the
+	 * common acronym such as EC2 for Elastic Compute Cloud and
+	 * S3 for Simple Storage Service.
 	 */
 	
 	/*
@@ -68,10 +69,10 @@ public class Product extends Tag {
     public static final String rdsInstance   = "RDS Instance";
 
 	/*
-	 * Map of product names used to replace the AWS name
+	 * Maps for holding overridden product names. One map for each lookup direction.
 	 */
-    private static ConcurrentMap<String, String> alternateNames = Maps.newConcurrentMap();
-    private static ConcurrentMap<String, String> awsNames = Maps.newConcurrentMap();
+    private static ConcurrentMap<String, String> overrideNames = Maps.newConcurrentMap();
+    private static ConcurrentMap<String, String> canonicalNames = Maps.newConcurrentMap();
 
     /*
      * Product constructor should only be called by the ProductService.
@@ -81,16 +82,16 @@ public class Product extends Tag {
      * The inherited tag name value will use the alternate name if present, otherwise
      * it uses the canonical AWS name (AWS and Amazon stripped off the head).
      * 
-     * The AWS name is always used by the TagGroup serializer so that changing
-     * the alternate name won't corrupt the data files.
+     * The Canonical name is always used by the TagGroup serializer so that changing
+     * the override name won't corrupt the data files.
      */
     public Product(String name) {  
-    	super(getAlternate(canonicalName(name)));
+    	super(getOverride(canonicalName(name)));
    	
     	// substitute "_" for spaces and make lower case
     	// This operation must be invertible, so we assume product
     	// names don't use underscore!
-    	fileName = getAwsName(this.name).replace(" ", "_");
+    	fileName = getCanonicalName(this.name).replace(" ", "_");
     }
 
     private static String canonicalName(String name) {
@@ -108,24 +109,34 @@ public class Product extends Tag {
     	return fileName.replace("_", " ");
     }
     
-    public static void addAlternate(String awsName, String alternate) {
-    	alternateNames.put(awsName,  alternate);
-    	awsNames.put(alternate,  awsName);
+    public static void addOverride(String canonical, String override) {
+    	overrideNames.put(canonical,  override);
+    	canonicalNames.put(override,  canonical);
     }
 
-    protected static String getAlternate(String awsName) {
+    /*
+     * getOverride() will return the override name corresponding the supplied
+     * canonical name if the canonical name has been overridden. If not
+     * overridden, then it just returns the canoncial name supplied.
+     */
+    protected static String getOverride(String canonicalName) {
     	String n;
-    	return (n = alternateNames.get(awsName)) != null ? n : awsName;
+    	return (n = overrideNames.get(canonicalName)) != null ? n : canonicalName;
     }
     
-    protected static String getAwsName(String name) {
+    /*
+     * getCanonicalName() will return the canonical name for the provide name.
+     * If there is no override for the supplied name it just returns the
+     * supplied name.
+     */
+    protected static String getCanonicalName(String name) {
     	String n;
-    	return (n = awsNames.get(name)) != null ? n : name;
+    	return (n = canonicalNames.get(name)) != null ? n : name;
     }
     
-    public String getAwsName() {
+    public String getCanonicalName() {
     	String n;
-    	return (n = awsNames.get(name)) != null ? n : name;
+    	return (n = canonicalNames.get(name)) != null ? n : name;
     }
 
     public String getFileName() {
@@ -133,63 +144,63 @@ public class Product extends Tag {
     }
     
     public boolean isSupport() {
-    	return getAwsName().contains("Support");
+    	return getCanonicalName().contains("Support");
     }
     
     public boolean isApiGateway() {
-    	return name.equals(getAlternate(apiGateway));
+    	return name.equals(getOverride(apiGateway));
     }
     
     public boolean isCloudFront() {
-    	return name.equals(getAlternate(cloudFront));
+    	return name.equals(getOverride(cloudFront));
     }
     
     public boolean isCloudHsm() {
-    	return name.equals(getAlternate(cloudhsm));
+    	return name.equals(getOverride(cloudhsm));
     }
     
     public boolean isDataTransfer() {
-    	return name.equals(getAlternate(dataTransfer));
+    	return name.equals(getOverride(dataTransfer));
     }
     
     public boolean isEc2() {
-    	return name.equals(getAlternate(ec2));
+    	return name.equals(getOverride(ec2));
     }
     
     public boolean isRds() {
-    	return name.equals(getAlternate(rds)) || name.equals(getAlternate(rdsFull));
+    	return name.equals(getOverride(rds)) || name.equals(getOverride(rdsFull));
     }
     
     public boolean isRedshift() {
-    	return name.equals(getAlternate(redshift));
+    	return name.equals(getOverride(redshift));
     }
     
     public boolean isS3() {
-    	return name.equals(getAlternate(s3));
+    	return name.equals(getOverride(s3));
     }
     
     public boolean isMonitor() {
-    	return name.equals(getAlternate(monitor));
+    	return name.equals(getOverride(monitor));
     }
     
     public boolean isEbs() {
-    	return name.equals(getAlternate(ebs));
+    	return name.equals(getOverride(ebs));
     }
     
     public boolean isCloudWatch() {
-    	return name.equals(getAlternate(cloudWatch));
+    	return name.equals(getOverride(cloudWatch));
     }
     
     public boolean isEc2Instance() {
-    	return name.equals(getAlternate(ec2Instance));
+    	return name.equals(getOverride(ec2Instance));
     }
     
     public boolean isEip() {
-    	return name.equals(getAlternate(eip));
+    	return name.equals(getOverride(eip));
     }
     
     public boolean isRdsInstance() {
-    	return name.equals(getAlternate(rdsInstance));
+    	return name.equals(getOverride(rdsInstance));
     }
     
 }

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.zip.GZIPInputStream;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,10 @@ public class ReadWriteDataTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private static final String resourcesDir = "src/test/resources";
     
-	private Properties getProperties() throws IOException {
+    private static AccountService as;
+    private static ProductService ps;
+    
+	private static Properties getProperties() throws IOException {
 		Properties prop = new Properties();
 		File file = new File(resourcesDir + "/ice.properties");
         InputStream is = new FileInputStream(file);
@@ -48,9 +52,15 @@ public class ReadWriteDataTest {
 		return prop;	
 	}
 	
+	@BeforeClass
+	public static void init() throws IOException {
+		as = new BasicAccountService(getProperties());
+        ps = new BasicProductService(null);
+	}
+	
 	@Test
 	public void testFileRead() throws IOException {
-        String filename = "cost_monthly_all";
+        String filename = "cost_daily_all_2017";
        
         File file = new File(resourcesDir, filename + ".gz");
         
@@ -83,9 +93,34 @@ public class ReadWriteDataTest {
 	}
 	
 	@Test
-	public void testSerializeDeserialize() throws IOException {
-		AccountService as = new BasicAccountService(getProperties());
-        ProductService ps = new BasicProductService(null);
+	public void testSerializeDeserializeRDS() throws IOException {
+		TagGroup tg = new TagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("RDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		testSerializeDeserialize(tg, 1.0);
+		
+		tg = new TagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("RDS Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		testSerializeDeserialize(tg, 1.0);
+
+		tg = new TagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		testSerializeDeserialize(tg, 1.0);
+	}
+	
+	private void testSerializeDeserialize(TagGroup tg, Double value) throws IOException {
+		ReadWriteData data = new ReadWriteData();
+		
+        List<Map<TagGroup, Double>> list = Lists.newArrayList();
+        Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
+        map.put(tg, value);
+		data.setData(list, 0, false);
+		
+		ReadWriteData result = serializeDeserialize(as, ps, data);
+		
+		assertEquals("Length of data is wrong", 1, result.getNum());
+		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
+		assertEquals("Value of first num is wrong", value, result.getData(0).get(tg), 0.001);
+	}
+	
+	@Test
+	public void testSerializeDeserializeTwice() throws IOException {
 		ReadWriteData data = new ReadWriteData();
 		
 		TagGroup tg = new TagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Simple Storage Service"), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
@@ -105,11 +140,11 @@ public class ReadWriteDataTest {
 		
 		ReadWriteData result = serializeDeserialize(as, ps, data);
 		
-		assertEquals("Length of data is wrong", result.getNum(), 2);
-		assertEquals("Length of first num is wrong", result.getData(0).size(), 1);
-		assertEquals("Value of first num is wrong", result.getData(0).get(tg), 1.0, 0.001);
-		assertEquals("Length of second num is wrong", result.getData(1).size(), 1);
-		assertEquals("Value of second num is wrong", result.getData(1).get(tg2), 2.0, 0.001);
+		assertEquals("Length of data is wrong", 2, result.getNum());
+		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
+		assertEquals("Value of first num is wrong", 1.0, result.getData(0).get(tg), 0.001);
+		assertEquals("Length of second num is wrong", 1, result.getData(1).size());
+		assertEquals("Value of second num is wrong", 2.0, result.getData(1).get(tg2), 0.001);
 		assertEquals("Tags don't match", tg, tg2);
 	}
 	
