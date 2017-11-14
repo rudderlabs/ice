@@ -111,10 +111,14 @@ public class BasicAccountService implements AccountService {
                 String accountName = name.substring("ice.account.".length());
                 Account account = new Account(properties.getProperty(name), accountName);
                 
-                // Use putIfAbsent() so that concurrent JUnit tests with same account data don't conflict
-                // when using cached TagGroups.
-                accountsByName.putIfAbsent(accountName, account);
-                accountsById.putIfAbsent(account.id, account);
+                // Only add accounts if they don't exist already so that we can
+                // support concurrent JUnit tests with same account data.
+                // TagGroup cache needs this.
+                Account existing = accountsByName.get(accountName);
+                if (existing == null || !existing.equals(account)) {
+                	accountsByName.put(accountName, account);
+                	accountsById.put(account.id, account);
+                }
             }
         }
 		for (String name: properties.stringPropertyNames()) {
