@@ -200,7 +200,7 @@ public class BillingFileProcessor extends Poller {
     	 */
     	for (TagGroup tg: usageData.getTagGroups()) {
     		if (tg.operation == ReservationOperation.spotInstances) {
-    			TagGroup savingsTag = new TagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.spotInstanceSavings, tg.usageType, tg.resourceGroup);
+    			TagGroup savingsTag = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.spotInstanceSavings, tg.usageType, tg.resourceGroup);
     			for (int i = 0; i < usageData.getNum(); i++) {
     				// For each hour of usage...
     				Double usage = usageData.getData(i).get(tg);

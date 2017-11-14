@@ -200,7 +200,7 @@ public class ReadWriteData {
             		data.add(map);
             	}
             	map = data.get(hour);
-            	TagGroup tag = new TagGroup(items[1], items[2], items[3], items[4], items[5], items[6], items[7], items[8], accountService, productService);
+            	TagGroup tag = TagGroup.getTagGroup(items[1], items[2], items[3], items[4], items[5], items[6], items[7], items[8], accountService, productService);
             	Double v = Double.parseDouble(items[9]);
             	map.put(tag, v);
             }

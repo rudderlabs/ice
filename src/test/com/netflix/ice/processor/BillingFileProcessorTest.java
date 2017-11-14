@@ -61,16 +61,22 @@ public class BillingFileProcessorTest {
     private static final String resourcesDir = "src/test/resources/";
     private static final String resourcesReportDir = resourcesDir + "report/";
 	private static PriceListService priceListService = null;
+	private static Properties properties;
+	private static AccountService accountService;
+	private static ProductService productService;
 
     @BeforeClass
     public static void init() throws Exception {
 		ReservationProcessorTest.init();
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
+        properties = getProperties();        
+		accountService = new BasicAccountService(properties);
+		productService = new BasicProductService(null);
     }
     
     
-	private Properties getProperties() throws IOException {
+	private static Properties getProperties() throws IOException {
 		Properties prop = new Properties();
 		File file = new File(resourcesReportDir, "ice.properties");
         InputStream is = new FileInputStream(file);
@@ -146,10 +152,6 @@ public class BillingFileProcessorTest {
 	}
 	
 	public void testFileData(ReportTest reportTest) throws Exception {
-        Properties properties = getProperties();
-                
-		AccountService accountService = new BasicAccountService(properties);
-		ProductService productService = new BasicProductService(null);
 		class BasicTestReservationService extends BasicReservationService {
 			BasicTestReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
 				super(term, defaultUtilization, false);
@@ -366,7 +368,7 @@ public class BillingFileProcessorTest {
 
         while ((line = in.readLine()) != null) {
         	String[] items = line.split(",");        	
-        	TagGroup tag = new TagGroup(items[0], items[1], items[2], items[3], items[4], items[5],
+        	TagGroup tag = TagGroup.getTagGroup(items[0], items[1], items[2], items[3], items[4], items[5],
         			items.length > 6 ? items[6] : "", 
         			items.length > 7 ? items[7] : "", 
         			accountService, productService);
@@ -390,7 +392,7 @@ public class BillingFileProcessorTest {
 	
 	@Test
 	public void testAllUpfrontUsage() throws Exception {
-		BasicLineItemProcessorTest.processSetup();
+		BasicLineItemProcessorTest.init(accountService);
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
 		lineItemTest.newBasicLineItemProcessor();

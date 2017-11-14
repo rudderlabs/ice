@@ -46,7 +46,7 @@ public class TagGroupWriter {
         if (file.exists()) {
             DataInputStream in = new DataInputStream(new FileInputStream(file));
             try {
-                tagGroups = TagGroup.Serializer.deserializeTagGroups(config, in);
+                tagGroups = TagGroup.Serializer.deserializeTagGroups(config.accountService, config.productService, in);
             }
             finally {
                 if (in != null)

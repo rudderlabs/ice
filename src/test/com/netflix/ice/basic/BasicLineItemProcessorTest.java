@@ -3,9 +3,9 @@ package com.netflix.ice.basic;
 import static org.junit.Assert.*;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.joda.time.DateTime;
 import org.junit.Before;
@@ -50,8 +50,8 @@ public class BasicLineItemProcessorTest {
     };
 
 
-    public static AccountService accountService = new BasicAccountService(null, null, null, null, null);
-    private static ProductService productService = new BasicProductService(null);
+    public static AccountService accountService = null;
+    private static ProductService productService = null;
     private BasicLineItemProcessor lineItemProcessor;
 	private static PriceListService priceListService = null;
     public static CostAndUsageReportProcessor cauProc;
@@ -59,11 +59,32 @@ public class BasicLineItemProcessorTest {
     public static ResourceService resourceService;
 
     @BeforeClass
-    public static void newPriceListService() throws Exception {
-		priceListService = new PriceListService(resourcesDir, null, null);
-		priceListService.init();
+	public static void beforeClass() throws Exception {
+    	init(new BasicAccountService(null, null, null, null, null));
     }
     
+    public static void init(AccountService as) throws Exception {
+    	accountService = as;
+    	
+		Properties props = new Properties();
+		props.setProperty("RDS", "Relational Database Service");
+		productService = new BasicProductService(props);
+		priceListService = new PriceListService(resourcesDir, null, null);
+		priceListService.init();
+
+		cauProc = new CostAndUsageReportProcessor(null);
+		File manifest = new File(resourcesDir, "manifestTest.json");
+        CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
+        cauLineItem = new CostAndUsageReportLineItem(false, cauReport);
+        
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		resourceService = new BasicResourceService(productService, tagKeys, tagValues);
+		String[] customTags = new String[]{ "Environment", "Email" };
+		resourceService.init(customTags);
+    	resourceService.initHeader(cauLineItem.getResourceTagsHeader());
+	}
+	
     @Before
     public void newBasicLineItemProcessor() {
 		ReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
@@ -337,21 +358,6 @@ public class BasicLineItemProcessorTest {
 			cauLineItem.setItems(t.cauItems);
 			runProcessTest(t, cauLineItem, "Cost and Usage", true, priceListService);
 		}
-	}
-	
-	@BeforeClass
-	public static void processSetup() throws IOException {
-        cauProc = new CostAndUsageReportProcessor(null);
-		File manifest = new File(resourcesDir, "manifestTest.json");
-        CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
-        cauLineItem = new CostAndUsageReportLineItem(false, cauReport);
-        
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
-		resourceService = new BasicResourceService(productService, tagKeys, tagValues);
-		String[] customTags = new String[]{ "Environment", "Email" };
-		resourceService.init(customTags);
-    	resourceService.initHeader(cauLineItem.getResourceTagsHeader());
 	}
 	
 	public CostAndUsageData runProcessTest(ProcessTest t, LineItem lineItem, String reportName, boolean isCostAndUsageReport, PriceListService priceListService) throws Exception {

@@ -298,7 +298,7 @@ public abstract class ReservationProcessor {
 			if (tagGroup.operation != unusedOp)
 				continue;
 			
-	        TagGroup savingsTagGroup = new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, tagGroup.resourceGroup);
+	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, tagGroup.resourceGroup);
 			
 	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
 

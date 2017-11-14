@@ -33,8 +33,10 @@ public class BasicAccountService implements AccountService {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
-    private Map<String, Account> accountsById = Maps.newConcurrentMap();
-    private Map<String, Account> accountsByName = Maps.newConcurrentMap();
+    // Keep the accounts in static maps. TagGroups have a cache and
+    // we want fast object comparisons.
+    private static Map<String, Account> accountsById = Maps.newConcurrentMap();
+    private static Map<String, Account> accountsByName = Maps.newConcurrentMap();
     private Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
     private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
@@ -108,8 +110,11 @@ public class BasicAccountService implements AccountService {
             if (name.startsWith("ice.account.")) {
                 String accountName = name.substring("ice.account.".length());
                 Account account = new Account(properties.getProperty(name), accountName);
-                accountsByName.put(accountName, account);
-                accountsById.put(account.id, account);
+                
+                // Use putIfAbsent() so that concurrent JUnit tests with same account data don't conflict
+                // when using cached TagGroups.
+                accountsByName.putIfAbsent(accountName, account);
+                accountsById.putIfAbsent(account.id, account);
             }
         }
 		for (String name: properties.stringPropertyNames()) {
@@ -150,7 +155,7 @@ public class BasicAccountService implements AccountService {
             account = new Account(accountId, accountId);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
-            //logger.info("created account " + accountId + ".");
+            logger.info("getAccountById() created account " + accountId + ".");
         }
         return account;
     }
@@ -166,6 +171,7 @@ public class BasicAccountService implements AccountService {
             account = new Account(accountName, accountName);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
+            logger.info("getAccountByName() created account " + accountName + ".");
         }
         return account;
     }

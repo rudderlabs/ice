@@ -608,7 +608,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             	continue;
             }
 
-            TagGroup reservationKey = new TagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);
+            TagGroup reservationKey = TagGroup.getTagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);
             Reservation reservation = new Reservation(reservedInstances.getReservationId(), reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             List<Reservation> reservations = reservationMap.get(utilization).get(reservationKey);

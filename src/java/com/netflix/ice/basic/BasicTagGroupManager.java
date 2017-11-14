@@ -66,7 +66,7 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
             logger.info("trying to read from " + file);
             DataInputStream in = new DataInputStream(new FileInputStream(file));
             try {
-                TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(config, in);
+                TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(config.accountService, config.productService, in);
                 TreeMap<Long, Collection<TagGroup>> tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
                 Interval totalInterval = null;
                 if (tagGroups.size() > 0) {
@@ -95,7 +95,7 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
             Set<TagGroup> to = Sets.newHashSet();
             for (TagGroup tagGroup: from) {
                 if (tagGroup.resourceGroup != null)
-                    to.add(new TagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, tagGroup.operation, tagGroup.usageType, null));
+                    to.add(TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, tagGroup.operation, tagGroup.usageType, null));
                 else
                     to.add(tagGroup);
             }

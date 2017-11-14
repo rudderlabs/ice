@@ -100,24 +100,24 @@ public class ReservationProcessorTest {
 		
 		public Datum(Account account, Region region, Zone zone, Operation operation, String usageType, double value)
 		{
-			this.tagGroup = new TagGroup(account, region, zone, ec2Instance, operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.tagGroup = TagGroup.getTagGroup(account, region, zone, ec2Instance, operation, UsageType.getUsageType(usageType, "hours"), null);
 			this.value = value;
 		}
 
 		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, double value)
 		{
-			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), null);
+			this.tagGroup = TagGroup.getTagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), null);
 			this.value = value;
 		}
 		
 		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, double value)
 		{
-			this.tagGroup = new TagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource);
+			this.tagGroup = TagGroup.getTagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource);
 			this.value = value;
 		}
 		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, String rsvArn, double value)
 		{
-			this.tagGroup = new TagGroupRI(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource, rsvArn);
+			this.tagGroup = TagGroupRI.getTagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource, rsvArn);
 			this.value = value;
 		}
 	}
@@ -213,7 +213,7 @@ public class ReservationProcessorTest {
 	private static String convertStartAndEnd(String res) {
 		// If start and end times are in milliseconds, convert to AWS billing format
 		String[] fields = res.split(",");
-		try {
+		try {			
 			Long start = Long.parseLong(fields[9]);
 			fields[9] = LineItem.amazonBillingDateFormat.print(new DateTime(start));
 		}

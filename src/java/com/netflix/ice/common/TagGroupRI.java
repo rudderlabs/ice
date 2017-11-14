@@ -26,7 +26,7 @@ public class TagGroupRI extends TagGroup {
 	
 	public final String reservationId;
 
-	public TagGroupRI(Account account, Region region, Zone zone,
+	private TagGroupRI(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
 			ResourceGroup resourceGroup, String reservationId) {
 		super(account, region, zone, product, operation, usageType,

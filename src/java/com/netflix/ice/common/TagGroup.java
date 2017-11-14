@@ -49,7 +49,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     public final Region region;
     public final Zone zone;
     public final ResourceGroup resourceGroup;
-    public TagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
+    
+    protected TagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
         this.account = account;
         this.region = region;
         this.zone = zone;
@@ -58,16 +59,6 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         this.usageType = usageType;
         this.resourceGroup = resourceGroup;
     }
-
-    public TagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
-        this.account = accountService.getAccountByName(account);
-        this.region = Region.getRegionByName(region);
-        this.zone = StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, this.region);
-        this.product = productService.getProductByName(product);
-        this.operation = Operation.getOperation(operation);
-        this.usageType = UsageType.getUsageType(usageTypeName, usageTypeUnit);
-        this.resourceGroup = StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup);
-}
 
     @Override
     public String toString() {
@@ -126,7 +117,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             		(this.resourceGroup == null && other.resourceGroup == null) || (this.resourceGroup != null && other.resourceGroup != null && this.resourceGroup.equals(other.resourceGroup));
             
             if (match != valueMatch) {
-            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + System.identityHashCode(this.product) + ", " + System.identityHashCode(other.product));
+            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + System.identityHashCode(this.account) + ", " + System.identityHashCode(other.account));
             	match = valueMatch;
             }          
         }
@@ -153,6 +144,17 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
     private static Map<TagGroup, TagGroup> tagGroups = Maps.newConcurrentMap();
 
+    public static TagGroup getTagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
+        return getTagGroup(
+    		accountService.getAccountByName(account),
+        	Region.getRegionByName(region),
+        	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
+        	productService.getProductByName(product),
+        	Operation.getOperation(operation),
+            UsageType.getUsageType(usageTypeName, usageTypeUnit),
+            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup));   	
+    }
+    
     public static TagGroup getTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
         TagGroup newOne = new TagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         TagGroup oldOne = tagGroups.get(newOne);
@@ -208,7 +210,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.write(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
 
-        public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(Config config, DataInput in) throws IOException {
+        public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(AccountService accountService, ProductService productService, DataInput in) throws IOException {
             int numCollections = in.readInt();
             TreeMap<Long, Collection<TagGroup>> result = Maps.newTreeMap();
             for (int i = 0; i < numCollections; i++) {
@@ -216,7 +218,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 int numKeys = in.readInt();
                 List<TagGroup> keys = Lists.newArrayList();
                 for (int j = 0; j < numKeys; j++) {
-                    keys.add(deserialize(config.accountService, config.productService, in));
+                    keys.add(deserialize(accountService, productService, in));
                 }
                 result.put(monthMilli, keys);
             }

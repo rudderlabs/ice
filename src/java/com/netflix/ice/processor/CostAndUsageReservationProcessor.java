@@ -94,16 +94,16 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 						    // Used by owner account, mark as used
 						    TagGroup usedTagGroup = null;
 						    if (used == adjustedUsed || !familyBreakout)
-						    	usedTagGroup = new TagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getReservedInstances(utilization), tg.usageType, tg.resourceGroup);
+						    	usedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getReservedInstances(utilization), tg.usageType, tg.resourceGroup);
 						    else
-						    	usedTagGroup = new TagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getFamilyReservedInstances(utilization), tg.usageType, tg.resourceGroup);
+						    	usedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getFamilyReservedInstances(utilization), tg.usageType, tg.resourceGroup);
 						    add(toBeAdded, usedTagGroup, used);
 						    add(costMap, usedTagGroup, adjustedUsed * reservation.reservationHourlyCost);
 					    }
 					    else {
 					    	// Borrowed by other account, mark as borrowed/lent
-						    TagGroup borrowedTagGroup = new TagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getBorrowedInstances(utilization), tg.usageType, tg.resourceGroup);
-						    TagGroup lentTagGroup = new TagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, ReservationOperation.getLentInstances(utilization), rtg.usageType, tg.resourceGroup);
+						    TagGroup borrowedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.getBorrowedInstances(utilization), tg.usageType, tg.resourceGroup);
+						    TagGroup lentTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, ReservationOperation.getLentInstances(utilization), rtg.usageType, tg.resourceGroup);
 						    add(toBeAdded, borrowedTagGroup, used);
 						    add(costMap, borrowedTagGroup, adjustedUsed * reservation.reservationHourlyCost);
 						    add(toBeAdded, lentTagGroup, adjustedUsed);
@@ -113,19 +113,19 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    }
 			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {
 			    	// Assign all upfront amortization and savings to owner
-			        TagGroup upfrontTagGroup = new TagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup);
+			        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup);
 				    add(costMap, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 				    
 				    // Assign all savings to owner
 			        InstancePrices instancePrices = prices.get(reservation.tagGroup.product);
 				    double onDemandRate = instancePrices.getOnDemandRate(reservation.tagGroup.region, reservation.tagGroup.usageType);
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
-			        TagGroup savingsTagGroup = new TagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, rtg.resourceGroup);
+			        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, rtg.resourceGroup);
 				    add(costMap, savingsTagGroup, reservation.capacity * savingsRate);
 			    }
 			    
 			    // Unused
-			    TagGroup unusedTagGroup = new TagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
+			    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
 			    if (reservedUnused != 0.0) {
 				    add(toBeAdded, unusedTagGroup, reservedUnused);
 				    add(costMap, unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
