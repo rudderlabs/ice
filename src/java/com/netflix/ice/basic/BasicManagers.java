@@ -22,6 +22,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Product;
@@ -43,6 +44,7 @@ public class BasicManagers extends Poller implements Managers {
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
+    private InstancesService instancesService = null;
 
     BasicManagers(boolean compress) {
     	this.compress = compress;
@@ -63,6 +65,8 @@ public class BasicManagers extends Poller implements Managers {
     public void init() {
         config = ReaderConfig.getInstance();
         instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+        instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService);
+        
         doWork();
         start();
     }
@@ -81,6 +85,10 @@ public class BasicManagers extends Poller implements Managers {
 
     public DataManager getUsageManager(Product product, ConsolidateType consolidateType) {
         return usageManagers.get(new Key(product, consolidateType));
+    }
+    
+    public Instances getInstances() {
+    	return instancesService.getInstances();
     }
 
     @Override

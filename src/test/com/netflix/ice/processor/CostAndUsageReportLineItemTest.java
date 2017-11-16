@@ -54,7 +54,7 @@ public class CostAndUsageReportLineItemTest {
 		assertEquals("Wrong tags header size", 1, tagsHeader.length);
 		assertEquals("Wrong tags header value", "user:Environment", tagsHeader[0]);
 		assertEquals("Wrong resource tag value", "Prod", li.getResourceTag(0));
-		assertEquals("Wrong tags string", "Environment=Prod", li.getResourceTagsString());
+		assertEquals("Wrong tags string", "Prod", li.getResourceTags().get("Environment"));
 	}
 
 }

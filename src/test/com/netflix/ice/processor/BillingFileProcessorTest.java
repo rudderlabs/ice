@@ -190,7 +190,7 @@ public class BillingFileProcessorTest {
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
 		CostAndUsageData costAndUsageData = new CostAndUsageData();
-        Instances instances = new Instances();
+        Instances instances = new Instances(null, null, null);
         
 		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));

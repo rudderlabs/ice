@@ -217,12 +217,11 @@ public class BillingFileProcessor extends Poller {
 
     void init() {
     	costAndUsageData = new CostAndUsageData();
-        instances = new Instances();
+        instances = new Instances(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
     }
 
     private void archiveInstances() throws Exception {
-        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-        instances.archive(config, "instances_" + AwsUtils.monthDateFormat.print(monthDateTime)); 	
+        instances.archive(startMilli); 	
     }
 
 

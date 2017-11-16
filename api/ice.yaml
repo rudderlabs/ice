@@ -189,6 +189,24 @@ paths:
           schema:
             $ref: '#/definitions/NamesResponse'
 
+  /getReservationOps:
+    get:
+      description: Get the list of operations to use for requests in the reservations dashboard.
+      responses:
+        '200':
+          description: collection of operations
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /getUtilizationOps:
+    get:
+      description: Get the list of operations to use for requests in the utilization dashboard.
+      responses:
+        '200':
+          description: collection of operations
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
   /getData:
     post:
       description: Get the data for the requested cost or usage.
@@ -370,5 +388,39 @@ paths:
       responses:
         '200':
           $ref: '#/responses/successResponse'
-            
+
+  /instance:
+    get:
+      description: Get information about an EC2, RDS, or Redshift instance.
+      parameters:
+        - name: id
+          in: query
+          description: AWS ID of the instance
+          type: string
+          required: true
+      responses:
+        '200':
+          description: instance information
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              accountId:
+                type: string
+              accountName:
+                type: string
+              region:
+                type: string
+              zone:
+                type: string
+              tags:
+                type: object
+                additionalProperties:
+                  type: string
+        '404':
+          description: not found error
+
 

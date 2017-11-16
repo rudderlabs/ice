@@ -18,6 +18,7 @@
 package com.netflix.ice.reader;
 
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.Instances;
 import com.netflix.ice.tag.Product;
 
 import java.util.Collection;
@@ -58,6 +59,11 @@ public interface Managers {
      */
     DataManager getUsageManager(Product product, ConsolidateType consolidateType);
 
+    /**
+     * 
+     */
+    Instances getInstances();
+    
     /**
      * shutdown all manager instances
      */

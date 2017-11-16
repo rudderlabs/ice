@@ -1,7 +1,9 @@
 package com.netflix.ice.processor;
 
 import java.util.Arrays;
+import java.util.Map;
 
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
 
 public class DetailedBillingReportLineItem extends LineItem {	    
@@ -74,17 +76,15 @@ public class DetailedBillingReportLineItem extends LineItem {
     }
 
     @Override
-    public String getResourceTagsString() {
-    	StringBuilder sb = new StringBuilder();
-    	boolean first = true;
+    public Map<String, String>  getResourceTags() {
+    	Map<String, String> tags = Maps.newHashMap();
     	for (int i = resourceIndex + 1; i < items.length; i++) {
     		if (items[i].isEmpty()) {
     			continue;
     		}
-    		sb.append((first ? "" : "|") + header[i].substring("user:".length()) + "=" + items[i]);
-    		first = false;
+    		tags.put(header[i].substring("user:".length()), items[i]);
     	}
-    	return sb.toString();
+    	return tags;
     }
     
     @Override

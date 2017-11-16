@@ -37,6 +37,7 @@ import org.joda.time.DateTime
 import org.joda.time.Interval
 
 import com.netflix.ice.tag.Tag
+import com.netflix.ice.processor.Instances
 import com.netflix.ice.reader.*;
 import com.google.common.collect.Lists
 import com.google.common.collect.Sets
@@ -45,6 +46,7 @@ import com.google.common.collect.Maps
 import org.json.JSONObject
 
 import com.netflix.ice.common.ConsolidateType
+import com.netflix.ice.common.Instance
 
 import org.joda.time.Hours
 import org.slf4j.Logger;
@@ -438,6 +440,19 @@ class DashboardController {
         def result = [status: 200, start: dateFormatter.print(start), end: dateFormatter.print(end)];
         render result as JSON
     }
+	
+	def instance = {
+		Instance i = getManagers().getInstances().get(params.id);
+		if (i != null) {
+			def zone = (i.zone == null) ? null : i.zone.name;
+			def result = [id: i.id, type: i.type, accountId: i.account.id, accountName: i.account.name, region: i.region.name, zone: zone, tags: i.tags];
+			response.status = 200;
+			render result as JSON
+		}
+		else {
+			response.status = 404;
+		}
+	}
 
     def summary = {}
 

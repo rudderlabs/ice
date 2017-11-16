@@ -115,7 +115,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (product.isEc2Instance()) {
             result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
             if (instances != null && lineItem.hasResources())
-            	instances.add(lineItem.getResource(), usageType.toString(), lineItem.getResourceTagsString(), account, reformedMetaData.region, zone);
+            	instances.add(lineItem.getResource(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone);
         }
         else if (product.isRedshift()) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);

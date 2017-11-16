@@ -158,9 +158,8 @@ public class CostAndUsageReportLineItem extends LineItem {
     }
 
     @Override
-    public String getResourceTagsString() {
-    	StringBuilder sb = new StringBuilder();
-    	boolean first = true;
+    public Map<String, String>  getResourceTags() {
+    	Map<String, String> tags = Maps.newHashMap();
     	for (int i = 0; i < resourceTagsHeader.length && i+resourceTagStartIndex < items.length; i++) {
     		if (items[i+resourceTagStartIndex].isEmpty()) {
     			continue;
@@ -168,10 +167,9 @@ public class CostAndUsageReportLineItem extends LineItem {
     		String tag = resourceTagsHeader[i].substring("resourceTags/".length());
     		if (tag.startsWith("user:"))
     			tag = tag.substring("user:".length());
-    		sb.append((first ? "" : "|") + tag + "=" + items[i+resourceTagStartIndex]);
-    		first = false;
+    		tags.put(tag, items[i+resourceTagStartIndex]);
     	}
-    	return sb.toString();
+    	return tags;
     }
     
     @Override

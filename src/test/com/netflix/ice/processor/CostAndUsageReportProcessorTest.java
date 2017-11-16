@@ -74,7 +74,7 @@ public class CostAndUsageReportProcessorTest {
 		// items defined above starts out with no tags
 		assertEquals("Resource tag size is wrong", 0, lineItem.getResourceTagsSize());		
 		assertEquals("ResourceTag is wrong", "", lineItem.getResourceTag(0));		
-		assertEquals("ResourceTagString is wrong", "", lineItem.getResourceTagsString());		
+		assertEquals("ResourceTagString is wrong", 0, lineItem.getResourceTags().size());		
 		assertTrue("IsReserved is wrong", lineItem.isReserved());
 	}
 

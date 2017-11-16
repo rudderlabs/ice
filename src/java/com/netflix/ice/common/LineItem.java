@@ -1,5 +1,7 @@
 package com.netflix.ice.common;
 
+import java.util.Map;
+
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -124,7 +126,7 @@ public abstract class LineItem {
     
     abstract public String getResourceTag(int index);
     
-    abstract public String getResourceTagsString();
+    abstract public Map<String, String> getResourceTags();
     
     abstract public boolean isReserved();
 
