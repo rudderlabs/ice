@@ -274,9 +274,6 @@ public abstract class ReservationProcessor {
 		
 		processReservations(reservationService, usageData, costData, startMilli);
 				
-        for (ReservationUtilization utilization: ReservationUtilization.values()) {
-    		removeUnusedFromSavings(utilization, usageData, costData);
-        }	
 		if (debugHour >= 0)
 			printUsage("after", usageData, costData);		
 	}
@@ -286,45 +283,7 @@ public abstract class ReservationProcessor {
 			ReadWriteData usageData,
 			ReadWriteData costData,
 			Long startMilli);	
-	
-	private void removeUnusedFromSavings(
-			ReservationUtilization utilization,
-			ReadWriteData usageData,
-			ReadWriteData costData) {
 		
-		Operation unusedOp = Operation.getUnusedInstances(utilization);
-		
-		for (TagGroup tagGroup: usageData.getTagGroups()) {
-			if (tagGroup.operation != unusedOp)
-				continue;
-			
-	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, tagGroup.resourceGroup);
-			
-	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
-
-	        for (int i = 0; i < usageData.getNum(); i++) {
-				// For each hour of usage...
-			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			    
-			    Double unused = usageMap.get(tagGroup);
-	        	if (unused != null && unused > 0.0) {
-		        	Double savings = costMap.get(savingsTagGroup);
-		        	if (savings == null) {
-		        		logger.error("Savings record not found for " + tagGroup);
-		        	}
-		        	else {
-		        		savings -= unused * onDemandRate;
-		        		costMap.put(savingsTagGroup, savings);
-		        	}
-	        	}
-	        }
-		}
-	}
-	
-	
-	
 	protected void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
 		logger.info("---------- usage and cost for hour " + debugHour + " " + when + " processing ----------------");
 	    Map<TagGroup, Double> usageMap = usageData.getData(debugHour);

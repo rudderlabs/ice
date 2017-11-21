@@ -410,7 +410,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			if (debugHour >= 0)
 				printUsage("between AZ and Regional", usageData, costData);		
 			processRegionalReservations(utilization, reservationService, usageData, costData, startMilli);
-        }
+    		removeUnusedFromSavings(utilization, usageData, costData);
+        }	
 	}
 		
 	private void processAvailabilityZoneReservations(ReservationUtilization utilization,
@@ -490,8 +491,9 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		        	logger.info("  ** Bonus instances **** hour: " + i + ", bonus: " + bonusReserved + ", tag: " + bonusTagGroup);
 		        }
 			
-			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {
-			        costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			    if (reservation.capacity > 0) {
+			    	if (reservation.upfrontAmortized > 0)
+			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 			        
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
 				    costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
@@ -622,8 +624,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + uu.used + ", unused: " + uu.unused + ", tag: " + unusedTagGroup);
 			        }
 			    }
-			    if (reservation.capacity > 0 && reservation.upfrontAmortized > 0) {
-			        costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			    if (reservation.capacity > 0) {
+			    	if (reservation.upfrontAmortized > 0)
+			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			    	
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
 			        costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
 			    }			
@@ -650,6 +654,42 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			}
 		}
 		return unassignedUsage;
+	}
+	
+	private void removeUnusedFromSavings(
+			ReservationUtilization utilization,
+			ReadWriteData usageData,
+			ReadWriteData costData) {
+		
+		Operation unusedOp = Operation.getUnusedInstances(utilization);
+		
+		for (TagGroup tagGroup: usageData.getTagGroups()) {
+			if (tagGroup.operation != unusedOp)
+				continue;
+			
+	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, tagGroup.resourceGroup);
+			
+	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
+
+	        for (int i = 0; i < usageData.getNum(); i++) {
+				// For each hour of usage...
+			
+			    Map<TagGroup, Double> usageMap = usageData.getData(i);
+			    Map<TagGroup, Double> costMap = costData.getData(i);
+			    
+			    Double unused = usageMap.get(tagGroup);
+	        	if (unused != null && unused > 0.0) {
+		        	Double savings = costMap.get(savingsTagGroup);
+		        	if (savings == null) {
+		        		logger.error("Savings record not found for " + tagGroup);
+		        	}
+		        	else {
+		        		savings -= unused * onDemandRate;
+		        		costMap.put(savingsTagGroup, savings);
+		        	}
+	        	}
+	        }
+		}
 	}
 }
 
