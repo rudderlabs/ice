@@ -242,6 +242,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 }
                 
                 addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
+                
+                // Collect statistics on tag coverage
+                for (String tag: resourceService.getUserTags()) {
+                	String v = resourceService.getUserTagValue(lineItem, tag);
+                	costAndUsageData.addTagCoverage(tag, i, tagGroup, !StringUtils.isEmpty(v));
+                }
             }
         }
 

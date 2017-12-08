@@ -20,6 +20,7 @@ package com.netflix.ice.reader;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.Instances;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.UserTag;
 
 import java.util.Collection;
 
@@ -34,7 +35,13 @@ public interface Managers {
      *
      * @return collection of products
      */
-    Collection<Product> getProducts();
+	Collection<Product> getProducts();
+
+	/**
+	 *
+	 * @return collection of tags
+	 */
+	Collection<UserTag> getTags();
 
     /**
      *
@@ -58,6 +65,13 @@ public interface Managers {
      * @return usage DataManager instance for specified product and consolidateType
      */
     DataManager getUsageManager(Product product, ConsolidateType consolidateType);
+
+    /**
+     * 
+     * @param tag
+     * @return
+     */
+    DataManager getTagCoverageManager(UserTag tag);
 
     /**
      * 

@@ -17,209 +17,43 @@
  */
 package com.netflix.ice.basic;
 
-import com.google.common.cache.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.netflix.ice.common.*;
 import com.netflix.ice.reader.*;
-import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
 
 import org.joda.time.*;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.zip.GZIPInputStream;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
-public class BasicDataManager extends Poller implements DataManager {
-    private static final String compressExtension = ".gz";
+public class BasicDataManager extends DataFilePoller implements DataManager {
 
-    protected ReaderConfig config = ReaderConfig.getInstance();
-    protected final String dbName;
-    protected final boolean compress;
-    protected ConsolidateType consolidateType;
-    protected Product product;
+    protected TagGroupManager tagGroupManager;
     protected InstanceMetrics instanceMetrics;
 
-    protected Map<DateTime, File> fileCache = Maps.newConcurrentMap();
-    protected LoadingCache<DateTime, ReadOnlyData> data = CacheBuilder.newBuilder()
-       .maximumSize(config.monthlyCacheSize)
-       .removalListener(new RemovalListener<DateTime, ReadOnlyData>() {
-           public void onRemoval(RemovalNotification<DateTime, ReadOnlyData> objectRemovalNotification) {
-               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey());
-               fileCache.remove(objectRemovalNotification.getKey());
-           }
-       })
-       .build(
-               new CacheLoader<DateTime, ReadOnlyData>() {
-                   public ReadOnlyData load(DateTime monthDate) throws Exception {
-                       return loadData(monthDate);
-                   }
-               });
-
-    public BasicDataManager(Product product, ConsolidateType consolidateType, boolean isCost, boolean compress, InstanceMetrics instanceMetrics) {
-        this.product = product;
-        this.consolidateType = consolidateType;
-        this.dbName = (isCost ? "cost_" : "usage_") + consolidateType + "_" + (product == null ? "all" : product.getFileName());
-        this.compress = compress;
+    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
+    		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetrics instanceMetrics) {
+    	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
+        this.tagGroupManager = tagGroupManager;
         this.instanceMetrics = instanceMetrics;
 
         start();
     }
-
-    /**
-     * We check if new data is available periodically
-     * @throws Exception
-     */
-    @Override
-    protected void poll() throws Exception {
-        logger.info(dbName + " start polling...");
-        for (DateTime key: Sets.newHashSet(fileCache.keySet())) {
-            File file = fileCache.get(key);
-            try {
-                logger.info("trying to download " + file);
-                boolean downloaded = downloadFile(file);
-                if (downloaded) {
-                    ReadOnlyData newData = loadDataFromFile(file);
-                    data.put(key, newData);
-                    fileCache.put(key, file);
-                }
-            }
-            catch (Exception e) {
-                logger.error("failed to download " + file, e);
-            }
-        }
-    }
-
-    @Override
-    protected String getThreadName() {
-        return this.dbName;
-    }
-
-    private ReadOnlyData loadData(DateTime monthDate) throws InterruptedException {
-        while (true) {
-            File file = getDownloadFile(monthDate);
-            try {
-                ReadOnlyData result = loadDataFromFile(file);
-                fileCache.put(monthDate, file);
-                return result;
-            }
-            catch (FileNotFoundException e) {
-                logger.error("error in loading data for " + monthDate + " " + this.dbName, e);
-                fileCache.put(monthDate, file);
-                return new ReadOnlyData(new double[][]{}, Lists.<TagGroup>newArrayList());
-            }
-            catch (Exception e) {
-                logger.error("error in loading data for " + monthDate + " " + this.dbName, e);
-                if (file.delete())
-                    logger.info("deleted corrupted file " + file);
-                else
-                    logger.error("not able to delete corrupted file " + file);
-                Thread.sleep(2000L);
-            }
-        }
-    }
-
-    private synchronized File getDownloadFile(DateTime monthDate) {
-        File file = getFile(monthDate);
-        downloadFile(file);
-        return file;
-    }
-
-    private File getFile(DateTime monthDate) {
-    	String filename = dbName;
-        if (consolidateType == ConsolidateType.hourly)
-        	filename += "_" + AwsUtils.monthDateFormat.print(monthDate);
-        else if (consolidateType == ConsolidateType.daily)
-            filename += "_" + monthDate.getYear();
-        
-        return new File(config.localDir, filename + (compress ? compressExtension : ""));
-    }
-
-    private synchronized boolean downloadFile(File file) {
-        try {
-            return AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
-        }
-        catch (Exception e) {
-            logger.error("error downloading " + file, e);
-            return false;
-        }
-    }
-
-    private ReadOnlyData loadDataFromFile(File file) throws Exception {
-        logger.info("trying to load data from " + file);
-        InputStream is = new FileInputStream(file);
-        if (compress)
-        	is = new GZIPInputStream(is);
-        DataInputStream in = new DataInputStream(is);
-        try {
-            ReadOnlyData result = ReadOnlyData.Serializer.deserialize(in);
-            logger.info("done loading data from " + file);
-            return result;
-        }
-        finally {
-            in.close();
-        }
-    }
-
-    private ReadOnlyData getReadOnlyData(DateTime key) throws ExecutionException {
-
-        ReadOnlyData result = this.data.get(key);
-
-        if (fileCache.get(key) == null) {
-            logger.warn(dbName + " cannot find file in fileCache " + key);
-            fileCache.put(key, getFile(key));
-        }
-        return result;
-    }
-
+    
     private double[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
-        DateTime start = config.startDate;
-        DateTime end = config.startDate;
+    	Interval adjusted = getAdjustedInterval(interval);
+        DateTime start = adjusted.getStart();
+        DateTime end = adjusted.getEnd();
 
-        if (consolidateType == ConsolidateType.hourly) {
-            start = interval.getStart().withDayOfMonth(1).withMillisOfDay(0);
-            end = interval.getEnd();
-        }
-        else if (consolidateType == ConsolidateType.daily) {
-            start = interval.getStart().withDayOfYear(1).withMillisOfDay(0);
-            end = interval.getEnd();
-        }
-
-        int num = 0;
-        if (consolidateType == ConsolidateType.hourly) {
-            num = interval.toPeriod(PeriodType.hours()).getHours();
-            if (interval.getStart().plusHours(num).isBefore(interval.getEnd()))
-                num++;
-        }
-        else if (consolidateType == ConsolidateType.daily) {
-            num = interval.toPeriod(PeriodType.days()).getDays();
-            if (interval.getStart().plusDays(num).isBefore(interval.getEnd()))
-                num++;
-        }
-        else if (consolidateType == ConsolidateType.weekly) {
-            num = interval.toPeriod(PeriodType.weeks()).getWeeks();
-            if (interval.getStart().plusWeeks(num).isBefore(interval.getEnd()))
-                num++;
-        }
-        else if (consolidateType == ConsolidateType.monthly) {
-            num = interval.toPeriod(PeriodType.months()).getMonths();
-            if (interval.getStart().plusMonths(num).isBefore(interval.getEnd()))
-                num++;
-        }
-
+        int num = getSize(interval);
         double[] result = new double[num];
 
         do {
@@ -323,7 +157,7 @@ public class BasicDataManager extends Poller implements DataManager {
             tagListsMap.put(Tag.aggregated, tagLists);
         }
         else
-            tagListsMap = config.managers.getTagGroupManager(product).getTagListsMap(interval, tagLists, groupBy, forReservation);
+            tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation);
 
         Map<Tag, double[]> result = Maps.newTreeMap();
         double[] aggregated = null;
@@ -347,14 +181,4 @@ public class BasicDataManager extends Poller implements DataManager {
         return result;
     }
 
-    public int getDataLength(DateTime start) {
-        try {
-            ReadOnlyData data = getReadOnlyData(start);
-            return data.getNum();
-        }
-        catch (ExecutionException e) {
-            logger.error("error in getDataLength for " + start, e);
-            return 0;
-        }
-    }
 }

@@ -40,7 +40,6 @@ public class ProcessorConfig extends Config {
     public final String[] billingAccessExternalIds;
     public final DateTime costAndUsageStartDate;
 
-    public final String[] customTags;
     public final ReservationService reservationService;
     public final LineItemProcessor lineItemProcessor;
     public final PriceListService priceListService;
@@ -93,8 +92,6 @@ public class ProcessorConfig extends Config {
         else
         	costAndUsageStartDate = new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
 
-        // Tags initialization
-        customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
         useBlended = properties.getProperty(IceOptions.USE_BLENDED) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.USE_BLENDED));
 
         //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
@@ -119,7 +116,7 @@ public class ProcessorConfig extends Config {
 
         reservationService.init();
         if (resourceService != null)
-            resourceService.init(customTags);
+            resourceService.init();
 
         priceListService.init();
         billingFileProcessor.start();

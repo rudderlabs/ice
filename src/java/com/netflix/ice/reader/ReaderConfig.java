@@ -22,6 +22,8 @@ import com.netflix.ice.basic.BasicWeeklyCostEmailService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UserTag;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
@@ -101,7 +103,7 @@ public class ReaderConfig extends Config {
             throughputMetricService.init();
         managers.init();
         if (resourceService != null)
-            resourceService.init(null);
+            resourceService.init();
         applicationGroupService.init();
     }
 
@@ -115,6 +117,7 @@ public class ReaderConfig extends Config {
 
     public void start() {
 
+    	// Prime the data caches
         Managers managers = ReaderConfig.getInstance().managers;
         Collection<Product> products = managers.getProducts();
         for (Product product: products) {
@@ -124,8 +127,17 @@ public class ReaderConfig extends Config {
                 continue;
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Dollar);
-                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
+                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Native);
             }
+        }
+        
+        // Prime the tag coverage caches
+        for (UserTag tag: managers.getTags()) {
+            TagGroupManager tagGroupManager = managers.getTagGroupManager(null);
+            Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
+            if (interval == null)
+                continue;
+            readData(null, managers.getTagCoverageManager(tag), interval, ConsolidateType.hourly, UsageUnit.Native);
         }
 
         if (costEmailService != null)

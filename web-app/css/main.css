@@ -335,6 +335,7 @@ div.grippie { background: #EEEEEE url(../images/grippie.png) no-repeat scroll ce
 .metaOperations {width: 230px}
 .metaUsageTypes {width: 230px}
 .metaResourceGroups {width: 450px}
+.metaTags {width: 125px}
 .metaSelect {height:80px;}
 .metaInput {}
 .metaFilter {border: 1px solid #CCC; background-color: #EEF8FF; color: #092448; width: 60px; margin-right: 8px;}

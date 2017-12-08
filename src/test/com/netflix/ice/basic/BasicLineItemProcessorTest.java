@@ -79,9 +79,8 @@ public class BasicLineItemProcessorTest {
         
 		Map<String, List<String>> tagKeys = Maps.newHashMap();
 		Map<String, List<String>> tagValues = Maps.newHashMap();
-		resourceService = new BasicResourceService(productService, tagKeys, tagValues);
 		String[] customTags = new String[]{ "Environment", "Email" };
-		resourceService.init(customTags);
+		resourceService = new BasicResourceService(productService, customTags, new String[]{}, tagKeys, tagValues);
     	resourceService.initHeader(cauLineItem.getResourceTagsHeader());
 	}
 	

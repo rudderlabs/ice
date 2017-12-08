@@ -86,6 +86,11 @@ public class IceOptions {
     public static final String CUSTOM_TAGS = "ice.customTags";
 
     /**
+     * User can configure their additional tags to add to custom tags displayed in code coverage dashboard.
+     */
+    public static final String ADDITIONAL_TAGS = "ice.additionalTags";
+
+    /**
      * Boolean Flag whether to use blended or Unblended Costs.  Default is UnBlended Cost(false)
      */
     public static final String USE_BLENDED = "ice.use_blended";

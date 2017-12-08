@@ -169,7 +169,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
 				String filename = fileKey.substring(prefix.length());
 		        File file = new File(localDir, filename);
-		        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + "/" + file.getName() + "...");
+		        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + file.getName() + "...");
 		        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), prefix, file, lastProcessed,
 		                report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
 		        if (downloaded)

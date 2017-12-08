@@ -23,6 +23,9 @@ import com.netflix.ice.tag.*;
 
 import java.util.List;
 
+/**
+ * Holds a List of Values for each of the Tags in a TagGroup
+ */
 public class TagLists {
     public final List<Account> accounts;
     public final List<Region> regions;
@@ -112,6 +115,13 @@ public class TagLists {
         this.resourceGroups = resourceGroups;
     }
 
+    /**
+     * Compares the supplied tagGroup against the contents of the TagLists object.
+     * If the TagLists doesn't have any values for a Tag, that Tag is passed over
+     * and will be considered true. If the list for a Tag has values, then that list
+     * is checked to see if it contains any values that match the one in the tagGroup.
+     * if it does not, then return false.
+     */
     public boolean contains(TagGroup tagGroup) {
         boolean result = true;
 

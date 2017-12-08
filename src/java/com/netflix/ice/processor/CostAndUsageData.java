@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.TagCoverageRatio;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Product;
 
@@ -23,10 +24,12 @@ public class CostAndUsageData {
 
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
+    private Map<String, ReadWriteData> tagCoverage;
 
 	public CostAndUsageData() {
 		usageDataByProduct = Maps.newHashMap();
 		costDataByProduct = Maps.newHashMap();
+		tagCoverage = Maps.newHashMap();
         usageDataByProduct.put(null, new ReadWriteData());
         costDataByProduct.put(null, new ReadWriteData());
 	}
@@ -68,6 +71,15 @@ public class CostAndUsageData {
 				cost.putAll(entry.getValue());
 			}
 		}
+		for (Entry<String, ReadWriteData> entry: data.tagCoverage.entrySet()) {
+			ReadWriteData coverage = getCoverage(entry.getKey());
+			if (coverage == null) {
+				tagCoverage.put(entry.getKey(), entry.getValue());
+			}
+			else {
+				coverage.putAll(entry.getValue());
+			}
+		}
 	}
 	
     public void cutData(int hours) {
@@ -77,6 +89,23 @@ public class CostAndUsageData {
         for (ReadWriteData data: costDataByProduct.values()) {
             data.cutData(hours);
         }
+    }
+    
+    public ReadWriteData getCoverage(String tag) {
+    	return tagCoverage.get(tag);
+    }
+    
+    /**
+     * Add an entry to the tag coverage statistics for the given TagGroup
+     */
+    public void addTagCoverage(String tag, int index, TagGroup tagGroup, boolean hasTag) {
+    	ReadWriteData coverage = getCoverage(tag);
+    	if (coverage == null) {
+    		coverage = new ReadWriteData();
+    		tagCoverage.put(tag, coverage);
+    	}
+    	Map<TagGroup, Double> hourData = coverage.getData(index);
+    	hourData.put(tagGroup, TagCoverageRatio.add(hourData.get(tagGroup), hasTag));
     }
 
     public void archive(long startMilli, DateTime startDate, boolean compress) throws Exception {
@@ -96,7 +125,8 @@ public class CostAndUsageData {
         logger.info("archiving hourly data...");
 
         archiveHourly(startMilli, usageDataByProduct, "usage_", compress);
-        archiveHourly(startMilli, costDataByProduct, "cost_", compress);        
+        archiveHourly(startMilli, costDataByProduct, "cost_", compress);  
+        archiveHourlyTagCoverage(startMilli, compress);
     }
     
     private void archiveHourly(long startMilli, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress) throws Exception {
@@ -105,6 +135,15 @@ public class CostAndUsageData {
             String prodName = product == null ? "all" : product.getFileName();
             DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
             writer.archive(dataMap.get(product));
+        }
+    }
+
+    private void archiveHourlyTagCoverage(long startMilli, boolean compress) throws Exception {
+    	logger.info("archiving tag coverage data... " + tagCoverage.size());
+        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
+        for (String tag: tagCoverage.keySet()) {
+            DataWriter writer = new DataWriter("coverage_hourly_" + tag + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
+            writer.archive(tagCoverage.get(tag));
         }
     }
 

@@ -34,7 +34,9 @@ public abstract class ResourceService {
      * You can initialize you mapping here.
      * You can also get the reference to ProcessorConfig instance here.
      */
-    abstract public void init(String[] customTags);
+    abstract public void init();
+    
+    abstract public List<String> getUserTags();
 
     /**
      * Get resource group name. Subclass can maintain a mapping of resource ids and resource group names.
@@ -74,4 +76,6 @@ public abstract class ResourceService {
      * Initialize the billing file user tags from the userTags header
      */
     abstract public void initHeader(String[] header);
+
+	abstract public String getUserTagValue(LineItem lineItem, String tag);
 }

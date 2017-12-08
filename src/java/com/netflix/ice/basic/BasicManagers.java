@@ -26,6 +26,7 @@ import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.UserTag;
 
 import java.util.Collection;
 import java.util.Map;
@@ -43,9 +44,12 @@ public class BasicManagers extends Poller implements Managers {
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
+    private TreeMap<UserTag, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
     private InstancesService instancesService = null;
 
+    private static final String COVERAGE_PREFIX = "coverage_hourly_";
+    
     BasicManagers(boolean compress) {
     	this.compress = compress;
     }
@@ -58,6 +62,9 @@ public class BasicManagers extends Poller implements Managers {
             dataManager.shutdown();
         }
         for (BasicDataManager dataManager: usageManagers.values()) {
+            dataManager.shutdown();
+        }
+        for (TagCoverageDataManager dataManager: tagCoverageManagers.values()) {
             dataManager.shutdown();
         }
     }
@@ -75,6 +82,11 @@ public class BasicManagers extends Poller implements Managers {
         return products;
     }
 
+    @Override
+    public Collection<UserTag> getTags() {
+        return tagCoverageManagers.keySet();
+    }
+
     public TagGroupManager getTagGroupManager(Product product) {
         return tagGroupManagers.get(product);
     }
@@ -85,6 +97,10 @@ public class BasicManagers extends Poller implements Managers {
 
     public DataManager getUsageManager(Product product, ConsolidateType consolidateType) {
         return usageManagers.get(new Key(product, consolidateType));
+    }
+    
+    public DataManager getTagCoverageManager(UserTag tag) {
+        return tagCoverageManagers.get(tag);
     }
     
     public Instances getInstances() {
@@ -122,11 +138,17 @@ public class BasicManagers extends Poller implements Managers {
         }
 
         for (Product product: newProducts) {
-            tagGroupManagers.put(product, new BasicTagGroupManager(product));
+        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product);
+            tagGroupManagers.put(product, tagGroupManager);
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
-                costManagers.put(key, new BasicDataManager(product, consolidateType, true, compress, null));
-                usageManagers.put(key, new BasicDataManager(product, consolidateType, false, compress, instanceMetricsService.getInstanceMetrics()));
+                
+            	String partialDbName = consolidateType + "_" + (product == null ? "all" : product.getFileName());
+               
+                costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress,
+                		config.monthlyCacheSize, config.accountService, config.productService, null));
+                usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
+                		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService.getInstanceMetrics()));
             }
         }
 
@@ -136,6 +158,18 @@ public class BasicManagers extends Poller implements Managers {
             this.tagGroupManagers = tagGroupManagers;
             this.products = products;
         }
+        
+        for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(config.workS3BucketName, config.workS3BucketPrefix + COVERAGE_PREFIX).getObjectSummaries()) {
+            String key = s3ObjectSummary.getKey();
+            String tagName = key.substring((config.workS3BucketPrefix + COVERAGE_PREFIX).length());
+            tagName = tagName.substring(0, tagName.indexOf("_"));
+            if (tagCoverageManagers.containsKey(new UserTag(tagName)))
+            	continue;
+            
+            tagCoverageManagers.put(new UserTag(tagName),
+            		new TagCoverageDataManager(config.startDate, "coverage_" + ConsolidateType.hourly + "_" + tagName, ConsolidateType.hourly, getTagGroupManager(null), compress,
+            				config.monthlyCacheSize, config.accountService, config.productService));
+        }        
     }
 
     private static class Key implements Comparable<Key> {

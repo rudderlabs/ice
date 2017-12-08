@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -56,29 +56,28 @@ public class EddaResourceService extends ResourceService {
 
     //private final Properties prop;
 
-    public EddaResourceService(Properties prop) {
+    public EddaResourceService(Properties prop, ProductService productService) {
 		super();
 		//this.prop = prop;
 
 		EDDA_ROOT_URL = prop.getProperty("ice.eddaresourceservice.url", "http://localhost:18081/edda/api/v2/");
 		EDDA_TAG_NAME = prop.getProperty("ice.eddaresourceservice.tag", "Usage");
+
+		for (List<String> l: productNamesWithResources) {
+        	List<Product> lp = Lists.newArrayList();
+        	for (String name: l) {
+        		lp.add(productService.getProductByName(name));
+        	}
+        	productsWithResources.add(lp);
+        }
 	}
 
 	/* (non-Javadoc)
 	 * @see com.netflix.ice.common.ResourceService#init()
 	 */
 	@Override
-	public void init(String[] customTags) {
-        logger.info("Initializing...");
-        ProcessorConfig processorConfig = ProcessorConfig.getInstance();
-        
-        for (List<String> l: productNamesWithResources) {
-        	List<Product> lp = Lists.newArrayList();
-        	for (String name: l) {
-        		lp.add(processorConfig.productService.getProductByName(name));
-        	}
-        	productsWithResources.add(lp);
-        }
+	public void init() {
+        logger.info("Initializing...");        
 	}
 
 
@@ -182,5 +181,17 @@ public class EddaResourceService extends ResourceService {
 		}
 		JSONArray instances = new JSONArray(json);
 		return instances;
+	}
+
+	@Override
+	public List<String> getUserTags() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getUserTagValue(LineItem lineItem, String tag) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

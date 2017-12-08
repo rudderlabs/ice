@@ -47,16 +47,9 @@ public class SampleMapDbResourceService extends ResourceService {
 	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
 
     MapDb instanceDb;
-    ProductService productService;
     
     public SampleMapDbResourceService(ProductService productService) {
 		super();
-		this.productService = productService;
-    }
-
-    public void init(String[] customTags) {
-        instanceDb = new MapDb("instances");
-        
         for (List<String> l: productNamesWithResources) {
         	List<Product> lp = Lists.newArrayList();
         	for (String name: l) {
@@ -64,6 +57,11 @@ public class SampleMapDbResourceService extends ResourceService {
         	}
         	productsWithResources.add(lp);
         }
+    }
+
+    public void init() {
+        instanceDb = new MapDb("instances");
+        
     }
 
     @Override
@@ -130,4 +128,16 @@ public class SampleMapDbResourceService extends ResourceService {
     protected String getS3Resource(Account account, Region region, LineItem lineItem, long millisStart) {
         return lineItem.getResource();
     }
+
+	@Override
+	public List<String> getUserTags() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getUserTagValue(LineItem lineItem, String tag) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

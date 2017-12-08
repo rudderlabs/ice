@@ -205,12 +205,13 @@ public class AwsUtils {
             }
 
             S3Object s3Object = s3Client.getObject(bucket, fileKey);
-            InputStream input = s3Object.getObjectContent();
             long targetSize = s3Object.getObjectMetadata().getContentLength();
             if (targetSize > Integer.MAX_VALUE) {
+                try { s3Object.close(); } catch (Exception e) {}
             	logger.error("manifest file too large: " + fileKey + ", " + targetSize);
             	return null;
             }
+            InputStream input = s3Object.getObjectContent();
             ByteArrayOutputStream output = new ByteArrayOutputStream((int) targetSize);
 
             try {

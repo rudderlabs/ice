@@ -20,8 +20,8 @@ import java.util.Map.Entry;
 public class BasicResourceService extends ResourceService {
     private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
-    private ProductService productService;
-    private String[] customTags;
+    private final String[] customTags;
+    private List<String> userTags;
     
     @SuppressWarnings("unchecked")
 	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
@@ -32,8 +32,9 @@ public class BasicResourceService extends ResourceService {
     
 	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
 
-    
+    // Map of tags where each tag has a list of aliases.
     private final Map<String, List<String>> tagKeys;
+    
     // Map of tag values to canonical name. All keys are lower case.
     private final Map<String, String> tagValuesInverted;
     
@@ -44,9 +45,10 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
 
-    public BasicResourceService(ProductService productService, Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues) {
+    public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags,
+    		Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues) {
 		super();
-		this.productService = productService;
+		this.customTags = customTags;
 		this.tagKeys = tagKeys;
 		this.tagValuesInverted = Maps.newHashMap();
 		for (Entry<String, List<String>> entry: tagValues.entrySet()) {			
@@ -54,11 +56,7 @@ public class BasicResourceService extends ResourceService {
 				this.tagValuesInverted.put(val.toLowerCase(), entry.getKey());
 			}
 		}
-	}
-
-	@Override
-    public void init(String[] customTags) {
-		this.customTags = customTags;
+		
         for (List<String> l: productNamesWithResources) {
         	List<Product> lp = Lists.newArrayList();
         	for (String name: l) {
@@ -67,28 +65,51 @@ public class BasicResourceService extends ResourceService {
         	productsWithResources.add(lp);
         }
 		logger.info("Initialized BasicResourceService with " + productsWithResources.size() + " products");
+		
+		userTags = Lists.newArrayList();
+		for (String tag: customTags)
+			userTags.add(tag);
+		for (String tag: additionalTags)
+			userTags.add(tag);		
+	}
+
+	@Override
+    public void init() {		
     }
+	
+	@Override
+	public List<String> getUserTags() {
+		return userTags;
+	}
 
     @Override
     public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
         // Build the resource group name based on the values of the custom tags
         String result = "";
         for (String tag: customTags) {
-        	// Grab the first non-empty value for each custom tag
-        	for (int index: tagIndecies.get(tag)) {
-        		if (lineItem.getResourceTagsSize() > index && !StringUtils.isEmpty(lineItem.getResourceTag(index))) {
-        			String val = lineItem.getResourceTag(index);
-        			if (tagValuesInverted.containsKey(val.toLowerCase())) {
-        				val = tagValuesInverted.get(val.toLowerCase());
-        			}
-                    result = StringUtils.isEmpty(result) ? val : result + "_" + val;
-        			break;
-        		}
-        	}
+        	String val = getUserTagValue(lineItem, tag);
+            result = StringUtils.isEmpty(result) ? val : result + "_" + val;
         }
 
         // If we didn't find any of the custom tags, default to the product name
         return StringUtils.isEmpty(result) ? product.name : result;
+    }
+    
+    @Override
+    public String getUserTagValue(LineItem lineItem, String tag) {
+    	// Grab the first non-empty value
+    	for (int index: tagIndecies.get(tag)) {
+    		if (lineItem.getResourceTagsSize() > index) {
+    			String val = lineItem.getResourceTag(index);
+    			if (!StringUtils.isEmpty(val)) {
+	    			if (tagValuesInverted.containsKey(val.toLowerCase())) {
+	    				val = tagValuesInverted.get(val.toLowerCase());
+	    			}
+	    			return val;
+    			}
+    		}
+    	}
+    	return null;
     }
 
     @Override
@@ -110,7 +131,7 @@ public class BasicResourceService extends ResourceService {
     @Override
     public void initHeader(String[] header) {
     	tagIndecies = Maps.newHashMap();
-    	for (String tag: customTags) {
+    	for (String tag: userTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
     		List<Integer> indecies = Lists.newArrayList();
     		tagIndecies.put(tag, indecies);

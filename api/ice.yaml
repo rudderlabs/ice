@@ -92,6 +92,27 @@ parameters:
     description: name of application group
     type: string
     required: true
+  resourcesParam:
+    name: resources
+    in: query
+    description: If true, only return product names that can have tagged resources.
+    type: boolean
+    required: false
+  showAppGroupsParam:
+    name: showAppGroups
+    in: query
+    type: boolean
+    required: false
+  showZonesParam:
+    name: showZones
+    in: query
+    type: boolean
+    required: false
+  forReservationsParam:
+    name: forReservations
+    in: query
+    type: boolean
+    required: false
 
 responses:
   successResponse:
@@ -142,6 +163,9 @@ paths:
       parameters:
         - $ref: '#/parameters/accountParam'
         - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/resourcesParam'
+        - $ref: '#/parameters/showAppGroupsParam'
+        - $ref: '#/parameters/showZonesParam'
       responses:
         '200':
           description: collection of products
@@ -169,6 +193,8 @@ paths:
         - $ref: '#/parameters/accountParam'
         - $ref: '#/parameters/regionParam'
         - $ref: '#/parameters/productParam'
+        - $ref: '#/parameters/resourcesParam'
+        - $ref: '#/parameters/forReservationsParam'
       responses:
         '200':
           description: collection of operations
@@ -183,6 +209,7 @@ paths:
         - $ref: '#/parameters/regionParam'
         - $ref: '#/parameters/productParam'
         - $ref: '#/parameters/operationParam'
+        - $ref: '#/parameters/resourcesParam'
       responses:
         '200':
           description: collection of usage types
@@ -206,7 +233,14 @@ paths:
           description: collection of operations
           schema:
             $ref: '#/definitions/NamesResponse'
-
+  /tags:
+    get:
+      description: Get the list of custom tags for which we have coverage data
+      responses:
+        '200':
+          description: collection of tag names
+          schema:
+            $ref: '#/definitions/NamesResponse'
   /getData:
     post:
       description: Get the data for the requested cost or usage.
@@ -261,6 +295,12 @@ paths:
                 type: boolean
               spans:
                 type: integer
+              tagCoverage:
+                description: If true, return data on tag coverage for resources
+                type: boolean
+              tag:
+                description: Comma separated list of tags for tag coverage data
+                type: string
       responses:
         '200':
           description: data collection

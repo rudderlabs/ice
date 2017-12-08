@@ -35,11 +35,10 @@ public class BasicResourceServiceTest {
 		Map<String, List<String>> tagKeys = Maps.newHashMap();
 		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
-		ResourceService rs = new BasicResourceService(ps, tagKeys, tagValues);
 		String[] customTags = new String[]{
-			"Environment", "Product"
-		};
-		rs.init(customTags);
+				"Environment", "Product"
+			};
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues);
 		rs.initHeader(li.getResourceTagsHeader());
 		
 		String resource = rs.getResource(null, null, ps.getProductByName(Product.ec2Instance), li, 0);

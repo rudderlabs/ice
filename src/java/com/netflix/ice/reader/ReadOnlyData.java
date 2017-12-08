@@ -18,6 +18,8 @@
 package com.netflix.ice.reader;
 
 import com.google.common.collect.Lists;
+import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 
 import java.io.DataInput;
@@ -48,12 +50,12 @@ public class ReadOnlyData {
 
     public static class Serializer {
 
-        public static ReadOnlyData deserialize(DataInput in) throws IOException {
+        public static ReadOnlyData deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
 
             int numKeys = in.readInt();
             List<TagGroup> keys = Lists.newArrayList();
             for (int j = 0; j < numKeys; j++) {
-                keys.add(TagGroup.Serializer.deserialize(ReaderConfig.getInstance().accountService, ReaderConfig.getInstance().productService, in));
+                keys.add(TagGroup.Serializer.deserialize(accountService, productService, in));
             }
 
             int num = in.readInt();

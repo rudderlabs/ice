@@ -116,7 +116,8 @@ class BootStrap {
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
 			
 			// Resource Tagging stuff
-            properties.setProperty(IceOptions.CUSTOM_TAGS, prop.getProperty(IceOptions.CUSTOM_TAGS, ""));
+			String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
+			String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");        
 			Map<String, List<String>> tagKeys = Maps.newHashMap();
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith("ice.tagKey.")) {
@@ -179,7 +180,7 @@ class BootStrap {
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
 				ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
+                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags, tagKeys, tagValues);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 				properties.setProperty(IceOptions.FAMILY_RI_BREAKOUT, prop.getProperty(IceOptions.FAMILY_RI_BREAKOUT, ""));
@@ -218,7 +219,7 @@ class BootStrap {
 					
                 ApplicationGroupService applicationGroupService = new BasicS3ApplicationGroupService();
                 ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
-                ResourceService resourceService = StringUtils.isEmpty(properties.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, tagKeys, tagValues);
+                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags, tagKeys, tagValues);
                 BasicWeeklyCostEmailService weeklyEmailService = null;
 
                 if ("true".equals(prop.getProperty(IceOptions.WEEKLYEMAILS))) {

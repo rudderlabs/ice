@@ -24,6 +24,7 @@ import com.netflix.ice.tag.FamilyTag
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
 import com.netflix.ice.tag.Region
+import com.netflix.ice.tag.UserTag
 import com.netflix.ice.tag.Zone
 import com.netflix.ice.tag.UsageType
 import com.netflix.ice.tag.Operation
@@ -47,6 +48,7 @@ import org.json.JSONObject
 
 import com.netflix.ice.common.ConsolidateType
 import com.netflix.ice.common.Instance
+import com.netflix.ice.common.TagCoverageRatio;
 
 import org.joda.time.Hours
 import org.slf4j.Logger;
@@ -65,6 +67,35 @@ class DashboardController {
     private static DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd hha").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dayFormatter = DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC);
 
+	static allowedMethods = [
+		index: "GET",
+		getReservationOps: "GET",
+		getUtilizationOps: "GET",
+		getAccounts: "GET",
+		getRegions: "GET",
+		getZones: "GET",
+		getResourceGroupLists: "GET",
+		getProducts: "GET",
+		getResourceGroups: "GET",
+		getOperations: "POST",
+		getUsageTypes: "POST",
+		tags: "GET",
+		getData: "POST",
+		getTimeSpan: "GET",
+		getApplicationGroup: "GET",
+		deleteApplicationGroup: "GET",
+		saveApplicationGroup: "POST",
+		instance: "GET",
+		summary: "GET",
+		detail: "GET",
+		tagcoverage: "GET",
+		reservation: "GET",
+		utilization: "GET",
+		breakdown: "GET",
+		editappgroup: "GET",
+		appgroup: "GET",
+	];
+			
     private static ReaderConfig getConfig() {
         if (config == null) {
             config = ReaderConfig.getInstance();
@@ -165,7 +196,7 @@ class DashboardController {
         List<Zone> zones = Zone.getZones(listParams("zone"));
         List<Operation> operations = Operation.getOperations(listParams("operation"));
         List<Product> products = getConfig().productService.getProducts(listParams("product"));
-        boolean showResourceGroups = params.getBoolean("showResourceGroups");
+        boolean resources = params.getBoolean("resources");
         boolean showAppGroups = params.getBoolean("showAppGroups");
         boolean showZones = params.getBoolean("showZones");
         if (showZones && (zones == null || zones.size() == 0)) {
@@ -173,7 +204,7 @@ class DashboardController {
         }
 
         Collection<Product> data;
-        if (showResourceGroups) {
+        if (resources) {
             data = Sets.newTreeSet();
             for (Product product: getManagers().getProducts()) {
                 if (product == null)
@@ -238,11 +269,11 @@ class DashboardController {
         List<Zone> zones = Zone.getZones(listParams(query, "zone"));
         List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
         List<Operation> operations = Operation.getOperations(listParams(query, "operation"));
-        boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+        boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 
         Collection<Operation> data;
-        if (showResourceGroups) {
+        if (resources) {
             data = Sets.newTreeSet();
             if (products.size() == 0) {
                 products = Lists.newArrayList(getManagers().getProducts());
@@ -303,10 +334,10 @@ class DashboardController {
         List<Zone> zones = Zone.getZones(listParams(query, "zone"));
         List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
         List<Operation> operations = Operation.getOperations(listParams(query, "operation"));
-        boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+        boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
 
         Collection<Product> data;
-        if (showResourceGroups) {
+        if (resources) {
             data = Sets.newTreeSet();
             if (products.size() == 0) {
                 products = Lists.newArrayList(getManagers().getProducts());
@@ -328,6 +359,13 @@ class DashboardController {
         def result = [status: 200, data: data]
         render result as JSON
     }
+	
+	def tags = {
+		Collection<UserTag> data = getManagers().getTags();
+		
+		def result = [status: 200, data: data]
+		render result as JSON		
+	}
 
     def download = {
         def o = params;
@@ -458,6 +496,8 @@ class DashboardController {
 
     def detail = {}
 
+    def tagcoverage = {}
+
     def reservation = {}
 
     def utilization = {}
@@ -506,6 +546,15 @@ class DashboardController {
         if (showZones && (zones == null || zones.size() == 0)) {
             zones = Lists.newArrayList(tagGroupManager.getZones(new TagLists(accounts)));
         }
+		// Tag Coverage parameters
+		boolean tagCoverage = query.getBoolean("tagCoverage");
+		List<UserTag> tags = UserTag.getUserTags(listParams(query, "tag"));
+		
+		if (elasticity || tagCoverage) {
+			// elasticity is computed per day based on hourly data
+			// tagCoverage only aggregated hourly
+			consolidateType = ConsolidateType.hourly;
+		}
 
         DateTime start;
         if (query.has("spans")) {
@@ -534,13 +583,42 @@ class DashboardController {
         }
         interval = roundInterval(interval, consolidateType);
 		
-		if (elasticity) {
-			// elasticity is computed per day based on hourly data
-			consolidateType = ConsolidateType.hourly;
-		}
-
         Map<Tag, double[]> data;
-        if (groupBy == TagType.ApplicationGroup) {
+		if (tagCoverage) {
+            if (products.size() == 0) {
+                Set productSet = Sets.newTreeSet();
+                for (Product product: getManagers().getProducts()) {
+                    if (product == null)
+                        continue;
+
+                    Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
+                    productSet.addAll(tmp);
+                }
+                products = Lists.newArrayList(productSet);
+            }
+            data = Maps.newTreeMap();
+			for (UserTag tag: tags) {
+				DataManager dataManager = getManagers().getTagCoverageManager(tag);
+				Map<Tag, double[]> dataOfTag = dataManager.getData(
+					interval,
+					new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups),
+					groupBy == TagType.Tag ? null : groupBy,
+					aggregate,
+					forReservation,
+					usageUnit
+				);
+				
+				if (groupBy == TagType.Tag) {
+					data.put(tag, dataOfTag.get(Tag.aggregated));
+				}
+				else {
+					mergeTagCoverageData(dataOfTag, data);
+				}
+			}
+			// Convert all the response data to percentage
+			convertTagCoverageToPercentage(data);
+		}
+        else if (groupBy == TagType.ApplicationGroup) {
             data = Maps.newTreeMap();
             if (products.size() == 0) {
                 products = Lists.newArrayList(getManagers().getProducts());
@@ -677,87 +755,86 @@ class DashboardController {
 			data.remove(Tag.aggregated);
 
         def result = [status: 200, start: interval.getStartMillis(), data: data, stats: stats, groupBy: groupBy == null ? "None" : groupBy.name()]
-        if (breakdown && data.size() > 0 && data.values().iterator().next().length > 0) {
-            result.time = new IntRange(0, data.values().iterator().next().length - 1).collect {
-                if (consolidateType == ConsolidateType.daily)
-                    interval.getStart().plusDays(it).getMillis()
-                else if (consolidateType == ConsolidateType.weekly)
-                    interval.getStart().plusWeeks(it).getMillis()
-                else if (consolidateType == ConsolidateType.monthly)
-                    interval.getStart().plusMonths(it).getMillis()
-            }
-            result.hours = new IntRange(0, result.time.size() - 1).collect {
-                int hours;
-                if (consolidateType == ConsolidateType.daily)
-                    hours = 24
-                else if (consolidateType == ConsolidateType.weekly)
-                    hours = 24*7
-                else if (consolidateType == ConsolidateType.monthly)
-                    hours = interval.getStart().plusMonths(it).dayOfMonth().getMaximumValue() * 24;
+		
+		if (!tagCoverage) {
+	        if (breakdown && data.size() > 0 && data.values().iterator().next().length > 0) {
+	            result.time = new IntRange(0, data.values().iterator().next().length - 1).collect {
+	                if (consolidateType == ConsolidateType.daily)
+	                    interval.getStart().plusDays(it).getMillis()
+	                else if (consolidateType == ConsolidateType.weekly)
+	                    interval.getStart().plusWeeks(it).getMillis()
+	                else if (consolidateType == ConsolidateType.monthly)
+	                    interval.getStart().plusMonths(it).getMillis()
+	            }
+	            result.hours = new IntRange(0, result.time.size() - 1).collect {
+	                int hours;
+	                if (consolidateType == ConsolidateType.daily)
+	                    hours = 24
+	                else if (consolidateType == ConsolidateType.weekly)
+	                    hours = 24*7
+	                else if (consolidateType == ConsolidateType.monthly)
+	                    hours = interval.getStart().plusMonths(it).dayOfMonth().getMaximumValue() * 24;
+	
+	                if (it == result.time.size() - 1) {
+	                    DateTime period = new DateTime(result.time.get(result.time.size() - 1), DateTimeZone.UTC);
+	                    DateTime periodEnd = consolidateType == ConsolidateType.daily ? period.plusDays(1) : (consolidateType == ConsolidateType.weekly ? period.plusWeeks(1) : period.plusMonths(1));
+	                    DateTime month = period.withMillisOfDay(0).withDayOfMonth(1);
+	                    int dataHours = getManagers().getCostManager(null, ConsolidateType.hourly).getDataLength(month);
+	                    DateTime dataEnd = month.plusHours(dataHours);
+	
+	                    if (dataEnd.isBefore(periodEnd)) {
+	                        hours - Hours.hoursBetween(dataEnd, periodEnd).getHours()
+	                    }
+	                    else {
+	                        hours
+	                    }
+	                }
+	                else {
+	                    hours
+	                }
+	
+	            }
+	
+	            result.data = data.sort {-it.getValue()[it.getValue().length-1]}
+	        }
+	
+	        if (showsps || factorsps) {
+	            result.sps = config.throughputMetricService.getData(interval, consolidateType);
+	        }
+	
+	        if (factorsps) {
+	            double[] consolidatedSps = result.sps;
+	            double multiply = config.throughputMetricService.getFactoredCostMultiply();
+	            for (Tag tag: result.data.keySet()) {
+	                double[] values = result.data.get(tag);
+	                for (int i = 0; i < values.length; i++) {
+	                    double sps = i < consolidatedSps.length ? consolidatedSps[i] : 0.0;
+	                    if (sps == 0.0)
+	                        values[i] = 0.0;
+	                    else
+	                        values[i] = values[i] / sps * multiply;
+	                }
+	            }
+	        }
 
-                if (it == result.time.size() - 1) {
-                    DateTime period = new DateTime(result.time.get(result.time.size() - 1), DateTimeZone.UTC);
-                    DateTime periodEnd = consolidateType == ConsolidateType.daily ? period.plusDays(1) : (consolidateType == ConsolidateType.weekly ? period.plusWeeks(1) : period.plusMonths(1));
-                    DateTime month = period.withMillisOfDay(0).withDayOfMonth(1);
-                    int dataHours = getManagers().getCostManager(null, ConsolidateType.hourly).getDataLength(month);
-                    DateTime dataEnd = month.plusHours(dataHours);
-
-                    if (dataEnd.isBefore(periodEnd)) {
-                        hours - Hours.hoursBetween(dataEnd, periodEnd).getHours()
-                    }
-                    else {
-                        hours
-                    }
-                }
-                else {
-                    hours
-                }
-
-            }
-
-            result.data = data.sort {-it.getValue()[it.getValue().length-1]}
-        }
-
-        if (showsps || factorsps) {
-            result.sps = config.throughputMetricService.getData(interval, consolidateType);
-        }
-
-        if (factorsps) {
-            double[] consolidatedSps = result.sps;
-            double multiply = config.throughputMetricService.getFactoredCostMultiply();
-            for (Tag tag: result.data.keySet()) {
-                double[] values = result.data.get(tag);
-                for (int i = 0; i < values.length; i++) {
-                    double sps = i < consolidatedSps.length ? consolidatedSps[i] : 0.0;
-                    if (sps == 0.0)
-                        values[i] = 0.0;
-                    else
-                        values[i] = values[i] / sps * multiply;
-                }
-            }
-        }
-
-        if (isCost && config.currencyRate != 1) {
-            for (Tag tag: result.data.keySet()) {
-                double[] values = result.data.get(tag);
-                for (int i = 0; i < values.length; i++) {
-                    values[i] = values[i] * config.currencyRate;
-                }
-            }
-
-            for (Tag tag: result.stats.keySet()) {
-                Map<String, Double> stat = result.stats.get(tag);
-                for (Map.Entry<String, Double> entry: stat.entrySet()) {
-                    entry.setValue(entry.getValue() * config.currencyRate);
-                }
-            }
-        }
-
-		if (elasticity) {
-			// elasticity data is always daily
-			result.interval = ConsolidateType.daily.millis;
+	        if (isCost && config.currencyRate != 1) {
+	            for (Tag tag: result.data.keySet()) {
+	                double[] values = result.data.get(tag);
+	                for (int i = 0; i < values.length; i++) {
+	                    values[i] = values[i] * config.currencyRate;
+	                }
+	            }
+	
+	            for (Tag tag: result.stats.keySet()) {
+	                Map<String, Double> stat = result.stats.get(tag);
+	                for (Map.Entry<String, Double> entry: stat.entrySet()) {
+	                    entry.setValue(entry.getValue() * config.currencyRate);
+	                }
+	            }
+	        }
 		}
-		else if (consolidateType != ConsolidateType.monthly) {
+
+		if (consolidateType != ConsolidateType.monthly) {
             result.interval = consolidateType.millis;
         }
         else {
@@ -781,6 +858,32 @@ class DashboardController {
             }
         }
     }
+	
+	/*
+	 * Tag coverage values are encoded ratios, so use TagCoverageRatio class to perform addition.
+	 */
+    private void mergeTagCoverageData(Map<Tag, double[]> from, Map<Tag, double[]> to) {
+        for (Map.Entry<Tag, double[]> entry: from.entrySet()) {
+            Tag tag = entry.getKey();
+            double[] newValues = entry.getValue();
+            if (to.containsKey(tag)) {
+                double[] oldValues = to.get(tag);
+                for (int i = 0; i < newValues.length; i++) {
+					oldValues[i] = TagCoverageRatio.add(oldValues[i], newValues[i]);
+                }
+            }
+            else {
+                to.put(tag, newValues);
+            }
+        }
+    }
+	
+	private void convertTagCoverageToPercentage(Map<Tag, double[]> data) {
+		for (double[] values: data.values()) {
+			for (int i = 0; i < values.length; i++)
+				values[i] = new TagCoverageRatio(values[i]).toPercentage();
+		}
+	}
 	
 	private Map<Tag, double[]> reduceToDailyElasticity(Map<Tag, double[]> data, Map<Tag, Map> stats) {
 		// Run through the hourly data reducing to a daily elasticity value
