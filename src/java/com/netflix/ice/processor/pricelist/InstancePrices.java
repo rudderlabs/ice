@@ -128,8 +128,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
         
         	String usageTypeStr = p.getAttribute(Attributes.usagetype);
         	Region region = Region.US_EAST_1;
-        	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ"))
-        		region = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
+        	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ")) {
+        		Region r = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
+        		region = r != null ? r : region;
+        	}
         	String operationStr = p.getAttribute(Attributes.operation);
         	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), operationStr, p.getAttribute(Attributes.deploymentOption));
         	Key key = new Key(region, usageType);

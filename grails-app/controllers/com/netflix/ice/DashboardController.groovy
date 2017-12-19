@@ -197,6 +197,7 @@ class DashboardController {
         List<Operation> operations = Operation.getOperations(listParams("operation"));
         List<Product> products = getConfig().productService.getProducts(listParams("product"));
         boolean resources = params.getBoolean("resources");
+        boolean showResourceGroups = params.getBoolean("showResourceGroups");
         boolean showAppGroups = params.getBoolean("showAppGroups");
         boolean showZones = params.getBoolean("showZones");
         if (showZones && (zones == null || zones.size() == 0)) {
@@ -204,7 +205,7 @@ class DashboardController {
         }
 
         Collection<Product> data;
-        if (resources) {
+        if (resources || showResourceGroups) {
             data = Sets.newTreeSet();
             for (Product product: getManagers().getProducts()) {
                 if (product == null)
@@ -270,10 +271,11 @@ class DashboardController {
         List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
         List<Operation> operations = Operation.getOperations(listParams(query, "operation"));
         boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
+        boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 
         Collection<Operation> data;
-        if (resources) {
+        if (resources || showResourceGroups) {
             data = Sets.newTreeSet();
             if (products.size() == 0) {
                 products = Lists.newArrayList(getManagers().getProducts());
@@ -335,9 +337,10 @@ class DashboardController {
         List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
         List<Operation> operations = Operation.getOperations(listParams(query, "operation"));
         boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
-
+		boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+		
         Collection<Product> data;
-        if (resources) {
+        if (resources || showResourceGroups) {
             data = Sets.newTreeSet();
             if (products.size() == 0) {
                 products = Lists.newArrayList(getManagers().getProducts());
