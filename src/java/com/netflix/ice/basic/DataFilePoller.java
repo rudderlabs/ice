@@ -13,6 +13,7 @@ import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.PeriodType;
 
+import com.amazonaws.AmazonServiceException;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -115,7 +116,7 @@ public class DataFilePoller extends Poller {
                 return result;
             }
             catch (FileNotFoundException e) {
-                logger.error("error in loading data for " + monthDate + " " + this.dbName, e);
+                logger.warn("no data for " + monthDate + " " + this.dbName);
                 fileCache.put(monthDate, file);
                 return new ReadOnlyData(new double[][]{}, Lists.<TagGroup>newArrayList());
             }
@@ -150,8 +151,21 @@ public class DataFilePoller extends Poller {
         try {
             return AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
         }
+        catch (AmazonServiceException ase) {
+        	if (ase.getStatusCode() == 404) {
+            	logger.warn("file not found: " + file.getName());
+            	if (file.exists()) {
+                    logger.info("deleted stale file " + file);
+            		file.delete();
+            	}
+        	}
+        	else {
+                logger.error("error downloading " + file.getName(), ase);
+        	}
+            return false;
+        }
         catch (Exception e) {
-            logger.error("error downloading " + file, e);
+            logger.error("error downloading " + file.getName(), e);
             return false;
         }
     }
