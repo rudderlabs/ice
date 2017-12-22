@@ -35,6 +35,7 @@ public class ProcessorConfig extends Config {
 
     public final String[] billingAccountIds;
     public final String[] billingS3BucketNames;
+    public final String[] billingS3BucketRegions;
     public final String[] billingS3BucketPrefixes;
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
@@ -81,6 +82,7 @@ public class ProcessorConfig extends Config {
         this.priceListService = priceListService;
 
         billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
+        billingS3BucketRegions = properties.getProperty(IceOptions.BILLING_S3_BUCKET_REGION).split(",");
         billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");

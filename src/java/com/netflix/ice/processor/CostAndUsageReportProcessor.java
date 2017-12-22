@@ -95,6 +95,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         // list the cost and usage report manifest files in the billing report folder
         for (int i = 0; i < config.billingS3BucketNames.length; i++) {
             String billingS3BucketName = config.billingS3BucketNames[i];
+            String billingS3BucketRegion = config.billingS3BucketRegions.length > i ? config.billingS3BucketRegions[i] : "";
             String billingS3BucketPrefix = config.billingS3BucketPrefixes.length > i ? config.billingS3BucketPrefixes[i] : "";
             String accountId = config.billingAccountIds.length > i ? config.billingAccountIds[i] : "";
             String billingAccessRoleName = config.billingAccessRoleNames.length > i ? config.billingAccessRoleNames[i] : "";
@@ -141,7 +142,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                     list = Lists.newArrayList();
                     filesToProcess.put(key, list);
                 }
-                list.add(new CostAndUsageReport(filesToProcessInOneBucket.get(key), accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
+                list.add(new CostAndUsageReport(filesToProcessInOneBucket.get(key), billingS3BucketRegion, accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
             }
         }
 
@@ -170,7 +171,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				String filename = fileKey.substring(prefix.length());
 		        File file = new File(localDir, filename);
 		        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + file.getName() + "...");
-		        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), prefix, file, lastProcessed,
+		        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), report.getRegion(), prefix, file, lastProcessed,
 		                report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
 		        if (downloaded)
 		            logger.info("downloaded " + fileKey);

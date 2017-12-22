@@ -4,14 +4,16 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 public abstract class MonthlyReport {
     final S3ObjectSummary s3ObjectSummary;
+    final String region;
     final String accountId;
     final String accessRoleName;
     final String externalId;
     final String prefix;
     final MonthlyReportProcessor processor;
 
-    MonthlyReport(S3ObjectSummary s3ObjectSummary, String accountId, String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
+    MonthlyReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
         this.s3ObjectSummary = s3ObjectSummary;
+        this.region = region;
         this.accountId = accountId;
         this.accessRoleName = accessRoleName;
         this.externalId = externalId;
@@ -29,6 +31,10 @@ public abstract class MonthlyReport {
 	
 	public S3ObjectSummary getS3ObjectSummary() {
 		return s3ObjectSummary;
+	}
+
+	public String getRegion() {
+		return region;
 	}
 
 	public String getAccountId() {

@@ -308,15 +308,18 @@ public class AwsUtils {
         }
     }
 
-    public static boolean downloadFileIfChangedSince(String bucketName, String bucketFilePrefix, File file, long milles, String accountId,
-                                                     String assumeRole, String externalId) {
+    public static boolean downloadFileIfChangedSince(String bucketName, String bucketFileRegion, String bucketFilePrefix, File file,
+                                                     long milles, String accountId, String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
                 s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
             }
-
+            else if (!s3Client.getRegionName().equals(bucketFileRegion)) {
+            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketFileRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            }
+            
             ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());
             boolean download = !file.exists() || metadata.getLastModified().getTime() > milles;
 

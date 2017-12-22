@@ -28,9 +28,9 @@ public class CostAndUsageReport extends MonthlyReport {
     
 	private Manifest manifest = null;
 	
-	public CostAndUsageReport(S3ObjectSummary s3ObjectSummary, String accountId,
+	public CostAndUsageReport(S3ObjectSummary s3ObjectSummary, String region, String accountId,
 			String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
-		super(s3ObjectSummary, accountId, accessRoleName, externalId, prefix, processor);
+		super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix, processor);
 		
 		// Download the manifest
         String fileKey = s3ObjectSummary.getKey();
@@ -54,7 +54,7 @@ public class CostAndUsageReport extends MonthlyReport {
 	 * Constructor used for testing only
 	 */
 	public CostAndUsageReport(File manifest, MonthlyReportProcessor processor) {
-		super(null, null, null, null, null, processor);
+		super(null, null, null, null, null, null, processor);
 		if (manifest == null)
 			return;
 		

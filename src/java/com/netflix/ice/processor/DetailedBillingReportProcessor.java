@@ -67,6 +67,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         // list the tar.gz file in billing file folder
         for (int i = 0; i < config.billingS3BucketNames.length; i++) {
             String billingS3BucketName = config.billingS3BucketNames[i];
+            String billingS3BucketRegion = config.billingS3BucketRegions.length > i ? config.billingS3BucketRegions[i] : "";
             String billingS3BucketPrefix = config.billingS3BucketPrefixes.length > i ? config.billingS3BucketPrefixes[i] : "";
             String accountId = config.billingAccountIds.length > i ? config.billingAccountIds[i] : "";
             String billingAccessRoleName = config.billingAccessRoleNames.length > i ? config.billingAccessRoleNames[i] : "";
@@ -115,7 +116,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                     list = Lists.newArrayList();
                     filesToProcess.put(key, list);
                 }
-                list.add(new BillingFile(filesToProcessInOneBucket.get(key), accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
+                list.add(new BillingFile(filesToProcessInOneBucket.get(key), billingS3BucketRegion, accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
             }
         }
 
@@ -246,7 +247,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         String fileKey = report.getS3ObjectSummary().getKey();
         File file = new File(localDir, fileKey.substring(report.getPrefix().length()));
         logger.info("trying to download " + fileKey + "...");
-        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), report.getPrefix(), file, lastProcessed,
+        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), report.getRegion(), report.getPrefix(), file, lastProcessed,
                 report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
         if (downloaded)
             logger.info("downloaded " + fileKey);
@@ -260,16 +261,16 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
     class BillingFile extends MonthlyReport {
     	
-		BillingFile(S3ObjectSummary s3ObjectSummary, String accountId,
+		BillingFile(S3ObjectSummary s3ObjectSummary, String region, String accountId,
 				String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
-			super(s3ObjectSummary, accountId, accessRoleName, externalId, prefix, processor);
+			super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix, processor);
 		}
 
 		/**
 		 * Constructor used for testing only
 		 */
 		BillingFile(S3ObjectSummary s3ObjectSummary, MonthlyReportProcessor processor) {
-			super(s3ObjectSummary, null, null, null, null, processor);
+			super(s3ObjectSummary, null, null, null, null, null, processor);
 		}
 		
 		@Override
