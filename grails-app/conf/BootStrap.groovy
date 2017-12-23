@@ -113,6 +113,7 @@ class BootStrap {
                 properties.setProperty(IceOptions.START_MONTH, "" + now.year().get() + "-" + now.monthOfYear().get());
             }
             properties.setProperty(IceOptions.WORK_S3_BUCKET_NAME, prop.getProperty(IceOptions.WORK_S3_BUCKET_NAME));
+            properties.setProperty(IceOptions.WORK_S3_BUCKET_REGION, prop.getProperty(IceOptions.WORK_S3_BUCKET_REGION));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
 			
 			// Resource Tagging stuff

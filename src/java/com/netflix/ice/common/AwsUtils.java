@@ -63,7 +63,7 @@ public class AwsUtils {
     public static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HHa").withZone(DateTimeZone.UTC);
     public static long hourMillis = 3600000L;
 
-    private static String ec2Region;
+    private static String workS3BucketRegion;
     private static AmazonS3Client s3Client;
     private static AmazonSimpleEmailServiceClient emailServiceClient;
     private static AmazonSimpleDBClient simpleDBClient;
@@ -103,7 +103,7 @@ public class AwsUtils {
      * This method must be called before all methods can be used.
      * @param credentialsProvider
      */
-    public static void init(AWSCredentialsProvider credentialsProvider) {
+    public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion) {
         awsCredentialsProvider = credentialsProvider;
         clientConfig = new ClientConfiguration();
         String proxyHost = System.getProperty("https.proxyHost");
@@ -112,12 +112,9 @@ public class AwsUtils {
             clientConfig.setProxyHost(proxyHost);
             clientConfig.setProxyPort(Integer.parseInt(proxyPort));
         }
-        ec2Region = System.getProperty("EC2_REGION");
-        if (ec2Region == null || ec2Region.equals("global")) {
-        	ec2Region = "us-east-1";
-        }
-        s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
-        securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+        AwsUtils.workS3BucketRegion = workS3BucketRegion;
+        s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+        securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
     }
 
     public static AmazonS3Client getAmazonS3Client() {
@@ -132,7 +129,7 @@ public class AwsUtils {
 
     public static AmazonSimpleDBClient getAmazonSimpleDBClient() {
         if (simpleDBClient == null) {
-            simpleDBClient = (AmazonSimpleDBClient) AmazonSimpleDBClientBuilder.standard().withRegion(ec2Region).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            simpleDBClient = (AmazonSimpleDBClient) AmazonSimpleDBClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
         }
         return simpleDBClient;
     }
