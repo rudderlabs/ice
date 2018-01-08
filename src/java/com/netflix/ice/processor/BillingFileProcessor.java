@@ -256,7 +256,11 @@ public class BillingFileProcessor extends Poller {
 
     private void updateLastMillis(long millis, String filename) {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
-        s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + filename, IOUtils.toInputStream(millis + ""), new ObjectMetadata());
+        String millisStr = millis + "";
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(millisStr.length());
+
+        s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr), metadata);
     }
 
     private Long getLastMillis(String filename) {

@@ -3,10 +3,10 @@ package com.netflix.ice.reader;
 import org.joda.time.DateTime;
 
 import com.netflix.ice.common.AccountService;
-import com.netflix.ice.common.Poller;
+import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.processor.Instances;
 
-public class InstancesService extends Poller {
+public class InstancesService extends StalePoller {
 	private Instances instances;
 	private AccountService accountService;
 
@@ -22,7 +22,7 @@ public class InstancesService extends Poller {
 	}
 
 	@Override
-	protected void poll() throws Exception {
+	protected boolean stalePoll() throws Exception {
         logger.info("Instances start polling...");
         try {
         	// Ask for one day prior to make sure we've processed a report if at
@@ -31,7 +31,9 @@ public class InstancesService extends Poller {
         }
         catch (Exception e) {
             logger.error("failed to download instances data", e);
+            return true;
         }
+        return false;
 	}
 
 }

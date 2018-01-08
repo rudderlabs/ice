@@ -25,7 +25,7 @@ import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ConsolidateType;
-import com.netflix.ice.common.Poller;
+import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.ReadOnlyData;
@@ -34,7 +34,7 @@ import com.netflix.ice.reader.ReaderConfig;
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
-public class DataFilePoller extends Poller {
+public class DataFilePoller extends StalePoller {
     protected static final String compressExtension = ".gz";
 
     protected ReaderConfig config = ReaderConfig.getInstance();
@@ -77,13 +77,13 @@ public class DataFilePoller extends Poller {
 
         start();
     }
-
+    
     /**
      * We check if new data is available periodically
      * @throws Exception
      */
     @Override
-    protected void poll() throws Exception {
+    protected boolean stalePoll() throws Exception {
         logger.info(dbName + " start polling...");
         for (DateTime key: Sets.newHashSet(fileCache.keySet())) {
             File file = fileCache.get(key);
@@ -98,8 +98,10 @@ public class DataFilePoller extends Poller {
             }
             catch (Exception e) {
                 logger.error("failed to download " + file, e);
+                return true;
             }
         }
+        return false;
     }
 
     @Override

@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.joda.time.DateTime;
+
 /**
  * This class manages all BasicTagGroupManager and BasicDataManager instances.
  */
@@ -41,12 +43,14 @@ public class BasicManagers extends Poller implements Managers {
     private boolean compress;
 
     private Set<Product> products = Sets.newHashSet();
+    private LastProcessedPoller lastProcessedPoller = null;
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
     private TreeMap<UserTag, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
     private InstancesService instancesService = null;
+    private Long lastPollMillis = 0L;
 
     private static final String COVERAGE_PREFIX = "coverage_hourly_";
     
@@ -55,6 +59,8 @@ public class BasicManagers extends Poller implements Managers {
     }
     
     public void shutdown() {
+    	lastProcessedPoller.shutdown();
+    	
         for (BasicTagGroupManager tagGroupManager: tagGroupManagers.values()) {
             tagGroupManager.shutdown();
         }
@@ -74,8 +80,10 @@ public class BasicManagers extends Poller implements Managers {
         instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
         instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService);
         
+        lastProcessedPoller = new LastProcessedPoller(config.startDate);
+        		
         doWork();
-        start();
+        start(1*60, 1*60, false);
     }
 
     public Collection<Product> getProducts() {
@@ -113,6 +121,27 @@ public class BasicManagers extends Poller implements Managers {
     }
 
     private void doWork() {
+    	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
+    		return;	// nothing to do
+    	
+    	// Mark all the data managers so they update their caches
+    	for (BasicTagGroupManager m: tagGroupManagers.values()) {
+    		m.stale();
+    	}
+    	for (DataFilePoller p: costManagers.values()) {
+    		p.stale();
+    	}
+    	for (DataFilePoller p: usageManagers.values()) {
+    		p.stale();
+    	}
+    	for (DataFilePoller p: tagCoverageManagers.values()) {
+    		p.stale();
+    	}
+    	instancesService.stale();
+    	instanceMetricsService.stale();
+    	
+    	lastPollMillis = DateTime.now().getMillis();
+    	
         logger.info("trying to find new tag group and data managers...");
         Set<Product> products = Sets.newHashSet(this.products);
         Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap(this.tagGroupManagers);
@@ -148,7 +177,7 @@ public class BasicManagers extends Poller implements Managers {
                 costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, null));
                 usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
-                		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService.getInstanceMetrics()));
+                		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
             }
         }
 

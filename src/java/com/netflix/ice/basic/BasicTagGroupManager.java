@@ -21,7 +21,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.common.Poller;
+import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.ReaderConfig;
@@ -38,7 +38,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
-public class BasicTagGroupManager extends Poller implements TagGroupManager {
+public class BasicTagGroupManager extends StalePoller implements TagGroupManager {
 
     private ReaderConfig config = ReaderConfig.getInstance();
     private String dbName;
@@ -51,16 +51,16 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
         file = new File(config.localDir, dbName);
         try {
-            poll();
+            stalePoll();
         }
         catch (Exception e) {
             logger.error("cannot poll data", e);
         }
-        start();
+        start(DefaultStalePollInvervalSecs, DefaultStalePollInvervalSecs, false);
     }
 
     @Override
-    protected void poll() throws IOException {
+    protected boolean stalePoll() throws IOException {
         boolean downloaded = AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);
@@ -77,10 +77,14 @@ public class BasicTagGroupManager extends Poller implements TagGroupManager {
                 this.tagGroupsWithResourceGroups = tagGroupsWithResourceGroups;
                 logger.info("done reading " + file);
             }
+            catch (IOException e) {
+            	throw e;
+            }
             finally {
                 in.close();
             }
         }
+        return false;
     }
 
     @Override

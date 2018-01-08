@@ -3,10 +3,11 @@ package com.netflix.ice.reader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.common.Poller;
 
-public class InstanceMetricsService extends Poller {
+import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.StalePoller;
+
+public class InstanceMetricsService extends StalePoller {
 	private final String localDir;
 	private final String workS3BucketName;
 	private final String workS3BucketPrefix;
@@ -26,7 +27,7 @@ public class InstanceMetricsService extends Poller {
      * @throws Exception
      */
     @Override
-    protected void poll() throws Exception {
+    protected boolean stalePoll() throws Exception {    	
         logger.info(InstanceMetrics.dbName + " start polling...");
         File file = new File(localDir, InstanceMetrics.dbName);
         try {
@@ -38,7 +39,9 @@ public class InstanceMetricsService extends Poller {
         }
         catch (Exception e) {
             logger.error("failed to download " + file, e);
+            return true;
         }
+        return false;
     }
     
     private void loadDataFromFile(File file) throws Exception {

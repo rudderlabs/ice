@@ -68,8 +68,8 @@ grails.project.dependency.resolution = {
                 // Amazon Web Services programmatic interface
                 'com.amazonaws:aws-java-sdk:1.11.254',
                 // Transitive dependencies of aws-java-sdk, but also used directly.
-                'org.apache.httpcomponents:httpcore:4.4',
-                'org.apache.httpcomponents:httpclient:4.5',
+                'org.apache.httpcomponents:httpcore:4.4.8',
+                'org.apache.httpcomponents:httpclient:4.5.4',
 
                 // Explicitly including aws-java-sdk transitive dependencies
                 'org.codehaus.jackson:jackson-core-asl:1.8.9',
@@ -83,6 +83,9 @@ grails.project.dependency.resolution = {
      
                 // Better Zip Support
                 'org.apache.commons:commons-compress:1.8',
+				
+				// Better IO Support
+				'commons-io:commons-io:2.6',
 
                 // Easier Java from Joshua Bloch and Google
                 'com.google.guava:guava:14.0',

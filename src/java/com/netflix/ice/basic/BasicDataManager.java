@@ -37,13 +37,13 @@ import java.util.concurrent.ExecutionException;
 public class BasicDataManager extends DataFilePoller implements DataManager {
 
     protected TagGroupManager tagGroupManager;
-    protected InstanceMetrics instanceMetrics;
+    protected InstanceMetricsService instanceMetricsService;
 
     public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetrics instanceMetrics) {
+    		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
     	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
         this.tagGroupManager = tagGroupManager;
-        this.instanceMetrics = instanceMetrics;
+        this.instanceMetricsService = instanceMetricsService;
 
         start();
     }
@@ -130,14 +130,14 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
     		return value;
     	
     	case ECUs:
-    		multiplier = instanceMetrics.getECU(usageType);
+    		multiplier = instanceMetricsService.getInstanceMetrics().getECU(usageType);
     		break;
     		
     	case vCPUs:
-    		multiplier = instanceMetrics.getVCpu(usageType);
+    		multiplier = instanceMetricsService.getInstanceMetrics().getVCpu(usageType);
     		break;
     	case Normalized:
-    		multiplier = instanceMetrics.getNormalizationFactor(usageType);
+    		multiplier = instanceMetricsService.getInstanceMetrics().getNormalizationFactor(usageType);
     		break;
     	}
     	return value * multiplier;    		

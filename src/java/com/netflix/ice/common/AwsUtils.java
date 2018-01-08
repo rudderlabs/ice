@@ -202,16 +202,20 @@ public class AwsUtils {
             }
 
             S3Object s3Object = s3Client.getObject(bucket, fileKey);
-            long targetSize = s3Object.getObjectMetadata().getContentLength();
-            if (targetSize > Integer.MAX_VALUE) {
-                try { s3Object.close(); } catch (Exception e) {}
-            	logger.error("manifest file too large: " + fileKey + ", " + targetSize);
-            	return null;
-            }
-            InputStream input = s3Object.getObjectContent();
-            ByteArrayOutputStream output = new ByteArrayOutputStream((int) targetSize);
+            long targetSize = 0;
+            InputStream input = null;
+            ByteArrayOutputStream output = null;
 
             try {
+                targetSize = s3Object.getObjectMetadata().getContentLength();
+                if (targetSize > Integer.MAX_VALUE) {
+                    try { s3Object.close(); } catch (Exception e) {}
+                	logger.error("manifest file too large: " + fileKey + ", " + targetSize);
+                	return null;
+                }
+                
+                input = s3Object.getObjectContent();
+                output = new ByteArrayOutputStream((int) targetSize);
                 byte buf[]=new byte[1024000];
                 int len;
                 while ((len=input.read(buf)) > 0) {
@@ -377,14 +381,17 @@ public class AwsUtils {
     private static boolean download(AmazonS3Client s3Client, String bucketName, String fileKey, File file) {
         do {
             S3Object s3Object = s3Client.getObject(bucketName, fileKey);
-            InputStream input = s3Object.getObjectContent();
-            long targetSize = s3Object.getObjectMetadata().getContentLength();
-            long lastModified = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified().getTime();
+            InputStream input = null;
             FileOutputStream output = null;
-
+            long targetSize = 0;
+            long lastModified = 0;
             boolean downloaded = false;
             long size = 0;
-            try {
+            try {                
+                input = s3Object.getObjectContent();
+                targetSize = s3Object.getObjectMetadata().getContentLength();
+                lastModified = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified().getTime();
+
                 output = new FileOutputStream(file);
                 byte buf[]=new byte[1024000];
                 int len;
@@ -400,10 +407,9 @@ public class AwsUtils {
             finally {
                 if (input != null) try {input.close();} catch (IOException e){}
                 if (output != null) try {output.close();} catch (IOException e){}
+                try { s3Object.close(); } catch (Exception e) {}
             }
             
-            try { s3Object.close(); } catch (Exception e) {}
-
             if (downloaded) {
             	// Set modified time of local file to match the time of the file in S3
             	file.setLastModified(lastModified);

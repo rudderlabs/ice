@@ -24,6 +24,7 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.reader.ApplicationGroup;
 import com.netflix.ice.reader.ApplicationGroupService;
 import com.netflix.ice.reader.ReaderConfig;
+
 import org.apache.commons.io.IOUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,21 +59,27 @@ public class BasicS3ApplicationGroupService implements ApplicationGroupService {
 
     public Map<String, ApplicationGroup> getApplicationGroups() {
         String jsonStr;
+        InputStream in = null;
         try {
-            InputStream in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + "appgroups").getObjectContent();
+            in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + "appgroups").getObjectContent();
             jsonStr = IOUtils.toString(in);
             in.close();
         }
         catch (Exception e) {
             logger.error("Error reading from appgroups file", e);
+            if (in != null)
+            	try {in.close();} catch (Exception ex){}
             try {
-                InputStream in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + "copy_appgroups").getObjectContent();
+                in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + "copy_appgroups").getObjectContent();
                 jsonStr = IOUtils.toString(in);
-                in.close();
             }
             catch (Exception r) {
                 logger.error("Error reading from copy_appgroups file", r);
                 return Maps.newHashMap();
+            }
+            finally {
+                if (in != null)
+                	try {in.close();} catch (Exception ex){}
             }
         }
 
