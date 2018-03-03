@@ -27,7 +27,9 @@ import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
+import com.netflix.ice.reader.TagListsWithUserTags;
 import com.netflix.ice.tag.*;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
@@ -40,7 +42,7 @@ import java.util.*;
 
 public class BasicTagGroupManager extends StalePoller implements TagGroupManager {
 
-    private ReaderConfig config = ReaderConfig.getInstance();
+    private ReaderConfig config;
     private String dbName;
     private File file;
     private TreeMap<Long, Collection<TagGroup>> tagGroups;
@@ -48,6 +50,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     private Interval totalInterval;
 
     BasicTagGroupManager(Product product) {
+    	config = ReaderConfig.getInstance();
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
         file = new File(config.localDir, dbName);
         try {
@@ -57,6 +60,12 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             logger.error("cannot poll data", e);
         }
         start(DefaultStalePollInvervalSecs, DefaultStalePollInvervalSecs, false);
+    }
+    
+    // For unit testing
+    BasicTagGroupManager(TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups) {
+    	this.tagGroupsWithResourceGroups = tagGroupsWithResourceGroups;
+    	this.tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
     }
 
     @Override
@@ -212,9 +221,27 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         Set<ResourceGroup> result = Sets.newTreeSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
 
+        // Add ResourceGroup tags that are non-null, just the product name, or userTag CSVs.
         for (TagGroup tagGroup: tagGroupsInRange) {
-            if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null)
+            if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
                 result.add(tagGroup.resourceGroup);
+            }
+        }
+
+        return result;
+    }
+
+    public Collection<UserTag> getResourceGroupTags(Interval interval, TagLists tagLists, int userTagGroupByIndex) {
+        Set<UserTag> result = Sets.newTreeSet();
+        Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
+
+        // Add ResourceGroup tags that are non-null, just the product name, or userTag CSVs.
+        for (TagGroup tagGroup: tagGroupsInRange) {
+        	logger.debug("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
+            if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
+            	UserTag t = tagGroup.resourceGroup.isProductName() ? new UserTag("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+                result.add(t);
+            }
         }
 
         return result;
@@ -253,11 +280,16 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
 
     public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation) {
+    	return getTagListsMap(interval, tagLists, groupBy, forReservation, 0);
+    }
+    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, int userTagGroupByIndex) {
         Map<Tag, TagLists> result = Maps.newHashMap();
 
+        // Get all the GroupBy tags. If we're not grouping by ResourceGroup or Tag, then work with a TagLists that doesn't contain resourceGroups.
+        // Filtering of results agains resourceGroup values is handled later.
         TagLists tagListsForTag = tagLists;
-        if (groupBy != TagType.ResourceGroup && tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0) {
-            tagListsForTag = new TagLists(tagLists.accounts, tagLists.regions, tagLists.zones, tagLists.products, tagLists.operations, tagLists.usageTypes);
+        if (groupBy != TagType.ResourceGroup && groupBy != TagType.Tag && tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0) {
+            tagListsForTag = tagLists.getTagListsWithNullResourceGroup();
         }
 
         List<Tag> groupByTags = Lists.newArrayList();
@@ -283,9 +315,19 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             case ResourceGroup:
                 groupByTags.addAll(getResourceGroups(interval, tagListsForTag));
                 break;
+            case Tag:
+                groupByTags.addAll(getResourceGroupTags(interval, tagListsForTag, userTagGroupByIndex));
+                break;
             default:
             	break;
         }
+        logger.info("TagLists: " + tagLists);
+        logger.info("found " + groupByTags.size() + " groupByTags, taglists instanceof " + (tagLists instanceof TagListsWithUserTags ? "TagListsWithUserTags" : "TagLists"));
+        //if (tagLists instanceof TagListsWithUserTags) {
+        	for (Tag tag: groupByTags)
+        		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
+       // }
+        	
         if (groupBy == TagType.Operation && !forReservation) {
             for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                 groupByTags.remove(lentOp);
@@ -293,12 +335,13 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
 				groupByTags.remove(savingsOp);
         }
         for (Tag tag: groupByTags) {
-            if (tagLists.contains(tag, groupBy)) {
-                TagLists tmp = tagLists.getTagLists(tag, groupBy);
+            if (tagLists.contains(tag, groupBy, userTagGroupByIndex)) {
+                logger.debug("get tag lists for " + tag);
+                TagLists tmp = tagLists.getTagLists(tag, groupBy, userTagGroupByIndex);
                 if (!forReservation && groupBy != TagType.Operation) {
                     if (tmp.operations == null || tmp.operations.size() == 0) {
                         List<Operation> operations = Lists.newArrayList(getOperations(tmp));
-                        tmp = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, operations, tmp.usageTypes, tmp.resourceGroups);
+                        tmp = tmp.copyWithOperations(operations);
                     }
                     for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                         tmp.operations.remove(lentOp);
@@ -310,4 +353,5 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         }
         return result;
     }
+    
 }

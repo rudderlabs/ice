@@ -35,6 +35,7 @@ import com.google.common.collect.Maps
 import com.netflix.ice.basic.BasicProductService
 import com.netflix.ice.basic.BasicReservationService
 import com.netflix.ice.basic.BasicLineItemProcessor
+import com.netflix.ice.basic.BasicResourceService
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.basic.BasicS3ApplicationGroupService
 import com.netflix.ice.basic.BasicManagers
@@ -49,9 +50,9 @@ import org.apache.commons.io.IOUtils
 
 import com.netflix.ice.common.ResourceService
 import com.netflix.ice.common.ProductService
-import com.netflix.ice.basic.BasicResourceService
 import com.netflix.ice.basic.BasicWeeklyCostEmailService
 import com.netflix.ice.reader.ApplicationGroupService
+
 
 class BootStrap {
     private static boolean initialized = false;

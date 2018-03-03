@@ -409,6 +409,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("showResourceGroups=") === 0) {
             $scope.showResourceGroups = "true" === params[i].substr(19);
           }
+          else if (params[i].indexOf("showResourceGroupTags=") === 0) {
+            $scope.showResourceGroupTags = "true" === params[i].substr(22);
+          }
           else if (params[i].indexOf("resources=") === 0) {
             $scope.resources = params[i].resources(10);
           }
@@ -483,6 +486,14 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!$scope.showResourceGroups) {
         for (var j in $scope.groupBys) {
           if ($scope.groupBys[j].name === "ResourceGroup") {
+            $scope.groupBys.splice(j, 1);
+            break;
+          }
+        }
+      }
+      if (!$scope.showResourceGroupTags) {
+        for (var j in $scope.groupBys) {
+          if ($scope.groupBys[j].name === "Tag") {
             $scope.groupBys.splice(j, 1);
             break;
           }
@@ -626,6 +637,49 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             $scope.selected_resourceGroups = $scope.resourceGroups;
           else if ($scope.selected_resourceGroups.length > 0)
             $scope.selected_resourceGroups = updateSelected($scope.resourceGroups, $scope.selected_resourceGroups);
+          if (fn)
+            fn(result.data);
+        }
+      });
+    },
+
+    getResourceGroupKeys: function ($scope, fn, params) {
+      if (!params)
+        params = {}
+      $http({
+        method: "GET",
+        url: "resourceGroupKeys",
+        params: params
+      }).success(function (result) {
+        if (result.status === 200 && result.data) {
+          $scope.resourceGroupKeys = result.data;
+          if (fn)
+            fn(result.data);
+        }
+      });
+    },
+
+    getResourceGroupValues: function ($scope, index, fn, params) {
+      if (!params) {
+        params = {};
+        params.index = index;
+        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        this.addParams(params, "product", $scope.regions, $scope.selected_products);
+      }
+      $http({
+        method: "GET",
+        url: "resourceGroupValues",
+        params: params
+      }).success(function (result) {
+        if (result.status === 200 && result.data) {
+          $scope.resourceGroupValues[index] = result.data;
+          if ($scope.selected__resourceGroupValues[index] && !$scope.selected_resourceGroupValues[index])
+            $scope.selected_resourceGroupValues[index] = getSelected($scope.resourceGroupValues[key], $scope.selected__resourceGroupValues[index]);
+          else if (!$scope.selected_resourceGroupValues[index])
+            $scope.selected_resourceGroupValues[index] = $scope.resourceGroupValues[index];
+          else if ($scope.selected_resourceGroupValues[index].length > 0)
+            $scope.selected_resourceGroupValues[index] = updateSelected($scope.resourceGroupValues[index], $scope.selected_resourceGroupValues[index]);
           if (fn)
             fn(result.data);
         }
@@ -779,6 +833,15 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if ($scope.showResourceGroups && !params.breakdown) {
         params.showResourceGroups = true;
         this.addParams(params, "resourceGroup", $scope.resourceGroups, $scope.selected_resourceGroups, $scope.selected__resourceGroups, $scope.filter_resourceGroups);
+      }
+      if ($scope.showResourceGroupTags) {
+        params.showResourceGroupTags = true;
+        if ($scope.groupBy.name === 'Tag') {
+          params.groupByTag = $scope.groupByTag.name;
+        }
+        for (var i = 0; i < $scope.resourceGroupKeys.length; i++) {
+          this.addParams(params, $scope.resourceGroupKeys[i].name, $scope.resourceGroupValues[i], $scope.selected_resourceGroupValues[i], $scope.selected__resourceGroupValues[i], $scope.filter_resourceGroupValues[i]);
+        }
       }
       if ($scope.appgroup) {
         params.appgroup = $scope.appgroup;
@@ -1369,6 +1432,11 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.showsps = false;
   $scope.factorsps = false;
   $scope.showResourceGroups = false;
+  $scope.resourceGroupKeys = [];
+  $scope.resourceGroupValues = [];
+  $scope.selected_resourceGroupValues = [];
+  $scope.selected__resourceGroupValues = [];
+  $scope.filter_resourceGroupValues = [];
   $scope.plotType = "area";
   $scope.legends = [];
   $scope.usage_cost = "cost";
@@ -1380,9 +1448,12 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Product" },
     { name: "ResourceGroup" },
     { name: "Operation" },
-    { name: "UsageType" }
+    { name: "UsageType" },
+    { name: "Tag" }
   ],
     $scope.groupBy = $scope.groupBys[2];
+    $scope.groupByTag = {}
+  $scope.groupByTags = []
   $scope.consolidate = "hourly";
   $scope.end = new Date();
   $scope.start = new Date();
@@ -1400,6 +1471,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.end = highchart.dateFormat($scope.end); //$filter('date')($scope.end, "y-MM-dd hha");
   $scope.start = highchart.dateFormat($scope.start); //$filter('date')($scope.start, "y-MM-dd hha");
 
+  $scope.isGroupByTag = function () {
+    return $scope.groupBy.name === 'Tag';
+  }
+  
   $scope.updateUrl = function () {
     $scope.end = jQuery('#end').datetimepicker().val();
     $scope.start = jQuery('#start').datetimepicker().val();
@@ -1457,6 +1532,8 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.productsChanged = function () {
     if ($scope.showResourceGroups)
       $scope.updateResourceGroups();
+    else if ($scope.showResourceGroupTags)
+      $scope.updateResourceGroupTags(0);
     else
       $scope.updateOperations();
   }
@@ -1486,10 +1563,31 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     });
   }
 
+  $scope.getResourceGroupKeys = function () {
+    usage_db.getResourceGroupKeys($scope, function (data) {
+      $scope.groupByTags = $scope.resourceGroupKeys;
+      if ($scope.resourceGroupKeys.length > 0)
+        $scope.groupByTag = $scope.resourceGroupKeys[0];
+      $scope.updateRegions();
+    });
+  }
+
+  $scope.updateResourceGroupTags = function (index) {
+    usage_db.getResourceGroupValues($scope, index, function (data) {
+      index++;
+      if (index < $scope.resourceGroupKeys.length)
+        $scope.updateResourceGroupTags(index)
+      else
+        $scope.updateOperations();
+    });
+  }
+
   $scope.updateProducts = function () {
     usage_db.getProducts($scope, function (data) {
       if ($scope.showResourceGroups)
         $scope.updateResourceGroups();
+      else if ($scope.showResourceGroupTags)
+        $scope.updateResourceGroupTags(0);
       else
         $scope.updateOperations();
     });
@@ -1505,7 +1603,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   var fn = function () {
     usage_db.getAccounts($scope, function (data) {
-      $scope.updateRegions();
+      if ($scope.showResourceGroupTags)
+        $scope.getResourceGroupKeys()
+      else
+        $scope.updateRegions();
     });
 
     $scope.getData();

@@ -95,6 +95,11 @@ public class BasicManagers extends Poller implements Managers {
         return tagCoverageManagers.keySet();
     }
 
+    @Override
+    public String[] getResourceGroupKeys() {
+    	return config.resourceService.getCustomTags();
+    }
+
     public TagGroupManager getTagGroupManager(Product product) {
         return tagGroupManagers.get(product);
     }

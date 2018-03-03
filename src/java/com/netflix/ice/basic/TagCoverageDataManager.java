@@ -141,4 +141,11 @@ public class TagCoverageDataManager extends DataFilePoller implements DataManage
         
         return result;
 	}
+
+	@Override
+	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
+			TagType groupBy, AggregateType aggregate, boolean forReservation,
+			UsageUnit usageUnit, int userTagGroupByIndex) {
+		return getData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, 0);
+	}
 }

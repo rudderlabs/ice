@@ -196,22 +196,20 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (lineItem.hasResources() && !lineItem.getResource().isEmpty() && resourceService != null) {
-            String resourceGroupStr = resourceService.getResource(account, reformedMetaData.region, product, lineItem, millisStart);
-            if (!StringUtils.isEmpty(resourceGroupStr)) {
-                ResourceGroup resourceGroup = ResourceGroup.getResourceGroup(resourceGroupStr);
-                if (tagGroup instanceof TagGroupRI) {
-                	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
-                }
-                else {
-                	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
-                }
+        	// Line item has a resource ID that is not empty and the resource service is enabled.
+            ResourceGroup resourceGroup = resourceService.getResourceGroup(account, reformedMetaData.region, product, lineItem, millisStart);
+            if (tagGroup instanceof TagGroupRI) {
+            	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
+            }
+            else {
+            	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
+            }
 
-                if (usageDataOfProduct == null) {
-                    usageDataOfProduct = new ReadWriteData();
-                    costDataOfProduct = new ReadWriteData();
-                    costAndUsageData.putUsage(product, usageDataOfProduct);
-                    costAndUsageData.putCost(product, costDataOfProduct);
-                }
+            if (usageDataOfProduct == null) {
+                usageDataOfProduct = new ReadWriteData();
+                costDataOfProduct = new ReadWriteData();
+                costAndUsageData.putUsage(product, usageDataOfProduct);
+                costAndUsageData.putCost(product, costDataOfProduct);
             }
         }
 

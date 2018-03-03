@@ -38,6 +38,7 @@ import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Tag;
 
 public class BasicLineItemProcessorTest {
@@ -449,7 +450,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontDiscountedUsageWithResourceTags() throws Exception {
 		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn", "i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		String[] resourceTag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", "Prod_john.doe@foobar.com" };
+		String[] resourceTag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30, resourceTag, productService.getProductByName(Product.ec2Instance), 0.0);
 		run(test);
 	}
@@ -510,7 +511,7 @@ public class BasicLineItemProcessorTest {
 	public void testSpotWithResourceTags() throws Exception {
 		Line line = new Line(LineItemType.Usage, "234567890123", "", "Amazon Elastic Compute Cloud", "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "", "arn", "i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
 		String[] tag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
-		String[] resourceTag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", "Prod_john.doe@foobar.com" };
+		String[] resourceTag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", "Prod" + ResourceGroup.separator + "johndoe@foobar.com" };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.349, Result.hourly, 30, resourceTag, productService.getProductByName(Product.ec2Instance), 0.0);
 		run(test);
 	}

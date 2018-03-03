@@ -23,18 +23,65 @@ import com.google.common.collect.Maps;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.lang.StringUtils;
+
 public class ResourceGroup extends Tag {
 	private static final long serialVersionUID = 1L;
-
-	private ResourceGroup (String name) {
-        super(name);
-    }
+	
+	public static final String separator = "|";
+	private static final String splitRegex = "\\|";
+	
+	private UserTag[] resourceTags;
+	/**
+	 * isProductName indicates that the resourceTags is simply the product name.
+	 */
+	private final boolean isProductName;
     private static ConcurrentMap<String, ResourceGroup> resourceGroups = Maps.newConcurrentMap();
 
-    public static ResourceGroup getResourceGroup(String name) {
+	protected ResourceGroup(String name, boolean isProductName) {
+        super(name);
+        this.isProductName = isProductName;
+    }
+	
+	protected ResourceGroup(String[] tags) {
+		super(StringUtils.join(tags, separator));
+		this.isProductName = false;
+		resourceTags = new UserTag[tags.length];
+		for (int i = 0; i < tags.length; i++)
+			resourceTags[i] = new UserTag(tags[i]);
+	}
+	
+	public boolean isProductName() {
+		return isProductName;
+	}
+	
+	public UserTag[] getUserTags() {
+		if (resourceTags == null) {
+			String[] tags = name.split(splitRegex, -1);
+			resourceTags = new UserTag[tags.length];
+			for (int i = 0; i < tags.length; i++)
+				resourceTags[i] = new UserTag(tags[i]);
+		}
+		return resourceTags;
+	}
+	
+    public static ResourceGroup getResourceGroup(String name, boolean isProductName) {
+    	if (name.contains(separator)) {
+    		return getResourceGroup(name.split(splitRegex, -1));
+    	}
         ResourceGroup resourceGroup = resourceGroups.get(name);
         if (resourceGroup == null) {
-            resourceGroups.putIfAbsent(name, new ResourceGroup(name));
+            resourceGroups.putIfAbsent(name, new ResourceGroup(name, isProductName));
+            resourceGroup = resourceGroups.get(name);
+        }
+        return resourceGroup;
+    }
+
+    public static ResourceGroup getResourceGroup(String[] tags) {
+    	String name = StringUtils.join(tags, separator);
+        ResourceGroup resourceGroup = resourceGroups.get(name);
+        if (resourceGroup == null) {
+            resourceGroups.putIfAbsent(name, new ResourceGroup(tags));
             resourceGroup = resourceGroups.get(name);
         }
         return resourceGroup;

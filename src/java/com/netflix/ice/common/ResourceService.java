@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.common;
 
+import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -36,10 +37,11 @@ public abstract class ResourceService {
      */
     abstract public void init();
     
+    abstract public String[] getCustomTags();
     abstract public List<String> getUserTags();
 
     /**
-     * Get resource group name. Subclass can maintain a mapping of resource ids and resource group names.
+     * Get resource group. Subclass can maintain a mapping of resource ids and resource group names.
      * Users can also choose to add user-defined tags in the billing file. E.g. in SampleMapDbResourceService,
      * the auto-scaling-group name is used to generate the resource group name.
      * @param account
@@ -47,7 +49,7 @@ public abstract class ResourceService {
      * @param product
      * @param resourceId: depending on product, resourceId could be:
      * 1) instance id, if product is ec2_instance. You can use Edda (https://github.com/Netflix/edda) to query application name from instance id.
-     * 2) volumn id, if product is ebs. You can use Edda (https://github.com/Netflix/edda) to query instance id from volumn id, then application name from instance id.
+     * 2) volume id, if product is ebs. You can use Edda (https://github.com/Netflix/edda) to query instance id from volumn id, then application name from instance id.
      * 3) s3 bucket name if product is s3
      * 4) db name if product is rds
      * 5) etc.
@@ -55,8 +57,8 @@ public abstract class ResourceService {
      * @param millisStart
      * @return
      */
-    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart){
-        return product.name;
+    public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart){
+        return ResourceGroup.getResourceGroup(product.name, true);
     }
 
     /**

@@ -15,6 +15,7 @@ import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.CostAndUsageReport;
 import com.netflix.ice.processor.CostAndUsageReportLineItem;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.ResourceGroup;
 
 public class BasicResourceServiceTest {
     private static final String resourcesDir = "src/test/resources";
@@ -41,7 +42,7 @@ public class BasicResourceServiceTest {
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues);
 		rs.initHeader(li.getResourceTagsHeader());
 		
-		String resource = rs.getResource(null, null, ps.getProductByName(Product.ec2Instance), li, 0);
-		assertEquals("Resource name doesn't match", "Prod_serviceAPI", resource);
+		ResourceGroup resource = rs.getResourceGroup(null, null, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
 	}
 }

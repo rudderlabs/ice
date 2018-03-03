@@ -171,7 +171,7 @@ public class ReaderConfig extends Config {
             while (start.isBefore(interval.getEnd()));
         }
         else {
-            dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit);
+            dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit, 0);
         }
     }
 }

@@ -22,6 +22,7 @@ import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ResourceGroup;
 
 
 /**
@@ -82,14 +83,14 @@ public class EddaResourceService extends ResourceService {
 
 
 	@Override
-	public String getResource(Account account, Region region, Product product, LineItem lineItem,
+	public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem,
 			long millisStart) {
 		String resourceId = lineItem.getResource();
 		// currently we support ec2
 		if(product.isEc2() || product.isEc2Instance()) {
 			if(StringUtils.isEmpty(resourceId)) {
 				logger.warn("Had empty resourceId");
-				return "Error";
+				return ResourceGroup.getResourceGroup("Error", false);
 			}
 
 			try {
@@ -104,7 +105,7 @@ public class EddaResourceService extends ResourceService {
 				}
 				if(!found) {
 					logger.warn("Did not find resourceId in edda: " + resourceId);
-					return "Unknown";
+					return ResourceGroup.getResourceGroup("Unknown", false);
 				}
 
 				InputStream stream = new URL(EDDA_ROOT_URL + "view/instances/" + resourceId).openStream();
@@ -123,26 +124,26 @@ public class EddaResourceService extends ResourceService {
 					if(key.equals(EDDA_TAG_NAME)) {
 						String usage = tag.getString("value");
 						logger.debug("Found usage: " + usage + " for resource " + resourceId);
-						return usage;
+						return ResourceGroup.getResourceGroup(usage, false);
 					}
 				}
 
 				logger.debug("Did not find tag 'Usage' for resource " + resourceId);
-				return "Unknown";
+				return ResourceGroup.getResourceGroup("Unknown", false);
 			} catch (JSONException e) {
 				logger.warn("error parsing json", e);
-				return "Error";
+				return ResourceGroup.getResourceGroup("Error", false);
 			} catch (MalformedURLException e) {
 				logger.warn("error parsing url", e);
-				return "Error";
+				return ResourceGroup.getResourceGroup("Error", false);
 			} catch (IOException e) {
 				logger.warn("error fetching data from edda at " + EDDA_ROOT_URL, e);
-				return "Error";
+				return ResourceGroup.getResourceGroup("Error", false);
 			}
 		}
 
 		logger.debug("Product: " + product + " not handled, resourceId: " + resourceId);
-		return super.getResource(account, region, product, lineItem, millisStart);
+		return super.getResourceGroup(account, region, product, lineItem, millisStart);
 	}
 
 
@@ -191,6 +192,12 @@ public class EddaResourceService extends ResourceService {
 
 	@Override
 	public String getUserTagValue(LineItem lineItem, String tag) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String[] getCustomTags() {
 		// TODO Auto-generated method stub
 		return null;
 	}

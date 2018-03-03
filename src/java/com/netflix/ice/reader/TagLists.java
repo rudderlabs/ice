@@ -114,6 +114,10 @@ public class TagLists {
         this.usageTypes = usageTypes;
         this.resourceGroups = resourceGroups;
     }
+    
+    public TagLists copyWithOperations(List<Operation> operations) {
+    	return new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups);
+    }
 
     /**
      * Compares the supplied tagGroup against the contents of the TagLists object.
@@ -148,8 +152,12 @@ public class TagLists {
         }
         return result;
     }
+    
+    public boolean contains(TagGroup tagGroup, boolean useResource) {
+    	return contains(tagGroup);
+    }
 
-    public boolean contains(Tag tag, TagType groupBy) {
+    public boolean contains(Tag tag, TagType groupBy, int userTagGroupByIndex) {
         boolean result = true;
 
         switch (groupBy) {
@@ -181,7 +189,7 @@ public class TagLists {
         return result;
     }
 
-    public TagLists getTagLists(Tag tag, TagType groupBy) {
+    public TagLists getTagLists(Tag tag, TagType groupBy, int userTagGroupByIndex) {
         TagLists result = null;
 
         switch (groupBy) {
@@ -211,5 +219,19 @@ public class TagLists {
             	break;
         }
         return result;
+    }
+    
+    public TagLists getTagListsWithNullResourceGroup() {
+    	return new TagLists(this.accounts, this.regions, this.zones, this.products, this.operations, this.usageTypes, null);
+    }
+    
+    public String toString() {
+    	return  (accounts == null ? "null" : accounts.toString()) + "," +
+    			(regions == null ? "null" : regions.toString()) + "," +
+    			(zones == null ? "null" : zones.toString()) + "," +
+        		(products == null ? "null" : products.toString()) + "," +
+        		(operations == null ? "null" : operations.toString()) + "," +
+        		(usageTypes == null ? "null" : usageTypes.toString()) + "," +
+        		(resourceGroups == null ? "null" : resourceGroups.toString());
     }
 }

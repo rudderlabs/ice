@@ -24,6 +24,7 @@ import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
 
 import org.joda.time.*;
 
@@ -48,7 +49,7 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
         start();
     }
     
-    private double[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
+    private double[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit, TagType groupBy) throws ExecutionException {
     	Interval adjusted = getAdjustedInterval(interval);
         DateTime start = adjusted.getStart();
         DateTime end = adjusted.getEnd();
@@ -94,19 +95,30 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             }
 
             List<Integer> columnIndecies = Lists.newArrayList();
-            List<UsageType> usageTypes = Lists.newArrayList();
+            List<TagGroup> tagGroups = Lists.newArrayList();
             int columnIndex = 0;
             for (TagGroup tagGroup: data.getTagGroups()) {
-                if (tagLists.contains(tagGroup)) {
+            	boolean contains = tagLists.contains(tagGroup, true);
+            	if (tagLists instanceof TagListsWithUserTags) {
+            		logger.debug("resource: " + contains + ", " + tagGroup + ", " + columnIndex);
+            	}
+                if (contains) {
                 	columnIndecies.add(columnIndex);
-                    usageTypes.add(tagGroup.usageType);
+                	tagGroups.add(tagGroup);
                 }
                 columnIndex++;
             }
+        	if (tagLists instanceof TagListsWithUserTags || groupBy == TagType.ResourceGroup) {
+        		logger.info("tagGroups = " + tagGroups.size() /* + ", tagLists: " + tagLists*/);
+                double[] fromData = data.getData(fromIndex);
+                for (int i = 0; i < columnIndecies.size(); i++)
+                	logger.info("      " + fromData[columnIndecies.get(i)] + ", " + tagGroups.get(i) + ", " + (tagGroups.get(i).resourceGroup == null ? "null" : tagGroups.get(i).resourceGroup.isProductName()));
+        		
+        	}
             while (resultIndex < num && fromIndex < data.getNum()) {
                 double[] fromData = data.getData(fromIndex++);
                 for (int i = 0; i < columnIndecies.size(); i++)
-                    result[resultIndex] += adjustForUsageUnit(usageUnit, usageTypes.get(i), fromData[columnIndecies.get(i)]);
+                    result[resultIndex] += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, fromData[columnIndecies.get(i)]);
                 resultIndex++;
             }
 
@@ -148,7 +160,8 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             to[i] += from[i];
     }
 
-    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit) {
+	@Override
+    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
 
         Map<Tag, TagLists> tagListsMap;
 
@@ -157,28 +170,55 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             tagListsMap.put(Tag.aggregated, tagLists);
         }
         else
-            tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation);
+            tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
 
         Map<Tag, double[]> result = Maps.newTreeMap();
-        double[] aggregated = null;
 
         for (Tag tag: tagListsMap.keySet()) {
             try {
-                double[] data = getData(interval, tagListsMap.get(tag), usageUnit);
-                result.put(tag, data);
-                if (aggregate != AggregateType.none && tagListsMap.size() > 1) {
-                    if (aggregated == null)
-                        aggregated = new double[data.length];
-                    addData(data, aggregated);
+                logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
+                double[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy);
+                if (groupBy == TagType.Tag) {
+                	Tag userTag = (UserTag) (tag.name.isEmpty() ? new UserTag("<none>") : tag);
+                	
+                	logger.info("resourceGroup: " + tag + " -> " + userTag + " value: " + data[0] + ", " + dbName);
+                	
+        			if (result.containsKey(userTag)) {
+        				// aggregate current data with the one already in the map
+        				addData(data, result.get(userTag));
+        			}
+        			else {
+        				// Put in map using the user tag
+        				result.put(userTag, data);
+        			}
+                }
+                else {
+                	result.put(tag, data);
                 }
             }
             catch (ExecutionException e) {
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        if (aggregated != null)
-            result.put(Tag.aggregated, aggregated);
+        if (aggregate != AggregateType.none && result.size() > 1) {
+            double[] aggregated = null;
+        	for (double[] data: result.values()) {
+                if (aggregated == null)
+                    aggregated = new double[data.length];
+                addData(data, aggregated);
+            }
+            if (aggregated != null)
+                result.put(Tag.aggregated, aggregated);
+		}
+
         return result;
     }
 
+	@Override
+	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
+			TagType groupBy, AggregateType aggregate, boolean forReservation,
+			UsageUnit usageUnit) {
+		return getData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit);
+	}
+	
 }

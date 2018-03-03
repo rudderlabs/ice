@@ -77,6 +77,8 @@ class DashboardController {
 		getResourceGroupLists: "GET",
 		getProducts: "GET",
 		getResourceGroups: "GET",
+		resourceGroupKeys: "GET",
+		resourceGroupValues: "GET",
 		getOperations: "POST",
 		getUsageTypes: "POST",
 		tags: "GET",
@@ -261,6 +263,50 @@ class DashboardController {
         def result = [status: 200, data: data]
         render result as JSON
     }
+	
+	def resourceGroupKeys = {
+		String[] keys = getManagers().getResourceGroupKeys();
+		Collection<UserTag> data = Lists.newArrayList();
+		for (int i = 0; i < keys.length; i++) {
+			data.add(new UserTag(keys[i]));
+		}
+
+		def result = [status: 200, data: data]
+		render result as JSON
+	}
+	
+	def resourceGroupValues = {
+		int index = Integer.parseInt(params.get("index"));
+		List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
+		List<Region> regions = Region.getRegions(listParams("region"));
+		List<Zone> zones = Zone.getZones(listParams("zone"));
+		List<Product> products = getConfig().productService.getProducts(listParams("product"));
+
+        Collection<UserTag> data = Sets.newTreeSet();
+		// Add "None" entry
+		data.add(new UserTag("<none>"))
+		
+        for (Product product: products) {
+
+            TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
+			if (tagGroupManager == null) {
+				logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
+				continue;
+			}
+            Collection<ResourceGroup> resourceGroups = tagGroupManager.getResourceGroups(new TagLists(accounts, regions, zones, Lists.newArrayList(product)));
+			for (ResourceGroup rg: resourceGroups) {
+				// If no separator, it's defaulted to the product name, so skip it
+				if (rg.name.contains(ResourceGroup.separator)) {
+					UserTag[] tags = rg.getUserTags();
+					if (tags.length > index && !StringUtils.isEmpty(tags[index].name))
+						data.add(tags[index]);
+				}
+			}
+        }
+		
+		def result = [status: 200, data: data]
+		render result as JSON
+	}
 
     def getOperations = {
         def text = request.reader.text;
@@ -519,7 +565,7 @@ class DashboardController {
             return [status: 200, start: 0, data: [:], stats: [:], groupBy: "None"];
         }
 
-        TagType groupBy = query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"));
+		TagType groupBy = query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"));
         boolean isCost = query.getBoolean("isCost");
         boolean breakdown = query.getBoolean("breakdown");
         boolean showsps = query.getBoolean("showsps");
@@ -546,6 +592,21 @@ class DashboardController {
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+        boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
+		List<List<UserTag>> userTagLists;
+		int userTagGroupByIndex = 0;
+		if (showResourceGroupTags) {
+			String groupByTag = query.optString("groupByTag");
+			String[] keys = getManagers().getResourceGroupKeys();
+			userTagLists = Lists.newArrayList();
+			for (int i = 0; i < keys.length; i++) {
+				if (keys[i].equals(groupByTag)) {
+					userTagGroupByIndex = i;
+				}
+				userTagLists.add(UserTag.getUserTags(listParams(query, keys[i])));
+			}
+		}
+		
         if (showZones && (zones == null || zones.size() == 0)) {
             zones = Lists.newArrayList(tagGroupManager.getZones(new TagLists(accounts)));
         }
@@ -608,7 +669,8 @@ class DashboardController {
 					groupBy == TagType.Tag ? null : groupBy,
 					aggregate,
 					forReservation,
-					usageUnit
+					usageUnit,
+					userTagGroupByIndex
 				);
 				
 				if (groupBy == TagType.Tag) {
@@ -670,25 +732,24 @@ class DashboardController {
                 }
             }
         }
-        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || appgroup != null || showResourceGroups) {
+        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || appgroup != null || showResourceGroups || showResourceGroupTags) {
             data = Maps.newTreeMap();
-            if ((groupBy == TagType.ResourceGroup || appgroup != null) && products.size() == 0) {
-                products = Lists.newArrayList(getManagers().getProducts());
-            }
-            else if (resourceGroups.size() > 0 && products.size() == 0) {
-                products = Lists.newArrayList(getManagers().getProducts());
-            }
-            else if (showResourceGroups && products.size() == 0) {
-                Set productSet = Sets.newTreeSet();
-                for (Product product: getManagers().getProducts()) {
-                    if (product == null)
-                        continue;
-
-                    Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
-                    productSet.addAll(tmp);
-                }
-                products = Lists.newArrayList(productSet);
-            }
+			if (products.size() == 0) {
+	            if (groupBy == TagType.ResourceGroup || appgroup != null || resourceGroups.size() > 0) {
+	                products = Lists.newArrayList(getManagers().getProducts());
+	            }
+	            else if (showResourceGroups || showResourceGroupTags) {
+	                Set productSet = Sets.newTreeSet();
+	                for (Product product: getManagers().getProducts()) {
+	                    if (product == null)
+	                        continue;
+	
+	                    Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
+	                    productSet.addAll(tmp);
+	                }
+	                products = Lists.newArrayList(productSet);
+	            }
+			}
             for (Product product: products) {
                 if (product == null)
                     continue;
@@ -710,13 +771,22 @@ class DashboardController {
 					logger.error("No DataManager for product " + product);
 					continue;
 				}
+				TagLists tagLists;
+				if (showResourceGroupTags) {
+					tagLists = new TagListsWithUserTags(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, userTagLists);
+				}
+				else {
+					tagLists = new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroups);
+				}
+				logger.debug("Process product " + product);
                 Map<Tag, double[]> dataOfProduct = dataManager.getData(
                     interval,
-                    new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroups),
+                    tagLists,
                     groupBy,
                     aggregate,
                     forReservation,
-					usageUnit
+					usageUnit,
+					userTagGroupByIndex
                 );
                 
                 if (groupBy == TagType.Product && dataOfProduct.size() > 0) {
@@ -737,7 +807,8 @@ class DashboardController {
                 groupBy,
                 aggregate,
                 forReservation,
-				usageUnit
+				usageUnit,
+				userTagGroupByIndex
             );
 		
 			logger.debug("  -- tags: " + data.keySet());

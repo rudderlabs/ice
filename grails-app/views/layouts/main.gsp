@@ -48,8 +48,9 @@
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#{{getTimeParams()}}" ng-click="reload()">General Details</a></li>
         <g:if test="${ReaderConfig.getInstance().resourceService != null}">
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showResourceGroups=true&{{getTimeParams()}}" ng-click="reload()">Details With Resource Groups</a></li>
-        </g:if>
+        <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showResourceGroupTags=true&{{getTimeParams()}}" ng-click="reload()">Details With Resource Group Tags</a></li>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'tagcoverage')}#{{getTimeParams()}}" ng-click="reload()">Tag Coverage</a></li>
+        </g:if>
       </ul>
     </li>
     <li class="menuButton dropdown">

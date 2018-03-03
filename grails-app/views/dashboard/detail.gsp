@@ -96,6 +96,43 @@
       </td>
     </tr>
   </table>
+  <table ng-show="!graphOnly()">
+    <tr ng-show="showResourceGroupTags">
+   	  <td>Tags:</td>
+      <td>{{resourceGroupKeys[0].name}}</td>
+      <td>{{resourceGroupKeys[1].name}}</td>
+      <td>{{resourceGroupKeys[2].name}}</td>
+      <td>{{resourceGroupKeys[3].name}}</td>
+      <td>{{resourceGroupKeys[4].name}}</td>
+    </tr>
+    <tr ng-show="showResourceGroupTags">
+      <td>
+        <div ng-show="isGroupByTag()" style="padding-top: 10px">Group by
+          <select ng-model="groupByTag" ng-options="a.name for a in groupByTags"></select>
+        </div>      
+      </td>
+      <td ng-show="resourceGroupValues.length > 0">
+        <select ng-model="selected_resourceGroupValues[0]" ng-options="a.name for a in resourceGroupValues[0] | filter:filter_resourceGroupValues[0]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroupTags metaSelect"></select>
+        <br><input ng-model="filter_resourceGroupValues[0]" type="text" class="metaFilter" placeholder="filter">
+      </td>
+      <td ng-show="resourceGroupValues.length > 1">
+        <select ng-model="selected_resourceGroupValues[1]" ng-options="a.name for a in resourceGroupValues[1] | filter:filter_resourceGroupValues[1]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroupTags metaSelect"></select>
+        <br><input ng-model="filter_resourceGroupValues[1]" type="text" class="metaFilter" placeholder="filter">
+      </td>
+      <td ng-show="resourceGroupValues.length > 2">
+        <select ng-model="selected_resourceGroupValues[2]" ng-options="a.name for a in resourceGroupValues[2] | filter:filter_resourceGroupValues[2]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroupTags metaSelect"></select>
+        <br><input ng-model="filter_resourceGroupValues[2]" type="text" class="metaFilter" placeholder="filter">
+      </td>
+      <td ng-show="resourceGroupValues.length > 3">
+        <select ng-model="selected_resourceGroupValues[3]" ng-options="a.name for a in resourceGroupValues[3] | filter:filter_resourceGroupValues[3]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroupTags metaSelect"></select>
+        <br><input ng-model="filter_resourceGroupValues[3]" type="text" class="metaFilter" placeholder="filter">
+      </td>
+      <td ng-show="resourceGroupValues.length > 4">
+        <select ng-model="selected_resourceGroupValues[4]" ng-options="a.name for a in resourceGroupValues[4] | filter:filter_resourceGroupValues[4]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroupTags metaSelect"></select>
+        <br><input ng-model="filter_resourceGroupValues[4]" type="text" class="metaFilter" placeholder="filter">
+      </td>
+    </tr>
+  </table>
 
   <div class="buttons" ng-show="!graphOnly()">
     <img src="${resource(dir: '/')}images/spinner.gif" ng-show="loading">

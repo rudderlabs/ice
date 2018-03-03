@@ -43,6 +43,12 @@ public interface Managers {
 	 */
 	Collection<UserTag> getTags();
 
+	/**
+	 *
+	 * @return array of resource group tag keys
+	 */
+	String[] getResourceGroupKeys();
+
     /**
      *
      * @param product

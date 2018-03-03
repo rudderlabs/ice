@@ -1333,7 +1333,7 @@ public class ReservationProcessorTest {
 			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,1493283689633,1524819688000,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
 		};
 		
-		ResourceGroup rg = ResourceGroup.getResourceGroup("Prod_MyAPI");
+		ResourceGroup rg = ResourceGroup.getResourceGroup("Prod_MyAPI", false);
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, Zone.US_EAST_1A, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", rg, 1.0),
 		};

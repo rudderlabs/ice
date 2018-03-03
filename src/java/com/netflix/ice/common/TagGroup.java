@@ -152,7 +152,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         	productService.getProductByName(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
-            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup));   	
+            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)));   	
     }
     
     public static TagGroup getTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
@@ -236,7 +236,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
-            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr);
+            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr, resourceGroupStr.equals(prodStr));
 
             return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         }

@@ -24,6 +24,7 @@ import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ResourceGroup;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -81,23 +82,25 @@ public class SampleMapDbResourceService extends ResourceService {
     }
 
     @Override
-    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
-
+    public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
+    	String result = null;
+    	
         if (product.isEc2() || product.isEc2Instance() || product.isEbs()) {
-            return getEc2Resource(account, region, lineItem, millisStart);
+            result = getEc2Resource(account, region, lineItem, millisStart);
         }
         else if (product.isRds() || product.isRdsInstance()) {
-            return getRdsResource(account, region, lineItem, millisStart);
+            result = getRdsResource(account, region, lineItem, millisStart);
         }
         else if (product.isS3()) {
-            return getS3Resource(account, region, lineItem, millisStart);
+            result = getS3Resource(account, region, lineItem, millisStart);
         }
         else if (product.isEip()) {
-            return null;
+            result = null;
         }
         else {
-            return lineItem.getResource();
+            result = lineItem.getResource();
         }
+        return ResourceGroup.getResourceGroup(result, false);
     }
 
     protected String getEc2Resource(Account account, Region region, LineItem lineItem, long millisStart) {
@@ -137,6 +140,12 @@ public class SampleMapDbResourceService extends ResourceService {
 
 	@Override
 	public String getUserTagValue(LineItem lineItem, String tag) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String[] getCustomTags() {
 		// TODO Auto-generated method stub
 		return null;
 	}

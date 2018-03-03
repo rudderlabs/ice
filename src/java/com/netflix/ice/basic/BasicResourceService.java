@@ -8,7 +8,7 @@ import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-
+import com.netflix.ice.tag.ResourceGroup;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +20,7 @@ import java.util.Map.Entry;
 public class BasicResourceService extends ResourceService {
     private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
-    private final String[] customTags;
+    protected final String[] customTags;
     private List<String> userTags;
     
     @SuppressWarnings("unchecked")
@@ -78,21 +78,27 @@ public class BasicResourceService extends ResourceService {
     }
 	
 	@Override
+	public String[] getCustomTags() {
+		return customTags;
+	}
+	
+	@Override
 	public List<String> getUserTags() {
 		return userTags;
 	}
 
     @Override
-    public String getResource(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
-        // Build the resource group name based on the values of the custom tags
-        String result = "";
-        for (String tag: customTags) {
-        	String val = getUserTagValue(lineItem, tag);
-            result = StringUtils.isEmpty(result) ? val : result + "_" + val;
+    public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
+        // Build the resource group based on the values of the custom tags
+    	String[] tags = new String[customTags.length];
+       	boolean hasTag = false;
+       	for (int i = 0; i < customTags.length; i++) {
+        	String v = getUserTagValue(lineItem, customTags[i]);
+        	tags[i] = v;
+        	hasTag = v == null ? hasTag : true;
         }
-
-        // If we didn't find any of the custom tags, default to the product name
-        return StringUtils.isEmpty(result) ? product.name : result;
+        // If we didn't have any tags, just return a ResourceGroup
+        return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
     }
     
     @Override

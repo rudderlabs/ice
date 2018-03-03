@@ -185,7 +185,36 @@ paths:
           description: collection of resource groups
           schema:
             $ref: '#/definitions/NamesResponse'
-            
+  
+  /resourceGroupKeys:
+    get:
+      description: Get the list of tag keys used for resource groups.
+      operationId: getResourceGroupKeys
+      responses:
+        '200':
+          description: collection of tag keys
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
+  /resourceGroupValues:
+    get:
+      description: Get the list of values for a given resource group key.
+      operationId: getResourceGroupValues
+      parameters:
+        - name: index
+          in: query
+          description: tag index in resource group
+          type: number
+          required: true
+        - $ref: '#/parameters/accountParam'
+        - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/productParam'
+      responses:
+        '200':
+          description: collection of resource tag values
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
   /getOperations:
     get:
       description: Get the list of operations for the supplied products used by the provided accounts in the specified regions.
@@ -263,7 +292,9 @@ paths:
                 enum: [none, stats, data, both]
               groupBy:
                 type: string
-                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup]
+                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup, Tag]
+              groupByTag:
+                type: string
               consolidate:
                 type: string
                 enum: [monthly, weekly, daily, hourly]
