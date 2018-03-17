@@ -39,7 +39,7 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
 
     protected TagGroupManager tagGroupManager;
     protected InstanceMetricsService instanceMetricsService;
-
+    
     public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
     		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
     	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
@@ -108,13 +108,13 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
                 }
                 columnIndex++;
             }
-        	if (tagLists instanceof TagListsWithUserTags || groupBy == TagType.ResourceGroup) {
-        		logger.info("tagGroups = " + tagGroups.size() /* + ", tagLists: " + tagLists*/);
-                double[] fromData = data.getData(fromIndex);
-                for (int i = 0; i < columnIndecies.size(); i++)
-                	logger.info("      " + fromData[columnIndecies.get(i)] + ", " + tagGroups.get(i) + ", " + (tagGroups.get(i).resourceGroup == null ? "null" : tagGroups.get(i).resourceGroup.isProductName()));
-        		
-        	}
+//        	if (tagLists instanceof TagListsWithUserTags || groupBy == TagType.ResourceGroup) {
+//        		logger.info("tagGroups = " + tagGroups.size() /* + ", tagLists: " + tagLists*/);
+//                double[] fromData = data.getData(fromIndex);
+//                for (int i = 0; i < columnIndecies.size(); i++)
+//                	logger.info("      " + fromData[columnIndecies.get(i)] + ", " + tagGroups.get(i) + ", " + (tagGroups.get(i).resourceGroup == null ? "null" : tagGroups.get(i).resourceGroup.isProductName()));
+//        		
+//        	}
             while (resultIndex < num && fromIndex < data.getNum()) {
                 double[] fromData = data.getData(fromIndex++);
                 for (int i = 0; i < columnIndecies.size(); i++)
@@ -173,15 +173,15 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
 
         Map<Tag, double[]> result = Maps.newTreeMap();
-
+        
         for (Tag tag: tagListsMap.keySet()) {
             try {
-                logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
+                //logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
                 double[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy);
                 if (groupBy == TagType.Tag) {
                 	Tag userTag = (UserTag) (tag.name.isEmpty() ? new UserTag("<none>") : tag);
                 	
-                	logger.info("resourceGroup: " + tag + " -> " + userTag + " value: " + data[0] + ", " + dbName);
+                	//logger.info("resourceGroup: " + tag + " -> " + userTag + " value: " + data[0] + ", " + dbName);
                 	
         			if (result.containsKey(userTag)) {
         				// aggregate current data with the one already in the map
@@ -200,7 +200,7 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        if (aggregate != AggregateType.none && result.size() > 1) {
+        if (aggregate != AggregateType.none) {
             double[] aggregated = null;
         	for (double[] data: result.values()) {
                 if (aggregated == null)
@@ -209,8 +209,23 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             }
             if (aggregated != null)
                 result.put(Tag.aggregated, aggregated);
+            
+            // debugging
+//            if (aggregated != null) {
+//            	for (Tag tag: result.keySet()) {
+//            		double total = 0;
+//            		double[] data = result.get(tag);
+//    	            for (int i = 0; i < data.length; i++)
+//    	            	total += data[i];
+//    	            logger.info("      " + tag + ": " + total);            		
+//            	}
+//	            double total = 0;
+//	            for (int i = 0; i < aggregated.length; i++)
+//	            	total += aggregated[i];
+//	            logger.info("   Total: " + total);
+//            }
 		}
-
+        
         return result;
     }
 

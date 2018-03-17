@@ -239,8 +239,13 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         for (TagGroup tagGroup: tagGroupsInRange) {
         	logger.debug("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
             if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
-            	UserTag t = tagGroup.resourceGroup.isProductName() ? new UserTag("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
-                result.add(t);
+            	try {
+            		UserTag t = tagGroup.resourceGroup.isProductName() ? new UserTag("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+            		result.add(t);
+            	}
+            	catch (Exception e) {
+            		logger.error("Bad resourceGroup: " + tagGroup.resourceGroup + ", " + e);
+            	}
             }
         }
 
@@ -321,14 +326,16 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             default:
             	break;
         }
-        logger.info("TagLists: " + tagLists);
-        logger.info("found " + groupByTags.size() + " groupByTags, taglists instanceof " + (tagLists instanceof TagListsWithUserTags ? "TagListsWithUserTags" : "TagLists"));
+        //logger.info("TagLists: " + tagLists);
+        //logger.info("found " + groupByTags.size() + " groupByTags, taglists instanceof " + (tagLists instanceof TagListsWithUserTags ? "TagListsWithUserTags" : "TagLists"));
         //if (tagLists instanceof TagListsWithUserTags) {
-        	for (Tag tag: groupByTags)
-        		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
-       // }
-        	
-        if (groupBy == TagType.Operation && !forReservation) {
+        //	for (Tag tag: groupByTags)
+        //		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
+        //}
+        
+        boolean groupByOperationOnReservationDashboard = groupBy == TagType.Operation && forReservation;
+        
+        if (!groupByOperationOnReservationDashboard) {
             for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                 groupByTags.remove(lentOp);
 			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
@@ -336,17 +343,23 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         }
         for (Tag tag: groupByTags) {
             if (tagLists.contains(tag, groupBy, userTagGroupByIndex)) {
-                logger.debug("get tag lists for " + tag);
+                //logger.info("get tag lists for " + tag + ", " + groupByOperationOnReservationDashboard);
                 TagLists tmp = tagLists.getTagLists(tag, groupBy, userTagGroupByIndex);
-                if (!forReservation && groupBy != TagType.Operation) {
+                if (!groupByOperationOnReservationDashboard) {
+                	// Don't include savings or lent operations if we're not doing groupBy Operation on the Reservation Dashboard
                     if (tmp.operations == null || tmp.operations.size() == 0) {
-                        List<Operation> operations = Lists.newArrayList(getOperations(tmp));
+                    	//logger.info("       get new operations list and remove lent and savings ops");
+                    	TagLists tl = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, tmp.operations, tmp.usageTypes);
+                        List<Operation> operations = Lists.newArrayList(getOperations(tl));
+                        //logger.info("     operations: " + operations);
                         tmp = tmp.copyWithOperations(operations);
                     }
                     for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                         tmp.operations.remove(lentOp);
         			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
         				tmp.operations.remove(savingsOp);
+        			
+        			//logger.info("          taglists: " + tmp);
                 }
                 result.put(tag, tmp);
             }

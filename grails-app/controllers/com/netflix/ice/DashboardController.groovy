@@ -253,7 +253,7 @@ class DashboardController {
 
             TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
 			if (tagGroupManager == null) {
-				logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
+				//logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
 				continue;
 			}
             Collection<ResourceGroup> resourceGroups = tagGroupManager.getResourceGroups(new TagLists(accounts, regions, zones, Lists.newArrayList(product)));
@@ -768,7 +768,7 @@ class DashboardController {
                 }
                 DataManager dataManager = isCost ? getManagers().getCostManager(product, consolidateType) : getManagers().getUsageManager(product, consolidateType);
 				if (dataManager == null) {
-					logger.error("No DataManager for product " + product);
+					//logger.error("No DataManager for product " + product);
 					continue;
 				}
 				TagLists tagLists;
@@ -778,7 +778,7 @@ class DashboardController {
 				else {
 					tagLists = new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroups);
 				}
-				logger.debug("Process product " + product);
+				logger.debug("-------------- Process product ----------------" + product);
                 Map<Tag, double[]> dataOfProduct = dataManager.getData(
                     interval,
                     tagLists,

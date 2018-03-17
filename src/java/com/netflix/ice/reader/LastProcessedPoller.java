@@ -6,6 +6,7 @@ import org.apache.commons.io.IOUtils;
 import org.joda.time.DateTime;
 
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
 
@@ -65,6 +66,13 @@ public class LastProcessedPoller extends Poller {
             Long millis = Long.parseLong(IOUtils.toString(in));
             //logger.info(filename + ": " + millis);
             return millis;
+        }
+        catch (AmazonS3Exception e) {
+            if (e.getStatusCode() == 404)
+            	logger.warn("File not found in s3: " + filename);
+            else
+            	logger.error("Error reading from file " + filename, e);
+            return 0L;
         }
         catch (Exception e) {
             logger.error("Error reading from file " + filename, e);

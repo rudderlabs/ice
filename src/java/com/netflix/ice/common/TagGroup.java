@@ -189,7 +189,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.product.getCanonicalName());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
-            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
+            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getCanonicalName() : tagGroup.resourceGroup.toString());
         }
         
         public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
@@ -236,7 +236,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
-            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr, resourceGroupStr.equals(prodStr));
+            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr.equals(prodStr) ? product.name : resourceGroupStr, resourceGroupStr.equals(prodStr));
 
             return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         }
