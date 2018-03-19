@@ -17,12 +17,17 @@
  */
 package com.netflix.ice.common;
 
+import java.util.Properties;
+
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.AvailabilityZone;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
+import com.netflix.ice.tag.Region;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-
-import java.util.Properties;
 
 public abstract class Config {
 
@@ -77,5 +82,18 @@ public abstract class Config {
         this.resourceService = resourceService;
 
         AwsUtils.init(credentialsProvider, workS3BucketRegion);
+        
+        initZones();
+    }
+    
+    private void initZones() {
+        AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
+    	for (Region region: Region.getAllRegions()) {
+            AmazonEC2 ec2 = ec2Builder.withRegion(region.name).build();
+            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
+            for (AvailabilityZone az: result.getAvailabilityZones()) {
+            	region.addZone(az.getZoneName());
+            }
+    	}
     }
 }

@@ -64,6 +64,8 @@ public class BillingFileProcessorTest {
 	private static Properties properties;
 	private static AccountService accountService;
 	private static ProductService productService;
+	private static Zone ap_southeast_2a;
+	
 
     @BeforeClass
     public static void init() throws Exception {
@@ -73,6 +75,13 @@ public class BillingFileProcessorTest {
         properties = getProperties();        
 		accountService = new BasicAccountService(properties);
 		productService = new BasicProductService(null);
+		
+		// Add all the zones we need for our test data		
+		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
+		
+		
+		
+		ap_southeast_2a = Zone.getZone("ap-southeast-2a");
     }
     
     
@@ -412,13 +421,13 @@ public class BillingFileProcessorTest {
 		ReservationProcessorTest resTest = new ReservationProcessorTest();
 
 		Datum[] expectedUsage = new Datum[]{
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesFixed, "c4.2xlarge", 1.0),
+			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.reservedInstancesFixed, "c4.2xlarge", 1.0),
 		};
 		
 		Datum[] expectedCost = new Datum[]{
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.reservedInstancesFixed, "c4.2xlarge", 0.0),
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.upfrontAmortizedFixed, "c4.2xlarge", 0.095),
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, Zone.AP_SOUTHEAST_2A, Operation.savingsFixed, "c4.2xlarge", 0.522 - 0.095),
+			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.reservedInstancesFixed, "c4.2xlarge", 0.0),
+			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.upfrontAmortizedFixed, "c4.2xlarge", 0.095),
+			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.savingsFixed, "c4.2xlarge", 0.522 - 0.095),
 		};
 
 		Map<TagGroup, Double> hourUsageData = costAndUsageData.getUsage(null).getData(0);

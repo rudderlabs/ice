@@ -104,8 +104,10 @@ public class Region extends Tag {
         return Lists.newArrayList(zones);
     }
 
-    void addZone(Zone zone) {
-        zones.add(zone);
+    public void addZone(String name) {
+    	Zone zone = Zone.addZone(this, name);
+    	if (!zones.contains(zone))
+    		zones.add(zone);
     }
 
     public static Region getRegionByShortName(String shortName) {

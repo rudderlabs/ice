@@ -9,10 +9,17 @@ import org.junit.Test;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicAccountService;
+import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
 public class InstanceTest {
+	private static Zone us_east_1a;
+
+	static {
+		Region.US_EAST_1.addZone("us-east-1a");
+		us_east_1a = Zone.getZone("us-east-1a");		
+	}
 
 	@Test
 	public void testSerializer() {
@@ -20,10 +27,10 @@ public class InstanceTest {
 		tags.put("Environment", "prod");
 		AccountService as = new BasicAccountService(new Properties());
 		
-				
-		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, Zone.US_EAST_1A, tags);
+		Account account = as.getAccountById("123456789012");
+		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, tags);
 		String asString = i.serialize();
-		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012,123456789012,us-east-1,us-east-1a,Environment=prod\n";
+		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012," + account.name + ",us-east-1,us-east-1a,Environment=prod\n";
 		assertEquals("serialized form wrong", expected, asString);
 		
 		Instance got = Instance.deserialize(asString, as);
@@ -45,9 +52,10 @@ public class InstanceTest {
 		AccountService as = new BasicAccountService(new Properties());
 		
 				
-		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, Zone.US_EAST_1A, tags);
+		Account account = as.getAccountById("123456789012");
+		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, tags);
 		String asString = i.serialize();
-		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012,123456789012,us-east-1,us-east-1a,\"Name=" + tagValue + "\"\n";
+		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012," + account.name + ",us-east-1,us-east-1a,\"Name=" + tagValue + "\"\n";
 		assertEquals("serialized form wrong", expected, asString);
 		
 		Instance got = Instance.deserialize(asString, as);
@@ -69,7 +77,7 @@ public class InstanceTest {
 		AccountService as = new BasicAccountService(new Properties());
 		
 				
-		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, Zone.US_EAST_1A, tags);
+		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, tags);
 		String asString = i.serialize();
 		Instance got = Instance.deserialize(asString, as);
 		
@@ -89,7 +97,7 @@ public class InstanceTest {
 		AccountService as = new BasicAccountService(new Properties());
 		
 				
-		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, Zone.US_EAST_1A, tags);
+		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, tags);
 		String asString = i.serialize();
 		Instance got = Instance.deserialize(asString, as);
 		assertEquals("tags size is wrong", i.tags.size(), got.tags.size());
