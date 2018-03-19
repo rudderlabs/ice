@@ -99,9 +99,9 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
             int columnIndex = 0;
             for (TagGroup tagGroup: data.getTagGroups()) {
             	boolean contains = tagLists.contains(tagGroup, true);
-            	if (tagLists instanceof TagListsWithUserTags) {
-            		logger.debug("resource: " + contains + ", " + tagGroup + ", " + columnIndex);
-            	}
+//            	if (tagLists instanceof TagListsWithUserTags) {
+//            		logger.debug("resource: " + contains + ", " + tagGroup + ", " + columnIndex);
+//            	}
                 if (contains) {
                 	columnIndecies.add(columnIndex);
                 	tagGroups.add(tagGroup);
