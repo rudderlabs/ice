@@ -67,10 +67,14 @@ public class BasicResourceService extends ResourceService {
 		logger.info("Initialized BasicResourceService with " + productsWithResources.size() + " products");
 		
 		userTags = Lists.newArrayList();
-		for (String tag: customTags)
-			userTags.add(tag);
-		for (String tag: additionalTags)
-			userTags.add(tag);		
+		for (String tag: customTags) {
+			if (!tag.isEmpty())
+				userTags.add(tag);
+		}
+		for (String tag: additionalTags) {
+			if (!tag.isEmpty())
+				userTags.add(tag);		
+		}
 	}
 
 	@Override

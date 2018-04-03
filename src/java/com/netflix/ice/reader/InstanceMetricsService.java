@@ -67,6 +67,8 @@ public class InstanceMetricsService extends StalePoller {
     }
 
     public InstanceMetrics getInstanceMetrics() {
+    	if (instanceMetrics == null)
+    		logger.error("No instance metrics");
     	return instanceMetrics;
     }
 }

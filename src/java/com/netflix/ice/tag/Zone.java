@@ -40,9 +40,21 @@ public class Zone extends Tag {
     	return zonesByName.get(name);
     }
     
+    private static boolean isZone(String name) {
+    	// check that last character is lower-case letter
+    	return !name.isEmpty() && Character.isLowerCase(name.charAt(name.length()-1));
+    }
+    
     public static Zone getZone(String name, Region region) {
-        if (name.isEmpty() || name.equals(region.name))
+        if (!isZone(name))
             return null;
+        
+        // sanity check on zone name
+    	String regionName = name.substring(0, name.length() - 1);
+    	if (!regionName.equals(region.name)) {
+    		logger.error("getZone called with non-matching region, zone: " + name + ", region: " + region);
+    		return null;
+    	}
         Zone zone = zonesByName.get(name);
         if (zone == null) {
 			logger.info("Add unknown zone: " + name + " to region: " + region.name);
@@ -56,6 +68,9 @@ public class Zone extends Tag {
     }
 
     public static Zone getZone(String name) {
+        if (!isZone(name))
+            return null;
+        
         Zone zone = zonesByName.get(name);
         if (zone == null) {
         	String regionName = name.substring(0, name.length() - 1);

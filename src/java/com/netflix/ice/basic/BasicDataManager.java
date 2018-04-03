@@ -179,7 +179,7 @@ public class BasicDataManager extends DataFilePoller implements DataManager {
                 //logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
                 double[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy);
                 if (groupBy == TagType.Tag) {
-                	Tag userTag = (UserTag) (tag.name.isEmpty() ? new UserTag("<none>") : tag);
+                	Tag userTag = (UserTag) (tag.name.isEmpty() ? UserTag.get(UserTag.none) : tag);
                 	
                 	//logger.info("resourceGroup: " + tag + " -> " + userTag + " value: " + data[0] + ", " + dbName);
                 	

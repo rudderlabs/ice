@@ -96,7 +96,7 @@ public class BasicManagers extends Poller implements Managers {
     }
 
     @Override
-    public String[] getResourceGroupKeys() {
+    public String[] getUserTags() {
     	return config.resourceService.getCustomTags();
     }
 
@@ -197,10 +197,10 @@ public class BasicManagers extends Poller implements Managers {
             String key = s3ObjectSummary.getKey();
             String tagName = key.substring((config.workS3BucketPrefix + COVERAGE_PREFIX).length());
             tagName = tagName.substring(0, tagName.indexOf("_"));
-            if (tagCoverageManagers.containsKey(new UserTag(tagName)))
+            if (tagCoverageManagers.containsKey(UserTag.get(tagName)))
             	continue;
             
-            tagCoverageManagers.put(new UserTag(tagName),
+            tagCoverageManagers.put(UserTag.get(tagName),
             		new TagCoverageDataManager(config.startDate, "coverage_" + ConsolidateType.hourly + "_" + tagName, ConsolidateType.hourly, getTagGroupManager(null), compress,
             				config.monthlyCacheSize, config.accountService, config.productService));
         }        

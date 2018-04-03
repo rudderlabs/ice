@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import java.util.List;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -68,7 +70,7 @@ public class TagListsWithUserTagsTest {
 		assertFalse("TagGroup incorrectly found in TagLists", tagLists.contains(tg, true));
 
 		// Add an empty value to tag2
-		userTagLists.get(2).add(new UserTag(""));
+		userTagLists.get(2).add(UserTag.get(""));
 		
 		// TagGroup with null resourceGroup
 		assertTrue("TagGroup not found in TagLists", tagLists.contains(tg, true));
@@ -101,7 +103,7 @@ public class TagListsWithUserTagsTest {
 		assertFalse("TagGroup incorrectly found in TagLists", tagLists.contains(tg));
 
 		
-		List<UserTag> userTags = Lists.newArrayList(new UserTag(""));
+		List<UserTag> userTags = Lists.newArrayList(UserTag.get(""));
 		userTagLists = Lists.newArrayList();
 		userTagLists.add(userTags);
 		userTagLists.add(userTags);
@@ -169,7 +171,7 @@ public class TagListsWithUserTagsTest {
 			t.Run(tagLists);
 
 		// Add an empty value to tag2
-		userTagLists.get(2).add(new UserTag(""));
+		userTagLists.get(2).add(UserTag.get(""));
 		
 		tests = new Test[]{
 				new Test("", 2, false, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
@@ -206,7 +208,7 @@ public class TagListsWithUserTagsTest {
 		userTagLists.add(tags2);
 		
 		// Add an empty value to tag2
-		userTagLists.get(2).add(new UserTag(""));
+		userTagLists.get(2).add(UserTag.get(""));
 		
 		TagListsWithUserTags tagLists = new TagListsWithUserTags(
 				Lists.newArrayList(accounts),
@@ -232,7 +234,7 @@ public class TagListsWithUserTagsTest {
 		TagGroup userTagTagGroup = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProductByName("Product"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup("t0v0", false));
 		TagGroup productTagGroup = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProductByName("Product"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup("Product", true));
 
-		tag = new UserTag("t0v0");
+		tag = UserTag.get("t0v0");
         tl = tagLists.getTagLists(tag, TagType.Tag, 0);
         assertEquals("wrong number of user tags for resource", 3, ((TagListsWithUserTags) tl).resourceUserTagLists.size());
         assertEquals("wrong number of tags", 1, ((TagListsWithUserTags) tl).resourceUserTagLists.get(0).size());
@@ -241,7 +243,7 @@ public class TagListsWithUserTagsTest {
         assertTrue("tagLists didn't contain userTagTagGroup", tl.contains(userTagTagGroup, true));
         assertFalse("tagLists contains productTagGroup", tl.contains(productTagGroup, true));
         
-		tag = new UserTag("");
+		tag = UserTag.get("");
         tl = tagLists.getTagLists(tag, TagType.Tag, 0);
         assertEquals("wrong number of user tags for product resource", 3, ((TagListsWithUserTags) tl).resourceUserTagLists.size());
         assertEquals("wrong number of tags", 1, ((TagListsWithUserTags) tl).resourceUserTagLists.get(0).size());
@@ -251,4 +253,5 @@ public class TagListsWithUserTagsTest {
         assertTrue("tagLists didn't contain productTagGroup", tl.contains(productTagGroup, true));
         
 	}
+	
 }

@@ -45,4 +45,17 @@ public class BasicResourceServiceTest {
 		ResourceGroup resource = rs.getResourceGroup(null, null, ps.getProductByName(Product.ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
 	}
+	
+	@Test
+	public void testUserTags() {
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		ProductService ps = new BasicProductService(null);
+		String[] customTags = new String[]{
+				"Environment", "Product"
+			};
+		ResourceService rs = new BasicResourceService(ps, customTags, "".split(","), tagKeys, tagValues);
+		List<String> userTags = rs.getUserTags();
+		assertEquals("userTags list length is incorrect", 2, userTags.size());
+	}
 }

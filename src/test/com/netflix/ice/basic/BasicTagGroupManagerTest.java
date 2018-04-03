@@ -109,11 +109,11 @@ public class BasicTagGroupManagerTest {
 		resourceTagLists = Lists.newArrayList();
 		
 		// Group by first tag and only return empties		
-		resourceTagLists.add(Lists.newArrayList(new UserTag("")));
-    	resourceTagLists.add(Lists.newArrayList(new UserTag("")));
+		resourceTagLists.add(Lists.newArrayList(UserTag.get("")));
+    	resourceTagLists.add(Lists.newArrayList(UserTag.get("")));
     	// Add all the possible second user tag values so we only test filtering against the first
-		resourceTagLists.get(1).add(new UserTag("TagX"));
-		resourceTagLists.get(1).add(new UserTag("TagY"));   	
+		resourceTagLists.get(1).add(UserTag.get("TagX"));
+		resourceTagLists.get(1).add(UserTag.get("TagY"));   	
     	
 		tagLists = new TagListsWithUserTags(null, null, null, null, null, null, resourceTagLists);
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, false, 0);
@@ -123,7 +123,7 @@ public class BasicTagGroupManagerTest {
 		}
 		
 		// Add one of the non-empty values
-		resourceTagLists.get(0).add(new UserTag("TagB"));
+		resourceTagLists.get(0).add(UserTag.get("TagB"));
 		// Test for the first user tag
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, false, 0);
 		assertEquals("wrong number of groupBy tags for user tag - wanted empties and TagB", 2, groupByLists.size());
@@ -131,9 +131,9 @@ public class BasicTagGroupManagerTest {
 			assertTrue("wrong instance type for tagLists", tl instanceof TagListsWithUserTags);
 		}
 		// Make sure we have the three values for the second user tag on both group lists
-		TagListsWithUserTags tl = (TagListsWithUserTags) groupByLists.get(new UserTag(""));
+		TagListsWithUserTags tl = (TagListsWithUserTags) groupByLists.get(UserTag.get(""));
 		assertEquals("wrong number of values in empty tag second user tags list", 3, tl.resourceUserTagLists.get(1).size());
-		tl = (TagListsWithUserTags) groupByLists.get(new UserTag("TagB"));
+		tl = (TagListsWithUserTags) groupByLists.get(UserTag.get("TagB"));
 		assertEquals("wrong number of values in TagB tag second user tags list", 3, tl.resourceUserTagLists.get(1).size());
 		
 		

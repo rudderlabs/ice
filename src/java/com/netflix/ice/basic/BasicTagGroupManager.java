@@ -27,7 +27,6 @@ import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
-import com.netflix.ice.reader.TagListsWithUserTags;
 import com.netflix.ice.tag.*;
 
 import org.joda.time.DateTime;
@@ -240,7 +239,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         	logger.debug("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
             if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
             	try {
-            		UserTag t = tagGroup.resourceGroup.isProductName() ? new UserTag("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+            		UserTag t = tagGroup.resourceGroup.isProductName() ? UserTag.get("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
             		result.add(t);
             	}
             	catch (Exception e) {

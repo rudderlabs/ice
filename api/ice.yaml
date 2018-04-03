@@ -186,24 +186,24 @@ paths:
           schema:
             $ref: '#/definitions/NamesResponse'
   
-  /resourceGroupKeys:
+  /userTags:
     get:
-      description: Get the list of tag keys used for resource groups.
-      operationId: getResourceGroupKeys
+      description: Get the list of user tag names.
+      operationId: getUserTags
       responses:
         '200':
           description: collection of tag keys
           schema:
             $ref: '#/definitions/NamesResponse'
 
-  /resourceGroupValues:
+  /userTagValues:
     get:
-      description: Get the list of values for a given resource group key.
-      operationId: getResourceGroupValues
+      description: Get the list of values for a given user tag.
+      operationId: getUserTagValues
       parameters:
         - name: index
           in: query
-          description: tag index in resource group
+          description: tag index in list returned by userTags
           type: number
           required: true
         - $ref: '#/parameters/accountParam'
@@ -211,7 +211,7 @@ paths:
         - $ref: '#/parameters/productParam'
       responses:
         '200':
-          description: collection of resource tag values
+          description: collection of user tag values used for tagable resources
           schema:
             $ref: '#/definitions/NamesResponse'
 
@@ -293,8 +293,6 @@ paths:
               groupBy:
                 type: string
                 enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup, Tag]
-              groupByTag:
-                type: string
               consolidate:
                 type: string
                 enum: [monthly, weekly, daily, hourly]
@@ -312,8 +310,6 @@ paths:
               family:
                 description: Consolidate EC2 instance usage types of the same family into a single type
                 type: boolean
-              account:
-                type: string
               appgroup:
                 type: string
               forReservation:
@@ -332,6 +328,33 @@ paths:
               tag:
                 description: Comma separated list of tags for tag coverage data
                 type: string
+              account:
+                description: Comma separated list of account names for filtering data
+                type: string
+              region:
+                description: Comma separated list of region names for filtering data
+                type: string
+              product:
+                description: Comma separated list of product names for filtering data
+                type: string
+              resourceGroup:
+                description: Comma separated list of resourceGroup names for filtering data
+                type: string
+              operation:
+                description: Comma separated list of operation names for filtering data
+                type: string
+              usageType:
+                description: Comma separated list of usageType names for filtering data
+                type: string
+              userTags:
+                description: user tag names and value for filtering data
+                type: object
+                properties:
+                  groupBy:
+                    type: string
+                additionalProperties:
+                  description: Comma separated list of values for the user tag
+                  type: string
       responses:
         '200':
           description: data collection

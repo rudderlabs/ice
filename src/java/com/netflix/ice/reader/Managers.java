@@ -45,9 +45,9 @@ public interface Managers {
 
 	/**
 	 *
-	 * @return array of resource group tag keys
+	 * @return array of user tag names
 	 */
-	String[] getResourceGroupKeys();
+	String[] getUserTags();
 
     /**
      *

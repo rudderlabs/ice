@@ -23,7 +23,7 @@ public class TagListsWithUserTags extends TagLists {
 	 * Broken-out lists of tags for resource groups
 	 */
     public final List<List<UserTag>> resourceUserTagLists;
-    static public final UserTag emptyTag = new UserTag("");
+    static public final UserTag emptyTag = UserTag.get("");
 
 	public TagListsWithUserTags(List<Account> accounts, List<Region> regions,
 			List<Zone> zones, List<Product> products,

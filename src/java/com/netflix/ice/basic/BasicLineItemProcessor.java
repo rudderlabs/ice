@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.basic;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
@@ -24,6 +25,7 @@ import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.tag.*;
+
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;

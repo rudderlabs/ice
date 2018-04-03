@@ -48,7 +48,7 @@ public class ResourceGroup extends Tag {
 		this.isProductName = false;
 		resourceTags = new UserTag[tags.length];
 		for (int i = 0; i < tags.length; i++)
-			resourceTags[i] = new UserTag(tags[i]);
+			resourceTags[i] = UserTag.get(tags[i]);
 	}
 	
 	public boolean isProductName() {
@@ -60,7 +60,7 @@ public class ResourceGroup extends Tag {
 			String[] tags = name.split(splitRegex, -1);
 			resourceTags = new UserTag[tags.length];
 			for (int i = 0; i < tags.length; i++)
-				resourceTags[i] = new UserTag(tags[i]);
+				resourceTags[i] = UserTag.get(tags[i]);
 		}
 		return resourceTags;
 	}

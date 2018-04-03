@@ -77,8 +77,8 @@ class DashboardController {
 		getResourceGroupLists: "GET",
 		getProducts: "GET",
 		getResourceGroups: "GET",
-		resourceGroupKeys: "GET",
-		resourceGroupValues: "GET",
+		userTags: "GET",
+		userTagValues: "GET",
 		getOperations: "POST",
 		getUsageTypes: "POST",
 		tags: "GET",
@@ -264,18 +264,18 @@ class DashboardController {
         render result as JSON
     }
 	
-	def resourceGroupKeys = {
-		String[] keys = getManagers().getResourceGroupKeys();
+	def userTags = {
+		String[] keys = getManagers().getUserTags();
 		Collection<UserTag> data = Lists.newArrayList();
 		for (int i = 0; i < keys.length; i++) {
-			data.add(new UserTag(keys[i]));
+			data.add(UserTag.get(keys[i]));
 		}
 
 		def result = [status: 200, data: data]
 		render result as JSON
 	}
 	
-	def resourceGroupValues = {
+	def userTagValues = {
 		int index = Integer.parseInt(params.get("index"));
 		List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
 		List<Region> regions = Region.getRegions(listParams("region"));
@@ -284,13 +284,13 @@ class DashboardController {
 
         Collection<UserTag> data = Sets.newTreeSet();
 		// Add "None" entry
-		data.add(new UserTag("<none>"))
+		data.add(UserTag.get(UserTag.none))
 		
         for (Product product: products) {
 
             TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
 			if (tagGroupManager == null) {
-				logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
+				//logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
 				continue;
 			}
             Collection<ResourceGroup> resourceGroups = tagGroupManager.getResourceGroups(new TagLists(accounts, regions, zones, Lists.newArrayList(product)));
@@ -471,8 +471,9 @@ class DashboardController {
 
     def getData = {
         def text = request.reader.text;
-        JSONObject query = (JSONObject)JSON.parse(text);
-
+        //JSONObject query = (JSONObject)JSON.parse(text);
+		JSONObject query = new JSONObject(text);
+		
         def result = doGetData(query);
         render result as JSON
     }
@@ -593,17 +594,23 @@ class DashboardController {
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
-		List<List<UserTag>> userTagLists;
+		List<List<UserTag>> userTagLists = Lists.newArrayList();
 		int userTagGroupByIndex = 0;
 		if (showResourceGroupTags) {
-			String groupByTag = query.optString("groupByTag");
-			String[] keys = getManagers().getResourceGroupKeys();
-			userTagLists = Lists.newArrayList();
+			JSONObject userTags = query.optJSONObject("userTags");
+			String groupByTag = null;
+			
+			if (userTags != null)
+				groupByTag = userTags.optString("groupBy");
+			String[] keys = getManagers().getUserTags();
 			for (int i = 0; i < keys.length; i++) {
-				if (keys[i].equals(groupByTag)) {
+				if (groupByTag != null && keys[i].equals(groupByTag)) {
 					userTagGroupByIndex = i;
 				}
-				userTagLists.add(UserTag.getUserTags(listParams(query, keys[i])));
+				if (userTags != null)
+					userTagLists.add(UserTag.getUserTags(listParams(userTags, keys[i])));
+				else
+					userTagLists.add(Lists.newArrayList());
 			}
 		}
 		
