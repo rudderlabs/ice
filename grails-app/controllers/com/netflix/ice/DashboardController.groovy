@@ -471,8 +471,7 @@ class DashboardController {
 
     def getData = {
         def text = request.reader.text;
-        //JSONObject query = (JSONObject)JSON.parse(text);
-		JSONObject query = new JSONObject(text);
+        JSONObject query = (JSONObject)JSON.parse(text);
 		
         def result = doGetData(query);
         render result as JSON
@@ -597,20 +596,13 @@ class DashboardController {
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
 		int userTagGroupByIndex = 0;
 		if (showResourceGroupTags) {
-			JSONObject userTags = query.optJSONObject("userTags");
-			String groupByTag = null;
-			
-			if (userTags != null)
-				groupByTag = userTags.optString("groupBy");
+			String groupByTag = query.optString("groupByTag");			
 			String[] keys = getManagers().getUserTags();
 			for (int i = 0; i < keys.length; i++) {
 				if (groupByTag != null && keys[i].equals(groupByTag)) {
 					userTagGroupByIndex = i;
 				}
-				if (userTags != null)
-					userTagLists.add(UserTag.getUserTags(listParams(userTags, keys[i])));
-				else
-					userTagLists.add(Lists.newArrayList());
+				userTagLists.add(UserTag.getUserTags(listParams(query, "tag-" + keys[i])));
 			}
 		}
 		

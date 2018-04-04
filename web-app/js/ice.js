@@ -888,12 +888,11 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }
       if ($scope.showResourceGroupTags) {
         params.showResourceGroupTags = true;
-        params.userTags = {};
         if ($scope.groupBy.name === 'Tag')
-          params.userTags.groupBy = $scope.groupByTag.name;
+          params.groupByTag = $scope.groupByTag.name;
         for (var i = 0; i < $scope.userTags.length; i++) {
           if ($scope.enabledUserTags[i]) {
-            this.addParams(params.userTags, $scope.userTags[i].name, $scope.userTagValues[i], $scope.selected_userTagValues[i], $scope.selected__userTagValues[i], $scope.filter_userTagValues[i]);
+            this.addParams(params, "tag-" + $scope.userTags[i].name, $scope.userTagValues[i], $scope.selected_userTagValues[i], $scope.selected__userTagValues[i], $scope.filter_userTagValues[i]);
           }
         }
       }

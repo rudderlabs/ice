@@ -279,6 +279,7 @@ paths:
           description: data request parameters
           required: true
           schema:
+            description: user tag values params use the name "tag-[name]", e.g. "tag-Product"
             type: object
             properties: 
               isCost:
@@ -291,6 +292,7 @@ paths:
                 type: string
                 enum: [none, stats, data, both]
               groupBy:
+                description: Dimension to use for aggregation buckets
                 type: string
                 enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup, Tag]
               consolidate:
@@ -346,15 +348,12 @@ paths:
               usageType:
                 description: Comma separated list of usageType names for filtering data
                 type: string
-              userTags:
-                description: user tag names and value for filtering data
-                type: object
-                properties:
-                  groupBy:
-                    type: string
-                additionalProperties:
-                  description: Comma separated list of values for the user tag
-                  type: string
+              groupByTag:
+                description: When groupBy is set to Tag, indicates which user tag to use for aggregation buckets
+                type: string
+            additionalProperties:
+                description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>
+                type: string
       responses:
         '200':
           description: data collection
