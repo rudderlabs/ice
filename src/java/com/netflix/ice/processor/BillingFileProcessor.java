@@ -156,7 +156,7 @@ public class BillingFileProcessor extends Poller {
                 config.resourceService.commit();
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(startMilli, config.startDate, compress);
+            costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles);
             
             logger.info("archiving instance data...");
             archiveInstances();
@@ -216,7 +216,7 @@ public class BillingFileProcessor extends Poller {
     
 
     void init() {
-    	costAndUsageData = new CostAndUsageData();
+    	costAndUsageData = new CostAndUsageData(config.resourceService == null ? null : config.resourceService.getUserTags());
         instances = new Instances(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
     }
 

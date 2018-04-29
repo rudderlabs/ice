@@ -50,6 +50,13 @@ public class ProcessorConfig extends Config {
     public final String processorInstanceId;
 
     public final String useCostForResourceGroup;
+    public final JsonFiles writeJsonFiles;
+    
+    public enum JsonFiles {
+    	no,
+    	lines,
+    	bulk   	
+    }
 
     /**
      *
@@ -98,6 +105,7 @@ public class ProcessorConfig extends Config {
 
         //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "");
+        writeJsonFiles = properties.getProperty(IceOptions.WRITE_JSON_FILES) == null ? JsonFiles.no : JsonFiles.valueOf(properties.getProperty(IceOptions.WRITE_JSON_FILES));
         
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);

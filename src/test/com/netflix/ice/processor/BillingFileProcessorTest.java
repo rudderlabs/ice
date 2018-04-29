@@ -198,7 +198,7 @@ public class BillingFileProcessorTest {
 		//bfp.reservationProcessor.setDebugHour(0);
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
-		CostAndUsageData costAndUsageData = new CostAndUsageData();
+		CostAndUsageData costAndUsageData = new CostAndUsageData(null);
         Instances instances = new Instances(null, null, null);
         
 		Long startMilli = config.startDate.getMillis();
@@ -435,7 +435,7 @@ public class BillingFileProcessorTest {
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);
-		CostAndUsageData caud = new CostAndUsageData();
+		CostAndUsageData caud = new CostAndUsageData(null);
 		caud.getUsage(null).setData(ud, 0, false);
 		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
 		cd.add(hourCostData);

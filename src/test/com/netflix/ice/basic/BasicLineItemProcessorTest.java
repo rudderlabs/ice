@@ -364,7 +364,7 @@ public class BasicLineItemProcessorTest {
 		long startMilli = DateTime.parse("2017-06-01T00:00:00Z").getMillis();
         Map<String, Double> ondemandRate = Maps.newHashMap();
 		Instances instances = null;
-		CostAndUsageData costAndUsageData = new CostAndUsageData();
+		CostAndUsageData costAndUsageData = new CostAndUsageData(null);
 		InstancePrices ec2Prices = priceListService.getPrices(new DateTime(startMilli),  ServiceCode.AmazonEC2);
         
 		Result result = lineItemProcessor.process(startMilli, false, isCostAndUsageReport, lineItem, costAndUsageData, ec2Prices, ondemandRate, instances);

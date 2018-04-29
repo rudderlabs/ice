@@ -203,7 +203,7 @@ public class ReservationProcessorTest {
 			ReservationProcessor reservationProcessor,
 			Product product) throws Exception {
 		
-		CostAndUsageData caud = new CostAndUsageData();
+		CostAndUsageData caud = new CostAndUsageData(null);
 		if (product != null) {
 			caud.putUsage(product, new ReadWriteData());
 			caud.putCost(product, new ReadWriteData());

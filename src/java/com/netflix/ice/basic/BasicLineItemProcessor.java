@@ -17,7 +17,6 @@
  */
 package com.netflix.ice.basic;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
@@ -197,16 +196,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             ondemandRate.put(key, costValue/usageValue);
         }
 
-        if (lineItem.hasResources() && !lineItem.getResource().isEmpty() && resourceService != null) {
-        	// Line item has a resource ID that is not empty and the resource service is enabled.
-            ResourceGroup resourceGroup = resourceService.getResourceGroup(account, reformedMetaData.region, product, lineItem, millisStart);
-            if (tagGroup instanceof TagGroupRI) {
-            	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
+        if (resourceService != null) {
+            if (lineItem.hasResources() && !lineItem.getResource().isEmpty()) {
+            	// Line item has a resource ID that is not empty and the resource service is enabled.
+                ResourceGroup resourceGroup = resourceService.getResourceGroup(account, reformedMetaData.region, product, lineItem, millisStart);
+                if (tagGroup instanceof TagGroupRI) {
+                	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
+                }
+                else {
+                	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
+                }
             }
-            else {
-            	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
-            }
-
+        	
             if (usageDataOfProduct == null) {
                 usageDataOfProduct = new ReadWriteData();
                 costDataOfProduct = new ReadWriteData();
@@ -248,6 +249,15 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 	String v = resourceService.getUserTagValue(lineItem, tag);
                 	costAndUsageData.addTagCoverage(tag, i, tagGroup, !StringUtils.isEmpty(v));
                 }
+            }
+            else if (resourceService != null) {
+            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
+                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
+                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+
+                TagGroup tg = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, ResourceGroup.getResourceGroup(product.name, true));
+            	addValue(usagesOfResource, tg, usageValue, !product.isMonitor());
+                addValue(costsOfResource, tg, costValue, !product.isMonitor());           	
             }
         }
 

@@ -4,8 +4,6 @@ import static org.junit.Assert.*;
 
 import java.util.List;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;

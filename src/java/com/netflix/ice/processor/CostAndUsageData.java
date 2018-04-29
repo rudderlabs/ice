@@ -17,6 +17,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.TagCoverageRatio;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
 import com.netflix.ice.tag.Product;
 
 public class CostAndUsageData {
@@ -25,13 +26,15 @@ public class CostAndUsageData {
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
     private Map<String, ReadWriteData> tagCoverage;
+    private List<String> userTags;
 
-	public CostAndUsageData() {
+	public CostAndUsageData(List<String> userTags) {
 		usageDataByProduct = Maps.newHashMap();
 		costDataByProduct = Maps.newHashMap();
 		tagCoverage = Maps.newHashMap();
         usageDataByProduct.put(null, new ReadWriteData());
         costDataByProduct.put(null, new ReadWriteData());
+        this.userTags = userTags;
 	}
 	
 	public ReadWriteData getUsage(Product product) {
@@ -108,7 +111,7 @@ public class CostAndUsageData {
     	hourData.put(tagGroup, TagCoverageRatio.add(hourData.get(tagGroup), hasTag));
     }
 
-    public void archive(long startMilli, DateTime startDate, boolean compress) throws Exception {
+    public void archive(long startMilli, DateTime startDate, boolean compress, JsonFiles writeJsonFiles) throws Exception {
 
         logger.info("archiving tag data...");
 
@@ -127,14 +130,27 @@ public class CostAndUsageData {
         archiveHourly(startMilli, usageDataByProduct, "usage_", compress);
         archiveHourly(startMilli, costDataByProduct, "cost_", compress);  
         archiveHourlyTagCoverage(startMilli, compress);
+        
+        if (writeJsonFiles != JsonFiles.no) {
+            logger.info("archiving JSON data...");
+	        // Output JSON files
+	        archiveHourlyJson(startMilli, writeJsonFiles);
+        }
+    }
+    
+    private void archiveHourlyJson(long startMilli, JsonFiles writeJsonFiles) throws Exception {
+        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
+        DataJsonWriter writer = new DataJsonWriter("hourly_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
+        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct);
+        writer.archive();
     }
     
     private void archiveHourly(long startMilli, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress) throws Exception {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
             String prodName = product == null ? "all" : product.getFileName();
-            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
-            writer.archive(dataMap.get(product));
+            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), dataMap.get(product), compress);
+            writer.archive();
         }
     }
 
@@ -142,8 +158,8 @@ public class CostAndUsageData {
     	logger.info("archiving tag coverage data... " + tagCoverage.size());
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (String tag: tagCoverage.keySet()) {
-            DataWriter writer = new DataWriter("coverage_hourly_" + tag + "_" + AwsUtils.monthDateFormat.print(monthDateTime), false, compress);
-            writer.archive(tagCoverage.get(tag));
+            DataWriter writer = new DataWriter("coverage_hourly_" + tag + "_" + AwsUtils.monthDateFormat.print(monthDateTime), tagCoverage.get(tag), compress);
+            writer.archive();
         }
     }
 
@@ -170,7 +186,7 @@ public class CostAndUsageData {
             List<Map<TagGroup, Double>> monthly = Lists.newArrayList();
 
             // get last month data
-            ReadWriteData lastMonthData = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), true, compress).getData();
+            ReadWriteData lastMonthData = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), compress).getData();
 
             // aggregate to daily, weekly and monthly
             int dayOfWeek = monthDateTime.getDayOfWeek();
@@ -204,20 +220,20 @@ public class CostAndUsageData {
             
             // archive daily
             int year = monthDateTime.getYear();
-            DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, true, compress);
+            DataWriter writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, compress);
             ReadWriteData dailyData = writer.getData();
             dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
             writer.archive();
 
             // archive monthly
-            writer = new DataWriter(prefix + "monthly_" + prodName, true, compress);
+            writer = new DataWriter(prefix + "monthly_" + prodName, compress);
             ReadWriteData monthlyData = writer.getData();
             int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
             monthlyData.setData(monthly, numMonths, false);            
             writer.archive();
 
             // archive weekly
-            writer = new DataWriter(prefix + "weekly_" + prodName, true, compress);
+            writer = new DataWriter(prefix + "weekly_" + prodName, compress);
             ReadWriteData weeklyData = writer.getData();
             DateTime weekStart = monthDateTime.withDayOfWeek(1);
             int index;

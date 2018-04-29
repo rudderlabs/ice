@@ -227,8 +227,8 @@ public abstract class ReservationProcessor {
 	 * use those reports. (Added support recently for processing based on cost and usage reports, but
 	 * haven't done the work to grab and use the reservation ARNs.)
 	 * 
-	 * Amortization of upfront costs is assigned to the reservations instance type in the account that purchased
-	 * the reservation regarless of how it was used - either by a different family type or borrowed by another account.
+	 * Amortization of up front costs is assigned to the reservations instance type in the account that purchased
+	 * the reservation regardless of how it was used - either by a different family type or borrowed by another account.
 	 * 
 	 * Savings values, like amortization are assigned to the reservation instance type in the account that purchased
 	 * the reservation. Savings is computed as the difference between the on-demand cost and the sum of the upfront amortization

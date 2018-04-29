@@ -155,7 +155,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		long endMilli;
 		
 		FileData() {
-			costAndUsageData = new CostAndUsageData();
+			costAndUsageData = new CostAndUsageData(config.resourceService == null ? null : config.resourceService.getUserTags());
 			delayedItems = Lists.newArrayList();
 			endMilli = startMilli;
 		}

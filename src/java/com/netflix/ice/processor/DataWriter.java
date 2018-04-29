@@ -19,42 +19,17 @@ package com.netflix.ice.processor;
 
 import com.netflix.ice.common.AwsUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.*;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
-public class DataWriter {
-    private final static Logger logger = LoggerFactory.getLogger(DataWriter.class);
-
-    private static final String compressExtension = ".gz";
-    
-    private ProcessorConfig config = ProcessorConfig.getInstance();
-    private String dbName;
-    private File file;
-    private boolean compress;
+public class DataWriter extends DataFile {
     private ReadWriteData data;
 
-    DataWriter(String name, boolean loadData) throws Exception {
-    	this.compress = false;
-        dbName = name;
-    	init(loadData);
-    }
-    
-    DataWriter(String name, boolean loadData, boolean compress) throws Exception {
-    	this.compress = compress;
-        dbName = name;
-    	init(loadData);
-    }
-    
-    private void init(boolean loadData) throws Exception {
-        String filename = dbName + (compress ? compressExtension : "");
-        file = new File(config.localDir, filename);
-        if (loadData) {
-            AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
-        }
+    DataWriter(String name, boolean compress) throws Exception {
+    	super(name, compress);
+        data = null;
+
+        AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
 
         if (file.exists()) {
         	InputStream is = new FileInputStream(file);
@@ -62,66 +37,39 @@ public class DataWriter {
         		is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
-                data = ReadWriteData.Serializer.deserialize(config.accountService, config.productService, in);
+                data = ReadWriteData.Serializer.deserialize(config.accountService, config.productService, in);		
             }
             catch (Exception e) {
-                throw new RuntimeException("DataWriter: failed to load " + filename + ", " + e + ", " + e.getMessage());
+                throw new RuntimeException("DataWriter: failed to load " + file.getName() + ", " + e + ", " + e.getMessage());
             }
             finally {
                 in.close();
             }
         }
         else {
-            data = new ReadWriteData();
+        	data = new ReadWriteData();
         }
     }
+    
+    DataWriter(String name, ReadWriteData data, boolean compress) throws Exception {
+    	super(name, compress);
+    	this.data = data;
+    }
 
-    ReadWriteData getData() {
+	ReadWriteData getData() {
         return data;
     }
 
-    void archive() throws IOException {
-        archive(data, false);
-    }
-
-    void archiveCsv(ReadWriteData data) throws IOException {
-        archive(data, true);
-    }
-
-    void archive(ReadWriteData data) throws IOException {
-    	archive(data, false);
-    }
-       
-    void archive(ReadWriteData data, boolean csv) throws IOException {
-    	OutputStream os = new FileOutputStream(file);
-    	if (compress)
-    		os = new GZIPOutputStream(os);
-    	DataOutputStream out = null;
-    	OutputStreamWriter writer = null;
-    	if (csv)
-    		writer = new OutputStreamWriter(os);
-    	else
-    		out = new DataOutputStream(os);
+	@Override
+	protected void write() throws IOException {
+    	DataOutputStream out = new DataOutputStream(os);
         try {
-        	if (csv) {
-        		ReadWriteData.Serializer.serializeCsv(writer, data);
-        		writer.flush();
-        	}
-        	else {
-        		ReadWriteData.Serializer.serialize(out, data);
-        		out.flush();
-        	}
+        	ReadWriteData.Serializer.serialize(out, data);
+    		out.flush();
         }
         finally {
-        	if (out != null)
-        		out.close();
-        	if (writer != null)
-        		writer.close();
-        }
-
-        logger.info(this.dbName + " uploading to s3...");
-        AwsUtils.upload(config.workS3BucketName, config.workS3BucketPrefix, config.localDir, dbName);
-        logger.info(this.dbName + " uploading done.");
-    }
+        	out.close();
+        }		
+	}
 }
 

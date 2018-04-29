@@ -217,5 +217,8 @@ public class IceOptions {
      */
     public static final String FAMILY_RI_BREAKOUT = "ice.breakoutFamilyReservationUsage";
 
-
+    /**
+     * write JSON data files for ingest into services such as ElasticSearch
+     */
+    public static final String WRITE_JSON_FILES = "ice.writeJsonFiles";
 }
