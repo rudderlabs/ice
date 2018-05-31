@@ -8,7 +8,7 @@ import com.google.common.collect.Maps;
 
 public class UserTag extends Tag {
 	private static final long serialVersionUID = 1L;
-	public static final String none = "<none>";
+	public static final String none = "(none)";
 
     private static ConcurrentMap<String, UserTag> tagsByName = Maps.newConcurrentMap();
 
