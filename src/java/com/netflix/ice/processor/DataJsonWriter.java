@@ -24,7 +24,6 @@ import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
-import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
@@ -170,14 +169,14 @@ public class DataJsonWriter extends DataFile {
 		}
 	}
 	
-	public class NormalizedPrices {
-		Double onDemandRate;
-		NormalizedRate oneYearStdRate;
-		NormalizedRate oneYearConvRate;
-		NormalizedRate threeYearStdRate;
-		NormalizedRate threeYearConvRate;
+	public class NormalizedRates {
+		Double onDemand;
+		NormalizedRate oneYearStd;
+		NormalizedRate oneYearConv;
+		NormalizedRate threeYearStd;
+		NormalizedRate threeYearConv;
 		
-		public NormalizedPrices(TagGroup tg) {
+		public NormalizedRates(TagGroup tg) {
 			InstancePrices prices = tg.product.isEc2Instance() ? ec2Prices : tg.product.isRdsInstance() ? rdsPrices : null;
 			if (prices == null)
 				return;
@@ -189,15 +188,15 @@ public class DataJsonWriter extends DataFile {
 			}
 			
 			double nsf = product.normalizationSizeFactor;
-			onDemandRate = product.getOnDemandRate() / nsf;
-			oneYearStdRate = new NormalizedRate(product, LeaseContractLength.oneyear, OfferingClass.standard);
-			oneYearStdRate = oneYearStdRate.isNull() ? null : oneYearStdRate;
-			oneYearConvRate = new NormalizedRate(product, LeaseContractLength.oneyear, OfferingClass.convertible);
-			oneYearConvRate = oneYearConvRate.isNull() ? null : oneYearConvRate;
-			threeYearStdRate = new NormalizedRate(product, LeaseContractLength.threeyear, OfferingClass.standard);
-			threeYearStdRate = threeYearStdRate.isNull() ? null : threeYearStdRate;
-			threeYearConvRate = new NormalizedRate(product, LeaseContractLength.threeyear, OfferingClass.convertible);
-			threeYearConvRate = threeYearConvRate.isNull() ? null : threeYearConvRate;
+			onDemand = product.getOnDemandRate() / nsf;
+			oneYearStd = new NormalizedRate(product, LeaseContractLength.oneyear, OfferingClass.standard);
+			oneYearStd = oneYearStd.isNull() ? null : oneYearStd;
+			oneYearConv = new NormalizedRate(product, LeaseContractLength.oneyear, OfferingClass.convertible);
+			oneYearConv = oneYearConv.isNull() ? null : oneYearConv;
+			threeYearStd = new NormalizedRate(product, LeaseContractLength.threeyear, OfferingClass.standard);
+			threeYearStd = threeYearStd.isNull() ? null : threeYearStd;
+			threeYearConv = new NormalizedRate(product, LeaseContractLength.threeyear, OfferingClass.convertible);
+			threeYearConv = threeYearConv.isNull() ? null : threeYearConv;
 		}
 	}
 	
@@ -215,7 +214,7 @@ public class DataJsonWriter extends DataFile {
 		Double usage;
 		String instanceFamily;
 		Double normalizedUsage;
-		NormalizedPrices normalizedPrices;
+		NormalizedRates normalizedRates;
 		
 		public Item(String hour, TagGroup tg, Double cost, Double usage) {
 			this.hour = hour;
@@ -237,7 +236,7 @@ public class DataJsonWriter extends DataFile {
 				normalizedUsage = usage == null ? null : usage * instanceMetrics.getNormalizationFactor(tg.usageType);
 				
 				if (tg.operation.isOnDemand() || tg.operation.isUsed()) {
-					normalizedPrices = new NormalizedPrices(tg);
+					normalizedRates = new NormalizedRates(tg);
 				}
 			}
 		}

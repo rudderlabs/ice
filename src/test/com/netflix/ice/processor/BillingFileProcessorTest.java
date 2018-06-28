@@ -52,6 +52,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
@@ -213,7 +214,15 @@ public class BillingFileProcessorTest {
         logger.info("cut hours to " + hours);
         costAndUsageData.cutData(hours);
         		
-        reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate);
+		// Initialize the price lists
+    	Map<Product, InstancePrices> prices = Maps.newHashMap();
+    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
+    	if (reservationService.hasRdsReservations())
+    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
+    	if (reservationService.hasRedshiftReservations())
+    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
+
+        reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate, prices);
         
         logger.info("Finished processing reports, ready to compare results on " + 
         		costAndUsageData.getUsage(null).getTagGroups().size() + " usage tags and " + 

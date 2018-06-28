@@ -33,24 +33,24 @@
         "instanceFamily": {
             "type": "keyword"
         },
-        "fullUpfrontPrices": {
+        "normalizedUsage": {
+            "type": "float"
+        },
+        "normalizedRates": {
             "properties": {
-                "onDemandRate": {
+                "onDemand": {
                     "type": "float"
                 },
-                "oneYearStdRate": {
+                "oneYearStd": {
                     "type": "float"
                 },
-                "oneYearConvRate": {
+                "oneYearConv": {
                     "type": "float"
                 },
-                "threeYearStdRate": {
+                "threeYearStd": {
                     "type": "float"
                 },
-                "threeYearSavings": {
-                    "type": "float"
-                },
-                "threeYearConvRate": {
+                "threeYearConv": {
                     "type": "float"
                 }
             }
