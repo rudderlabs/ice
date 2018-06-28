@@ -29,7 +29,9 @@ import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
+import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -281,7 +283,16 @@ public class ReservationProcessorTest {
 		Region[] debugRegions = new Region[]{ debugRegion };
 		rp.setDebugRegions(debugRegions);
 		DateTime start = new DateTime(startMillis);
-		rp.process(reservationService, data, product, start);
+		
+		// Initialize the price lists
+    	Map<Product, InstancePrices> prices = Maps.newHashMap();
+    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(start, ServiceCode.AmazonEC2));
+    	if (reservationService.hasRdsReservations())
+    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(start, ServiceCode.AmazonRDS));
+    	if (reservationService.hasRedshiftReservations())
+    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(start, ServiceCode.AmazonRedshift));
+
+		rp.process(reservationService, data, product, start, prices);
 	}
 	
 	/*

@@ -1,0 +1,59 @@
+{
+    "properties": {
+        "hour": {
+            "type": "date"
+        },
+        "accountId": {
+            "type": "keyword"
+        },
+        "account": {
+            "type": "keyword"
+        },
+        "region": {
+            "type": "keyword"
+        },
+        "zone": {
+            "type": "keyword"
+        },
+        "product": {
+            "type": "keyword"
+        },
+        "operation": {
+            "type": "keyword"
+        },
+        "usageType": {
+            "type": "keyword"
+        },
+        "cost": {
+            "type": "float"
+        },
+        "usage": {
+            "type": "float"
+        },
+        "instanceFamily": {
+            "type": "keyword"
+        },
+        "fullUpfrontPrices": {
+            "properties": {
+                "onDemandRate": {
+                    "type": "float"
+                },
+                "oneYearStdRate": {
+                    "type": "float"
+                },
+                "oneYearConvRate": {
+                    "type": "float"
+                },
+                "threeYearStdRate": {
+                    "type": "float"
+                },
+                "threeYearSavings": {
+                    "type": "float"
+                },
+                "threeYearConvRate": {
+                    "type": "float"
+                }
+            }
+        }
+    }
+}

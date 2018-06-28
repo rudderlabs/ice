@@ -34,7 +34,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Account;
@@ -245,8 +244,10 @@ public abstract class ReservationProcessor {
 	public void process(ReservationService reservationService,
 			CostAndUsageData data,
 			Product product,
-			DateTime start) throws Exception {
+			DateTime start,
+			Map<Product, InstancePrices> prices) throws Exception {
 		
+		this.prices = prices;
 		ReadWriteData usageData = data.getUsage(product);
 		ReadWriteData costData = data.getCost(product);
 
@@ -256,18 +257,10 @@ public abstract class ReservationProcessor {
 		this.product = product;
 
     	logger.info("---------- Process " + (product == null ? "Non-resource" : product));
-
+    	
 		if (debugHour >= 0)
 			printUsage("before", usageData, costData);
-		
-		// Initialize the price lists
-    	prices = Maps.newHashMap();
-    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(start, ServiceCode.AmazonEC2));
-    	if (reservationService.hasRdsReservations())
-    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(start, ServiceCode.AmazonRDS));
-    	if (reservationService.hasRedshiftReservations())
-    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(start, ServiceCode.AmazonRedshift));
-		
+				
     	instanceMetrics = priceListService.getInstanceMetrics();
 		
 		long startMilli = start.getMillis();

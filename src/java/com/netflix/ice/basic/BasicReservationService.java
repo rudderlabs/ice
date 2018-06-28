@@ -209,10 +209,10 @@ public class BasicReservationService extends Poller implements ReservationServic
     /*
      * Get the set of reservation IDs that are active for the given time.
      */
-    public Set<String> getReservations(long time) {
+    public Set<String> getReservations(long time, Product product) {
     	Set<String> ids = Sets.newHashSet();
     	for (Reservation r: reservationsById.values()) {
-    		if (time >= r.start && time < r.end)
+    		if (time >= r.start && time < r.end && (product == null || r.tagGroup.product == product))
     			ids.add(r.id);
     	}
     	return ids;

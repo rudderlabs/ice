@@ -32,6 +32,38 @@
         "preInstalledSw" : "NA",
         "processorFeatures" : "Intel AVX; Intel Turbo"
       }
+    },
+    "K85NNPWP7ZVFM9N2" : {
+      "sku" : "K85NNPWP7ZVFM9N2",
+      "productFamily" : "Compute Instance",
+      "attributes" : {
+        "servicecode" : "AmazonEC2",
+        "location" : "Asia Pacific (Singapore)",
+        "locationType" : "AWS Region",
+        "instanceType" : "c5.9xlarge",
+        "currentGeneration" : "Yes",
+        "instanceFamily" : "Compute optimized",
+        "vcpu" : "36",
+        "physicalProcessor" : "Intel Xeon Platinum 8124M",
+        "clockSpeed" : "3.0 Ghz",
+        "memory" : "72 GiB",
+        "storage" : "EBS only",
+        "networkPerformance" : "10 Gigabit",
+        "processorArchitecture" : "64-bit",
+        "tenancy" : "Shared",
+        "operatingSystem" : "Linux",
+        "licenseModel" : "No License required",
+        "usagetype" : "APS1-BoxUsage:c5.9xlarge",
+        "operation" : "RunInstances:0100",
+        "capacitystatus" : "Used",
+        "dedicatedEbsThroughput" : "4500 Mbps",
+        "ecu" : "139",
+        "enhancedNetworkingSupported" : "Yes",
+        "normalizationSizeFactor" : "72",
+        "preInstalledSw" : "SQL Ent",
+        "processorFeatures" : "Intel AVX, Intel AVX2, Intel AVX512, Intel Turbo",
+        "servicename" : "Amazon Elastic Compute Cloud"
+      }
     }
   },
   "terms" : {
@@ -50,6 +82,27 @@
               "unit" : "Hrs",
               "pricePerUnit" : {
                 "USD" : "0.0230000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : { }
+        }
+      },
+      "K85NNPWP7ZVFM9N2" : {
+        "K85NNPWP7ZVFM9N2.JRTCKXETXF" : {
+          "offerTermCode" : "JRTCKXETXF",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-05-01T00:00:00Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.JRTCKXETXF.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.JRTCKXETXF.6YS6EN2CT7",
+              "description" : "$15.264 per On Demand Linux with SQL Server Enterprise c5.9xlarge Instance Hour",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "15.2640000000"
               },
               "appliesTo" : [ ]
             }
@@ -319,6 +372,356 @@
             "LeaseContractLength" : "3yr",
             "OfferingClass" : "standard",
             "PurchaseOption" : "All Upfront"
+          }
+        }
+      },
+      "K85NNPWP7ZVFM9N2" : {
+        "K85NNPWP7ZVFM9N2.6QCMYABX3D" : {
+          "offerTermCode" : "6QCMYABX3D",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.6QCMYABX3D.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.6QCMYABX3D.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "127983"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.6QCMYABX3D.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.6QCMYABX3D.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.HU7G6KETJZ" : {
+          "offerTermCode" : "HU7G6KETJZ",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.HU7G6KETJZ.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.HU7G6KETJZ.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "7.3160000000"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.HU7G6KETJZ.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.HU7G6KETJZ.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "64091"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.Z2E3P23VKM" : {
+          "offerTermCode" : "Z2E3P23VKM",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.Z2E3P23VKM.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.Z2E3P23VKM.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "14.4130000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.VJWZNREJX2" : {
+          "offerTermCode" : "VJWZNREJX2",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.VJWZNREJX2.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.VJWZNREJX2.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "129441"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.VJWZNREJX2.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.VJWZNREJX2.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.4NA7Y494T4" : {
+          "offerTermCode" : "4NA7Y494T4",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.4NA7Y494T4.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.4NA7Y494T4.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "14.6890000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.38NPMPTW36" : {
+          "offerTermCode" : "38NPMPTW36",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.38NPMPTW36.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.38NPMPTW36.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "187045"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.38NPMPTW36.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.38NPMPTW36.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "7.1170000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.MZU6U2429S" : {
+          "offerTermCode" : "MZU6U2429S",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.MZU6U2429S.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.MZU6U2429S.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.MZU6U2429S.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.MZU6U2429S.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "376543"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.CUZHX8X6JH" : {
+          "offerTermCode" : "CUZHX8X6JH",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.CUZHX8X6JH.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.CUZHX8X6JH.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "64835"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.CUZHX8X6JH.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.CUZHX8X6JH.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "7.4010000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.BPH4J8HBKS" : {
+          "offerTermCode" : "BPH4J8HBKS",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.BPH4J8HBKS.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.BPH4J8HBKS.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "14.2940000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.NQ3QZPMQV9" : {
+          "offerTermCode" : "NQ3QZPMQV9",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.NQ3QZPMQV9.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.NQ3QZPMQV9.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "372932"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.NQ3QZPMQV9.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.NQ3QZPMQV9.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.7NE97W5U4E" : {
+          "offerTermCode" : "7NE97W5U4E",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.7NE97W5U4E.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.7NE97W5U4E.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "14.8680000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "K85NNPWP7ZVFM9N2.R5XV2EPZQZ" : {
+          "offerTermCode" : "R5XV2EPZQZ",
+          "sku" : "K85NNPWP7ZVFM9N2",
+          "effectiveDate" : "2018-03-31T23:59:59Z",
+          "priceDimensions" : {
+            "K85NNPWP7ZVFM9N2.R5XV2EPZQZ.2TG2D8R56U" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.R5XV2EPZQZ.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "188494"
+              },
+              "appliesTo" : [ ]
+            },
+            "K85NNPWP7ZVFM9N2.R5XV2EPZQZ.6YS6EN2CT7" : {
+              "rateCode" : "K85NNPWP7ZVFM9N2.R5XV2EPZQZ.6YS6EN2CT7",
+              "description" : "Linux with SQL Server Enterprise (Amazon VPC), c5.9xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "7.1730000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "convertible",
+            "PurchaseOption" : "Partial Upfront"
           }
         }
       }

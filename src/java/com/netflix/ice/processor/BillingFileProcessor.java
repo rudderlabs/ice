@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.processor;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
@@ -139,11 +140,19 @@ public class BillingFileProcessor extends Poller {
             
             // Get the reservation processor from the first report
             ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
-            
-        	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), dataTime);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.rdsInstance), dataTime);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime);
+
+    		// Initialize the price lists
+        	Map<Product, InstancePrices> prices = Maps.newHashMap();
+        	prices.put(config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
+        	if (config.reservationService.hasRdsReservations())
+        		prices.put(config.productService.getProductByName(Product.rdsInstance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRDS));
+        	if (config.reservationService.hasRedshiftReservations())
+        		prices.put(config.productService.getProductByName(Product.redshift), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRedshift));
+
+        	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime, prices);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), dataTime, prices);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.rdsInstance), dataTime, prices);
+        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime, prices);
             
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData.getUsage(null), costAndUsageData.getCost(null));
@@ -156,7 +165,8 @@ public class BillingFileProcessor extends Poller {
                 config.resourceService.commit();
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles);
+            costAndUsageData.archiveHourlyJson(startMilli, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService);
+            costAndUsageData.archive(startMilli, config.startDate, compress);
             
             logger.info("archiving instance data...");
             archiveInstances();
@@ -269,6 +279,15 @@ public class BillingFileProcessor extends Poller {
         try {
             in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + filename).getObjectContent();
             return Long.parseLong(IOUtils.toString(in));
+        }
+        catch (AmazonServiceException ase) {
+        	if (ase.getStatusCode() == 404) {
+            	logger.warn("file not found: " + filename);
+        	}
+        	else {
+                logger.error("Error reading from file " + filename, ase);
+        	}
+            return 0L;
         }
         catch (Exception e) {
             logger.error("Error reading from file " + filename, e);

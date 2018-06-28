@@ -107,7 +107,11 @@ public class PriceListServiceTest {
 	@Test
 	public void testImportCurrentRdsPriceList() throws Exception {
 		
-		priceListService.getPrices(DateTime.now(), ServiceCode.AmazonRDS);
+		InstancePrices prices = priceListService.getPrices(DateTime.now(), ServiceCode.AmazonRDS);
+		
+		// Verify that we have a couple products
+		assertNotNull("no RDS product in US_EAST_1", prices.getProduct(Region.US_EAST_1, UsageType.getUsageType("db.m4.10xlarge.mysql", "hours")));
+		assertNotNull("no RDS product in EU_WEST_1", prices.getProduct(Region.EU_WEST_1, UsageType.getUsageType("db.m4.10xlarge.mysql", "hours")));
 	}
 	@Test
 	public void testImportCurrentRedshiftPriceList() throws Exception {
@@ -130,5 +134,21 @@ public class PriceListServiceTest {
 		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c4.2xlarge", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 1060.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.121, rate.hourly, 0.0001);
+	}
+	
+	@Test
+	public void testImportJan2018RdsPriceList() throws Exception {
+		
+		InstancePrices ip = priceListService.getPrices(DateTime.parse("2018-01-01T00:00:00Z"), ServiceCode.AmazonRDS);
+		//logger.info(ip.toString());
+		
+		// Spot check some reservation rates
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 2593.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.45, rate.hourly, 0.0001);
+		
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.multiaz.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 5186.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.90, rate.hourly, 0.0001);
 	}
 }

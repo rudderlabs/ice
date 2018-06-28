@@ -21,6 +21,7 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
@@ -58,7 +59,7 @@ public interface ReservationService {
     /*
      * Get the set of reservation IDs that are active for the given time.
      */
-    Set<String> getReservations(long time);
+    Set<String> getReservations(long time, Product product);
 
     /**
      * Get reservation info.

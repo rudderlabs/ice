@@ -54,7 +54,7 @@ public class ProcessorConfig extends Config {
     
     public enum JsonFiles {
     	no,
-    	lines,
+    	ndjson,
     	bulk   	
     }
 

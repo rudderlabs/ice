@@ -18,29 +18,39 @@
 package com.netflix.ice.tag;
 
 public enum InstanceOs {
-    linux("", "", "Linux/UNIX"),
-    sqlserverweb(".sqlserverweb", ":0202", "Windows with SQL Server Web"),
-    sqlserverstd(".sqlserverstd", ":0006", "Windows with SQL Server Standard"),
-    sles(".sles", ":000g", "SUSE Linux"),
-    rhel(".rhel", ":0010", "Red Hat Enterprise Linux"),
-    rhbl(".rhbl", ":00g0", "Red Hat BYOL Linux"),
-    windows(".windows", ":0002", "Windows"),
-    dw(".dw", ":0001", "redshift"),
-    // Linux/UNIX Spot Instance - Number is the Zone # (Haven't seen example for windows yet -jroth)
+    linux("", "", "Linux/UNIX", false),
+    linsqlweb(".linsqlweb", ":0200", "Linux with SQL Server Web", false),
+    linsqlstd(".linsqlstd", ":0004", "Linux with SQL Server Standard", false),
+    linsqlent(".linsqlent", ":0100", "Linux with SQL Server Enterprise", false),
+    winsqlweb(".winsqlweb", ":0202", "Windows with SQL Server Web", false),
+    winsqlstd(".winsqlstd", ":0006", "Windows with SQL Server Standard", false),
+    winsqlent(".winsqlent", ":0102", "Windows with SQL Server Enterprise", false),
+    sles(".sles", ":000g", "SUSE Linux", false),
+    rhel(".rhel", ":0010", "Red Hat Enterprise Linux", false),
+    rhbl(".rhbl", ":00g0", "Red Hat BYOL Linux", false),
+    windows(".windows", ":0002", "Windows", false),
+    winbyol(".winbyol", ":0800", "Windows BYOL", false),
+    dw(".dw", ":0001", "redshift", false),
+    
+    // Spot Instance - Number is the Zone #
     // VPC Spot instance starts with SV followed by three digit zone number - ":SV000"
-    spot(".spot", ":S0000", ""),
-    others(".others", ":others", "others");
+    spot("", ":S0000", "Linux Spot Instance", true),
+    spotwin(".windows", ":0002:S0000", "Windows Spot Instance", true),
+    
+    others(".others", ":others", "others", false);
 
     public final String usageType;
     public final String code;
     public final String description;
+    public final boolean isSpot;
 
-    InstanceOs(String usageType, String code, String description) {
+    InstanceOs(String usageType, String code, String description, boolean isSpot) {
         this.usageType = usageType;
         this.code = code.toLowerCase();
         this.description = description.toLowerCase();
+        this.isSpot = isSpot;
     }
-
+    
     public static InstanceOs withCode(String code) {
         for (InstanceOs os: InstanceOs.values()) {
             if (code.toLowerCase().equals(os.code))
@@ -48,6 +58,8 @@ public enum InstanceOs {
         }
         if (code.startsWith(":S"))
         	return spot;
+        if (code.startsWith(":0002:S"))
+        	return spotwin;
         
         return others;
     }

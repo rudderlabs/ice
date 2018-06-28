@@ -58,7 +58,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 		
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
-			Set<String> reservationIds = reservationService.getReservations(startMilli + i * AwsUtils.hourMillis);
+			Set<String> reservationIds = reservationService.getReservations(startMilli + i * AwsUtils.hourMillis, product);
 		
 		    Map<TagGroup, Double> usageMap = usageData.getData(i);
 		    Map<TagGroup, Double> costMap = costData.getData(i);
@@ -124,12 +124,13 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    }
 
 			    // Unused
-			    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
-			    if (reservedUnused != 0.0) {
+			    if (Math.abs(reservedUnused) > 0.0001) {
+				    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
 				    add(toBeAdded, unusedTagGroup, reservedUnused);
 				    double unusedHourlyCost = reservedUnused * reservation.reservationHourlyCost;
 				    add(costMap, unusedTagGroup, unusedHourlyCost);
-				    if (reservedUnused < 0.0 && Math.abs(reservedUnused) > 0.00001) {
+
+				    if (reservedUnused < 0.0) {
 				    	logger.error("Too much usage assigned to RI: " + i + ", unused=" + reservedUnused + ", tag: " + unusedTagGroup);
 				    }
 				    // assign unused amortization to owner

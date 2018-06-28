@@ -221,6 +221,9 @@ public class Operation extends Tag {
     public boolean isUsed() {
     	return name.startsWith("Used RIs -");
     }
+    public boolean isUnused() {
+    	return name.startsWith("Unused RIs -");
+    }
     public boolean isOnDemand() {
     	return this == ondemandInstances;
     }

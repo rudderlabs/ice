@@ -23,7 +23,7 @@ public class PriceListTest {
 	private static final String resourceDir = "src/test/resources/";
 
 	@Test
-	public void testPriceList() throws MalformedURLException, IOException {
+	public void testEc2PriceList() throws MalformedURLException, IOException {
 		File testFile = new File(resourceDir + "PriceListTestData.json");
 		InputStream stream = new FileInputStream(testFile);
         PriceList priceList = new PriceList(stream);
@@ -50,7 +50,7 @@ public class PriceListTest {
     		Rate rate = term.priceDimensions.entrySet().iterator().next().getValue();
 			Double pricePerUnitUSD = Double.parseDouble(rate.pricePerUnit.get("USD"));
 			double expected = 0.023;
-			assertEquals("OnDemand Price wrong, got " + pricePerUnitUSD + ", expected " + expected, pricePerUnitUSD, expected, 0.001);
+			assertEquals("OnDemand price wrong, got " + pricePerUnitUSD + ", expected " + expected, pricePerUnitUSD, expected, 0.001);
 			
 			// Now check reserved instance prices
 			offerTerms = terms.Reserved.get(p.sku);
@@ -67,6 +67,52 @@ public class PriceListTest {
 			verifyReservedPrices(offerTerms, "3yr", "No Upfront",		"convertible", 0, 0.0139);
 			verifyReservedPrices(offerTerms, "3yr", "Partial Upfront",	"convertible", 169, 0.0064);
 			verifyReservedPrices(offerTerms, "3yr", "All Upfront",		"convertible", 332, 0);
+			
+			break;
+        }
+	}
+	
+	@Test
+	public void testRdsPriceList() throws MalformedURLException, IOException {
+		File testFile = new File(resourceDir + "RdsPriceListTestData.json");
+		InputStream stream = new FileInputStream(testFile);
+        PriceList priceList = new PriceList(stream);
+        stream.close();
+        
+        // Look up prices for m4.4xlarge instance in us-east-1 region
+        Map<String, Product> products = priceList.getProducts();
+        for (String sku: products.keySet()) {
+        	Product p = products.get(sku);
+        	if (!p.productFamily.equals("Compute Instance") ||
+        			!StringUtils.equals(p.getAttribute(Attributes.location), Region.US_EAST_1.priceListName) ||
+        			!StringUtils.equals(p.getAttribute(Attributes.instanceType), "db.m4.4xlarge") ||
+        			!StringUtils.equals(p.getAttribute(Attributes.databaseEngine), "MySQL")) {
+        		continue;
+        	}
+    		Terms terms = priceList.getTerms();
+    		
+    		// First check the OnDemand price
+    		Map<String, Term> offerTerms = terms.OnDemand.get(p.sku);
+    		// Get what should be the only term
+    		Term term = offerTerms.entrySet().iterator().next().getValue();
+    		// Get what should be the only rate
+    		Rate rate = term.priceDimensions.entrySet().iterator().next().getValue();
+			Double pricePerUnitUSD = Double.parseDouble(rate.pricePerUnit.get("USD"));
+			boolean singleAz = StringUtils.equals(p.getAttribute(Attributes.deploymentOption), "Single-AZ");
+			double expected = singleAz ? 1.401 : 2.802;
+			assertEquals("OnDemand price wrong, got " + pricePerUnitUSD + ", expected " + expected, pricePerUnitUSD, expected, 0.001);
+			
+			// Now check reserved instance prices
+			offerTerms = terms.Reserved.get(p.sku);
+			// We should have terms for permutations of:
+			//	LeaseContractLength(1yr, 3yr)
+			//	PurchaseOption(All Upfront,Partial Upfront, No Upfront)
+			//	OfferingClass(standard)
+			verifyReservedPrices(offerTerms, "1yr", "No Upfront", 		"standard", 0, singleAz ? 0.963 : 1.926);
+			verifyReservedPrices(offerTerms, "1yr", "Partial Upfront", 	"standard", singleAz ? 2593 : 70, singleAz ? 0.527 : 1.054);
+			verifyReservedPrices(offerTerms, "1yr", "All Upfront", 		"standard", singleAz ? 7064 : 14128, 0);
+			verifyReservedPrices(offerTerms, "3yr", "Partial Upfront",	"standard", singleAz ? 5256 : 10512, singleAz ? 0.356 : 0.712);
+			verifyReservedPrices(offerTerms, "3yr", "All Upfront",		"standard", singleAz ? 13735 : 27470, 0);
 			
 			break;
         }

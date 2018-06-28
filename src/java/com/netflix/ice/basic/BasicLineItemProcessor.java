@@ -416,7 +416,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if ((usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
         	// Line item for hourly RDS instance usage - both On-Demand and Reserved
-            usageTypeStr = usageTypeStr.split(":")[1] + (usageTypeStr.startsWith("Multi") ? ".multiaz" : "");
+        	boolean multiaz = usageTypeStr.startsWith("Multi");
+            usageTypeStr = usageTypeStr.split(":")[1];
+            
+            // db.m4.10xlarge usage in eu-west-1 is in the reports as "db.m4.10xl", so need to fix it.
+            // There may be others, so just look to see if the usage type string ends with "xl" and add "arge"
+            if (usageTypeStr.endsWith("xl")) {
+            	usageTypeStr = usageTypeStr + "arge";
+            }
+            
+            if (multiaz) {
+            	usageTypeStr += ".multiaz";
+            }
             
             if (reservationUsage) {
             	if (purchaseOption != null) {
@@ -483,10 +494,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         if (product.isEc2() && operation instanceof Operation.ReservationOperation) {
             product = productService.getProductByName(Product.ec2Instance);
-            if (os != InstanceOs.linux && os != InstanceOs.spot) {
-                usageTypeStr = usageTypeStr + "." + os;
-                operation = operation.isBonus() ? operation : Operation.ondemandInstances;
-            }
+            usageTypeStr = usageTypeStr + os.usageType;
         }
 
         if (product.isRds() && operation instanceof Operation.ReservationOperation) {

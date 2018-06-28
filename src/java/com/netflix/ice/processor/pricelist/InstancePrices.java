@@ -85,11 +85,18 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	}
 	
 	public Product getProduct(Region region, UsageType usageType) {
-		return getProduct(new Key(region, usageType));
+		Key key = new Key(region, usageType);
+		Product product = getProduct(key);
+		if (product == null) {
+			logger.error("No product for key: " + key);
+			return null;
+		}
+		return product;
 	}
 	
 	public double getOnDemandRate(Region region, UsageType usageType) {
-		return getProduct(region, usageType).getOnDemandRate();
+		Product product = getProduct(region, usageType);
+		return product == null ? 0.0 : product.getOnDemandRate();
 	}
 	
 	public Rate getReservationRate(Region region, UsageType usageType, LeaseContractLength lcl, PurchaseOption po, OfferingClass oc) {
@@ -97,7 +104,12 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	}
 	
 	public Rate getReservationRate(Key productKey, RateKey rateKey) {
-		return getProduct(productKey).getReservationRate(rateKey);
+		Product product = getProduct(productKey);
+		if (product == null) {
+			logger.error("No product for key: " + productKey);
+			return null;
+		}
+		return product.getReservationRate(rateKey);
 	}
 	
 	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies) {
@@ -172,9 +184,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 
         if (operation.startsWith("RunInstances")) {
         	// EC2 instance
-            InstanceOs os = InstanceOs.withCode(osStr);
-            if (os != InstanceOs.linux && os != InstanceOs.spot)
-                usageTypeStr = usageTypeStr + "." + os;
+            usageTypeStr = usageTypeStr + InstanceOs.withCode(osStr).usageType;
         }
         else if (operation.startsWith("CreateDBInstance")) {
         	// RDS instance

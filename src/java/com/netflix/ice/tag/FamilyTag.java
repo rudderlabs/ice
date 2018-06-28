@@ -28,7 +28,7 @@ public class FamilyTag extends Tag {
 		super(getFamilyName(name));
 	}
 	
-	protected static String getFamilyName(String name) {
+	public static String getFamilyName(String name) {
 		String[] tokens = name.split("\\.");
 		int endStartIndex = 2;
 		StringBuilder family = new StringBuilder();

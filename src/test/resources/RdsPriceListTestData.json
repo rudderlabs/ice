@@ -1,0 +1,423 @@
+{
+  "formatVersion" : "v1.0",
+  "disclaimer" : "This pricing list is for informational purposes only. All prices are subject to the additional terms included in the pricing pages on http://aws.amazon.com. All Free Tier prices are also subject to the terms included at https://aws.amazon.com/free/",
+  "offerCode" : "AmazonRDS",
+  "version" : "20171026230010",
+  "publicationDate" : "2017-10-26T23:00:10Z",
+  "products" : {
+    "22ANV4NNQP3UUCWY" : {
+      "sku" : "22ANV4NNQP3UUCWY",
+      "productFamily" : "Database Instance",
+      "attributes" : {
+        "servicecode" : "AmazonRDS",
+        "location" : "US East (N. Virginia)",
+        "locationType" : "AWS Region",
+        "instanceType" : "db.m4.4xlarge",
+        "currentGeneration" : "Yes",
+        "instanceFamily" : "General purpose",
+        "vcpu" : "16",
+        "physicalProcessor" : "Intel Xeon E5-2676 v3 (Haswell)",
+        "clockSpeed" : "2.4 GHz",
+        "memory" : "64 GiB",
+        "storage" : "EBS Only",
+        "networkPerformance" : "High",
+        "processorArchitecture" : "64-bit",
+        "engineCode" : "2",
+        "databaseEngine" : "MySQL",
+        "licenseModel" : "No license required",
+        "deploymentOption" : "Single-AZ",
+        "usagetype" : "InstanceUsage:db.m4.4xlarge",
+        "operation" : "CreateDBInstance:0002",
+        "dedicatedEbsThroughput" : "2000 Mbps",
+        "enhancedNetworkingSupported" : "Yes",
+        "normalizationSizeFactor" : "32",
+        "processorFeatures" : "Intel AVX; Intel AVX2; Intel Turbo",
+        "servicename" : "Amazon Relational Database Service"
+      }
+    },
+    "HCRJPSSTVQ4JAU49" : {
+      "sku" : "HCRJPSSTVQ4JAU49",
+      "productFamily" : "Database Instance",
+      "attributes" : {
+        "servicecode" : "AmazonRDS",
+        "location" : "US East (N. Virginia)",
+        "locationType" : "AWS Region",
+        "instanceType" : "db.m4.4xlarge",
+        "currentGeneration" : "Yes",
+        "instanceFamily" : "General purpose",
+        "vcpu" : "16",
+        "physicalProcessor" : "Intel Xeon E5-2676 v3 (Haswell)",
+        "clockSpeed" : "2.4 GHz",
+        "memory" : "64 GiB",
+        "storage" : "EBS Only",
+        "networkPerformance" : "High",
+        "processorArchitecture" : "64-bit",
+        "engineCode" : "2",
+        "databaseEngine" : "MySQL",
+        "licenseModel" : "No license required",
+        "deploymentOption" : "Multi-AZ",
+        "usagetype" : "Multi-AZUsage:db.m4.4xlarge",
+        "operation" : "CreateDBInstance:0002",
+        "dedicatedEbsThroughput" : "2000 Mbps",
+        "enhancedNetworkingSupported" : "Yes",
+        "normalizationSizeFactor" : "64",
+        "processorFeatures" : "Intel AVX; Intel AVX2; Intel Turbo",
+        "servicename" : "Amazon Relational Database Service"
+      }
+    }    
+  },
+  "terms" : {
+    "OnDemand" : {
+      "22ANV4NNQP3UUCWY" : {
+        "22ANV4NNQP3UUCWY.JRTCKXETXF" : {
+          "offerTermCode" : "JRTCKXETXF",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2017-10-01T00:00:00Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.JRTCKXETXF.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.JRTCKXETXF.6YS6EN2CT7",
+              "description" : "$1.401 per RDS db.m4.4xlarge instance hour (or partial hour) running MySQL",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "1.4010000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : { }
+        }
+      },
+      "HCRJPSSTVQ4JAU49" : {
+        "HCRJPSSTVQ4JAU49.JRTCKXETXF" : {
+          "offerTermCode" : "JRTCKXETXF",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2017-10-01T00:00:00Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.JRTCKXETXF.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.JRTCKXETXF.6YS6EN2CT7",
+              "description" : "$2.802 per RDS db.m4.4xlarge Multi-AZ instance hour (or partial hour) running MySQL",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "2.8020000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : { }
+        }
+      }
+    },
+    "Reserved" : {
+      "22ANV4NNQP3UUCWY" : {
+        "22ANV4NNQP3UUCWY.HU7G6KETJZ" : {
+          "offerTermCode" : "HU7G6KETJZ",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.HU7G6KETJZ.2TG2D8R56U" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.HU7G6KETJZ.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "2593"
+              },
+              "appliesTo" : [ ]
+            },
+            "22ANV4NNQP3UUCWY.HU7G6KETJZ.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.HU7G6KETJZ.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.5270000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "22ANV4NNQP3UUCWY.6QCMYABX3D" : {
+          "offerTermCode" : "6QCMYABX3D",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.6QCMYABX3D.2TG2D8R56U" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.6QCMYABX3D.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "7064"
+              },
+              "appliesTo" : [ ]
+            },
+            "22ANV4NNQP3UUCWY.6QCMYABX3D.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.6QCMYABX3D.6YS6EN2CT7",
+              "description" : "USD 0.0 per MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "22ANV4NNQP3UUCWY.4NA7Y494T4" : {
+          "offerTermCode" : "4NA7Y494T4",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.4NA7Y494T4.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.4NA7Y494T4.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.9630000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "22ANV4NNQP3UUCWY.38NPMPTW36" : {
+          "offerTermCode" : "38NPMPTW36",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.38NPMPTW36.2TG2D8R56U" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.38NPMPTW36.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "5256"
+              },
+              "appliesTo" : [ ]
+            },
+            "22ANV4NNQP3UUCWY.38NPMPTW36.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.38NPMPTW36.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.3560000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "22ANV4NNQP3UUCWY.NQ3QZPMQV9" : {
+          "offerTermCode" : "NQ3QZPMQV9",
+          "sku" : "22ANV4NNQP3UUCWY",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "22ANV4NNQP3UUCWY.NQ3QZPMQV9.6YS6EN2CT7" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.NQ3QZPMQV9.6YS6EN2CT7",
+              "description" : "USD 0.0 per MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            },
+            "22ANV4NNQP3UUCWY.NQ3QZPMQV9.2TG2D8R56U" : {
+              "rateCode" : "22ANV4NNQP3UUCWY.NQ3QZPMQV9.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "13735"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        }
+      },
+      "HCRJPSSTVQ4JAU49" : {
+        "HCRJPSSTVQ4JAU49.4NA7Y494T4" : {
+          "offerTermCode" : "4NA7Y494T4",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.4NA7Y494T4.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.4NA7Y494T4.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "1.9260000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "No Upfront"
+          }
+        },
+        "HCRJPSSTVQ4JAU49.HU7G6KETJZ" : {
+          "offerTermCode" : "HU7G6KETJZ",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.HU7G6KETJZ.2TG2D8R56U" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.HU7G6KETJZ.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "5186"
+              },
+              "appliesTo" : [ ]
+            },
+            "HCRJPSSTVQ4JAU49.HU7G6KETJZ.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.HU7G6KETJZ.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "1.0540000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        },
+        "HCRJPSSTVQ4JAU49.6QCMYABX3D" : {
+          "offerTermCode" : "6QCMYABX3D",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.6QCMYABX3D.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.6QCMYABX3D.6YS6EN2CT7",
+              "description" : "USD 0.0 per MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            },
+            "HCRJPSSTVQ4JAU49.6QCMYABX3D.2TG2D8R56U" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.6QCMYABX3D.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "14129"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "1yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "HCRJPSSTVQ4JAU49.NQ3QZPMQV9" : {
+          "offerTermCode" : "NQ3QZPMQV9",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.NQ3QZPMQV9.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.NQ3QZPMQV9.6YS6EN2CT7",
+              "description" : "USD 0.0 per MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.0000000000"
+              },
+              "appliesTo" : [ ]
+            },
+            "HCRJPSSTVQ4JAU49.NQ3QZPMQV9.2TG2D8R56U" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.NQ3QZPMQV9.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "27470"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "All Upfront"
+          }
+        },
+        "HCRJPSSTVQ4JAU49.38NPMPTW36" : {
+          "offerTermCode" : "38NPMPTW36",
+          "sku" : "HCRJPSSTVQ4JAU49",
+          "effectiveDate" : "2015-10-31T23:59:59Z",
+          "priceDimensions" : {
+            "HCRJPSSTVQ4JAU49.38NPMPTW36.2TG2D8R56U" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.38NPMPTW36.2TG2D8R56U",
+              "description" : "Upfront Fee",
+              "unit" : "Quantity",
+              "pricePerUnit" : {
+                "USD" : "10512"
+              },
+              "appliesTo" : [ ]
+            },
+            "HCRJPSSTVQ4JAU49.38NPMPTW36.6YS6EN2CT7" : {
+              "rateCode" : "HCRJPSSTVQ4JAU49.38NPMPTW36.6YS6EN2CT7",
+              "description" : "MySQL, db.m4.4xlarge reserved instance applied",
+              "beginRange" : "0",
+              "endRange" : "Inf",
+              "unit" : "Hrs",
+              "pricePerUnit" : {
+                "USD" : "0.7120000000"
+              },
+              "appliesTo" : [ ]
+            }
+          },
+          "termAttributes" : {
+            "LeaseContractLength" : "3yr",
+            "OfferingClass" : "standard",
+            "PurchaseOption" : "Partial Upfront"
+          }
+        }
+      }
+    }
+  }
+}

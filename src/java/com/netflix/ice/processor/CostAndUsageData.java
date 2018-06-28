@@ -18,6 +18,8 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.TagCoverageRatio;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
+import com.netflix.ice.processor.pricelist.PriceListService;
+import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Product;
 
 public class CostAndUsageData {
@@ -111,8 +113,7 @@ public class CostAndUsageData {
     	hourData.put(tagGroup, TagCoverageRatio.add(hourData.get(tagGroup), hasTag));
     }
 
-    public void archive(long startMilli, DateTime startDate, boolean compress, JsonFiles writeJsonFiles) throws Exception {
-
+    public void archive(long startMilli, DateTime startDate, boolean compress) throws Exception {
         logger.info("archiving tag data...");
 
         for (Product product: costDataByProduct.keySet()) {
@@ -130,18 +131,17 @@ public class CostAndUsageData {
         archiveHourly(startMilli, usageDataByProduct, "usage_", compress);
         archiveHourly(startMilli, costDataByProduct, "cost_", compress);  
         archiveHourlyTagCoverage(startMilli, compress);
-        
-        if (writeJsonFiles != JsonFiles.no) {
-            logger.info("archiving JSON data...");
-	        // Output JSON files
-	        archiveHourlyJson(startMilli, writeJsonFiles);
-        }
     }
     
-    private void archiveHourlyJson(long startMilli, JsonFiles writeJsonFiles) throws Exception {
+    public void archiveHourlyJson(long startMilli, JsonFiles writeJsonFiles, InstanceMetrics instanceMetrics, PriceListService priceListService) throws Exception {
+        if (writeJsonFiles == JsonFiles.no)
+        	return;
+        
+        logger.info("archiving JSON data...");
+        
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         DataJsonWriter writer = new DataJsonWriter("hourly_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
-        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct);
+        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService);
         writer.archive();
     }
     
