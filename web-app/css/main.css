@@ -124,7 +124,7 @@ table, fieldset             { border: 1px solid #DDD; }
 fieldset table              { border: none; }
 table                       { width: 100%; }
 tr.prop table, table.narrow { width: auto; }
-table.resourceGroupTags tr td { width: 230px; }
+table.userTags tr td { width: 230px; }
 tr                    { border: 0; }
 td, th                { font-size: 11px; font-family: verdana, arial, helvetica, sans-serif; line-height: 11px; padding: 5px 6px; text-align: left; vertical-align: top; }
 td.date               { white-space: nowrap; }
@@ -330,13 +330,14 @@ div.grippie { background: #EEEEEE url(../images/grippie.png) no-repeat scroll ce
 .messageForIeUsers              { padding: 10px; color: blue; font-size: 13px; font-weight: bold; background-color: white; }
 .chromeFrameInstallDefaultStyle { width: 96%; height: 90%; border: 5px solid blue; z-index: 1000; left: 410px; top: 360px; }
 
+.allNoneButton {padding: 0}
 .metaAccounts {width: 125px}
 .metaRegions {width: 115px}
 .metaProducts {width: 160px}
 .metaOperations {width: 230px}
 .metaUsageTypes {width: 230px}
 .metaResourceGroups {width: 450px}
-.metaResourceGroupTags {width: 230px}
+.metaUserTags {width: 230px}
 .metaTags {width: 125px}
 .metaSelect {height:80px;}
 .metaInput {}

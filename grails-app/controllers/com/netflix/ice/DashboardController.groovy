@@ -592,10 +592,15 @@ class DashboardController {
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+		
+		// Still support the old name "showResourceGroupTags" for new name showUserTags
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
+        boolean showUserTags = query.has("showUserTags") ? query.getBoolean("showUserTags") : false;
+		showUserTags = showUserTags || showResourceGroupTags;
+		
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
 		int userTagGroupByIndex = 0;
-		if (showResourceGroupTags) {
+		if (showUserTags) {
 			String groupByTag = query.optString("groupByTag");			
 			String[] keys = getManagers().getUserTags();
 			for (int i = 0; i < keys.length; i++) {
@@ -611,7 +616,7 @@ class DashboardController {
         }
 		// Tag Coverage parameters
 		boolean tagCoverage = query.getBoolean("tagCoverage");
-		List<UserTag> tags = UserTag.getUserTags(listParams(query, "tag"));
+		List<UserTag> tagKeys = UserTag.getUserTags(listParams(query, "tagKey"));
 		
 		if (elasticity || tagCoverage) {
 			// elasticity is computed per day based on hourly data
@@ -660,20 +665,20 @@ class DashboardController {
                 products = Lists.newArrayList(productSet);
             }
             data = Maps.newTreeMap();
-			for (UserTag tag: tags) {
-				DataManager dataManager = getManagers().getTagCoverageManager(tag);
+			for (UserTag tagKey: tagKeys) {
+				DataManager dataManager = getManagers().getTagCoverageManager(tagKey);
 				Map<Tag, double[]> dataOfTag = dataManager.getData(
 					interval,
 					new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups),
-					groupBy == TagType.Tag ? null : groupBy,
+					groupBy == TagType.TagKey ? null : groupBy,
 					aggregate,
 					forReservation,
 					usageUnit,
 					userTagGroupByIndex
 				);
 				
-				if (groupBy == TagType.Tag) {
-					data.put(tag, dataOfTag.get(Tag.aggregated));
+				if (groupBy == TagType.TagKey) {
+					data.put(tagKey, dataOfTag.get(Tag.aggregated));
 				}
 				else {
 					mergeTagCoverageData(dataOfTag, data);
@@ -731,13 +736,13 @@ class DashboardController {
                 }
             }
         }
-        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || appgroup != null || showResourceGroups || showResourceGroupTags) {
+        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || appgroup != null || showResourceGroups || showUserTags) {
             data = Maps.newTreeMap();
 			if (products.size() == 0) {
 	            if (groupBy == TagType.ResourceGroup || appgroup != null || resourceGroups.size() > 0) {
 	                products = Lists.newArrayList(getManagers().getProducts());
 	            }
-	            else if (showResourceGroups || showResourceGroupTags) {
+	            else if (showResourceGroups || showUserTags) {
 	                Set productSet = Sets.newTreeSet();
 	                for (Product product: getManagers().getProducts()) {
 	                    if (product == null)
@@ -771,7 +776,7 @@ class DashboardController {
 					continue;
 				}
 				TagLists tagLists;
-				if (showResourceGroupTags) {
+				if (showUserTags) {
 					tagLists = new TagListsWithUserTags(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, userTagLists);
 				}
 				else {

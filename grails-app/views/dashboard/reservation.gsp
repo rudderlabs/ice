@@ -85,28 +85,39 @@
       <td>
         <select ng-model="selected_accounts" ng-options="a.name for a in accounts | filter:filter_accounts" ng-change="accountsChanged()" multiple="multiple" class="metaAccounts metaSelect"></select>
         <br><input ng-model="filter_accounts" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_accounts = accounts" class="allNoneButton">+</button>
+        <button ng-click="selected_accounts = []" class="allNoneButton">-</button>
       </td>
       <td ng-show="1-showZones">
         <select ng-model="selected_regions" ng-options="a.name for a in regions | filter:filter_regions" ng-change="regionsChanged()" multiple="multiple" class="metaRegions metaSelect"></select>
         <br><input ng-model="filter_regions" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_regions = regions" class="allNoneButton">+</button>
+        <button ng-click="selected_regions = []" class="allNoneButton">-</button>
       </td>
       <td ng-show="showZones">
         <select ng-model="selected_zones" ng-options="a.name for a in zones | filter:filter_zones" ng-change="zonesChanged()" multiple="multiple" class="metaRegions metaSelect"></select>
         <br><input ng-model="filter_zones" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_zones = zones" class="allNoneButton">+</button>
+        <button ng-click="selected_zones = []" class="allNoneButton">-</button>
       </td>
       <td>
         <select ng-model="selected_products" ng-options="a.name for a in products | filter:filter_products" ng-change="productsChanged()" multiple="multiple" class="metaProducts metaSelect"></select>
         <br><input ng-model="filter_products" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_products = products" class="allNoneButton">+</button>
+        <button ng-click="selected_products = []" class="allNoneButton">-</button>
       </td>
       <td>
         <select ng-model="selected_operations" ng-options="a.name for a in operations | filter:filter_operations" ng-change="operationsChanged()" multiple="multiple" class="metaOperations metaSelect"></select>
         <br><input ng-model="filter_operations" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_operations = operations" class="allNoneButton">+</button>
+        <button ng-click="selected_operations = []" class="allNoneButton">-</button>
       </td>
       <td>
         <select ng-model="selected_usageTypes" ng-options="a.name for a in usageTypes | filter:filter_usageTypes" multiple="multiple" class="metaUsageTypes metaSelect"></select>
         <br><input ng-model="filter_usageTypes" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_usageTypes = usageTypes" class="allNoneButton">+</button>
+        <button ng-click="selected_usageTypes = []" class="allNoneButton">-</button>
       </td>
-
     </tr>
   </table>
 
