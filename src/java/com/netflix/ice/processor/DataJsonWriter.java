@@ -109,10 +109,6 @@ public class DataJsonWriter extends DataFile {
             Map<TagGroup, Double> usageMap = usage.getData(i);
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
-            	
-            	if (i == 0 && costEntry.getKey().operation.isUnused())
-            		logger.info("Unused RI: " + dtf.print(monthDateTime.plusHours(i)) + ", " + costEntry.getKey() + ", " + costEntry.getValue() + ", " + usageValue);
-            	
             	Item item = new Item(dtf.print(monthDateTime.plusHours(i)), costEntry.getKey(), costEntry.getValue(), usageValue);
             	String json = gson.toJson(item);
             	if (fileType == JsonFiles.bulk)

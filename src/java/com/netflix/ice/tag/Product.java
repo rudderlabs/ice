@@ -17,9 +17,11 @@
  */
 package com.netflix.ice.tag;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 public class Product extends Tag {
 	private static final long serialVersionUID = 2L;
@@ -68,6 +70,25 @@ public class Product extends Tag {
     public static final String eip           = "Elastic IP";
     public static final String rdsInstance   = "RDS Instance";
 
+    private final static Set<String> productsWithoutResourceTags;
+    
+    static {
+    	productsWithoutResourceTags = Sets.newHashSet();
+    	// Canonical names for products that do not their own resource tagging.
+    	// e.g. Data Transfer tags are actually those from S3 or EC2. There are no Data Transfer resources.
+    	String[] names = new String[]{
+    			"AppSync",
+    			"Athena",
+    			cloudWatch,
+    			"Config",
+    			dataTransfer,
+    			"EC2 Container Registry (ECR)",
+    	};
+    	for (String name: names) {
+    		productsWithoutResourceTags.add(name);
+    	}   	
+    }
+
 	/*
 	 * Maps for holding overridden product names. One map for each lookup direction.
 	 */
@@ -115,9 +136,9 @@ public class Product extends Tag {
     }
 
     /*
-     * getOverride() will return the override name corresponding the supplied
+     * getOverride() will return the override name corresponding to the supplied
      * canonical name if the canonical name has been overridden. If not
-     * overridden, then it just returns the canoncial name supplied.
+     * overridden, then it just returns the canonical name supplied.
      */
     protected static String getOverride(String canonicalName) {
     	String n;
@@ -125,7 +146,7 @@ public class Product extends Tag {
     }
     
     /*
-     * getCanonicalName() will return the canonical name for the provide name.
+     * getCanonicalName() will return the canonical name for the provided name.
      * If there is no override for the supplied name it just returns the
      * supplied name.
      */
@@ -203,4 +224,7 @@ public class Product extends Tag {
     	return name.equals(getOverride(rdsInstance));
     }
     
+    public boolean hasResourceTags() {
+    	return !productsWithoutResourceTags.contains(getCanonicalName(name));
+    }
 }

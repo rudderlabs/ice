@@ -60,22 +60,25 @@ public class DataFilePoller extends StalePoller {
         this.accountService = accountService;
         this.productService = productService;
         
-        this.data = CacheBuilder.newBuilder()
-        	       .maximumSize(monthlyCacheSize)
-        	       .removalListener(new RemovalListener<DateTime, ReadOnlyData>() {
-        	           public void onRemoval(RemovalNotification<DateTime, ReadOnlyData> objectRemovalNotification) {
-        	               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey());
-        	               fileCache.remove(objectRemovalNotification.getKey());
-        	           }
-        	       })
-        	       .build(
-        	               new CacheLoader<DateTime, ReadOnlyData>() {
-        	                   public ReadOnlyData load(DateTime monthDate) throws Exception {
-        	                       return loadData(monthDate);
-        	                   }
-        	               });
-
+        buildCache(monthlyCacheSize);
         start();
+    }
+    
+    protected void buildCache(int monthlyCacheSize) {
+        data = CacheBuilder.newBuilder()
+     	       .maximumSize(monthlyCacheSize)
+     	       .removalListener(new RemovalListener<DateTime, ReadOnlyData>() {
+     	           public void onRemoval(RemovalNotification<DateTime, ReadOnlyData> objectRemovalNotification) {
+     	               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey());
+     	               fileCache.remove(objectRemovalNotification.getKey());
+     	           }
+     	       })
+     	       .build(
+     	               new CacheLoader<DateTime, ReadOnlyData>() {
+     	                   public ReadOnlyData load(DateTime monthDate) throws Exception {
+     	                       return loadData(monthDate);
+     	                   }
+     	               });
     }
     
     /**
@@ -172,7 +175,7 @@ public class DataFilePoller extends StalePoller {
         }
     }
 
-    private ReadOnlyData loadDataFromFile(File file) throws Exception {
+    protected ReadOnlyData loadDataFromFile(File file) throws Exception {
         logger.info("trying to load data from " + file);
         InputStream is = new FileInputStream(file);
         if (compress)

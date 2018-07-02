@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Months;
@@ -29,7 +28,7 @@ public class CostAndUsageData {
     private Map<Product, ReadWriteData> costDataByProduct;
     private Map<String, ReadWriteData> tagCoverage;
     private List<String> userTags;
-
+    
 	public CostAndUsageData(List<String> userTags) {
 		usageDataByProduct = Maps.newHashMap();
 		costDataByProduct = Maps.newHashMap();
@@ -104,6 +103,10 @@ public class CostAndUsageData {
      * Add an entry to the tag coverage statistics for the given TagGroup
      */
     public void addTagCoverage(String tag, int index, TagGroup tagGroup, boolean hasTag) {
+    	if (!tagGroup.product.hasResourceTags()) {
+    		return;
+    	}
+    	
     	ReadWriteData coverage = getCoverage(tag);
     	if (coverage == null) {
     		coverage = new ReadWriteData();

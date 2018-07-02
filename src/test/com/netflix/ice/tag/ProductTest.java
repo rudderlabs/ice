@@ -75,4 +75,11 @@ public class ProductTest {
 		assertTrue("isRDS() returned false, but should be true", productRdsFull.isRds());
 	}
 	
+	@Test
+	public void testHasResourceTag() {
+		Product productRds = new Product(Product.rds);
+		Product productCloudWatch = new Product(Product.cloudWatch);
+		assertTrue("RDS should have resource tags", productRds.hasResourceTags());
+		assertFalse("CloudWatch should not have resource tags", productCloudWatch.hasResourceTags());
+	}
 }
