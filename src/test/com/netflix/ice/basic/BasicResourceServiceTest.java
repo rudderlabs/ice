@@ -56,7 +56,7 @@ public class BasicResourceServiceTest {
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		ResourceService rs = new BasicResourceService(ps, customTags, "".split(","), tagKeys, tagValues, null);
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
 	}
@@ -82,11 +82,82 @@ public class BasicResourceServiceTest {
 		Map<BasicResourceService.Key, String> defaultTags = Maps.newHashMap();
 		defaultTags.put(new BasicResourceService.Key("AccountTagTest", "Environment"), "Prod");
 
-		ResourceService rs = new BasicResourceService(ps, customTags, "".split(","), tagKeys, tagValues, defaultTags);
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, defaultTags);
 		rs.initHeader(li.getResourceTagsHeader());		
 		
 		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest"), null, ps.getProductByName(Product.ec2Instance), li, 0);
 		UserTag[] userTags = resourceGroup.getUserTags();
 		assertEquals("default resource group not set", userTags[0].name, "Prod");
+	}
+	
+	@Test
+	public void testGetUserTagCoverage() {
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		ProductService ps = new BasicProductService(null);
+		String[] customTags = new String[]{
+				"Environment", "Department", "Email"
+			};
+		
+		class TestLineItem extends LineItem {
+			final String[] items;
+			
+			TestLineItem(String[] items) {
+				this.items = items;
+			}
+			
+		    @Override
+		    public int getResourceTagsSize() {
+		    	if (items.length <= 0)
+		    		return 0;
+		    	return items.length;
+		    }
+
+		    @Override
+		    public String getResourceTag(int index) {
+		    	if (items.length <= index)
+		    		return "";
+		    	return items[index];
+		    }
+
+			@Override
+			public String[] getResourceTagsHeader() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public Map<String, String> getResourceTags() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public boolean isReserved() {
+				// TODO Auto-generated method stub
+				return false;
+			}
+
+			@Override
+			public String getPricingUnit() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public String getLineItemId() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+		}
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
+		rs.initHeader(new String[]{ "user:Email", "user:Department", "user:Environment" });
+		LineItem lineItem = new TestLineItem(new String[]{ "joe@company.com", "1234", "" });
+		boolean[] coverage = rs.getUserTagCoverage(lineItem);
+		
+		assertEquals("Environment isn't first user tag", "Environment", rs.getUserTags().get(0));
+		assertFalse("Environment is set", coverage[0]);
+		assertTrue("Department not set", coverage[1]);
+		assertTrue("Email not set", coverage[2]);
 	}
 }

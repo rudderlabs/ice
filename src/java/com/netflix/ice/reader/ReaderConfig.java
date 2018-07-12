@@ -22,8 +22,6 @@ import com.netflix.ice.basic.BasicWeeklyCostEmailService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.TagType;
-import com.netflix.ice.tag.UserTag;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
@@ -129,17 +127,10 @@ public class ReaderConfig extends Config {
                 readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Dollar);
                 readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Native);
             }
+            // Prime the tag coverage cache
+        	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Native);
         }
         
-        // Prime the tag coverage caches
-        for (UserTag tag: managers.getTags()) {
-            TagGroupManager tagGroupManager = managers.getTagGroupManager(null);
-            Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
-            if (interval == null)
-                continue;
-            readData(null, managers.getTagCoverageManager(tag), interval, ConsolidateType.hourly, UsageUnit.Native);
-        }
-
         if (costEmailService != null)
             costEmailService.start();
     }

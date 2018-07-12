@@ -17,14 +17,14 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.ReadOnlyData;
 import com.netflix.ice.tag.Product;
 
-public class DataFilePollerTest {
+public class BasicDataManagerTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 	private static final String dataDir = "src/test/data/";
 
-	class TestDataFilePoller extends DataFilePoller {
+	class TestDataFilePoller extends BasicDataManager {
 		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
 	    		int monthlyCacheSize, AccountService accountService, ProductService productService) {
-			super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
+			super(startDate, dbName, consolidateType, null, compress, monthlyCacheSize, accountService, productService, null);
 		}
 		
 		@Override
@@ -37,14 +37,16 @@ public class DataFilePollerTest {
 	}
 
 	@Test
-	public void testLoadDataFromFile() throws Exception {
+	public void loadDataFromFile() throws Exception {
 		AccountService as = new BasicAccountService(new Properties());
 		ProductService ps = new BasicProductService(new Properties());
 		
-	    DataFilePoller data = new TestDataFilePoller(DateTime.now(), null, null, true, 0, as, ps);
+		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, true, 0, as, ps);
 	    
-	    //File f = new File(dataDir + "coverage_hourly_Vertical_2018-06.gz");
 	    File f = new File(dataDir + "cost_hourly_EC2_Instance_2018-06.gz");
+	    if (!f.exists())
+	    	return;
+
 	    
 	    ReadOnlyData rod = data.loadDataFromFile(f);
 	    
@@ -58,5 +60,4 @@ public class DataFilePollerTest {
 	    for (Product p: products)
 	    	logger.info("  " + p.name);
 	}
-
 }

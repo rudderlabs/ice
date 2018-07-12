@@ -71,10 +71,10 @@ public class ReadWriteDataTest {
     	InputStream is = new FileInputStream(file);
     	is = new GZIPInputStream(is);
         DataInputStream in = new DataInputStream(is);
-        ReadWriteData data;
+        ReadWriteData data = new ReadWriteData();
         
         try {
-            data = ReadWriteData.Serializer.deserialize(as, ps, in);
+            data.deserialize(as, ps, in);
         }
         finally {
             if (in != null)
@@ -150,10 +150,11 @@ public class ReadWriteDataTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         DataOutput out = new DataOutputStream(output);
 		
-		ReadWriteData.Serializer.serialize(out, data);
+		data.serialize(out);
 		ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
 		DataInput in = new DataInputStream(input);
-		return ReadWriteData.Serializer.deserialize(as, ps, in);
+		data.deserialize(as, ps, in);
+		return data;
 	}
 	
     public static void serialize(OutputStreamWriter out, ReadWriteData data) throws IOException {

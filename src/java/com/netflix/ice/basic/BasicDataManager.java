@@ -17,21 +17,34 @@
  */
 package com.netflix.ice.basic;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
-import com.netflix.ice.common.*;
-import com.netflix.ice.reader.*;
+import org.apache.commons.lang.ArrayUtils;
+import org.joda.time.DateTime;
+
+import com.google.common.collect.Maps;
+import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.ConsolidateType;
+import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.reader.AggregateType;
+import com.netflix.ice.reader.DataManager;
+import com.netflix.ice.reader.InstanceMetricsService;
+import com.netflix.ice.reader.ReadOnlyData;
+import com.netflix.ice.reader.TagGroupManager;
+import com.netflix.ice.reader.UsageUnit;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.UserTag;
 
-import org.joda.time.*;
-
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
-public class BasicDataManager extends CommonDataManager implements DataManager {
+public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> implements DataManager {
 
     protected InstanceMetricsService instanceMetricsService;
     
@@ -42,12 +55,19 @@ public class BasicDataManager extends CommonDataManager implements DataManager {
 
         start();
     }
-        
-    @Override
-    public double add(double to, double from, UsageUnit usageUnit, UsageType usageType) {
-    	return to + adjustForUsageUnit(usageUnit, usageType, from);
-    }
     
+    @Override
+    protected ReadOnlyData newEmptyData() {
+    	return new ReadOnlyData();
+    }
+
+    @Override
+    protected ReadOnlyData deserializeData(DataInputStream in) throws IOException {
+	    ReadOnlyData result = new ReadOnlyData();
+	    result.deserialize(accountService, productService, in);
+	    return result;
+    }
+            
     private double adjustForUsageUnit(UsageUnit usageUnit, UsageType usageType, double value) {
     	double multiplier = 1.0;
     	
@@ -70,29 +90,61 @@ public class BasicDataManager extends CommonDataManager implements DataManager {
     }
 
 	@Override
-    public void addData(double[] from, double[] to) {
-        for (int i = 0; i < from.length; i++)
-            to[i] += from[i];
+    protected void addData(Double[] from, Double[] to) {
+        for (int i = 0; i < from.length; i++) {
+        	if (from[i] == null)
+        		continue;
+        	else if (to[i] == null)
+        		to[i] = from[i];
+        	else
+        		to[i] += from[i];
+        }
+    }
+	
+    @Override
+    protected boolean hasData(Double[] data) {
+    	// Check for values in the data array and ignore if all zeros
+    	for (Double d: data) {
+    		if (d != null && d != 0.0)
+    			return true;
+    	}
+    	return false;
     }
 
-    @Override
-    public void putResult(Map<Tag, double[]> result, Tag tag, double[] data, TagType groupBy) {        
-        if (groupBy == TagType.Tag) {
-        	Tag userTag = (UserTag) (tag.name.isEmpty() ? UserTag.get(UserTag.none) : tag);
-        	
-        	//logger.info("resourceGroup: " + tag + " -> " + userTag + " value: " + data[0] + ", " + dbName);
-        	
-			if (result.containsKey(userTag)) {
-				// aggregate current data with the one already in the map
-				addData(data, result.get(userTag));
-			}
-			else {
-				// Put in map using the user tag
-				result.put(userTag, data);
-			}
+	@Override
+	protected Double[] getResultArray(int size) {
+        return new Double[size];
+	}
+
+	@Override
+    protected Double aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, Double[] data) {
+		Double result = 0.0;
+        for (int i = 0; i < columns.size(); i++) {
+        	Double d = data[columns.get(i)];
+        	if (d != null && d != 0.0)
+        		result += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, d);
         }
-        else {
-        	result.put(tag, data);
-        }
-    }
+        return result;
+	}
+
+	@Override
+	protected Map<Tag, double[]> processResult(Map<Tag, Double[]> data, TagType groupBy, AggregateType aggregate, List<UserTag> tagKeys) {
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Tag t: data.keySet()) {
+			result.put(t, ArrayUtils.toPrimitive(data.get(t), 0.0));
+		}
+		
+		if (aggregate != AggregateType.none && result.values().size() > 0) {
+		    double[] aggregated = new double[result.values().iterator().next().length];
+			for (double[] d: result.values()) {
+		        for (int i = 0; i < d.length; i++)
+		        	aggregated[i] += d[i];
+		    }
+		    result.put(Tag.aggregated, aggregated);          
+		}
+		
+		return result;
+	}
+
+
 }

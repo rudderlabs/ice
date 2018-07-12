@@ -18,62 +18,29 @@
 package com.netflix.ice.reader;
 
 import com.google.common.collect.Lists;
-import com.netflix.ice.common.AccountService;
-import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
 
-public class ReadOnlyData {
-    double[][] data;
-    private Collection<TagGroup> tagGroups;
-
-    public ReadOnlyData(double[][] data, Collection<TagGroup> tagGroups) {
-        this.data = data;
-        this.tagGroups = tagGroups;
+public class ReadOnlyData extends ReadOnlyGenericData<Double> {
+    public ReadOnlyData() {
+        super(new Double[][]{}, Lists.<TagGroup>newArrayList());
     }
 
-    public double[] getData(int i) {
-        return data[i];
-    }
+	@Override
+	protected Double[][] newDataMatrix(int size) {
+		return new Double[size][];
+	}
 
-    public int getNum() {
-        return data.length;
-    }
+	@Override
+	protected Double[] newDataArray(int size) {
+		return new Double[size];
+	}
 
-    public Collection<TagGroup> getTagGroups() {
-        return tagGroups;
-    }
-
-    public static class Serializer {
-
-        public static ReadOnlyData deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
-
-            int numKeys = in.readInt();
-            List<TagGroup> keys = Lists.newArrayList();
-            for (int j = 0; j < numKeys; j++) {
-                keys.add(TagGroup.Serializer.deserialize(accountService, productService, in));
-            }
-
-            int num = in.readInt();
-            double[][] data = new double[num][];
-            for (int i = 0; i < num; i++)  {
-                data[i] = new double[keys.size()];
-                boolean hasData = in.readBoolean();
-                if (hasData) {
-                    for (int j = 0; j < keys.size(); j++) {
-                        double v = in.readDouble();
-                        if (v != 0) {
-                            data[i][j] = v;
-                        }
-                    }
-                }
-            }
-
-            return new ReadOnlyData(data, keys);
-        }
-    }
+	@Override
+	protected Double readValue(DataInput in) throws IOException {
+		Double v = in.readDouble();
+		return v == null || v == 0 ? null : v;
+	}
 }

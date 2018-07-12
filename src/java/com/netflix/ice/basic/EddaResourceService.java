@@ -201,4 +201,10 @@ public class EddaResourceService extends ResourceService {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public boolean[] getUserTagCoverage(LineItem lineItem) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

@@ -16,7 +16,7 @@ public class InstanceOsTest {
 	@Test
 	public void testLinuxSpot() {
 		InstanceOs ios = InstanceOs.withCode(":SV001");
-		assertEquals("Incorrect InstanceOs for Linux instance", ".spot", ios.usageType);
+		assertEquals("Incorrect InstanceOs for Linux instance", "", ios.usageType);
 		assertTrue("Linux instance reported as spot", ios.isSpot);
 	}
 	
@@ -30,7 +30,7 @@ public class InstanceOsTest {
 	@Test
 	public void testWindowsSpot() {
 		InstanceOs ios = InstanceOs.withCode(":0002:SV001");
-		assertEquals("Incorrect InstanceOs for Windows Spot instance", ".spotwin", ios.usageType);
+		assertEquals("Incorrect InstanceOs for Windows Spot instance", ".windows", ios.usageType);
 		assertTrue("Windows instance reported as spot", ios.isSpot);
 	}
 

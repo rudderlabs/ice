@@ -23,12 +23,15 @@ import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 public class DataWriter extends DataFile {
-    private ReadWriteData data;
+    private ReadWriteDataSerializer data;
 
-    DataWriter(String name, boolean compress) throws Exception {
+    DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load) throws Exception {
     	super(name, compress);
-        data = null;
+        this.data = data;
 
+        if (!load)
+        	return;
+        
         AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
 
         if (file.exists()) {
@@ -37,7 +40,7 @@ public class DataWriter extends DataFile {
         		is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
-                data = ReadWriteData.Serializer.deserialize(config.accountService, config.productService, in);		
+                data.deserialize(config.accountService, config.productService, in);		
             }
             catch (Exception e) {
                 throw new RuntimeException("DataWriter: failed to load " + file.getName() + ", " + e + ", " + e.getMessage());
@@ -46,25 +49,13 @@ public class DataWriter extends DataFile {
                 in.close();
             }
         }
-        else {
-        	data = new ReadWriteData();
-        }
     }
     
-    DataWriter(String name, ReadWriteData data, boolean compress) throws Exception {
-    	super(name, compress);
-    	this.data = data;
-    }
-
-	ReadWriteData getData() {
-        return data;
-    }
-
 	@Override
 	protected void write() throws IOException {
     	DataOutputStream out = new DataOutputStream(os);
         try {
-        	ReadWriteData.Serializer.serialize(out, data);
+        	data.serialize(out);
     		out.flush();
         }
         finally {

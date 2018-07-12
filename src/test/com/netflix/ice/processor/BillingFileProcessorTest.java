@@ -39,6 +39,7 @@ import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
+import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -182,7 +183,27 @@ public class BillingFileProcessorTest {
 		PriceListService priceListService = new PriceListService(null, null, null);
 		priceListService.init();
 		
-		ProcessorConfig config = new ProcessorConfig(
+		class TestProcessorConfig extends ProcessorConfig {
+			public TestProcessorConfig(
+		            Properties properties,
+		            AWSCredentialsProvider credentialsProvider,
+		            AccountService accountService,
+		            ProductService productService,
+		            ReservationService reservationService,
+		            ResourceService resourceService,
+		            LineItemProcessor lineItemProcessor,
+		            PriceListService priceListService,
+		            boolean compress) throws Exception {
+				super(properties, credentialsProvider, accountService, productService, reservationService, resourceService, lineItemProcessor, priceListService, compress);
+			}
+			
+			@Override
+			protected void initZones() {
+				
+			}
+		}
+		
+		ProcessorConfig config = new TestProcessorConfig(
 										properties,
 										credentialsProvider,
 										accountService,
@@ -269,7 +290,7 @@ public class BillingFileProcessorTest {
 		FileWriter out;
 		try {
 			out = new FileWriter(outputFile);
-	        ReadWriteData.Serializer.serializeCsv(out, data);
+	        data.serializeCsv(out);
 	        out.close();
 		} catch (Exception e) {
 			logger.error("Error writing " + dataType + " file " + e);
@@ -278,7 +299,7 @@ public class BillingFileProcessorTest {
 	
 	private void compareData(ReadWriteData data, String dataType, File expectedFile, AccountService accountService, ProductService productService, Set<TagGroup> ignore) {
 		// Read in the expected data
-		ReadWriteData expectedData = null;
+		ReadWriteData expectedData = new ReadWriteData();
 		
 		// Will print out tags that have the following usage type family. Set to null to disable.
 		String debugFamily = null; // "t2";
@@ -286,7 +307,7 @@ public class BillingFileProcessorTest {
 		BufferedReader in;
 		try {
 			in = new BufferedReader(new FileReader(expectedFile));
-			expectedData = ReadWriteData.Serializer.deserializeCsv(accountService, productService, in);
+			expectedData.deserializeCsv(accountService, productService, in);
 			in.close();
 		} catch (Exception e) {
 			logger.error("Error reading " + dataType + " expected data file " + e);

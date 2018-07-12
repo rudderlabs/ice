@@ -245,10 +245,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
                 
                 // Collect statistics on tag coverage
-                for (String tag: resourceService.getUserTags()) {
-                	String v = resourceService.getUserTagValue(lineItem, tag);
-                	costAndUsageData.addTagCoverage(tag, i, tagGroup, !StringUtils.isEmpty(v));
-                }
+            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
+            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
+            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
             }
             else if (resourceService != null) {
             	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.

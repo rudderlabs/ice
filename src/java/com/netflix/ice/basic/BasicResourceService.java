@@ -180,6 +180,16 @@ public class BasicResourceService extends ResourceService {
     	}
     	return null;
     }
+    
+    @Override
+    public boolean[] getUserTagCoverage(LineItem lineItem) {
+    	boolean[] userTagCoverage = new boolean[userTags.size()];
+        for (int i = 0; i < userTags.size(); i++) {
+        	String v = getUserTagValue(lineItem, userTags.get(i));
+        	userTagCoverage[i] = !StringUtils.isEmpty(v);
+        }    	
+    	return userTagCoverage;
+    }
 
     @Override
     public List<List<Product>> getProductsWithResources() {

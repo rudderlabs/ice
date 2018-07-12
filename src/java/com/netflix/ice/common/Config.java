@@ -86,7 +86,7 @@ public abstract class Config {
         initZones();
     }
     
-    private void initZones() {
+    protected void initZones() {
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
     	for (Region region: Region.getAllRegions()) {
             AmazonEC2 ec2 = ec2Builder.withRegion(region.name).build();

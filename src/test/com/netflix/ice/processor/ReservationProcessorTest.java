@@ -982,26 +982,26 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgresql", 2.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgres", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgresql", 2.0),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgres", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgresql", 0.024),
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartial, "db.t2.micro.postgresql", 0.018),
-			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.savingsPartial, "db.t2.micro.postgresql", 2.0 * 0.028 - 0.018 - 2.0 * 0.012),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.reservedInstancesPartial, "db.t2.micro.postgres", 0.024),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartial, "db.t2.micro.postgres", 0.018),
+			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.savingsPartial, "db.t2.micro.postgres", 2.0 * 0.028 - 0.018 - 2.0 * 0.012),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgresql", null, "ri-2017-02-01-06-08-23-918", 2.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 2.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 	}

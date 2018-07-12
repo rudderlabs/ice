@@ -19,10 +19,12 @@ package com.netflix.ice.reader;
 
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UserTag;
 
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,7 +41,7 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate,boolean forReservation, UsageUnit usageUnit);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit);
 
     /**
      * Get map of data.
@@ -50,7 +52,9 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate,boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex);
+
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, int userTagGroupByIndex, List<UserTag> tagKeys);
 
     /**
      * Get data length.

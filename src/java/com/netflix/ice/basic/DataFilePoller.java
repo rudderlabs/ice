@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -19,7 +20,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
@@ -27,14 +27,12 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.ProductService;
-import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.reader.ReadOnlyData;
 import com.netflix.ice.reader.ReaderConfig;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
-public class DataFilePoller extends StalePoller {
+abstract public class DataFilePoller<T> extends StalePoller {
     protected static final String compressExtension = ".gz";
 
     protected ReaderConfig config = ReaderConfig.getInstance();
@@ -42,14 +40,14 @@ public class DataFilePoller extends StalePoller {
     protected final String dbName;
     protected final boolean compress;
     protected ConsolidateType consolidateType;
-    private AccountService accountService;
-    private ProductService productService;
+    protected AccountService accountService;
+    protected ProductService productService;
 
     // map of files we've loaded into the cache
     protected Map<DateTime, File> fileCache = Maps.newConcurrentMap();
     
     // data cache
-    protected LoadingCache<DateTime, ReadOnlyData> data;
+    protected LoadingCache<DateTime, T> data;
 
     public DataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
     		int monthlyCacheSize, AccountService accountService, ProductService productService) {
@@ -67,15 +65,15 @@ public class DataFilePoller extends StalePoller {
     protected void buildCache(int monthlyCacheSize) {
         data = CacheBuilder.newBuilder()
      	       .maximumSize(monthlyCacheSize)
-     	       .removalListener(new RemovalListener<DateTime, ReadOnlyData>() {
-     	           public void onRemoval(RemovalNotification<DateTime, ReadOnlyData> objectRemovalNotification) {
+     	       .removalListener(new RemovalListener<DateTime, T>() {
+     	           public void onRemoval(RemovalNotification<DateTime, T> objectRemovalNotification) {
      	               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey());
      	               fileCache.remove(objectRemovalNotification.getKey());
      	           }
      	       })
      	       .build(
-     	               new CacheLoader<DateTime, ReadOnlyData>() {
-     	                   public ReadOnlyData load(DateTime monthDate) throws Exception {
+     	               new CacheLoader<DateTime, T>() {
+     	                   public T load(DateTime monthDate) throws Exception {
      	                       return loadData(monthDate);
      	                   }
      	               });
@@ -94,7 +92,7 @@ public class DataFilePoller extends StalePoller {
                 logger.info("trying to download " + file);
                 boolean downloaded = downloadFile(file);
                 if (downloaded) {
-                    ReadOnlyData newData = loadDataFromFile(file);
+                    T newData = loadDataFromFile(file);
                     data.put(key, newData);
                     fileCache.put(key, file);
                 }
@@ -111,19 +109,21 @@ public class DataFilePoller extends StalePoller {
     protected String getThreadName() {
         return this.dbName;
     }
+    
+    abstract protected T newEmptyData();
 
-    private ReadOnlyData loadData(DateTime monthDate) throws InterruptedException {
+    private T loadData(DateTime monthDate) throws InterruptedException {
         while (true) {
             File file = getDownloadFile(monthDate);
             try {
-                ReadOnlyData result = loadDataFromFile(file);
+                T result = loadDataFromFile(file);
                 fileCache.put(monthDate, file);
                 return result;
             }
             catch (FileNotFoundException e) {
                 logger.warn("no data for " + monthDate + " " + this.dbName);
                 fileCache.put(monthDate, file);
-                return new ReadOnlyData(new double[][]{}, Lists.<TagGroup>newArrayList());
+                return newEmptyData();
             }
             catch (Exception e) {
                 logger.error("error in loading data for " + monthDate + " " + this.dbName, e);
@@ -174,15 +174,17 @@ public class DataFilePoller extends StalePoller {
             return false;
         }
     }
+    
+    abstract protected T deserializeData(DataInputStream in) throws IOException;
 
-    protected ReadOnlyData loadDataFromFile(File file) throws Exception {
+    protected T loadDataFromFile(File file) throws Exception {
         logger.info("trying to load data from " + file);
         InputStream is = new FileInputStream(file);
         if (compress)
         	is = new GZIPInputStream(is);
         DataInputStream in = new DataInputStream(is);
         try {
-            ReadOnlyData result = ReadOnlyData.Serializer.deserialize(accountService, productService, in);
+            T result = deserializeData(in);
             logger.info("done loading data from " + file);
             return result;
         }
@@ -191,9 +193,9 @@ public class DataFilePoller extends StalePoller {
         }
     }
 
-    protected ReadOnlyData getReadOnlyData(DateTime key) throws ExecutionException {
+    protected T getReadOnlyData(DateTime key) throws ExecutionException {
 
-        ReadOnlyData result = this.data.get(key);
+        T result = this.data.get(key);
 
         if (fileCache.get(key) == null) {
             logger.warn(dbName + " cannot find file in fileCache " + key);
@@ -244,15 +246,4 @@ public class DataFilePoller extends StalePoller {
         }
         return num;
     }
-    
-    public int getDataLength(DateTime start) {
-        try {
-            ReadOnlyData data = getReadOnlyData(start);
-            return data.getNum();
-        }
-        catch (ExecutionException e) {
-            logger.error("error in getDataLength for " + start, e);
-            return 0;
-        }
-    }    
 }

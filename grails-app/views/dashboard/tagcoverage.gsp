@@ -11,7 +11,7 @@
     <tr>
       <td>Start</td>
       <td>Show</td>
-      <td ng-show="isGroupByTagKey() || !showUserTags">TagKey</td>
+      <td>TagKey</td>
       <td>Account</td>
       <td>Region</td>
       <td>Product</td>
@@ -38,14 +38,14 @@
         </div>
       </td>
       <td ng-show="isGroupByTagKey()">
-        <select ng-model="selected_tags" ng-options="a.name for a in tags | filter:filter_tags" multiple="multiple" class="metaTags metaSelect"></select>
-        <br><input ng-model="filter_tags" type="text" class="metaFilter" placeholder="filter">
-        <button ng-click="selected_tags = tags" class="allNoneButton">+</button>
-        <button ng-click="selected_tags = []" class="allNoneButton">-</button>
+        <select ng-model="selected_tagKeys" ng-options="a.name for a in tagKeys | filter:filter_tagKeys" multiple="multiple" class="metaTags metaSelect"></select>
+        <br><input ng-model="filter_tagKeys" type="text" class="metaFilter" placeholder="filter">
+        <button ng-click="selected_tagKeys = tagKeys" class="allNoneButton">+</button>
+        <button ng-click="selected_tagKeys = []" class="allNoneButton">-</button>
       </td>
       <td ng-show="!isGroupByTagKey()">
       	<div  style="padding-top: 10px">
-        	<select ng-model="selected_tag" ng-options="a.name for a in tags"></select>
+        	<select ng-model="selected_tagKey" ng-options="a.name for a in tagKeys"></select>
         </div>
       </td>      
       <td>
@@ -85,7 +85,7 @@
     <tr ng-show="userTagValues.length > 0">
       <td>
    	    Tags:
-        <div ng-show="!isGroupByTagKey()" style="padding-top: 10px">Group by
+        <div ng-show="isGroupByTag()" style="padding-top: 10px">Group by
           <select ng-model="groupByTag" ng-options="a.name for a in groupByTags"></select>
         </div>      
       </td>
@@ -94,6 +94,8 @@
       	<div ng-show="enabledUserTags[0]">
           <select ng-model="selected_userTagValues[0]" ng-options="a.name for a in userTagValues[0] | filter:filter_userTagValues[0]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[0]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[0] = userTagValues[0]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[0] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 1">
@@ -101,6 +103,8 @@
       	<div ng-show="enabledUserTags[1]">
           <select ng-model="selected_userTagValues[1]" ng-options="a.name for a in userTagValues[1] | filter:filter_userTagValues[1]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[1]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[1] = userTagValues[1]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[1] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 2">
@@ -108,6 +112,8 @@
       	<div ng-show="enabledUserTags[2]">
           <select ng-model="selected_userTagValues[2]" ng-options="a.name for a in userTagValues[2] | filter:filter_userTagValues[2]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[2]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[2] = userTagValues[2]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[2] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 3">
@@ -115,6 +121,8 @@
       	<div ng-show="enabledUserTags[3]">
           <select ng-model="selected_userTagValues[3]" ng-options="a.name for a in userTagValues[3] | filter:filter_userTagValues[3]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[3]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[3] = userTagValues[3]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[3] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 4">
@@ -122,6 +130,8 @@
       	<div ng-show="enabledUserTags[4]">
           <select ng-model="selected_userTagValues[4]" ng-options="a.name for a in userTagValues[4] | filter:filter_userTagValues[4]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[4]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[4] = userTagValues[4]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[4] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 5">
@@ -129,6 +139,8 @@
       	<div ng-show="enabledUserTags[5]">
           <select ng-model="selected_userTagValues[5]" ng-options="a.name for a in userTagValues[5] | filter:filter_userTagValues[5]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[5]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[5] = userTagValues[5]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[5] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
@@ -139,6 +151,8 @@
       	<div ng-show="enabledUserTags[6]">
 	      <select ng-model="selected_userTagValues[6]" ng-options="a.name for a in userTagValues[6] | filter:filter_userTagValues[6]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
 	      <br><input ng-model="filter_userTagValues[6]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[6] = userTagValues[6]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[6] = []" class="allNoneButton">-</button>
 		</div>      
 	  </td>
       <td ng-show="userTagValues.length > 7">
@@ -146,6 +160,8 @@
       	<div ng-show="enabledUserTags[7]">
           <select ng-model="selected_userTagValues[7]" ng-options="a.name for a in userTagValues[7] | filter:filter_userTagValues[7]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[7]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[7] = userTagValues[7]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[7] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 8">
@@ -153,6 +169,8 @@
       	<div ng-show="enabledUserTags[8]">
           <select ng-model="selected_userTagValues[8]" ng-options="a.name for a in userTagValues[8] | filter:filter_userTagValues[8]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[8]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[8] = userTagValues[8]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[8] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 9">
@@ -160,6 +178,8 @@
       	<div ng-show="enabledUserTags[9]">
           <select ng-model="selected_userTagValues[9]" ng-options="a.name for a in userTagValues[9] | filter:filter_userTagValues[9]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[9]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[9] = userTagValues[9]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[9] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 10">
@@ -167,6 +187,8 @@
       	<div ng-show="enabledUserTags[10]">
           <select ng-model="selected_userTagValues[10]" ng-options="a.name for a in userTagValues[10] | filter:filter_userTagValues[10]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[10]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[10] = userTagValues[10]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[10] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 11">
@@ -174,6 +196,8 @@
       	<div ng-show="enabledUserTags[11]">
           <select ng-model="selected_userTagValues[11]" ng-options="a.name for a in userTagValues[11] | filter:filter_userTagValues[11]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[11]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[11] = userTagValues[11]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[11] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
@@ -183,10 +207,10 @@
     <img src="${resource(dir: '/')}images/spinner.gif" ng-show="loading">
     <a href="javascript:void(0)" class="monitor" style="background-image: url(${resource(dir: '/')}images/tango/16/apps/utilities-system-monitor.png)"
        ng-click="updateUrl(); getData()" ng-show="!loading"
-       ng-disabled="selected_tags.length == 0 || selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
+       ng-disabled="selected_tagKeys.length == 0 || selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
     <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
        ng-click="download()" ng-show="!loading"
-       ng-disabled="selected_tags.length == 0 || selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
+       ng-disabled="selected_tagKeys.length == 0 || selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
   </div>
 
   <table style="width: 100%; margin-top: 20px">

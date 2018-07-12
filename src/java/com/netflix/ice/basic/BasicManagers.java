@@ -26,8 +26,6 @@ import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Product;
-import com.netflix.ice.tag.UserTag;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -47,12 +45,10 @@ public class BasicManagers extends Poller implements Managers {
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
-    private TreeMap<UserTag, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
+    private TreeMap<String, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
     private InstancesService instancesService = null;
     private Long lastPollMillis = 0L;
-
-    private static final String COVERAGE_PREFIX = "coverage_hourly_";
     
     BasicManagers(boolean compress) {
     	this.compress = compress;
@@ -61,16 +57,15 @@ public class BasicManagers extends Poller implements Managers {
     public void shutdown() {
     	lastProcessedPoller.shutdown();
     	
-        for (BasicTagGroupManager tagGroupManager: tagGroupManagers.values()) {
+        for (Poller tagGroupManager: tagGroupManagers.values()) {
             tagGroupManager.shutdown();
         }
-        for (BasicDataManager dataManager: costManagers.values()) {
+        for (Poller dataManager: costManagers.values()) {
             dataManager.shutdown();
         }
-        for (BasicDataManager dataManager: usageManagers.values()) {
+        for (Poller dataManager: usageManagers.values()) {
             dataManager.shutdown();
         }
-        for (TagCoverageDataManager dataManager: tagCoverageManagers.values()) {
             dataManager.shutdown();
         }
     }
@@ -90,16 +85,6 @@ public class BasicManagers extends Poller implements Managers {
         return products;
     }
 
-    @Override
-    public Collection<UserTag> getTags() {
-        return tagCoverageManagers.keySet();
-    }
-
-    @Override
-    public String[] getUserTags() {
-    	return config.resourceService.getCustomTags();
-    }
-
     public TagGroupManager getTagGroupManager(Product product) {
         return tagGroupManagers.get(product);
     }
@@ -112,8 +97,8 @@ public class BasicManagers extends Poller implements Managers {
         return usageManagers.get(new Key(product, consolidateType));
     }
     
-    public DataManager getTagCoverageManager(UserTag tag) {
-        return tagCoverageManagers.get(tag);
+    public DataManager getTagCoverageManager(Product product) {
+        return tagCoverageManagers.get(product == null ? "all" : product.getFileName());
     }
     
     public Instances getInstances() {
@@ -130,16 +115,16 @@ public class BasicManagers extends Poller implements Managers {
     		return;	// nothing to do
     	
     	// Mark all the data managers so they update their caches
-    	for (BasicTagGroupManager m: tagGroupManagers.values()) {
+    	for (StalePoller m: tagGroupManagers.values()) {
     		m.stale();
     	}
-    	for (DataFilePoller p: costManagers.values()) {
+    	for (StalePoller p: costManagers.values()) {
     		p.stale();
     	}
-    	for (DataFilePoller p: usageManagers.values()) {
+    	for (StalePoller p: usageManagers.values()) {
     		p.stale();
     	}
-    	for (DataFilePoller p: tagCoverageManagers.values()) {
+    	for (StalePoller p: tagCoverageManagers.values()) {
     		p.stale();
     	}
     	instancesService.stale();
@@ -184,6 +169,9 @@ public class BasicManagers extends Poller implements Managers {
                 usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
             }
+            String dbName = "coverage_hourly_" + (product == null ? "all" : product.getFileName());
+            tagCoverageManagers.put(product == null ? "all" : product.getFileName(), new TagCoverageDataManager(config.startDate, dbName, ConsolidateType.hourly, tagGroupManager, compress,
+        				config.monthlyCacheSize, config.accountService, config.productService));
         }
 
         if (newProducts.size() > 0) {
@@ -192,18 +180,6 @@ public class BasicManagers extends Poller implements Managers {
             this.tagGroupManagers = tagGroupManagers;
             this.products = products;
         }
-        
-        for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(config.workS3BucketName, config.workS3BucketPrefix + COVERAGE_PREFIX).getObjectSummaries()) {
-            String key = s3ObjectSummary.getKey();
-            String tagName = key.substring((config.workS3BucketPrefix + COVERAGE_PREFIX).length());
-            tagName = tagName.substring(0, tagName.indexOf("_"));
-            if (tagCoverageManagers.containsKey(UserTag.get(tagName)))
-            	continue;
-            
-            tagCoverageManagers.put(UserTag.get(tagName),
-            		new TagCoverageDataManager(config.startDate, "coverage_" + ConsolidateType.hourly + "_" + tagName, ConsolidateType.hourly, getTagGroupManager(null), compress,
-            				config.monthlyCacheSize, config.accountService, config.productService));
-        }        
     }
 
     private static class Key implements Comparable<Key> {

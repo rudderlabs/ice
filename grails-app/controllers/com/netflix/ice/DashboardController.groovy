@@ -39,6 +39,7 @@ import org.joda.time.Interval
 
 import com.netflix.ice.tag.Tag
 import com.netflix.ice.processor.Instances
+import com.netflix.ice.processor.TagCoverageMetrics
 import com.netflix.ice.reader.*;
 import com.google.common.collect.Lists
 import com.google.common.collect.Sets
@@ -46,9 +47,9 @@ import com.google.common.collect.Maps
 
 import org.json.JSONObject
 
+import com.netflix.ice.basic.TagCoverageDataManager
 import com.netflix.ice.common.ConsolidateType
 import com.netflix.ice.common.Instance
-import com.netflix.ice.common.TagCoverageRatio;
 
 import org.joda.time.Hours
 import org.slf4j.Logger;
@@ -77,7 +78,6 @@ class DashboardController {
 		getResourceGroupLists: "GET",
 		getProducts: "GET",
 		getResourceGroups: "GET",
-		userTags: "GET",
 		userTagValues: "GET",
 		getOperations: "POST",
 		getUsageTypes: "POST",
@@ -263,18 +263,7 @@ class DashboardController {
         def result = [status: 200, data: data]
         render result as JSON
     }
-	
-	def userTags = {
-		String[] keys = getManagers().getUserTags();
-		Collection<UserTag> data = Lists.newArrayList();
-		for (int i = 0; i < keys.length; i++) {
-			data.add(UserTag.get(keys[i]));
-		}
-
-		def result = [status: 200, data: data]
-		render result as JSON
-	}
-	
+		
 	def userTagValues = {
 		int index = Integer.parseInt(params.get("index"));
 		List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
@@ -410,7 +399,10 @@ class DashboardController {
     }
 	
 	def tags = {
-		Collection<UserTag> data = getManagers().getTags();
+		List<String> userTags = config.resourceService.getUserTags();
+		List<UserTag> data = Lists.newArrayList();
+		for (String tag: userTags)
+			data.add(new UserTag(tag));
 		
 		def result = [status: 200, data: data]
 		render result as JSON		
@@ -602,7 +594,7 @@ class DashboardController {
 		int userTagGroupByIndex = 0;
 		if (showUserTags) {
 			String groupByTag = query.optString("groupByTag");			
-			String[] keys = getManagers().getUserTags();
+			String[] keys = config.resourceService.getUserTags();
 			for (int i = 0; i < keys.length; i++) {
 				if (groupByTag != null && keys[i].equals(groupByTag)) {
 					userTagGroupByIndex = i;
@@ -653,39 +645,53 @@ class DashboardController {
 		
         Map<Tag, double[]> data;
 		if (tagCoverage) {
-            if (products.size() == 0) {
-                Set productSet = Sets.newTreeSet();
-                for (Product product: getManagers().getProducts()) {
-                    if (product == null)
-                        continue;
-
-                    Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
-                    productSet.addAll(tmp);
-                }
-                products = Lists.newArrayList(productSet);
-            }
-            data = Maps.newTreeMap();
-			for (UserTag tagKey: tagKeys) {
-				DataManager dataManager = getManagers().getTagCoverageManager(tagKey);
-				Map<Tag, double[]> dataOfTag = dataManager.getData(
+			logger.info("tagCoverage: groupBy=" + groupBy + ", aggregate=" + aggregate + ", tagKeys=" + tagKeys);
+			if (showUserTags) {
+				if (products.size() == 0) {
+					Set productSet = Sets.newTreeSet();
+					for (Product product: getManagers().getProducts()) {
+						if (product == null)
+							continue;
+	
+						Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
+						productSet.addAll(tmp);
+					}
+					products = Lists.newArrayList(productSet);
+				}
+				Map<Tag, TagCoverageMetrics[]> rawMetrics = Maps.newHashMap();
+				for (Product product: products) {
+					if (product == null)
+						continue;
+	                TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(product);
+					if (dataManager == null) {
+						continue;
+					}
+					TagLists tagLists;
+	                Map<Tag, TagCoverageMetrics[]> dataOfProduct = dataManager.getRawData(
+	                    interval,
+	                    new TagListsWithUserTags(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, userTagLists),
+	                    groupBy,
+                        aggregate,
+						userTagGroupByIndex,
+	                    tagKeys
+	                );
+	               	logger.info("  product: " + product + ", tags:" + dataOfProduct.keySet());      
+					mergeTagCoverage(dataOfProduct, rawMetrics);
+				}
+				data = TagCoverageDataManager.processResult(rawMetrics, groupBy, aggregate, tagKeys, config.resourceService.getUserTags());
+			}
+			else {
+				TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(null);
+				data = dataManager.getData(
 					interval,
 					new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups),
-					groupBy == TagType.TagKey ? null : groupBy,
-					aggregate,
-					forReservation,
-					usageUnit,
-					userTagGroupByIndex
-				);
-				
-				if (groupBy == TagType.TagKey) {
-					data.put(tagKey, dataOfTag.get(Tag.aggregated));
-				}
-				else {
-					mergeTagCoverageData(dataOfTag, data);
-				}
+					groupBy,
+                    aggregate,
+					userTagGroupByIndex,
+					tagKeys
+				);			
 			}
-			// Convert all the response data to percentage
-			convertTagCoverageToPercentage(data);
+			logger.info("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.resourceService.getUserTags().get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
 		}
         else if (groupBy == TagType.ApplicationGroup) {
             data = Maps.newTreeMap();
@@ -920,7 +926,7 @@ class DashboardController {
         }
         return result;
     }
-
+	
     private void merge(Map<Tag, double[]> from, Map<Tag, double[]> to) {
         for (Map.Entry<Tag, double[]> entry: from.entrySet()) {
             Tag tag = entry.getKey();
@@ -937,17 +943,17 @@ class DashboardController {
         }
     }
 	
-	/*
-	 * Tag coverage values are encoded ratios, so use TagCoverageRatio class to perform addition.
-	 */
-    private void mergeTagCoverageData(Map<Tag, double[]> from, Map<Tag, double[]> to) {
-        for (Map.Entry<Tag, double[]> entry: from.entrySet()) {
+    private void mergeTagCoverage(Map<Tag, TagCoverageMetrics[]> from, Map<Tag, TagCoverageMetrics[]> to) {
+        for (Map.Entry<Tag, TagCoverageMetrics[]> entry: from.entrySet()) {
             Tag tag = entry.getKey();
-            double[] newValues = entry.getValue();
+            TagCoverageMetrics[] newValues = entry.getValue();
             if (to.containsKey(tag)) {
-                double[] oldValues = to.get(tag);
+                TagCoverageMetrics[] oldValues = to.get(tag);
                 for (int i = 0; i < newValues.length; i++) {
-					oldValues[i] = TagCoverageRatio.add(oldValues[i], newValues[i]);
+					if (oldValues[i] == null)
+						oldValues[i] = newValues[i];
+					else if (newValues[i] != null)
+                    	oldValues[i].add(newValues[i]);
                 }
             }
             else {
@@ -955,13 +961,6 @@ class DashboardController {
             }
         }
     }
-	
-	private void convertTagCoverageToPercentage(Map<Tag, double[]> data) {
-		for (double[] values: data.values()) {
-			for (int i = 0; i < values.length; i++)
-				values[i] = new TagCoverageRatio(values[i]).toPercentage();
-		}
-	}
 	
 	private Map<Tag, double[]> reduceToDailyElasticity(Map<Tag, double[]> data, Map<Tag, Map> stats) {
 		// Run through the hourly data reducing to a daily elasticity value

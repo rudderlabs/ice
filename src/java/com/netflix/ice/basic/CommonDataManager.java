@@ -19,15 +19,15 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.AggregateType;
 import com.netflix.ice.reader.DataManager;
-import com.netflix.ice.reader.ReadOnlyData;
+import com.netflix.ice.reader.ReadOnlyGenericData;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.reader.UsageUnit;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
-import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
 
-public abstract class CommonDataManager  extends DataFilePoller implements DataManager {
+public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  extends DataFilePoller<T> implements DataManager {
 
     protected TagGroupManager tagGroupManager;
     
@@ -36,20 +36,51 @@ public abstract class CommonDataManager  extends DataFilePoller implements DataM
     	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
         this.tagGroupManager = tagGroupManager;
 	}
+	
+	abstract protected D[] getResultArray(int size);
+	
+	/*
+	 * Aggregate the columns of data for a single instance in time
+	 */
+    abstract protected D aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, D[] data);
 
-    abstract public double add(double to, double from, UsageUnit usageUnit, UsageType usageType);
+    /*
+     * Aggregate all the data matching the tags in tagLists starting at time start for the specified to and from indecies.
+     */
+    protected int aggregateData(DateTime start, TagLists tagLists, int from, int to, D[] result, UsageUnit usageUnit) throws ExecutionException {
+        T data = getReadOnlyData(start);
 
-    public double[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit, TagType groupBy) throws ExecutionException {
+        // Figure out which columns we're going to aggregate
+        List<Integer> columnIndecies = Lists.newArrayList();
+        List<TagGroup> tagGroups = Lists.newArrayList();
+        int columnIndex = 0;
+        for (TagGroup tagGroup: data.getTagGroups()) {
+        	boolean contains = tagLists.contains(tagGroup, true);
+            if (contains) {
+            	columnIndecies.add(columnIndex);
+            	tagGroups.add(tagGroup);
+            }
+            columnIndex++;
+        }
+        
+        int fromIndex = from;
+        int resultIndex = to;
+        while (resultIndex < result.length && fromIndex < data.getNum()) {
+            D[] fromData = data.getData(fromIndex++);
+            result[resultIndex] = aggregate(columnIndecies, tagGroups, usageUnit, fromData);
+            resultIndex++;
+        }
+        return fromIndex - from;
+    }
+    
+    public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
     	Interval adjusted = getAdjustedInterval(interval);
         DateTime start = adjusted.getStart();
         DateTime end = adjusted.getEnd();
 
-        int num = getSize(interval);
-        double[] result = new double[num];
+        D[] result = getResultArray(getSize(interval));
 
         do {
-            ReadOnlyData data = getReadOnlyData(start);
-
             int resultIndex = 0;
             int fromIndex = 0;
 
@@ -83,34 +114,10 @@ public abstract class CommonDataManager  extends DataFilePoller implements DataM
                     fromIndex = Months.monthsBetween(start, interval.getStart()).getMonths();
                 }
             }
-
-            List<Integer> columnIndecies = Lists.newArrayList();
-            List<TagGroup> tagGroups = Lists.newArrayList();
-            int columnIndex = 0;
-            for (TagGroup tagGroup: data.getTagGroups()) {
-            	boolean contains = tagLists.contains(tagGroup, true);
-//            	if (tagLists instanceof TagListsWithUserTags) {
-//            		logger.debug("resource: " + contains + ", " + tagGroup + ", " + columnIndex);
-//            	}
-                if (contains) {
-                	columnIndecies.add(columnIndex);
-                	tagGroups.add(tagGroup);
-                }
-                columnIndex++;
-            }
-//        	if (tagLists instanceof TagListsWithUserTags || groupBy == TagType.ResourceGroup) {
-//        		logger.info("tagGroups = " + tagGroups.size() /* + ", tagLists: " + tagLists*/);
-//                double[] fromData = data.getData(fromIndex);
-//                for (int i = 0; i < columnIndecies.size(); i++)
-//                	logger.info("      " + fromData[columnIndecies.get(i)] + ", " + tagGroups.get(i) + ", " + (tagGroups.get(i).resourceGroup == null ? "null" : tagGroups.get(i).resourceGroup.isProductName()));
-//        		
-//        	}
-            while (resultIndex < num && fromIndex < data.getNum()) {
-                double[] fromData = data.getData(fromIndex++);
-                for (int i = 0; i < columnIndecies.size(); i++)
-                    result[resultIndex] = add(result[resultIndex], fromData[columnIndecies.get(i)], usageUnit, tagGroups.get(i).usageType);
-                resultIndex++;
-            }
+            
+            int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit);
+            fromIndex += count;
+            resultIndex += count;
 
             if (consolidateType  == ConsolidateType.hourly)
                 start = start.plusMonths(1);
@@ -123,64 +130,79 @@ public abstract class CommonDataManager  extends DataFilePoller implements DataM
         
         return result;
     }
-
-    abstract public void addData(double[] from, double[] to);
     
-    abstract public void putResult(Map<Tag, double[]> result, Tag tag, double[] data, TagType groupBy);
+    public int getDataLength(DateTime start) {
+        try {
+            T data = getReadOnlyData(start);
+            return data.getNum();
+        }
+        catch (ExecutionException e) {
+            logger.error("error in getDataLength for " + start, e);
+            return 0;
+        }
+    }
 
-	@Override
-    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
+    abstract protected void addData(D[] from, D[] to);
+    abstract protected boolean hasData(D[] data);
+    abstract protected Map<Tag, double[]> processResult(Map<Tag, D[]> data, TagType groupBy, AggregateType aggregate, List<UserTag> tagKeys);
 
+    protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
         Map<Tag, TagLists> tagListsMap;
 
-        if (groupBy == null) {
+        if (groupBy == null || groupBy == TagType.TagKey) {
             tagListsMap = Maps.newHashMap();
             tagListsMap.put(Tag.aggregated, tagLists);
         }
         else
             tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
 
-        Map<Tag, double[]> result = Maps.newTreeMap();
+        Map<Tag, D[]> rawResult = Maps.newTreeMap();
         
+        // For each of the groupBy values
         for (Tag tag: tagListsMap.keySet()) {
             try {
                 //logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
-                double[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy);
-                putResult(result, tag, data, groupBy);
+                D[] data = getData(interval, tagListsMap.get(tag), usageUnit);
+                
+            	// Check for values in the data array and ignore if all zeros
+                if (hasData(data)) {
+	                if (groupBy == TagType.Tag) {
+	                	Tag userTag = tag.name.isEmpty() ? UserTag.get(UserTag.none) : tag;
+	                	
+	        			if (rawResult.containsKey(userTag)) {
+	        				// aggregate current data with the one already in the map
+	        				addData(data, rawResult.get(userTag));
+	        			}
+	        			else {
+	        				// Put in map using the user tag
+	        				rawResult.put(userTag, data);
+	        			}
+	                }
+	                else {
+	                	rawResult.put(tag, data);
+	                }
+                }
             }
             catch (ExecutionException e) {
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        if (aggregate != AggregateType.none) {
-            double[] aggregated = null;
-        	for (double[] data: result.values()) {
-                if (aggregated == null)
-                    aggregated = new double[data.length];
-                addData(data, aggregated);
-            }
-            if (aggregated != null)
-                result.put(Tag.aggregated, aggregated);
-            
-            // debugging
-//            if (aggregated != null) {
-//            	for (Tag tag: result.keySet()) {
-//            		double total = 0;
-//            		double[] data = result.get(tag);
-//    	            for (int i = 0; i < data.length; i++)
-//    	            	total += data[i];
-//    	            logger.info("      " + tag + ": " + total);            		
-//            	}
-//	            double total = 0;
-//	            for (int i = 0; i < aggregated.length; i++)
-//	            	total += aggregated[i];
-//	            logger.info("   Total: " + total);
-//            }
-		}
+        
+        return rawResult;
+    }
+
+    private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
+        Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex, tagKeys);
+        
+        Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
         
         return result;
     }
 
+	@Override
+    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
+    	return getData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex, null);
+    }
 
 	@Override
 	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
@@ -189,4 +211,9 @@ public abstract class CommonDataManager  extends DataFilePoller implements DataM
 		return getData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, 0);
 	}
 
+	@Override
+	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
+			TagType groupBy, AggregateType aggregate, int userTagGroupByIndex, List<UserTag> tagKeys) {
+		return getData(interval, tagLists, groupBy, aggregate, false, null, userTagGroupByIndex, tagKeys);
+	}
 }

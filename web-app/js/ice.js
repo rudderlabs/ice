@@ -499,8 +499,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("resourceGroup=") === 0) {
             $scope.selected__resourceGroups = params[i].substr(14).split(",");
           }
-          else if (params[i].indexOf("tag=") === 0) {
-            $scope.selected__tags = params[i].substr(4).split(",");
+          else if (params[i].indexOf("tagKey=") === 0) {
+            $scope.selected__tagKeys = params[i].substr(7).split(",");
+            $scope.selected__tagKey = $scope.selected__tagKeys.length > 0 ? $scope.selected__tagKeys[0] : null;
           }
           else if (params[i].indexOf("userTags=") === 0) {
             $scope.userTags = params[i].substr(18).split(",");
@@ -562,7 +563,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
         }
       }
-      if (!$scope.showUserTags && !$scope.tagCoverage) {
+      if (!$scope.showUserTags) {
         for (var j in $scope.groupBys) {
           if ($scope.groupBys[j].name === "Tag") {
             $scope.groupBys.splice(j, 1);
@@ -719,7 +720,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         params = {}
       $http({
         method: "GET",
-        url: "userTags",
+        url: "tags",
         params: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
@@ -863,13 +864,17 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         params: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
-          $scope.tags = result.data;
-          if ($scope.selected__tags && !$scope.selected_tags)
-            $scope.selected_tags = getSelected($scope.tags, $scope.selected__tags);
+          $scope.tagKeys = result.data;
+          if ($scope.selected__tagKeys && !$scope.selected_tagKeys)
+            $scope.selected_tagKeys = getSelected($scope.tagKeys, $scope.selected__tagKeys);
           else
-            $scope.selected_tags = $scope.tags;
-          if ($scope.tags.length > 0)
-            $scope.selected_tag = $scope.tags[0];
+            $scope.selected_tagKeys = $scope.tagKeys;
+          if ($scope.selected__tagKey && !$scope.selected_tagKey)
+            $scope.selected_tagKey = getSelected($scope.tagKeys, $scope.selected__tagKey)[0];
+          else {
+            if ($scope.tagKeys.length > 0)
+              $scope.selected_tagKey = $scope.tagKeys[0];
+          }
           if (fn)
             fn(result.data);
         }
@@ -903,11 +908,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       this.addParams(params, "usageType", $scope.usageTypes, $scope.selected_usageTypes, $scope.selected__usageTypes, $scope.filter_usageTypes);
       if ($scope.tagCoverage) {
         if ($scope.isGroupByTagKey())
-          this.addParams(params, "tagKey", $scope.tags, $scope.selected_tags, $scope.selected__tags, $scope.filter_tags);
-        else if (!$scope.showUserTags)
-          params.tagKey = $scope.selected_tag.name;
+          this.addParams(params, "tagKey", $scope.tagKeys, $scope.selected_tagKeys, $scope.selected__tagKeys, $scope.filter_tagKeys);
         else
-          params.tagKey = $scope.groupByTag.name;
+          params.tagKey = $scope.selected_tagKey ? $scope.selected_tagKey.name : $scope.tagKeys.length > 0 ? $scope.tagKeys[0] : null;
       }
       if ($scope.showResourceGroups && !params.breakdown) {
         params.showResourceGroups = true;
@@ -1280,8 +1283,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
       region: { selected: $scope.selected_regions, from: $scope.regions, filter: $scope.filter_regions },
       product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
       operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes },
-      tags: { selected: $scope.selected_tags, from: $scope.tags }
+      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes }
     };
     if ($scope.groupByTag) {
       params.groupByTag = $scope.groupByTag.name;
@@ -1289,6 +1291,12 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     if ($scope.showUserTags) {
       usage_db.addUserTagParams($scope, params);
     }
+
+    if ($scope.isGroupByTagKey())
+      params.tagKey = { selected: $scope.selected_tagKeys, from: $scope.tagKeys };
+    else
+      params.tagKey = $scope.selected_tagKey.name;
+
     usage_db.updateUrl($location, params);
   }
 
