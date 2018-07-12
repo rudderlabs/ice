@@ -66,7 +66,8 @@ public class BasicManagers extends Poller implements Managers {
         for (Poller dataManager: usageManagers.values()) {
             dataManager.shutdown();
         }
-            dataManager.shutdown();
+        for (Poller dataManager: tagCoverageManagers.values()) {
+        	dataManager.shutdown();
         }
     }
 
