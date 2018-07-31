@@ -75,7 +75,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
             logger.info("trying to list objects in billing bucket " + billingS3BucketName + " using assume role, and external id "
                     + billingAccessRoleName + " " + billingAccessExternalId);
-            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketPrefix,
+            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketRegion, billingS3BucketPrefix,
                     accountId, billingAccessRoleName, billingAccessExternalId);
             logger.info("found " + objectSummaries.size() + " in billing bucket " + billingS3BucketName);
             TreeMap<DateTime, S3ObjectSummary> filesToProcessInOneBucket = Maps.newTreeMap();

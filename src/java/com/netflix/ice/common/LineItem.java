@@ -195,7 +195,8 @@ public abstract class LineItem {
 	 */
 	public static enum BillType {
 		Anniversary,
-		Purchase;
+		Purchase,
+		Refund;
 	}
 
 	/**
@@ -205,6 +206,7 @@ public abstract class LineItem {
 		Credit,
 		DiscountedUsage,
 		Fee,
+		Refund,
 		RIFee,
 		Tax,
 		Usage;

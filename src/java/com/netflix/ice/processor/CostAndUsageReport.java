@@ -35,7 +35,7 @@ public class CostAndUsageReport extends MonthlyReport {
 		// Download the manifest
         String fileKey = s3ObjectSummary.getKey();
         logger.info("trying to download " + fileKey + "...");
-        byte[] manifestBytes = AwsUtils.readManifest(s3ObjectSummary.getBucketName(), fileKey,
+        byte[] manifestBytes = AwsUtils.readManifest(s3ObjectSummary.getBucketName(), getRegion(), fileKey,
                 accountId, accessRoleName, externalId);
         Gson gson = new GsonBuilder().create();
         boolean downloaded = false;

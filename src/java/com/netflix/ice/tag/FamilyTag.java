@@ -30,17 +30,32 @@ public class FamilyTag extends Tag {
 	
 	public static String getFamilyName(String name) {
 		String[] tokens = name.split("\\.");
-		int endStartIndex = 2;
-		StringBuilder family = new StringBuilder();
-		family.append(tokens[0]);
-		
 		if (tokens[0].equals("db")) {
+			// RDS instance
+			StringBuilder family = new StringBuilder(32);
+			family.append(tokens[0]);			
 			family.append("." + tokens[1]);
-			endStartIndex++;
+			
+			int endStartIndex = 3;
+			if (tokens[endStartIndex].equals("multiaz"))			
+				endStartIndex++;
+			
+			InstanceDb db = InstanceDb.valueOf(tokens[endStartIndex]);
+			if (!db.familySharing) {
+				// Don't consolidate if it doesn't support family sharing
+				return name;
+			}
+			
+			for (int i = endStartIndex; i < tokens.length; i++)
+				family.append("." + tokens[i]);
+			
+			return family.toString();		
 		}
-		for (int i = endStartIndex; i < tokens.length; i++)
-			family.append("." + tokens[i]);
-		
-		return family.toString();		
+		else if (tokens.length > 2) {
+			// Not a Linux EC2 instance, so don't consolidate
+			return name;
+		}
+		// EC2 Linux
+		return tokens[0];		
 	}
 }

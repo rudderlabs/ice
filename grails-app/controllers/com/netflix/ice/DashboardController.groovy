@@ -1010,7 +1010,7 @@ class DashboardController {
 	}
 	
 	private Map<Tag, Map> consolidateFamilies(Map<Tag, double[]> data) {
-		// Run through the data reducing EC2 Instance Types to a Family Type
+		// Run through the data reducing EC2 Linux Instance Types and appropriate RDS Instances to a Family Type
 		Map<Tag, double[]> result = Maps.newTreeMap();
 		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
 			if (entry.getKey() == Tag.aggregated) {

@@ -73,11 +73,10 @@ public class BasicManagers extends Poller implements Managers {
 
     public void init() {
         config = ReaderConfig.getInstance();
+        lastProcessedPoller = new LastProcessedPoller(config.startDate);
         instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
         instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService);
-        
-        lastProcessedPoller = new LastProcessedPoller(config.startDate);
-        		
+                		
         doWork();
         start(1*60, 1*60, false);
     }

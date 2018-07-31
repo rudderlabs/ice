@@ -38,9 +38,10 @@ public class FamilyTagTest {
 		}
 		test[] tests = new test[]{
 				new test("c3.xlarge", "c3", "Wrong linux family name"),
-				new test("c3.xlarge.windows", "c3.windows", "Wrong windows family name"),
+				new test("c3.xlarge.windows", "c3.xlarge.windows", "Wrong windows family name"),
 				new test("db.m1.large.mysql", "db.m1.mysql", "Wrong family name for DB instance"),
-				new test("db.m1.large.multiaz.mysql", "db.m1.multiaz.mysql", "Wrong family name for DB instance"),
+				new test("db.m1.large.multiaz.mysql", "db.m1.mysql", "Wrong family name for DB instance"),
+				new test("db.m1.large.sqlstd", "db.m1.large.sqlstd", "Wrong family name for DB instance"),
 		};
 		
 		for (test t: tests) {

@@ -160,17 +160,20 @@ public class AwsUtils {
      * @param prefix
      * @return
      */
-    public static List<S3ObjectSummary> listAllObjects(String bucket, String prefix, String accountId,
+    public static List<S3ObjectSummary> listAllObjects(String bucket, String bucketRegion, String prefix, String accountId,
                                                        String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
+            if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            }
+            else if (!s3Client.getRegionName().equals(bucketRegion)) {
+            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            }            
+
             ListObjectsRequest request = new ListObjectsRequest().withBucketName(bucket).withPrefix(prefix);
             List<S3ObjectSummary> result = Lists.newLinkedList();
-
-            if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
-            }
 
             ObjectListing page = null;
             do {
@@ -192,14 +195,17 @@ public class AwsUtils {
     /**
      * Read a cost and usage report manifest file
      */
-	public static byte[] readManifest(String bucket, String fileKey, String accountId, String assumeRole, String externalId) {
+	public static byte[] readManifest(String bucket, String bucketRegion, String fileKey, String accountId, String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
 
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
             }
+            else if (!s3Client.getRegionName().equals(bucketRegion)) {
+            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            }            
 
             S3Object s3Object = s3Client.getObject(bucket, fileKey);
             long targetSize = 0;
@@ -309,16 +315,16 @@ public class AwsUtils {
         }
     }
 
-    public static boolean downloadFileIfChangedSince(String bucketName, String bucketFileRegion, String bucketFilePrefix, File file,
+    public static boolean downloadFileIfChangedSince(String bucketName, String bucketRegion, String bucketFilePrefix, File file,
                                                      long milles, String accountId, String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
             }
-            else if (!s3Client.getRegionName().equals(bucketFileRegion)) {
-            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketFileRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            else if (!s3Client.getRegionName().equals(bucketRegion)) {
+            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
             }
             
             ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());

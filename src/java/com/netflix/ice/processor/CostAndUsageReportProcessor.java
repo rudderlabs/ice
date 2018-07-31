@@ -109,7 +109,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
             
             logger.info("trying to list objects in cost and usage report bucket " + billingS3BucketName + " using assume role, and external id "
                     + billingAccessRoleName + " " + billingAccessExternalId);
-            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketPrefix,
+            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketRegion, billingS3BucketPrefix,
                     accountId, billingAccessRoleName, billingAccessExternalId);
             logger.info("found " + objectSummaries.size() + " in cost and usage report bucket " + billingS3BucketName);
 
@@ -395,8 +395,9 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	}
 
     private long processOneLine(List<String[]> delayedItems, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, InstancePrices ec2Prices) {
-    	if (lineItem.getBillType() == BillType.Purchase) {
-        	// Skip purchases
+    	BillType billType = lineItem.getBillType();
+    	if (billType == BillType.Purchase || billType == BillType.Refund) {
+        	// Skip purchases and refunds
     		return endMilli;
     	}
     	
