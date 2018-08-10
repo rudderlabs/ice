@@ -132,8 +132,8 @@
       	<div ng-show="enabledUserTags[0]">
           <select ng-model="selected_userTagValues[0]" ng-options="a.name for a in userTagValues[0] | filter:filter_userTagValues[0]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[0]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[0] = userTagValues[0]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[0] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[0] = userTagValues[0]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[0] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 1">
@@ -141,8 +141,8 @@
       	<div ng-show="enabledUserTags[1]">
           <select ng-model="selected_userTagValues[1]" ng-options="a.name for a in userTagValues[1] | filter:filter_userTagValues[1]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[1]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[1] = userTagValues[1]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[1] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[1] = userTagValues[1]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[1] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 2">
@@ -150,8 +150,8 @@
       	<div ng-show="enabledUserTags[2]">
           <select ng-model="selected_userTagValues[2]" ng-options="a.name for a in userTagValues[2] | filter:filter_userTagValues[2]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[2]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[2] = userTagValues[2]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[2] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[2] = userTagValues[2]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[2] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 3">
@@ -159,8 +159,8 @@
       	<div ng-show="enabledUserTags[3]">
           <select ng-model="selected_userTagValues[3]" ng-options="a.name for a in userTagValues[3] | filter:filter_userTagValues[3]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[3]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[3] = userTagValues[3]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[3] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[3] = userTagValues[3]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[3] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 4">
@@ -168,8 +168,8 @@
       	<div ng-show="enabledUserTags[4]">
           <select ng-model="selected_userTagValues[4]" ng-options="a.name for a in userTagValues[4] | filter:filter_userTagValues[4]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[4]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[4] = userTagValues[4]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[4] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[4] = userTagValues[4]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[4] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 5">
@@ -177,8 +177,8 @@
       	<div ng-show="enabledUserTags[5]">
           <select ng-model="selected_userTagValues[5]" ng-options="a.name for a in userTagValues[5] | filter:filter_userTagValues[5]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[5]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[5] = userTagValues[5]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[5] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[5] = userTagValues[5]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[5] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
@@ -189,8 +189,8 @@
       	<div ng-show="enabledUserTags[6]">
 	      <select ng-model="selected_userTagValues[6]" ng-options="a.name for a in userTagValues[6] | filter:filter_userTagValues[6]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
 	      <br><input ng-model="filter_userTagValues[6]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[6] = userTagValues[6]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[6] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[6] = userTagValues[6]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[6] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
 	  </td>
       <td ng-show="userTagValues.length > 7">
@@ -198,8 +198,8 @@
       	<div ng-show="enabledUserTags[7]">
           <select ng-model="selected_userTagValues[7]" ng-options="a.name for a in userTagValues[7] | filter:filter_userTagValues[7]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[7]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[7] = userTagValues[7]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[7] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[7] = userTagValues[7]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[7] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 8">
@@ -207,8 +207,8 @@
       	<div ng-show="enabledUserTags[8]">
           <select ng-model="selected_userTagValues[8]" ng-options="a.name for a in userTagValues[8] | filter:filter_userTagValues[8]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[8]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[8] = userTagValues[8]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[8] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[8] = userTagValues[8]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[8] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 9">
@@ -216,8 +216,8 @@
       	<div ng-show="enabledUserTags[9]">
           <select ng-model="selected_userTagValues[9]" ng-options="a.name for a in userTagValues[9] | filter:filter_userTagValues[9]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[9]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[9] = userTagValues[9]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[9] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[9] = userTagValues[9]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[9] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 10">
@@ -225,8 +225,8 @@
       	<div ng-show="enabledUserTags[10]">
           <select ng-model="selected_userTagValues[10]" ng-options="a.name for a in userTagValues[10] | filter:filter_userTagValues[10]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[10]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[10] = userTagValues[10]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[10] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[10] = userTagValues[10]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[10] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 11">
@@ -234,8 +234,8 @@
       	<div ng-show="enabledUserTags[11]">
           <select ng-model="selected_userTagValues[11]" ng-options="a.name for a in userTagValues[11] | filter:filter_userTagValues[11]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[11]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[11] = userTagValues[11]; resourceGroupsChanged() class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[11] = []; resourceGroupsChanged() class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[11] = userTagValues[11]; resourceGroupsChanged()" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[11] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
