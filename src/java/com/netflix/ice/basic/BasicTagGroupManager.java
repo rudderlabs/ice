@@ -288,12 +288,30 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
     public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, int userTagGroupByIndex) {
         Map<Tag, TagLists> result = Maps.newHashMap();
-
+        
         // Get all the GroupBy tags. If we're not grouping by ResourceGroup or Tag, then work with a TagLists that doesn't contain resourceGroups.
-        // Filtering of results agains resourceGroup values is handled later.
+        // Filtering of results against resourceGroup values is handled later.
         TagLists tagListsForTag = tagLists;
-        if (groupBy != TagType.ResourceGroup && groupBy != TagType.Tag && tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0) {
+        boolean tagListsHasResourceGroups = tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0;
+        if ((groupBy == null || !(groupBy == TagType.ResourceGroup || groupBy == TagType.Tag)) && tagListsHasResourceGroups) {
             tagListsForTag = tagLists.getTagListsWithNullResourceGroup();
+        }
+        
+        // If not the reservations dashboard, we must always specify all the operations so that we can remove
+        // EC2 Instance Savings and Lent Operations
+        if (!forReservation && (tagListsForTag.operations == null || tagListsForTag.operations.size() == 0)) {
+        	List<Operation> ops = Lists.newArrayList();
+        	for (Operation op: getOperations(interval, tagListsForTag)) {
+        		if (op.isLent() || op.isSavings())
+        			continue;
+        		ops.add(op);
+        	}
+        	tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
+        }
+
+        if (groupBy == null || groupBy == TagType.TagKey) {
+            result.put(Tag.aggregated, tagListsForTag);
+            return result;
         }
 
         List<Tag> groupByTags = Lists.newArrayList();
@@ -349,7 +367,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                     if (tmp.operations == null || tmp.operations.size() == 0) {
                     	//logger.info("       get new operations list and remove lent and savings ops");
                     	TagLists tl = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, tmp.operations, tmp.usageTypes);
-                        List<Operation> operations = Lists.newArrayList(getOperations(tl));
+                        List<Operation> operations = Lists.newArrayList(getOperations(interval, tl));
                         //logger.info("     operations: " + operations);
                         tmp = tmp.copyWithOperations(operations);
                     }

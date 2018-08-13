@@ -21,6 +21,8 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.reader.TagListsWithUserTags;
+import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
@@ -48,6 +50,10 @@ public class BasicTagGroupManagerTest {
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "ProductA", accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|", 	accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagX", 	accountService, productService),
+				// Savings and Lent operation tags that should be filtered if not for reservations
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - Spot", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Lent RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
 		};
 		
 		TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = Maps.newTreeMap();
@@ -71,6 +77,19 @@ public class BasicTagGroupManagerTest {
 		// Group by region
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Region, false);
 		assertEquals("wrong number of groupBy tags for region", 1, groupByLists.size());
+		assertEquals("wrong number of operations in tagLists for groupBy region", 1, groupByLists.get(Region.US_EAST_1).operations.size());
+		
+		// Group by none
+		groupByLists = manager.getTagListsMap(interval, tagLists, null, false);
+		assertEquals("wrong number of groupBy tags for none", 1, groupByLists.size());
+		assertEquals("wrong number of operations in tagLists for groupBy none", 1, groupByLists.get(Tag.aggregated).operations.size());
+		
+		// Group by operation for reservation
+		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Operation, true);
+		assertEquals("wrong number of groupBy tags for operation", 4, groupByLists.size());
+		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.spotInstanceSavings).operations.size());
+		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.savingsFixed).operations.size());
+		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.lentInstancesFixed).operations.size());
 		
 		//
 		// Test non-resource tags with tagLists filtering
@@ -84,7 +103,6 @@ public class BasicTagGroupManagerTest {
 		// Group by account - no matches
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Account, false);
 		assertEquals("wrong number of groupBy tags for account", 0, groupByLists.size());
-		
 
 		//
 		// Test Resources with user tags but no tagLists filtering
@@ -116,7 +134,7 @@ public class BasicTagGroupManagerTest {
 		resourceTagLists.get(1).add(UserTag.get("TagY"));   	
     	
 		tagLists = new TagListsWithUserTags(null, null, null, null, null, null, resourceTagLists);
-		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, false, 0);
+		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, true, 0);
 		assertEquals("wrong number of groupBy tags for user tag - filter all but empties", 1, groupByLists.size());
 		for (TagLists tl: groupByLists.values()) {
 			assertTrue("wrong instance type for tagLists", tl instanceof TagListsWithUserTags);
@@ -149,7 +167,10 @@ public class BasicTagGroupManagerTest {
 		        for (TagGroup tagGroup: tagGroups) {
 					boolean contains = tagLists.contains(tagGroup, true);
 					boolean firstUserTagEmpty = tagGroup.resourceGroup.getUserTags()[0].name.isEmpty();
-		        	assertEquals("contains returned wrong state on empty tag for: " + tagGroup, tagGroup.resourceGroup.isProductName() || firstUserTagEmpty, contains);
+		        	if (tagGroup.operation.isLent() || tagGroup.operation.isSavings())
+		        		assertEquals("contains returned wrong state on reservation op: " + tagGroup, false, contains);
+		        	else
+		        		assertEquals("contains returned wrong state on empty tag for: " + tagGroup, tagGroup.resourceGroup.isProductName() || firstUserTagEmpty, contains);
 		        }
 			}
 			else {

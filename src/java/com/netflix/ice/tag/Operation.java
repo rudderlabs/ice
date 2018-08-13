@@ -212,6 +212,9 @@ public class Operation extends Tag {
     public boolean isBonus() {
     	return name.startsWith("Bonus RIs - ");
     }
+    public boolean isLent() {
+    	return name.startsWith("Lent RIs - ");
+    }
     public boolean isBorrowed() {
     	return name.startsWith("Borrowed RIs - ");
     }
@@ -222,12 +225,15 @@ public class Operation extends Tag {
     	return name.startsWith("Used RIs -");
     }
     public boolean isUnused() {
-    	return name.startsWith("Unused RIs -");
+    	return name.startsWith("Unused RIs - ");
     }
     public boolean isOnDemand() {
     	return this == ondemandInstances;
     }
     public boolean isSpot() {
     	return this == spotInstances;
+    }
+    public boolean isSavings() {
+    	return name.startsWith("Savings - ");
     }
 }

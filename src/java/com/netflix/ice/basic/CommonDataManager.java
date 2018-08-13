@@ -147,14 +147,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     abstract protected Map<Tag, double[]> processResult(Map<Tag, D[]> data, TagType groupBy, AggregateType aggregate, List<UserTag> tagKeys);
 
     protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
-        Map<Tag, TagLists> tagListsMap;
-
-        if (groupBy == null || groupBy == TagType.TagKey) {
-            tagListsMap = Maps.newHashMap();
-            tagListsMap.put(Tag.aggregated, tagLists);
-        }
-        else
-            tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
+        Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
 
         Map<Tag, D[]> rawResult = Maps.newTreeMap();
         

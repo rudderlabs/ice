@@ -225,6 +225,10 @@ public class TagLists {
     	return new TagLists(this.accounts, this.regions, this.zones, this.products, this.operations, this.usageTypes, null);
     }
     
+    public TagLists getTagListsWithOperations(List<Operation> operations) {
+    	return new TagLists(this.accounts, this.regions, this.zones, this.products, operations, this.usageTypes, this.resourceGroups);
+    }
+    
     public String toString() {
     	return  (accounts == null ? "null" : accounts.toString()) + "," +
     			(regions == null ? "null" : regions.toString()) + "," +
