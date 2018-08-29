@@ -232,27 +232,27 @@ public class CostAndUsageData {
             // archive daily
             int year = monthDateTime.getYear();
             ReadWriteData dailyData = new ReadWriteData();
+            writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, compress, true);
             dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
-            writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, compress, false);
             writer.archive();
 
             // archive monthly
             ReadWriteData monthlyData = new ReadWriteData();
             int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
+            writer = new DataWriter(prefix + "monthly_" + prodName, monthlyData, compress, true);
             monthlyData.setData(monthly, numMonths, false);            
-            writer = new DataWriter(prefix + "monthly_" + prodName, monthlyData, compress, false);
             writer.archive();
 
             // archive weekly
-            ReadWriteData weeklyData = new ReadWriteData();
             DateTime weekStart = monthDateTime.withDayOfWeek(1);
             int index;
             if (!weekStart.isAfter(startDate))
                 index = 0;
             else
                 index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
+            ReadWriteData weeklyData = new ReadWriteData();
+            writer = new DataWriter(prefix + "weekly_" + prodName, weeklyData, compress, true);
             weeklyData.setData(weekly, index, true);
-            writer = new DataWriter(prefix + "weekly_" + prodName, weeklyData, compress, false);
             writer.archive();
         }
     }

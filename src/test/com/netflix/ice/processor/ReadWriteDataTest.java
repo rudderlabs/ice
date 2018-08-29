@@ -38,6 +38,7 @@ import com.netflix.ice.tag.UsageType;
 public class ReadWriteDataTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private static final String resourcesDir = "src/test/resources";
+	private static final String dataDir = "src/test/data/";
     
     private static AccountService as;
     private static ProductService ps;
@@ -60,9 +61,9 @@ public class ReadWriteDataTest {
 	
 	@Test
 	public void testFileRead() throws IOException {
-        String filename = "cost_daily_all_2017";
+        String filename = "cost_monthly_all";
        
-        File file = new File(resourcesDir, filename + ".gz");
+        File file = new File(dataDir, filename + ".gz");
         
         if (!file.exists()) {
         	// Don't run the test if the file doesn't exist
@@ -81,7 +82,7 @@ public class ReadWriteDataTest {
                 in.close();
         }
 
-        String outFilename = resourcesDir + "/" + filename + ".csv";
+        String outFilename = dataDir + "/" + filename + ".csv";
         
         FileWriter out;
 		out = new FileWriter(outFilename);
