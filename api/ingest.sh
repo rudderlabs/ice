@@ -61,7 +61,13 @@ curl -XPUT -H "Content-Type: application/json" $HOST/$INDEX/_mapping/doc --data-
             "type": "float"
         },
         "instanceFamily": {
-            "type": "keyword"
+            "type": "text",
+            "fields": {
+                "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                }
+            }
         },
         "normalizedUsage": {
             "type": "float"

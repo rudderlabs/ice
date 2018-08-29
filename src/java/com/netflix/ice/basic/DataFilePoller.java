@@ -91,7 +91,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
             try {
                 logger.info("trying to download " + file);
                 boolean downloaded = downloadFile(file);
-                if (downloaded) {
+                if (downloaded || (data.get(key) == null && file.exists())) {
                     T newData = loadDataFromFile(file);
                     data.put(key, newData);
                     fileCache.put(key, file);

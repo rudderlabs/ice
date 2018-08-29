@@ -169,9 +169,11 @@ public class BasicManagers extends Poller implements Managers {
                 usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
             }
-            String dbName = "coverage_hourly_" + (product == null ? "all" : product.getFileName());
-            tagCoverageManagers.put(product == null ? "all" : product.getFileName(), new TagCoverageDataManager(config.startDate, dbName, ConsolidateType.hourly, tagGroupManager, compress,
+            if (product == null || config.enableTagCoverageWithUserTag) {
+	            String dbName = "coverage_hourly_" + (product == null ? "all" : product.getFileName());
+	            tagCoverageManagers.put(product == null ? "all" : product.getFileName(), new TagCoverageDataManager(config.startDate, dbName, ConsolidateType.hourly, tagGroupManager, compress,
         				config.monthlyCacheSize, config.accountService, config.productService));
+            }
         }
 
         if (newProducts.size() > 0) {

@@ -22,6 +22,7 @@ import com.netflix.ice.basic.BasicWeeklyCostEmailService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.TagType;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
@@ -47,6 +48,7 @@ public class ReaderConfig extends Config {
     public final BasicWeeklyCostEmailService costEmailService;
     public final Managers managers;
     public final int monthlyCacheSize;
+    public final boolean enableTagCoverageWithUserTag;
 
     /**
      *
@@ -80,6 +82,7 @@ public class ReaderConfig extends Config {
         this.throughputMetricService = throughputMetricService;
         this.costEmailService = costEmailService;
         this.monthlyCacheSize = Integer.parseInt(properties.getProperty(IceOptions.MONTHLY_CACHE_SIZE, "12"));
+        this.enableTagCoverageWithUserTag = properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));
 
         ReaderConfig.instance = this;
 
@@ -107,7 +110,7 @@ public class ReaderConfig extends Config {
 
     /**
      *
-     * @return singlton instance
+     * @return singleton instance
      */
     public static ReaderConfig getInstance() {
         return instance;
@@ -128,7 +131,9 @@ public class ReaderConfig extends Config {
                 readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Native);
             }
             // Prime the tag coverage cache
-        	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Native);
+            if (product == null || enableTagCoverageWithUserTag) {
+            	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Native);
+            }
         }
         
         if (costEmailService != null)

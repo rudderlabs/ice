@@ -454,6 +454,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("usage_cost=") === 0) {
             $scope.usage_cost = params[i].substr(11);
           }
+          else if (params[i].indexOf("usageUnit=") === 0) {
+            $scope.usageUnit = params[i].substr(10);
+          }
           else if (params[i].indexOf("start=") === 0) {
             $scope.start = params[i].substr(6);
             if (time)
@@ -496,6 +499,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("usageType=") === 0) {
             $scope.selected__usageTypes = params[i].substr(10).split(",");
           }
+          else if (params[i].indexOf("family=") === 0) {
+            $scope.family = "true" === params[i].substr(7);
+          }
           else if (params[i].indexOf("resourceGroup=") === 0) {
             $scope.selected__resourceGroups = params[i].substr(14).split(",");
           }
@@ -504,10 +510,14 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             $scope.selected__tagKey = $scope.selected__tagKeys.length > 0 ? $scope.selected__tagKeys[0] : null;
           }
           else if (params[i].indexOf("userTags=") === 0) {
-            $scope.userTags = params[i].substr(18).split(",");
+            var tags = params[i].substr(9).split(",");
+            $scope.userTags = [];
+            for (var k = 0; k < tags.length; k++) {
+              $scope.userTags[k] = { name: tags[k] };
+            }
           }
           else if (params[i].indexOf("enabledUserTags=") === 0) {
-            var enabled = params[i].substr(12).split(",");
+            var enabled = params[i].substr(16).split(",");
             $scope.enabledUserTags = Array(enabled.length);
             for (j = 0; j < enabled.length; j++)
               $scope.enabledUserTags[j] = "true" === enabled[j];
@@ -539,7 +549,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             if (params[i].indexOf("tag-") === 0) {
               var parts = params[i].substr(4).split("=");
               for (j = 0; j < $scope.userTags.length; j++) {
-                if ($scope.userTags[j] === parts[0]) {
+                if ($scope.userTags[j].name === parts[0]) {
                   $scope.selected__userTagValues[j] = parts[1].split(",");
                 }
               }
@@ -547,7 +557,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             else if (params[i].indexOf("filter-tag-") === 0) {
               var parts = params[i].substr(11).split("=");
               for (j = 0; j < $scope.userTags.length; j++) {
-                if ($scope.userTags[j] === parts[0]) {
+                if ($scope.userTags[j].name === parts[0]) {
                   $scope.filter_userTagValues[j] = parts[1];
                 }
               }
@@ -1108,6 +1118,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.start = jQuery('#start').datetimepicker().val();
     var params = {
       usage_cost: $scope.usage_cost,
+      usageUnit: $scope.usageUnit,
       start: $scope.start,
       end: $scope.end,
       groupBy: $scope.groupBy.name,
@@ -1631,9 +1642,11 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.start = jQuery('#start').datetimepicker().val();
     var params = {
       usage_cost: $scope.usage_cost,
+      usageUnit: $scope.usageUnit,
       start: $scope.start,
       end: $scope.end,
       groupBy: $scope.groupBy.name,
+      family: "" + $scope.family,
       groupByTag: $scope.groupByTag.name,
       showResourceGroups: "" + $scope.showResourceGroups,
       showUserTags: "" + $scope.showUserTags,

@@ -33,7 +33,7 @@ public class InstanceMetricsService extends StalePoller {
         try {
             logger.info("trying to download " + file);
             boolean downloaded = downloadFile(file);
-            if (downloaded) {
+            if (downloaded || (instanceMetrics == null && file.exists())) {
                 loadDataFromFile(file);
             }
         }

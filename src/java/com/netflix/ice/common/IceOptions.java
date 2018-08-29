@@ -221,4 +221,9 @@ public class IceOptions {
      * write JSON data files for ingest into services such as ElasticSearch
      */
     public static final String WRITE_JSON_FILES = "ice.writeJsonFiles";
+    
+    /**
+     * enable tag coverage metrics filtered and grouped by user tags
+     */
+    public static final String TAG_COVERAGE_WITH_USER_TAGS = "ice.tagCoverageWithUserTags";
 }

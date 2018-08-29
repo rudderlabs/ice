@@ -98,7 +98,7 @@ public class Instances {
             logger.error("error downloading " + file, e);
             return;
         }
-        if (downloaded) {
+        if (downloaded || (data.size() == 0 && file.exists())) {
             BufferedReader reader = null;
             try {
             	InputStream is = new FileInputStream(file);
