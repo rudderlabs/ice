@@ -58,7 +58,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         catch (Exception e) {
             logger.error("cannot poll data", e);
         }
-        start(DefaultStalePollInvervalSecs, DefaultStalePollInvervalSecs, false);
+        start(DefaultStalePollIntervalSecs, DefaultStalePollIntervalSecs, false);
     }
     
     // For unit testing

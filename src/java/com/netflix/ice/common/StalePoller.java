@@ -2,7 +2,7 @@ package com.netflix.ice.common;
 
 public abstract class StalePoller extends Poller {
     private boolean stale = true;
-    public final int DefaultStalePollInvervalSecs = 5 * 60;
+    public final int DefaultStalePollIntervalSecs = 5 * 60;
 
     public void stale() {
     	stale = true;
@@ -11,7 +11,7 @@ public abstract class StalePoller extends Poller {
 	@Override
     public void start() {
 		// Default to 5 minutes
-        start(DefaultStalePollInvervalSecs);
+        start(DefaultStalePollIntervalSecs);
     }
 
 	@Override

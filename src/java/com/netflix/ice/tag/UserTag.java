@@ -19,11 +19,10 @@ public class UserTag extends Tag {
 	public static UserTag get(String name) {
 		if (name == null)
 			return null;
-		String key = name.toLowerCase();
-        UserTag tag = tagsByName.get(key);
+        UserTag tag = tagsByName.get(name);
         if (tag == null) {
-        	tagsByName.putIfAbsent(key, new UserTag(name));
-        	tag = tagsByName.get(key);
+        	tagsByName.putIfAbsent(name, new UserTag(name));
+        	tag = tagsByName.get(name);
         }
         return tag;
 	}
