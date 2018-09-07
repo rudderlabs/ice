@@ -92,19 +92,6 @@ public class DetailedBillingReportLineItem extends LineItem {
     	return items[reservedIndex].equals("Y");
     }
     
-    @Override
-	public String getPricingUnit() {
-    	String usageType = getUsageType();
-		String unit = "";
-    	if (usageType.contains("Lambda-GB-Second"))
-    		unit = "GB";
-    	else if (usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB"))
-            unit = "GB";
-        
-        // Won't indicate "hours" for instance usage, so clients must handle that themselves.
-        return unit;
-	}
-
 	@Override
 	public String getLineItemId() {
 		return null;

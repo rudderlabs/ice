@@ -216,8 +216,20 @@ public abstract class LineItem {
 		return null;
 	}
 	
-	abstract public String getPricingUnit();
-	
+	public String getPricingUnit() {
+    	String usageType = getUsageType();
+		String unit = "";
+		if (usageType.startsWith("AW-HW-1")) {
+			// AmazonWorkSpaces
+		}
+    	if (usageType.contains("Lambda-GB-Second") || usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB")) {
+            unit = "GB";
+    	}
+        
+        // Won't indicate "hours" for instance usage, so clients must handle that themselves.
+        return unit;
+	}
+
 	abstract public String getLineItemId();
 
 	public String getReservationId() {

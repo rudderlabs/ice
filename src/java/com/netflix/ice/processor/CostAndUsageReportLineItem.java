@@ -271,12 +271,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 		}
 		else {
 			// Don't bother with any other units as AWS is extremely inconsistent
-			unit = "";
-	    	String usageType = getUsageType();
-	    	if (usageType.contains("Lambda-GB-Second"))
-	    		unit = "GB";
-	    	else if (usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB"))
-	            unit = "GB";
+			unit = super.getPricingUnit();
 		}
 		return unit;
 	}
