@@ -155,7 +155,8 @@ public class BillingFileProcessor extends Poller {
         	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime, prices);
             
             logger.info("adding savings data for " + dataTime + "...");
-            addSavingsData(dataTime, costAndUsageData.getUsage(null), costAndUsageData.getCost(null));
+            addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
+            addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
 
             /***** Debugging */
 //            used = costMap.get(redshiftHeavyTagGroup);
@@ -201,9 +202,9 @@ public class BillingFileProcessor extends Poller {
         }
     }
     
-    private void addSavingsData(DateTime month, ReadWriteData usageData, ReadWriteData costData) throws Exception {
-        // Get price list
-    	InstancePrices ec2Prices = config.priceListService.getPrices(month, ServiceCode.AmazonEC2);
+    private void addSavingsData(DateTime month, CostAndUsageData data, Product product, InstancePrices ec2Prices) throws Exception {
+    	ReadWriteData usageData = data.getUsage(product);
+    	ReadWriteData costData = data.getCost(product);
         
     	/*
     	 * Run through all the spot instance usage and add savings data
