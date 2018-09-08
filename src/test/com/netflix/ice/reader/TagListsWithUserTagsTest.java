@@ -27,6 +27,7 @@ public class TagListsWithUserTagsTest {
 	List<UserTag> tags0 = UserTag.getUserTags(Lists.newArrayList(new String[]{"", "t0v0"}));
 	List<UserTag> tags1 = UserTag.getUserTags(Lists.newArrayList(new String[]{"", "t1v0", "t1v1", "t1v2", "t1v3"}));
 	List<UserTag> tags2 = UserTag.getUserTags(Lists.newArrayList(new String[]{"t2v0"}));
+	List<UserTag> tags3 = Lists.newArrayList();
 	ProductService ps = new BasicProductService(null);
 
 	@Test
@@ -35,6 +36,7 @@ public class TagListsWithUserTagsTest {
 		userTagLists.add(tags0);
 		userTagLists.add(tags1);
 		userTagLists.add(tags2);
+		userTagLists.add(tags3);
 		
 		TagListsWithUserTags tagLists = new TagListsWithUserTags(
 				Lists.newArrayList(accounts),
@@ -128,6 +130,7 @@ public class TagListsWithUserTagsTest {
 		userTagLists.add(tags0);
 		userTagLists.add(tags1);
 		userTagLists.add(tags2);
+		userTagLists.add(tags3);
 		
 		TagListsWithUserTags tagLists = new TagListsWithUserTags(
 				Lists.newArrayList(accounts),
@@ -161,20 +164,22 @@ public class TagListsWithUserTagsTest {
 		};
 
 		Test[] tests = new Test[]{
-				new Test("", 2, false, false), // Untagged resource with product name as resourceGroup name, Check against user tag with no <none> entry in tag lists
-				new Test("", 1, false, false), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in tag lists (but no none entry in the last user tag)
-				new Test("", 0, false, false), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in tag lists (but no none entry in the last user tag)
+				new Test("", 3, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with empty tag list
+				new Test("", 2, true, false), // Untagged resource with product name as resourceGroup name, Check against user tag with no <none> entry in tag lists
+				new Test("", 1, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in tag lists (but no none entry in the last user tag)
+				new Test("", 0, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in tag lists (but no none entry in the last user tag)
 		};
 		for (Test t: tests)
 			t.Run(tagLists);
-
+		
 		// Add an empty value to tag2
 		userTagLists.get(2).add(UserTag.get(""));
 		
 		tests = new Test[]{
-				new Test("", 2, false, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
-				new Test("", 1, false, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
-				new Test("", 0, false, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
+				new Test("", 3, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a empty tag list
+				new Test("", 2, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
+				new Test("", 1, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
+				new Test("", 0, true, true), // Untagged resource with product name as resourceGroup name, Check against user tag with a <none> entry in all tag lists
 		};
 		for (Test t: tests)
 			t.Run(tagLists);
@@ -190,7 +195,7 @@ public class TagListsWithUserTagsTest {
 				new Test("t0v0", 1, false, false), // tag 0 value in tag 1 slot
 				new Test("t2v0", 2, false, true),
 				new Test("t0v0", 2, false, false),
-				new Test("", 2, false, true),
+				new Test("", 2, true, true),
 		};
 		
 		for (Test t: tests)

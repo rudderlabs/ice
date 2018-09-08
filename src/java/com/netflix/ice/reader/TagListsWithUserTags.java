@@ -93,22 +93,10 @@ public class TagListsWithUserTags extends TagLists {
     public boolean contains(Tag tag, TagType groupBy, int userTagGroupByIndex) {
     	if (groupBy == TagType.Tag) {
 	        boolean result = true;
-    		if (tag.name.isEmpty()) {
-        		// Check for empty tags in all the lists
-    	        for (int i = 0; i < resourceUserTagLists.size(); i++) {
-    	        	List<UserTag> resourceTags = resourceUserTagLists.get(i);
-    	            if (resourceTags != null && resourceTags.size() > 0) {
-    	            	result = resourceUserTagLists.get(i).contains(emptyTag);
-    	                if (!result)
-    	                	break;
-    	            }
-    	        }        		
-    		}
-    		else {
-	        	List<UserTag> resourceTags = resourceUserTagLists.get(userTagGroupByIndex);
-	        	if (resourceTags != null && resourceTags.size() > 0)
-	        		result = resourceTags.contains(tag);
-	    	}
+        	List<UserTag> resourceTags = resourceUserTagLists.get(userTagGroupByIndex);
+            if (resourceTags != null && resourceTags.size() > 0) {
+            	result = resourceTags.contains(tag.name.isEmpty() ? emptyTag : tag);
+            }
 	        
         	return result;
     	}

@@ -46,6 +46,8 @@ public class BasicTagGroupManagerTest {
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagB|", 	accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagX", 	accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagY", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|TagX", accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagB|TagY", accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|", 		accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "ProductA", accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|", 	accountService, productService),
@@ -127,13 +129,25 @@ public class BasicTagGroupManagerTest {
 		resourceTagLists = Lists.newArrayList();
 		
 		// Group by first tag and only return empties		
-		resourceTagLists.add(Lists.newArrayList(UserTag.get("")));
-    	resourceTagLists.add(Lists.newArrayList(UserTag.get("")));
+		resourceTagLists.add(Lists.<UserTag>newArrayList());
+    	resourceTagLists.add(Lists.<UserTag>newArrayList());
     	// Add all the possible second user tag values so we only test filtering against the first
 		resourceTagLists.get(1).add(UserTag.get("TagX"));
-		resourceTagLists.get(1).add(UserTag.get("TagY"));   	
-    	
+		resourceTagLists.get(1).add(UserTag.get("TagY"));		
+		// Should now be: resourceTagLists[[],["TagX","TagY"]]
+		
 		tagLists = new TagListsWithUserTags(null, null, null, null, null, null, resourceTagLists);
+		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, true, 0);
+		assertEquals("wrong number of groupBy tags for user tag - filter all but empties", 3, groupByLists.size());
+		for (TagLists tl: groupByLists.values()) {
+			assertTrue("wrong instance type for tagLists", tl instanceof TagListsWithUserTags);
+		}
+		
+		// Now Add empty string to both the first and second tags
+		resourceTagLists.get(0).add(UserTag.get(""));
+		resourceTagLists.get(1).add(UserTag.get(""));
+		// Should now be: resourceTagLists[[""],["","TagX","TagY"]]
+    	
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, true, 0);
 		assertEquals("wrong number of groupBy tags for user tag - filter all but empties", 1, groupByLists.size());
 		for (TagLists tl: groupByLists.values()) {
@@ -142,6 +156,7 @@ public class BasicTagGroupManagerTest {
 		
 		// Add one of the non-empty values
 		resourceTagLists.get(0).add(UserTag.get("TagB"));
+		// Should now be: resourceTagLists[["","TagB"],["","TagX","TagY"]]
 		// Test for the first user tag
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Tag, false, 0);
 		assertEquals("wrong number of groupBy tags for user tag - wanted empties and TagB", 2, groupByLists.size());
