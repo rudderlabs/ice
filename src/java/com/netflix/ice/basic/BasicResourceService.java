@@ -95,12 +95,15 @@ public class BasicResourceService extends ResourceService {
     		Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues, Map<Key, String> defaultTags) {
 		super();
 		this.customTags = customTags;
-		this.tagKeys = tagKeys;
+		
+		this.tagKeys = tagKeys;		
 		this.tagValuesInverted = Maps.newHashMap();
 		for (Entry<String, List<String>> entry: tagValues.entrySet()) {			
 			for (String val: entry.getValue()) {
 				this.tagValuesInverted.put(val.toLowerCase(), entry.getKey());
 			}
+			// Handle upper/lower case differences of key
+			this.tagValuesInverted.put(entry.getKey().toLowerCase(), entry.getKey());
 		}
 		
         for (List<String> l: productNamesWithResources) {
@@ -226,7 +229,7 @@ public class BasicResourceService extends ResourceService {
     		if (index >= 0) {
     			indecies.add(index);
     		}
-    		// Look for alternate cases
+    		// Look for alternate names
             for (int i = 0; i < header.length; i++) {
             	if (i == index) {
             		continue;	// skip the exact match we handled above

@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
@@ -59,6 +60,58 @@ public class BasicResourceServiceTest {
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
+	}
+	
+	@Test
+	public void testGetUserTagValue() {
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		ProductService ps = new BasicProductService(null);
+		String[] customTags = new String[]{
+				"Environment"
+			};
+		
+		tagValues.put("Prod", Lists.newArrayList("production", "prd"));
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
+
+		String[] item = {
+				"somelineitemid",	// LineItemId
+				"Anniversary",		// BillType
+				"234567890123",		// UsageAccountId
+				"DiscountedUsage",	// LineItemType
+				"2017-09-01T00:00:00Z",	// UsageStartDate
+				"2017-09-01T01:00:00Z", // UsageEndDate
+				"APS2-InstanceUsage:db.t2.micro", // UsageType
+				"CreateDBInstance:0014", // Operation
+				"ap-southeast-2", // AvailabilityZone
+				"arn:aws:rds:ap-southeast-2:123456789012:db:ss1v3i6xr3d1hss", // ResourceId
+				"1.0000000000", // UsageAmount
+				"", // NormalizationFactor
+				"0.0000000000", // UnblendedRate
+				"0.0000000000", // UnblendedCost
+				"PostgreSQL, db.t2.micro reserved instance applied", // LineItemDescription
+				"Amazon Relational Database Service", // ProductName
+				"0.5", // normalizationSizeFactor
+				"APS2-InstanceUsage:db.t2.micro", // usagetype
+				"Partial Upfront", // PurchaseOption
+				"0.0280000000", // publicOnDemandCost
+				"Reserved", // term
+				"Hrs", // unit
+				"production", // resourceTags/user:Environment
+		};
+		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
+		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		li.setItems(item);
+		
+		// Check for value in alias list
+		rs.initHeader(li.getResourceTagsHeader());		
+		String tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
+		assertEquals("Incorrect tag value alias", "Prod", tagValue);
+		
+		// Check for non-matching-case version of value
+		item[item.length - 1] = "prod";
+		tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
+		assertEquals("Incorrect tag value alias", "Prod", tagValue);
 	}
 	
 	@Test
