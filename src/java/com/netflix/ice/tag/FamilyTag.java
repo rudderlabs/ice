@@ -30,7 +30,7 @@ public class FamilyTag extends Tag {
 	
 	public static String getFamilyName(String name) {
 		String[] tokens = name.split("\\.");
-		if (tokens[0].equals("db")) {
+		if (tokens[0].equals("db") && tokens.length >= 4) {
 			// RDS instance
 			StringBuilder family = new StringBuilder(32);
 			family.append(tokens[0]);			

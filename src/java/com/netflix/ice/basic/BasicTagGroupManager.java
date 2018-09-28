@@ -37,9 +37,12 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 public class BasicTagGroupManager extends StalePoller implements TagGroupManager {
+    public static final String compressExtension = ".gz";
 
     private ReaderConfig config;
     private String dbName;
@@ -47,16 +50,18 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     private TreeMap<Long, Collection<TagGroup>> tagGroups;
     private TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups;
     private Interval totalInterval;
+    private boolean compress;
 
-    BasicTagGroupManager(Product product) {
+    BasicTagGroupManager(Product product, boolean compress) {
+    	this.compress = compress;
     	config = ReaderConfig.getInstance();
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
-        file = new File(config.localDir, dbName);
+        file = new File(config.localDir, dbName + (compress ? compressExtension : ""));
         try {
             stalePoll();
         }
         catch (Exception e) {
-            logger.error("cannot poll data", e);
+            logger.error("cannot poll data for " + file, e);
         }
         start(DefaultStalePollIntervalSecs, DefaultStalePollIntervalSecs, false);
     }
@@ -72,7 +77,10 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         boolean downloaded = AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);
-            DataInputStream in = new DataInputStream(new FileInputStream(file));
+            InputStream is = new FileInputStream(file);
+            if (compress)
+            	is = new GZIPInputStream(is);
+            DataInputStream in = new DataInputStream(is);
             try {
                 TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(config.accountService, config.productService, in);
                 TreeMap<Long, Collection<TagGroup>> tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);

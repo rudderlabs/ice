@@ -3,8 +3,11 @@ package com.netflix.ice.basic;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.junit.Test;
 
@@ -60,6 +63,15 @@ public class BasicResourceServiceTest {
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
+	}
+	
+	@Test
+	public void testSpecialUserTagKeyCharactersAndValues() throws IOException {
+		Properties p = new Properties();
+		p.load(new StringReader("prop.foo+bar=test\n"));
+		for (String name: p.stringPropertyNames()) {
+			assertEquals("Incorrect property name", "prop.foo+bar", name);
+		}
 	}
 	
 	@Test
@@ -175,31 +187,26 @@ public class BasicResourceServiceTest {
 
 			@Override
 			public String[] getResourceTagsHeader() {
-				// TODO Auto-generated method stub
 				return null;
 			}
 
 			@Override
 			public Map<String, String> getResourceTags() {
-				// TODO Auto-generated method stub
 				return null;
 			}
 
 			@Override
 			public boolean isReserved() {
-				// TODO Auto-generated method stub
 				return false;
 			}
 
 			@Override
 			public String getPricingUnit() {
-				// TODO Auto-generated method stub
 				return null;
 			}
 
 			@Override
 			public String getLineItemId() {
-				// TODO Auto-generated method stub
 				return null;
 			}
 		}

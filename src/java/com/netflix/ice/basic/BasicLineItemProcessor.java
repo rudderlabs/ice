@@ -112,11 +112,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
         int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
 
+        if (instances != null && lineItem.hasResources() && !product.isDataTransfer() && !product.isCloudWatch())
+        	instances.add(lineItem.getResource(), lineItem.getStartMillis(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone, product);
+
         Result result = Result.hourly;
         if (product.isEc2Instance()) {
             result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
-            if (instances != null && lineItem.hasResources())
-            	instances.add(lineItem.getResource(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone);
+//            if (instances != null && lineItem.hasResources())
+//            	instances.add(lineItem.getResource(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone);
         }
         else if (product.isRedshift()) {
             result = processRedshift(processDelayed, reservationUsage, operation, costValue);

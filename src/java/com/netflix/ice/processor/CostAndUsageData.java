@@ -126,7 +126,7 @@ public class CostAndUsageData {
         logger.info("archiving tag data...");
 
         for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName());
+            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName(), true);
             writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
         }
 

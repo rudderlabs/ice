@@ -24,7 +24,9 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Instance;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.tag.Account;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
@@ -43,11 +45,14 @@ public class Instances {
 		data = Maps.newConcurrentMap();
 	}
 	
-	public void add(String id, String type, Map<String, String> tags, Account account, Region region, Zone zone) {
+	public void add(String id, long startMillis, String type, Map<String, String> tags, Account account, Region region, Zone zone, Product product) {
 		if (id.isEmpty()) {
 			return;
 		}
-		data.put(id, new Instance(id, type, account, region, zone, tags));
+		// Save the most recent version of the resource data.
+		Instance i = data.get(id);
+		if (i == null || i.startMillis < startMillis)
+			data.put(id, new Instance(id, type, account, region, zone, product, tags, startMillis));
 	}
 	
 	public Instance get(String id) {
@@ -85,7 +90,7 @@ public class Instances {
         logger.info("uploaded " + file);
     }
     
-    public void retrieve(long timeMillis, AccountService accountService) {
+    public void retrieve(long timeMillis, AccountService accountService, ProductService productService) {
         File file = new File(localDir, getFilename(timeMillis));
     	
         // read from s3 if not exists
@@ -112,7 +117,7 @@ public class Instances {
             	ConcurrentMap<String, Instance> dataMap = Maps.newConcurrentMap();
             	
                 while ((line = reader.readLine()) != null) {
-                	Instance instance = Instance.deserialize(line, accountService);
+                	Instance instance = Instance.deserialize(line, accountService, productService);
                 	dataMap.put(instance.id, instance);
                 }
                 data = dataMap;

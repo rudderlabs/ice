@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.tag.Account;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
@@ -20,19 +21,24 @@ public class Instance {
 	public final Account account;
 	public final Region region;
 	public final Zone zone;
+	public final Product product;
 	public final Map<String, String> tags;
 	
-	public Instance(String id, String type, Account account, Region region, Zone zone, Map<String, String> tags) {
+	public final long startMillis; // start time of billing lineitem record. Not serialized.
+	
+	public Instance(String id, String type, Account account, Region region, Zone zone, Product product, Map<String, String> tags, long startMillis) {
 		this.id = id;
 		this.type = type;
 		this.account = account;
 		this.region = region;
 		this.zone = zone;
+		this.product = product;
 		this.tags = tags;
+		this.startMillis = startMillis;
 	}
 	
 	public static String header() {
-		return "InstanceID,InstanceType,AccountId,AccountName,Region,Zone,Tags\n";
+		return "InstanceID,InstanceType,AccountId,AccountName,Region,Zone,Product,Tags\n";
 	}
 	
 	public String serialize() {
@@ -43,6 +49,7 @@ public class Instance {
 			account.name,
 			region.toString(),
 			zone == null ? "" : zone.toString(),
+			product.name,
 			resourceTagsToString(tags),
 		};
 		return StringUtils.join(cols, ",") + "\n";
@@ -64,7 +71,7 @@ public class Instance {
     	return ret;
 	}
 	
-	public static Instance deserialize(String in, AccountService accountService) {
+	public static Instance deserialize(String in, AccountService accountService, ProductService productService) {
 		// remove the newline before splitting
         String[] values = in.trim().split(",");
         
@@ -73,25 +80,27 @@ public class Instance {
         Account account = accountService.getAccountById(values[2]);
         Region region = Region.getRegionByName(values[4]);
         Zone zone = (values.length > 5 && !values[5].isEmpty()) ? Zone.getZone(values[5]) : null;
+        Product product = productService.getProductByName(values[6]);
 
+        final int TAGS_INDEX = 7;
         Map<String, String> tags = Maps.newHashMap();
-        if (values.length > 6) {
-	        if (values.length > 7) {
+        if (values.length > TAGS_INDEX) {
+	        if (values.length > TAGS_INDEX + 1) {
 	            StringBuilder tagsStr = new StringBuilder();
-	            for (int i = 6; i < values.length; i++)
+	            for (int i = TAGS_INDEX; i < values.length; i++)
 	            	tagsStr.append(values[i] + ",");
 	            // remove last comma
 	            tagsStr.deleteCharAt(tagsStr.length() - 1);
-	        	values[6] = tagsStr.toString();
+	        	values[TAGS_INDEX] = tagsStr.toString();
 	        }
 	        // Remove quotes from tags if present
-	        if (values[6].startsWith("\""))
-	        	values[6] = values[6].substring(1, values[6].length() - 1);
+	        if (values[TAGS_INDEX].startsWith("\""))
+	        	values[TAGS_INDEX] = values[TAGS_INDEX].substring(1, values[TAGS_INDEX].length() - 1);
 	        
-	        tags = parseResourceTags(values[6]);
+	        tags = parseResourceTags(values[TAGS_INDEX]);
         }
         
-    	return new Instance(id, type, account, region, zone, tags);
+    	return new Instance(id, type, account, region, zone, product, tags, 0);
 	}
 	
 

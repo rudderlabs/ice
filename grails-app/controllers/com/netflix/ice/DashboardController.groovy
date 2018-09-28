@@ -524,7 +524,7 @@ class DashboardController {
 		Instance i = getManagers().getInstances().get(params.id);
 		if (i != null) {
 			def zone = (i.zone == null) ? null : i.zone.name;
-			def result = [id: i.id, type: i.type, accountId: i.account.id, accountName: i.account.name, region: i.region.name, zone: zone, tags: i.tags];
+			def result = [id: i.id, type: i.type, accountId: i.account.id, accountName: i.account.name, region: i.region.name, zone: zone, product: i.product.name, tags: i.tags];
 			response.status = 200;
 			render result as JSON
 		}

@@ -75,7 +75,7 @@ public class BasicManagers extends Poller implements Managers {
         config = ReaderConfig.getInstance();
         lastProcessedPoller = new LastProcessedPoller(config.startDate);
         instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
-        instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService);
+        instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService, config.productService);
                 		
         doWork();
         start(1*60, 1*60, false);
@@ -142,6 +142,9 @@ public class BasicManagers extends Poller implements Managers {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
         for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(config.workS3BucketName, config.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).getObjectSummaries()) {
             String key = s3ObjectSummary.getKey();
+            if (key.endsWith(BasicTagGroupManager.compressExtension)) {
+            	key = key.substring(0, key.length() - BasicTagGroupManager.compressExtension.length());
+            }
             Product product;
             if (key.endsWith("_all")) {
                 product = null;
@@ -157,7 +160,7 @@ public class BasicManagers extends Poller implements Managers {
         }
 
         for (Product product: newProducts) {
-        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product);
+        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true);
             tagGroupManagers.put(product, tagGroupManager);
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
