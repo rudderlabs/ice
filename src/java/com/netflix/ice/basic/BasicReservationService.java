@@ -166,8 +166,19 @@ public class BasicReservationService extends Poller implements ReservationServic
         return 0;
     }
 
-    public Collection<TagGroup> getTagGroups(ReservationUtilization utilization) {
-        return reservations.get(utilization).keySet();
+    public Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli) {
+    	// Only return tagGroups with active reservations for the requested start time
+    	Set<TagGroup> tagGroups = Sets.newHashSet();
+    	for (TagGroup t: reservations.get(utilization).keySet()) {
+    		List<Reservation> resList = reservations.get(utilization).get(t);
+    		for (Reservation r: resList) {
+	            if (startMilli >= r.start && startMilli < r.end) {
+	            	tagGroups.add(t);
+	            	break;
+	            }
+    		}
+    	}
+        return tagGroups;
     }
 
     public ReservationUtilization getDefaultReservationUtilization(long time) {

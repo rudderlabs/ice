@@ -401,10 +401,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			Long startMilli) {		
 
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
-			if (reservationService.getTagGroups(utilization).size() == 0)
+			if (reservationService.getTagGroups(utilization, startMilli).size() == 0)
 				continue;
 			
-	    	logger.info("---------- Process " + (product == null ? "Non-resource" : product) + " data with " + reservationService.getTagGroups(utilization).size() + " reservations for utilization: " + utilization);
+	    	logger.info("---------- Process " + (product == null ? "Non-resource" : product) + " data with " + reservationService.getTagGroups(utilization, startMilli).size() + " reservations for utilization: " + utilization);
 	
 	    	processAvailabilityZoneReservations(utilization, reservationService, usageData, costData, startMilli);
 			if (debugHour >= 0)
@@ -430,7 +430,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		// that same usage type.
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
-		reservations.addAll(reservationService.getTagGroups(utilization));
+		reservations.addAll(reservationService.getTagGroups(utilization, startMilli));
 		
 		if (debugHour >= 0)
 			logger.info("--------------- processAvailabilityZoneReservations ----------- " + reservations.size() + " reservations");
@@ -573,7 +573,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		// Regional reservations include RDS and Redshift products.
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
-		reservations.addAll(reservationService.getTagGroups(utilization));
+		reservations.addAll(reservationService.getTagGroups(utilization, startMilli));
 		if (debugHour >= 0)
 			logger.info("--------------- processRegionalReservations ----------- " + reservations.size() + " reservations");
 		for (TagGroup tagGroup: reservations) {

@@ -560,7 +560,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 2.0 * -0.02352),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
-}
+	}
 	
 	/*
 	 * Test two full-upfront reservations - one AZ, one Region that are both used by the owner account.
@@ -1392,4 +1392,37 @@ public class ReservationProcessorTest {
 
 		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);		
 	}
+	
+	/*
+	 * Test one Region scoped partial-upfront reservation that's used by the owner. Includes a future reservation that isn't relevant.
+	 */
+	@Test
+	public void testUsedPartialRegionWithFutureRegion() throws Exception {
+		long startMillis = 1494004800000L; // 2017-05-05T17:20:00Z
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+				"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+				"111111111111,EC2,us-east-1,3aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c5.2xlarge,Region,,false,2018-04-27 09:01:29,2019-04-27 09:01:28,31536000,0.0,0.0,1,Linux/UNIX,active,USD,No Upfront,Hourly:0.24",
+		};
+		
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesPartial, "c4.2xlarge", 1.0),
+		};
+				
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartial, "c4.2xlarge", 1.0),
+		};
+		
+		Datum[] costData = new Datum[]{				
+		};
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartial, "c4.2xlarge", 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartial, "c4.2xlarge", 0.398 - 0.121 - 0.121),
+		};
+
+		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
+	}
+
+
 }
