@@ -153,6 +153,11 @@ public class TagListsWithUserTags extends TagLists {
     }
     
     @Override
+    public TagLists getTagListsWithOperations(List<Operation> operations) {
+    	return new TagListsWithUserTags(this.accounts, this.regions, this.zones, this.products, operations, this.usageTypes, this.resourceUserTagLists);
+    }
+    
+    @Override
     public String toString() {
     	return super.toString() + "," + (resourceUserTagLists == null ? "null" : resourceUserTagLists.toString());
     }
