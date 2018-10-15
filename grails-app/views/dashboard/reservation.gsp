@@ -33,12 +33,21 @@
       <td ng-show="1-showZones">Region</td>
       <td ng-show="showZones">Zone</td>
       <td>Product</td>
-      <td>Operation</td>
       <td>
-      	<span style="float:left">UsageType</span>
-      	<span style="float:right">
-      		<input type="checkbox" ng-model="family" style=""> Consolidate Family</input>
-      	</span>
+	      <div class="metaOperations">
+	      	<span style="float:left">Operation</span>
+	      	<span style="float:right">
+	      		<input type="checkbox" ng-model="consolidateOps" style=""> Consolidate</input>
+	      	</span>
+	      </div>
+	  </td>
+      <td>
+        <div class="metaUsageTypes">
+	      	<span style="float:left">UsageType</span>
+	      	<span style="float:right">
+	      		<input type="checkbox" ng-model="family" style=""> Consolidate Family</input>
+	      	</span>
+        </div>
       </td>
     </tr>
     <tr>

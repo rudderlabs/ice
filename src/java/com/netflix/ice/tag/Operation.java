@@ -52,7 +52,6 @@ public class Operation extends Tag {
     public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation("Borrowed RIs - No Upfront", 7, ReservationUtilization.HEAVY);
     public static final ReservationOperation lentInstancesHeavy = new ReservationOperation("Lent RIs - No Upfront", 8, ReservationUtilization.HEAVY);
     public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - No Upfront", 9, ReservationUtilization.HEAVY);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - No Upfront", 10, ReservationUtilization.HEAVY);
 
     public static final ReservationOperation savingsPartial = new ReservationOperation("Savings - Partial Upfront", 11, ReservationUtilization.PARTIAL);
     public static final ReservationOperation reservedInstancesPartial = new ReservationOperation("Used RIs - Partial Upfront", 12, ReservationUtilization.PARTIAL);
@@ -60,8 +59,8 @@ public class Operation extends Tag {
     public static final ReservationOperation bonusReservedInstancesPartial = new ReservationOperation("Bonus RIs - Partial Upfront", 14, ReservationUtilization.PARTIAL);
     public static final ReservationOperation borrowedInstancesPartial = new ReservationOperation("Borrowed RIs - Partial Upfront", 15, ReservationUtilization.PARTIAL);
     public static final ReservationOperation lentInstancesPartial = new ReservationOperation("Lent RIs - Partial Upfront", 16, ReservationUtilization.PARTIAL);
-    public static final ReservationOperation unusedInstancesPartial = new ReservationOperation("Unused RIs - Partial Upfront", 17, ReservationUtilization.PARTIAL);
-    public static final ReservationOperation upfrontAmortizedPartial = new ReservationOperation("Amortized RIs - Partial Upfront", 18, ReservationUtilization.PARTIAL);    
+    public static final ReservationOperation upfrontAmortizedPartial = new ReservationOperation("Amortized RIs - Partial Upfront", 17, ReservationUtilization.PARTIAL);    
+    public static final ReservationOperation unusedInstancesPartial = new ReservationOperation("Unused RIs - Partial Upfront", 18, ReservationUtilization.PARTIAL);
 
     public static final ReservationOperation savingsFixed = new ReservationOperation("Savings - All Upfront", 19, ReservationUtilization.FIXED);
     public static final ReservationOperation reservedInstancesFixed = new ReservationOperation("Used RIs - All Upfront", 20, ReservationUtilization.FIXED);
@@ -69,8 +68,8 @@ public class Operation extends Tag {
     public static final ReservationOperation bonusReservedInstancesFixed = new ReservationOperation("Bonus RIs - All Upfront", 22, ReservationUtilization.FIXED);
     public static final ReservationOperation borrowedInstancesFixed = new ReservationOperation("Borrowed RIs - All Upfront", 23, ReservationUtilization.FIXED);
     public static final ReservationOperation lentInstancesFixed = new ReservationOperation("Lent RIs - All Upfront", 24, ReservationUtilization.FIXED);
-    public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("Unused RIs - All Upfront", 25, ReservationUtilization.FIXED);
-    public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("Amortized RIs - All Upfront", 26, ReservationUtilization.FIXED);
+    public static final ReservationOperation upfrontAmortizedFixed = new ReservationOperation("Amortized RIs - All Upfront", 25, ReservationUtilization.FIXED);
+    public static final ReservationOperation unusedInstancesFixed = new ReservationOperation("Unused RIs - All Upfront", 26, ReservationUtilization.FIXED);
 
     public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
@@ -131,13 +130,12 @@ public class Operation extends Tag {
     }
 
     public static List<ReservationOperation> getAmortizationOperations() {
-        return Lists.newArrayList(upfrontAmortizedHeavy, upfrontAmortizedPartial, upfrontAmortizedFixed);
+        return Lists.newArrayList(upfrontAmortizedPartial, upfrontAmortizedFixed);
     }
 
     public static ReservationOperation getUpfrontAmortized(ReservationUtilization utilization) {
         switch (utilization) {
             case FIXED: return upfrontAmortizedFixed;
-            case HEAVY: return upfrontAmortizedHeavy;
             case PARTIAL: return upfrontAmortizedPartial;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }

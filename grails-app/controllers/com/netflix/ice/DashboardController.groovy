@@ -20,6 +20,7 @@ package com.netflix.ice
 
 import grails.converters.JSON
 
+import com.netflix.ice.tag.ConsolidatedOperation
 import com.netflix.ice.tag.FamilyTag
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
@@ -563,6 +564,7 @@ class DashboardController {
         boolean showsps = query.getBoolean("showsps");
         boolean factorsps = query.getBoolean("factorsps");
 		boolean consolidateFamily = query.getBoolean("family");
+		boolean consolidateOps = query.getBoolean("consolidateOps");
 		UsageUnit usageUnit = UsageUnit.Dollar;
 		if (!isCost) {
 			usageUnit = UsageUnit.Native;
@@ -832,6 +834,8 @@ class DashboardController {
 		else {
 			if (groupBy == TagType.UsageType && consolidateFamily)
 				data = consolidateFamilies(data);
+			else if (groupBy == TagType.Operation && consolidateOps)
+				data = consolidateOperations(data);
 	        stats = getStats(data);
 		}
 		
@@ -1011,7 +1015,7 @@ class DashboardController {
 		return result;
 	}
 	
-	private Map<Tag, Map> consolidateFamilies(Map<Tag, double[]> data) {
+	private Map<Tag, double[]> consolidateFamilies(Map<Tag, double[]> data) {
 		// Run through the data reducing EC2 Linux Instance Types and appropriate RDS Instances to a Family Type
 		Map<Tag, double[]> result = Maps.newTreeMap();
 		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
@@ -1026,6 +1030,34 @@ class DashboardController {
 			double[] consolidated = result[familyTag];
 			if (consolidated == null) {
 				result[familyTag] = values;
+			}
+			else {
+				for (int i = 0; i < consolidated.length; i++)
+					consolidated[i] += values[i];
+			}
+		}
+		return result;
+	}
+	
+	private Map<Tag, double[]> consolidateOperations(Map<Tag, double[]> data) {
+		// Run through the data reducing Reserved Instance Operation Types to a single category:
+		//	Amortization = AmortizedRIs - *
+		//  Used RIs = Used RIs - * + Borrowed RIs - *
+		//  Unused RIs = Unused RIs - *
+		//  Savings = Savings - *
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			if (entry.getKey() == Tag.aggregated) {
+				// Don't mess with the aggregated data series.
+				result[entry.getKey()] = entry.getValue();
+				continue;
+			}
+			
+			Tag riTag = new ConsolidatedOperation(entry.getKey().name);
+			double[] values = entry.getValue();
+			double[] consolidated = result[riTag];
+			if (consolidated == null) {
+				result[riTag] = values;
 			}
 			else {
 				for (int i = 0; i < consolidated.length; i++)

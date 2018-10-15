@@ -502,6 +502,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("family=") === 0) {
             $scope.family = "true" === params[i].substr(7);
           }
+          else if (params[i].indexOf("consolidateOps=") === 0) {
+            $scope.consolidateOps = "true" === params[i].substr(15);
+          }
           else if (params[i].indexOf("resourceGroup=") === 0) {
             $scope.selected__resourceGroups = params[i].substr(14).split(",");
           }
@@ -906,6 +909,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         showsps: $scope.showsps ? true : false,
         factorsps: $scope.factorsps ? true : false,
         family: $scope.family ? true : false,
+        consolidateOps: $scope.consolidateOps ? true : false,
         tagCoverage: $scope.tagCoverage ? true : false,
       }, params);
       this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts);
@@ -1094,6 +1098,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.factorsps = false;
   $scope.groupBy = $scope.groupBys[4];
   $scope.family = false;
+  $scope.consolidateOps = false;
   $scope.consolidate = "hourly";
   $scope.showZones = false;
   $scope.plotType = 'area';
@@ -1123,6 +1128,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
       end: $scope.end,
       groupBy: $scope.groupBy.name,
       family: "" + $scope.family,
+      consolidateOps: "" + $scope.consolidateOps,
       showZones: "" + $scope.showZones,
       consolidate: $scope.consolidate,
       plotType: $scope.plotType,
@@ -1616,6 +1622,8 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.groupByTag = {}
   $scope.initialGroupByTag = '';
   $scope.groupByTags = []
+  $scope.family = false;
+  $scope.consolidateOps = false;
   $scope.consolidate = "hourly";
   $scope.end = new Date();
   $scope.start = new Date();
@@ -1647,6 +1655,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
       end: $scope.end,
       groupBy: $scope.groupBy.name,
       family: "" + $scope.family,
+      consolidateOps: "" + $scope.consolidateOps,
       groupByTag: $scope.groupByTag.name,
       showResourceGroups: "" + $scope.showResourceGroups,
       showUserTags: "" + $scope.showUserTags,
