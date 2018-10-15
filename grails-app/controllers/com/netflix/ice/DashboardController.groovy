@@ -549,6 +549,8 @@ class DashboardController {
     def editappgroup = {}
 
     def appgroup = {}
+	
+	def resourceinfo = {}
 
     private Map doGetData(JSONObject query) {
 		logger.debug("******** doGetData: called");

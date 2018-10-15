@@ -368,3 +368,9 @@ div.legendIcon {float: left; margin-right: 3px; width: 16px; height: 12px; borde
     background-color: #FA6C14;
     border-color: #FC883F;
 }
+
+.resourceName { width: 600px; }
+.resourceData {
+    margin-top: 20px;
+    font-size: 14px;
+}

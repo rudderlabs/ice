@@ -2465,3 +2465,28 @@ function editCtrl($scope, $location, $http) {
   });
 }
 
+function resourceInfoCtrl($scope, $location, $http) {
+  $scope.resource = ""
+
+  $scope.isDisabled = function () {
+    return $scope.resource.name == "";
+  }
+
+  $scope.getResourceInfo = function() {
+    $scope.resourceInfo = "";
+    
+    $http({
+      method: "GET",
+      url: "instance/" + $scope.resource.name,
+      params: {}
+    }).success(function (result) {
+        $scope.resourceInfo = JSON.stringify(result, null, "    ");
+    }).error(function(result, status) {
+      if (status === 404)
+        alert("Resource " + $scope.resource.name + " does not exist.");
+      else
+        alert("Error getting resource " + $scope.resource.name + ": " + status);
+    });
+  
+  }
+}

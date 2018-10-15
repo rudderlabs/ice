@@ -75,6 +75,7 @@
         <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'breakdown')}#groupBy=ApplicationGroup&{{getTimeParams()}}" ng-click="reload()">By Application Group</a></li>
         <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'breakdown')}#{{getTimeParams()}}" ng-click="reload()">By Resource Group</a></li>
         <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'editappgroup')}" ng-click="reload()">Create New Application Group</a></li>
+        <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'resourceinfo')}" ng-click="reload()">Resource Info</a></li>
       </ul>
     </li>
     </g:if>
