@@ -123,10 +123,18 @@ public class CanonicalReservedInstances {
      * The Reserved Instance offering type.
      * <p>
      * <b>Constraints:</b><br/>
-     * <b>Allowed Values: </b>Heavy Utilization
+     * <b>Allowed Values: </b>No Upfront, Partial Upfront, All Upfront
      */
 	private String offeringType;
-    
+	
+	/**
+	 * The Reserved Instance offering class.
+	 * <p>
+	 * <b>Contraints:</b><br/>
+	 * <b>Allowed Values: </b>standard, convertible
+	 */
+	private String offeringClass;
+	
     public class RecurringCharge {
     	final public String frequency;
     	final public Double cost;
@@ -177,6 +185,7 @@ public class CanonicalReservedInstances {
         this.state = ri.getState();
         this.currencyCode = ri.getCurrencyCode();
         this.offeringType = ri.getOfferingType();
+        this.offeringClass = ri.getOfferingClass();
         this.recurringCharges = new ArrayList<RecurringCharge>();
         for (com.amazonaws.services.ec2.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getFrequency(), rc.getAmount()));
@@ -204,6 +213,7 @@ public class CanonicalReservedInstances {
         this.state = ri.getState();
         this.currencyCode = ri.getCurrencyCode();
         this.offeringType = ri.getOfferingType();
+        this.offeringClass = null;
         this.recurringCharges = new ArrayList<RecurringCharge>();
         for (com.amazonaws.services.rds.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
@@ -231,6 +241,7 @@ public class CanonicalReservedInstances {
         this.state = ri.getState();
         this.currencyCode = ri.getCurrencyCode();
         this.offeringType = ri.getOfferingType();
+        this.offeringClass = null;
         this.recurringCharges = new ArrayList<RecurringCharge>();
         for (com.amazonaws.services.redshift.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
@@ -239,7 +250,7 @@ public class CanonicalReservedInstances {
     }
 
     public CanonicalReservedInstances(String csv) {
-        String[] tokens = csv.split(",");
+        String[] tokens = csv.split(",", -1);
         accountId = tokens[0];
         product = tokens[1];
         region = tokens[2];
@@ -269,6 +280,8 @@ public class CanonicalReservedInstances {
         }
     	if (tokens.length > 20)
     		parentReservationId = tokens[20];
+    	if (tokens.length > 21)
+    		offeringClass = tokens[21];
     }
     
 	public String getAccountId() {
@@ -491,6 +504,7 @@ public class CanonicalReservedInstances {
     	        offeringType,
     	        rcs,
     	        parentReservationId,
+    	        offeringClass,
         };
     	return StringUtils.join(fields, ",");
     }
@@ -523,6 +537,14 @@ public class CanonicalReservedInstances {
 
 	public void setParentReservationId(String parentReservationId) {
 		this.parentReservationId = parentReservationId;
+	}
+
+	public String getOfferingClass() {
+		return offeringClass;
+	}
+
+	public void setOfferingClass(String offeringClass) {
+		this.offeringClass = offeringClass;
 	}
 
 }

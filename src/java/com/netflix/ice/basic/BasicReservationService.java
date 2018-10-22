@@ -48,6 +48,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
+import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.processor.CanonicalReservedInstances;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReservationService;
@@ -358,7 +359,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
                        }
                        ec2.shutdown();
-                       handleEC2Modifications(ec2Reservations, mods);
+                       handleEC2Modifications(ec2Reservations, mods, region, config.priceListService);
                        reservations.putAll(ec2Reservations);
                    }
                	
@@ -405,7 +406,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         archive(config, reservations);
     }
 
-    protected void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods) {
+    protected void handleEC2Modifications(Map<ReservationKey, CanonicalReservedInstances> ec2Reservations, Ec2Mods mods, Region region, PriceListService pls) {
     	for (ReservationKey key: ec2Reservations.keySet()) {
     		CanonicalReservedInstances reservedInstances = ec2Reservations.get(key);
     		
@@ -421,9 +422,12 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        	// Get the reservation modification for this RI
 	        	String parentReservationId = mods.getOriginalReservationId(reservedInstances.getReservationId());
 	        	if (parentReservationId.equals(reservedInstances.getReservationId())) {
-	        		logger.error("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", No parent reservation found" +
-	        					mods.getMod(reservedInstances.getReservationId()));
-	        		logger.error(mods.info());
+	        		if (reservedInstances.getOfferingClass().equals("standard")) {
+	        			logger.error("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", No parent reservation found " +
+	        					mods.getMod(reservedInstances.getReservationId()) + ", getting fixed price from price list");
+	        		}
+	        		double newFixedPrice = getFixedPrice(reservedInstances, region, pls);
+	        		reservedInstances.setFixedPrice(newFixedPrice);
 	        		continue;
 	        	}
 	        	ReservationKey parentKey = new ReservationKey(key.account, key.region, parentReservationId);
@@ -439,6 +443,21 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        	reservedInstances.setFixedPrice(adjustedPrice);
 	        }
     	}
+    }
+    
+    private double getFixedPrice(CanonicalReservedInstances ri, Region region, PriceListService pls) {
+    	double fixedPrice = 0.0;
+		try {
+			InstancePrices prices = pls.getPrices(new DateTime(ri.getStart()), ServiceCode.AmazonEC2);
+			LeaseContractLength lcl = ri.getDuration() > 24 * 365 ? LeaseContractLength.threeyear : LeaseContractLength.oneyear;
+			PurchaseOption po = PurchaseOption.getByName(ri.getOfferingType());
+			OfferingClass oc = OfferingClass.valueOf(ri.getOfferingClass());
+			Rate rate = prices.getReservationRate(region, UsageType.getUsageType(ri.getInstanceType(),  "hours"), lcl, po, oc);
+			fixedPrice = rate.fixed;
+		} catch (Exception e) {
+			logger.error("Error trying to get pricing for reservation");
+		}
+		return fixedPrice;
     }
     
     private double adjustPrice(String fromInstanceType, String toInstanceType, double price) {

@@ -133,14 +133,16 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    if (reservedUnused < 0.0) {
 				    	logger.error("Too much usage assigned to RI: " + i + ", unused=" + reservedUnused + ", tag: " + unusedTagGroup);
 				    }
-				    // assign unused amortization to owner
-				    double unusedFixedCost = reservedUnused * reservation.upfrontAmortized;
-			        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup);
-				    add(costMap, upfrontTagGroup, unusedFixedCost);
-				    
-				    // subtract amortization and hourly rate from savings for owner
-			        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, rtg.resourceGroup);
-				    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
+				    if (reservation.upfrontAmortized > 0.0) {
+					    // assign unused amortization to owner
+					    double unusedFixedCost = reservedUnused * reservation.upfrontAmortized;
+				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup);
+					    add(costMap, upfrontTagGroup, unusedFixedCost);
+					    
+					    // subtract amortization and hourly rate from savings for owner
+				        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, rtg.resourceGroup);
+					    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
+				    }
 			    }
 		    }
 		    // Remove the entries we replaced

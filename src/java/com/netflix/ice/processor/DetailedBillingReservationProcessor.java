@@ -443,7 +443,6 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		    TagGroup bonusTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
 		    TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
-	        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 	        
 	        InstancePrices instancePrices = prices.get(tagGroup.product);
 	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
@@ -492,9 +491,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		        }
 			
 			    if (reservation.capacity > 0) {
-			    	if (reservation.upfrontAmortized > 0)
+			    	if (reservation.upfrontAmortized > 0) {
+				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
-			        
+			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
 				    costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
 			    }
@@ -581,7 +581,6 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			if (tagGroup.zone != null)
 				continue;
 			
-	        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
 	        
@@ -625,9 +624,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			        }
 			    }
 			    if (reservation.capacity > 0) {
-			    	if (reservation.upfrontAmortized > 0)
+			    	if (reservation.upfrontAmortized > 0) {
+				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
 			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
-			    	
+			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
 			        costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
 			    }			
