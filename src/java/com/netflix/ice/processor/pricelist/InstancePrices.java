@@ -139,6 +139,16 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	}
         
         	String usageTypeStr = p.getAttribute(Attributes.usagetype);
+        	switch (serviceCode) {
+        		case AmazonEC2:
+        			// Two new usage types called Reservation and UnusedBox introduced in 10/2018, so now make sure it's BoxUsage
+	        		if (!usageTypeStr.contains("BoxUsage")) {
+	        			continue;
+	        		}
+	        		break;
+        		default:
+        			break;
+        	}
         	Region region = Region.US_EAST_1;
         	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ")) {
         		Region r = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));

@@ -51,6 +51,27 @@ public class ReservationServiceTest {
 	}
 	
 	@Test
+	public void testGetFixedPrice() throws Exception {
+		ReservedInstances ri = new ReservedInstances()
+		.withReservedInstancesId("1fcd999c-c669-46bf-9911-8b873f6e09b9")
+		.withInstanceType("i3.large")
+		.withInstanceCount(1)
+		.withFixedPrice((float) 0.0)
+		.withUsagePrice((float) 0.0)
+		.withOfferingType("All Upfront")
+		.withStart((new DateTime("2018-10-01")).toDate())
+		.withOfferingClass(OfferingClassType.Convertible)
+		.withDuration(94608000L);
+
+		CanonicalReservedInstances cri = new CanonicalReservedInstances("1", "ap-northeast-2", ri, "");		
+		PriceListService pls = new PriceListService(resourceDir, null, null);
+		BasicReservationService rs = new BasicReservationService(null, null, false);
+
+		double fixedPrice = rs.getFixedPrice(cri, Region.AP_NORTHEAST_2, pls);
+		assertEquals("Wrong fixed Price", 2429.0, fixedPrice, 0.01);
+	}
+	
+	@Test
 	public void testHandleEC2Modifications() throws Exception {
 		ReservedInstances parentRI = new ReservedInstances()
 		.withReservedInstancesId("1fcd999c-c669-46bf-9911-8b873f6e09b9")

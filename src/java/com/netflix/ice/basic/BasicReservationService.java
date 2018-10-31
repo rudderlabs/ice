@@ -445,17 +445,24 @@ public class BasicReservationService extends Poller implements ReservationServic
     	}
     }
     
-    private double getFixedPrice(CanonicalReservedInstances ri, Region region, PriceListService pls) {
+    protected double getFixedPrice(CanonicalReservedInstances ri, Region region, PriceListService pls) {
     	double fixedPrice = 0.0;
 		try {
 			InstancePrices prices = pls.getPrices(new DateTime(ri.getStart()), ServiceCode.AmazonEC2);
 			LeaseContractLength lcl = ri.getDuration() > 24 * 365 ? LeaseContractLength.threeyear : LeaseContractLength.oneyear;
 			PurchaseOption po = PurchaseOption.getByName(ri.getOfferingType());
 			OfferingClass oc = OfferingClass.valueOf(ri.getOfferingClass());
-			Rate rate = prices.getReservationRate(region, UsageType.getUsageType(ri.getInstanceType(),  "hours"), lcl, po, oc);
-			fixedPrice = rate.fixed;
+			UsageType ut = UsageType.getUsageType(ri.getInstanceType(), "hours");
+			Rate rate = prices.getReservationRate(region, ut, lcl, po, oc);
+			if (rate != null) {
+				fixedPrice = rate.fixed;
+			}
+			else {
+				logger.error("No rate for " + region + "," + ut + "," + lcl + "," + po + "," + oc);
+			}
 		} catch (Exception e) {
-			logger.error("Error trying to get pricing for reservation");
+			logger.error("Error trying to get pricing for reservation:" + e);
+			e.printStackTrace();
 		}
 		return fixedPrice;
     }

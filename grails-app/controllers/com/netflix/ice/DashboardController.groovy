@@ -832,6 +832,7 @@ class DashboardController {
 		if (elasticity) {
 			// consolidate the data to daily
 			data = reduceToDailyElasticity(data, stats);
+			consolidateType = ConsolidateType.daily;
 		}
 		else {
 			if (groupBy == TagType.UsageType && consolidateFamily)
