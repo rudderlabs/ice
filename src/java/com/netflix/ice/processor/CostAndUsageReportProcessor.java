@@ -44,7 +44,10 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private static ConcurrentMap<String, Double> ondemandRate = Maps.newConcurrentMap();
     private Instances instances;
     private Long startMilli;
-    
+
+	private final ExecutorService pool;
+	
+
     // For debugging, set the number of files to process. Set to 0 to disable.
     //private int debugLimit = 0;
 
@@ -52,6 +55,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
 	public CostAndUsageReportProcessor(ProcessorConfig config) throws IOException {
 		this.config = config;
+		this.pool = Executors.newFixedThreadPool(config == null ? 5 : config.numthreads);
 		if (config != null) {
 	        reservationProcessor = new CostAndUsageReservationProcessor(
 					config.accountService.getPayerAccounts(),
@@ -160,8 +164,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			endMilli = startMilli;
 		}
 	}
-	
-	private final ExecutorService pool = Executors.newFixedThreadPool(5);
 	
 	private Future<FileData> downloadAndProcessOneFile(final CostAndUsageReport report, final String localDir, final String fileKey, final long lastProcessed, final InstancePrices ec2Prices) {
 		return pool.submit(new Callable<FileData>() {

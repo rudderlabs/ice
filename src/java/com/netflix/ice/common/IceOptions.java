@@ -198,6 +198,11 @@ public class IceOptions {
     public static final String PROCESSOR_INSTANCE_ID = "ice.processorInstanceId";
     
     /**
+     * Number of threads to use when processing cost and usage reports.
+     */
+    public static final String PROCESSOR_THREADS = "ice.numthreads";
+    
+    /**
      * default reservation period, possible values are oneyear, threeyear
      */
     public static final String RESERVATION_PERIOD = "ice.reservationPeriod";

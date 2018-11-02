@@ -201,6 +201,9 @@ class BootStrap {
 				properties.setProperty(IceOptions.FAMILY_RI_BREAKOUT, prop.getProperty(IceOptions.FAMILY_RI_BREAKOUT, ""));
 				properties.setProperty(IceOptions.WRITE_JSON_FILES, prop.getProperty(IceOptions.WRITE_JSON_FILES, ""));
 				
+				if (prop.getProperty(IceOptions.PROCESSOR_THREADS) != null)
+					properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));
+
 				
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
 				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);
