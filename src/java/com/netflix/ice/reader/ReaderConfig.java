@@ -127,12 +127,12 @@ public class ReaderConfig extends Config {
             if (interval == null)
                 continue;
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Dollar);
-                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Native);
+                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
+                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
             }
             // Prime the tag coverage cache
             if (product == null || enableTagCoverageWithUserTag) {
-            	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Native);
+            	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Instances);
             }
         }
         

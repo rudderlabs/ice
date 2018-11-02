@@ -142,7 +142,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	switch (serviceCode) {
         		case AmazonEC2:
         			// Two new usage types called Reservation and UnusedBox introduced in 10/2018, so now make sure it's BoxUsage
-	        		if (!usageTypeStr.contains("BoxUsage")) {
+	        		if (!usageTypeStr.contains("BoxUsage") || (usageTypeStr.contains("HostBoxUsage") && !tenancies.contains(Tenancy.Host))) {
 	        			continue;
 	        		}
 	        		break;

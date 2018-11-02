@@ -284,38 +284,47 @@ paths:
             properties: 
               isCost:
                 type: boolean
-                description: Cost = true, Usage = false
+                description: Cost = true, Usage = false (default = true)
               usageUnit:
                 type: string
-                enum: [Dollar, Instances, ECUs, vCPUs, CostMult]
+                description: default = Instances
+                enum: [Instances, ECUs, vCPUs, Normalized]
               aggregate:
                 type: string
+                description: default = none
                 enum: [none, stats, data, both]
               groupBy:
-                description: Dimension to use for aggregation buckets
+                description: Dimension to use for aggregation buckets (default = none)
                 type: string
                 enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup, Tag]
               consolidate:
                 type: string
+                description: default = hourly
                 enum: [monthly, weekly, daily, hourly]
               start:
                 type: string
               end:
                 type: string
               breakdown:
-                description: Produce data for breakdown by resource or application group
+                description: Produce data for breakdown by resource or application group (default = false)
                 type: boolean
               showsps:
                 type: boolean
+                description: default = false
               factorsps:
                 type: boolean
+                description: default = false
               family:
-                description: Consolidate EC2 instance usage types of the same family into a single type
+                description: Consolidate EC2/RDS instance usage types of the same family into a single type
+                type: boolean
+              consolidateOps:
+                description: Consolidate EC2/RDS/Redshift instance operation types into Savings, RIs, Amortized RIs, and Unused RIs
                 type: boolean
               appgroup:
                 type: string
               forReservation:
                 type: boolean
+                description: Requesting data for the Reservation dashboard. Includes Savings and Lent Opertions. (default = false)
               elasticity:
                 type: boolean
               showZones:
@@ -354,6 +363,7 @@ paths:
             additionalProperties:
                 description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>
                 type: string
+            required: [start, end]
       responses:
         '200':
           description: data collection

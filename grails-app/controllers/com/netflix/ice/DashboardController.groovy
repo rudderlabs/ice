@@ -560,20 +560,17 @@ class DashboardController {
             return [status: 200, start: 0, data: [:], stats: [:], groupBy: "None"];
         }
 
-		TagType groupBy = query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"));
-        boolean isCost = query.getBoolean("isCost");
-        boolean breakdown = query.getBoolean("breakdown");
-        boolean showsps = query.getBoolean("showsps");
-        boolean factorsps = query.getBoolean("factorsps");
-		boolean consolidateFamily = query.getBoolean("family");
-		boolean consolidateOps = query.getBoolean("consolidateOps");
-		UsageUnit usageUnit = UsageUnit.Dollar;
+		TagType groupBy = query.has("groupBy") ? (query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"))) : null;
+        boolean isCost = query.has("isCost") ? query.getBoolean("isCost") : true;
+        boolean breakdown = query.has("breakdown") ? query.getBoolean("breakdown") : false;
+        boolean showsps = query.has("showsps") ? query.getBoolean("showsps") : false;
+        boolean factorsps = query.has("factorsps") ? query.getBoolean("factorsps") : false;
+		UsageUnit usageUnit = UsageUnit.Instances;
 		if (!isCost) {
-			usageUnit = UsageUnit.Native;
-			if (!query.getString("usageUnit").isEmpty())
+			if (query.has("usageUnit") && !query.getString("usageUnit").isEmpty())
 				usageUnit = UsageUnit.valueOf(query.getString("usageUnit"));
 		}
-        AggregateType aggregate = AggregateType.valueOf(query.getString("aggregate"));
+        AggregateType aggregate = query.has("aggregate") ? AggregateType.valueOf(query.getString("aggregate")) : AggregateType.none;
         List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
         List<Region> regions = Region.getRegions(listParams(query, "region"));
         List<Zone> zones = Zone.getZones(listParams(query, "zone"));
@@ -582,12 +579,14 @@ class DashboardController {
         List<UsageType> usageTypes = UsageType.getUsageTypes(listParams(query, "usageType"));
         List<ResourceGroup> resourceGroups = ResourceGroup.getResourceGroups(listParams(query, "resourceGroup"));
         DateTime end = query.has("spans") ? dayFormatter.parseDateTime(query.getString("end")) : dateFormatter.parseDateTime(query.getString("end"));
-        ConsolidateType consolidateType = ConsolidateType.valueOf(query.getString("consolidate"));
+        ConsolidateType consolidateType = query.has("consolidate") ? ConsolidateType.valueOf(query.getString("consolidate")) : ConsolidateType.hourly;
         ApplicationGroup appgroup = query.has("appgroup") ? new ApplicationGroup(query.getString("appgroup")) : null;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
+		boolean consolidateOps = query.has("consolidateOps") ? query.getBoolean("consolidateOps") : false;
+		boolean consolidateFamily = query.has("family") ? query.getBoolean("family") : false;
 		
 		// Still support the old name "showResourceGroupTags" for new name showUserTags
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
@@ -611,7 +610,7 @@ class DashboardController {
             zones = Lists.newArrayList(tagGroupManager.getZones(new TagLists(accounts)));
         }
 		// Tag Coverage parameters
-		boolean tagCoverage = query.getBoolean("tagCoverage");
+		boolean tagCoverage = query.has("tagCoverage") ? query.getBoolean("tagCoverage") : false;
 		List<UserTag> tagKeys = UserTag.getUserTags(listParams(query, "tagKey"));
 		
 		if (elasticity || tagCoverage) {

@@ -232,7 +232,7 @@ public class BasicWeeklyCostEmailService extends Poller {
                 continue;
             }
             TagLists tagLists = new TagLists(accounts, regions, null, Lists.newArrayList(product), null, null, resourceGroups);
-            Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Product, AggregateType.none, false, UsageUnit.Dollar);
+            Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Product, AggregateType.none, false, UsageUnit.Instances);
             for (Tag tag: data.keySet()) {
                 for (int week = 0; week < numWeeks; week++) {
                     String key = tag + "|" + week;
@@ -369,7 +369,7 @@ public class BasicWeeklyCostEmailService extends Poller {
             for (int i = 0; i < accounts.size(); i++) {
                 List<Account> accountList = Lists.newArrayList(accounts.get(i));
                 TagLists tagLists = new TagLists(accountList, regions, null, Lists.newArrayList(product), null, null, resourceGroups);
-                Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Region, AggregateType.none, false, UsageUnit.Dollar);
+                Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Region, AggregateType.none, false, UsageUnit.Instances);
                 for (Tag tag: data.keySet()) {
                     for (int week = 0; week < numWeeks; week++) {
                         String key = accounts.get(i) + "|" + tag + "|" + week;
