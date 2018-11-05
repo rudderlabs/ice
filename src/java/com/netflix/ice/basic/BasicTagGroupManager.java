@@ -242,12 +242,12 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         Set<UserTag> result = Sets.newTreeSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
 
-        // Add ResourceGroup tags that are non-null, just the product name, or userTag CSVs.
+        // Add ResourceGroup tags that are null, just the product name, or userTag CSVs.
         for (TagGroup tagGroup: tagGroupsInRange) {
-        	logger.debug("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
-            if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
+        	//logger.info("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
+            if (tagLists.contains(tagGroup)) {
             	try {
-            		UserTag t = tagGroup.resourceGroup.isProductName() ? UserTag.get("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+            		UserTag t = (tagGroup.resourceGroup == null || tagGroup.resourceGroup.isProductName()) ? UserTag.get("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
             		result.add(t);
             	}
             	catch (Exception e) {
@@ -302,6 +302,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         TagLists tagListsForTag = tagLists;
         boolean tagListsHasResourceGroups = tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0;
         if ((groupBy == null || !(groupBy == TagType.ResourceGroup || groupBy == TagType.Tag)) && tagListsHasResourceGroups) {
+        	//logger.info("getTagListsWithNullResourceGroup");
             tagListsForTag = tagLists.getTagListsWithNullResourceGroup();
         }
         
@@ -314,11 +315,13 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         			continue;
         		ops.add(op);
         	}
+        	//logger.info("getTagListsWithOperations");
         	tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
         }
 
         if (groupBy == null || groupBy == TagType.TagKey) {
             result.put(Tag.aggregated, tagListsForTag);
+        	//logger.info("groupBy == null || groupBy == TagType.TagKey");
             return result;
         }
 
@@ -351,12 +354,12 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             default:
             	break;
         }
-        //logger.info("TagLists: " + tagLists);
-        //logger.info("found " + groupByTags.size() + " groupByTags, taglists instanceof " + (tagLists instanceof TagListsWithUserTags ? "TagListsWithUserTags" : "TagLists"));
-        //if (tagLists instanceof TagListsWithUserTags) {
-        //	for (Tag tag: groupByTags)
-        //		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
-        //}
+//        logger.info("TagLists: " + tagLists);
+//        logger.info("found " + groupByTags.size() + " groupByTags, taglists instanceof " + (tagLists instanceof TagListsWithUserTags ? "TagListsWithUserTags" : "TagLists"));
+//        if (tagLists instanceof TagListsWithUserTags) {
+//        	for (Tag tag: groupByTags)
+//        		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
+//        }
         
         boolean groupByOperationOnReservationDashboard = groupBy == TagType.Operation && forReservation;
         

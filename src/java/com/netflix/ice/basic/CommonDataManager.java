@@ -53,12 +53,16 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         // Figure out which columns we're going to aggregate
         List<Integer> columnIndecies = Lists.newArrayList();
         List<TagGroup> tagGroups = Lists.newArrayList();
+        
+        //logger.info(" ==== tagLists: " + tagLists);
         int columnIndex = 0;
         for (TagGroup tagGroup: data.getTagGroups()) {
         	boolean contains = tagLists.contains(tagGroup, true);
             if (contains) {
             	columnIndecies.add(columnIndex);
             	tagGroups.add(tagGroup);
+            	
+            	//logger.info("     add TagGroup: " + tagGroup);
             }
             columnIndex++;
         }
@@ -146,8 +150,9 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     abstract protected boolean hasData(D[] data);
     abstract protected Map<Tag, double[]> processResult(Map<Tag, D[]> data, TagType groupBy, AggregateType aggregate, List<UserTag> tagKeys);
 
-    protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
-        Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
+    protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
+    	//logger.info("Entered with groupBy: " + groupBy + ", userTagGroupByIndex: " + userTagGroupByIndex + ", tagLists: " + tagLists);
+    	Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
 
         Map<Tag, D[]> rawResult = Maps.newTreeMap();
         
@@ -185,7 +190,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     }
 
     private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
-        Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex, tagKeys);
+        Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
         
         Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
         
