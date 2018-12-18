@@ -289,7 +289,7 @@ ice.factory('highchart', function () {
   }
 });
 
-ice.factory('usage_db', function ($window, $http, $filter) {
+ice.factory('usage_db', function ($window, $http, $filter, $route) {
 
   var graphonly = false;
 
@@ -616,6 +616,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -642,6 +644,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -666,6 +670,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -699,6 +705,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -725,6 +733,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -741,6 +751,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -768,6 +780,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -798,6 +812,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -829,6 +845,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -846,6 +864,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         }
         if (fn)
           fn(result.data);
+      }).error(function () {
+        $window.location.reload();
       });
     
     },
@@ -864,6 +884,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         }
         if (fn)
           fn(result.data);
+      }).error(function () {
+        $window.location.reload();
       });    
     },
 
@@ -891,6 +913,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
+      }).error(function () {
+        $window.location.reload();
       });
     },
 
@@ -953,6 +977,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (result.status === 200 && result.data && fn) {
             fn(result);
           }
+        }).error(function () {
+          $window.location.reload();
         });
       }
       else {
