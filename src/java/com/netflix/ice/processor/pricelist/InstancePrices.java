@@ -421,7 +421,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			sb.append(",operatingSystem:" + operatingSystem);
 			sb.append(",operation:" + operation);
 			sb.append(",onDemandRate:" + onDemandRate);
-			sb.append(",reservationRates:" + reservationRates.size());
+			sb.append(",reservationRates:" + reservationRates.keySet().toString());
 			sb.append(",usagetype:" + usagetype);
 			sb.append(",preInstalledSw:" + preInstalledSw);
         	sb.append("}");

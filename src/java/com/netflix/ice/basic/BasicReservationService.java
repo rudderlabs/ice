@@ -29,10 +29,12 @@ import com.amazonaws.services.ec2.model.ReservedInstancesModification;
 import com.amazonaws.services.ec2.model.ReservedInstancesModificationResult;
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
+import com.amazonaws.services.rds.model.AmazonRDSException;
 import com.amazonaws.services.rds.model.DescribeReservedDBInstancesResult;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
 import com.amazonaws.services.redshift.AmazonRedshift;
 import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
+import com.amazonaws.services.redshift.model.AmazonRedshiftException;
 import com.amazonaws.services.redshift.model.DescribeReservedNodesResult;
 import com.amazonaws.services.redshift.model.ReservedNode;
 import com.google.common.collect.Lists;
@@ -340,10 +342,10 @@ public class BasicReservationService extends Poller implements ReservationServic
                 		   }
                 	   }
                        catch(AmazonEC2Exception e) {
-                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get EC2 reservation modifications for " + region + " " + account.name + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
+                           logger.error("error in describeReservedInstancesModifications for " + region.name + " " + account.name, e);
                        }
                 	   Ec2Mods mods = new Ec2Mods(modifications);
                        try {
@@ -360,7 +362,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                            }
                        }
                        catch(AmazonEC2Exception e) {
-                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get EC2 reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
@@ -381,8 +383,8 @@ public class BasicReservationService extends Poller implements ReservationServic
                                reservations.put(key, cri);
                            }
                        }
-                       catch(AmazonEC2Exception e) {
-                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                       catch(AmazonRDSException e) {
+                    	   logger.info("could not get RDS reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
                            logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
@@ -401,6 +403,9 @@ public class BasicReservationService extends Poller implements ReservationServic
 	                            reservations.put(key, cri);
 	                        }
 	                   }
+                       catch(AmazonRedshiftException e) {
+                    	   logger.info("could not get Redshift reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                       }
 	                   catch (Exception e) {
 	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
 	                   }
