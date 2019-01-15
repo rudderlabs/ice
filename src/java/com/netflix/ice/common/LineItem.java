@@ -205,9 +205,11 @@ public abstract class LineItem {
 	public static enum LineItemType {
 		Credit,
 		DiscountedUsage,
+		EdpDiscount,
 		Fee,
 		Refund,
 		RIFee,
+		RiVolumeDiscount,
 		Tax,
 		Usage;
 	}

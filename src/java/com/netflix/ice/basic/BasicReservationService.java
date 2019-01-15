@@ -20,6 +20,7 @@ package com.netflix.ice.basic;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsRequest;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsResult;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
@@ -338,6 +339,9 @@ public class BasicReservationService extends Poller implements ReservationServic
                     		   modifications.addAll(modResult.getReservedInstancesModifications());
                 		   }
                 	   }
+                       catch(AmazonEC2Exception e) {
+                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                       }
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
                        }
@@ -354,6 +358,9 @@ public class BasicReservationService extends Poller implements ReservationServic
                             		   mods.getModResId(reservation.getReservedInstancesId()));
                                ec2Reservations.put(key, cri);
                            }
+                       }
+                       catch(AmazonEC2Exception e) {
+                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
@@ -373,6 +380,9 @@ public class BasicReservationService extends Poller implements ReservationServic
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
                                reservations.put(key, cri);
                            }
+                       }
+                       catch(AmazonEC2Exception e) {
+                    	   logger.info("could not get reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
                            logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
@@ -458,7 +468,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 				fixedPrice = rate.fixed;
 			}
 			else {
-				logger.error("No rate for " + region + "," + ut + "," + lcl + "," + po + "," + oc);
+				logger.error("No rate for " + region + "," + ut + "," + lcl + "," + po + "," + oc + " in AmazonEC2 pricelist " + prices.getVersionId());
 			}
 		} catch (Exception e) {
 			logger.error("Error trying to get pricing for reservation:" + e);

@@ -68,7 +68,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		Instances instances) {
     	
     	// Cost and Usage report-specific checks
-    	if (lineItem.getLineItemType() == LineItemType.Tax)
+    	LineItemType lit = lineItem.getLineItemType();
+    	if (lit == LineItemType.Tax ||
+    		lit == LineItemType.EdpDiscount ||
+    		lit == LineItemType.RiVolumeDiscount)
     		return Result.ignore;
     	
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||

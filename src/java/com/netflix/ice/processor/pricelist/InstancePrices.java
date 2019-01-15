@@ -152,7 +152,12 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	Region region = Region.US_EAST_1;
         	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ")) {
         		Region r = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
-        		region = r != null ? r : region;
+        		if (r != null)
+        			region = r;
+        		else {
+        			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr);
+        			continue; // unsupported region
+        		}
         	}
         	String operationStr = p.getAttribute(Attributes.operation);
         	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), operationStr, p.getAttribute(Attributes.deploymentOption));
@@ -181,6 +186,14 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			Map<String, Term> reservationOfferTerms = terms.Reserved.get(p.sku);
 
         	Product product = new Product(p, onDemandRate, reservationOfferTerms);
+        	
+        	// Check that we're not overwriting a product we already added - usually indicates
+        	// new pricelist changes with additional options that we're not looking for.
+        	if (prices.containsKey(key)) {
+        		logger.error("Multiple products with same key: " + key);
+        		logger.error("Previous: " + prices.get(key));
+        		logger.error("Current: " + product);
+        	}
         	
         	prices.put(key, product);
         }
@@ -337,6 +350,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		public final double onDemandRate;
 		public final Map<RateKey, Rate> reservationRates;
 		
+		// fields used to debug ingest
+		public final String usagetype;
+		public final String preInstalledSw;
+		
 		private Product(double memory, double ecu, double normalizationSizeFactor,
 				int vcpu, String instanceType, String operatingSystem, String operation, double onDemandRate,
 				Map<RateKey, Rate> reservationRates) {
@@ -349,6 +366,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			this.operation = operation;
 			this.onDemandRate = onDemandRate;
 			this.reservationRates = reservationRates;
+			this.usagetype = null;
+			this.preInstalledSw = null;
 		}
 		
 		public Product(PriceList.Product product, PriceList.Rate onDemandRate, Map<String, PriceList.Term> reservationOfferTerms) {
@@ -386,6 +405,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 					this.reservationRates.put(key, new Rate(quantity, hrs));
 				}
 			}
+			this.usagetype = product.getAttribute(Attributes.usagetype);
+			this.preInstalledSw = product.getAttribute(Attributes.preInstalledSw);
 		}
 		
         @Override
@@ -401,6 +422,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			sb.append(",operation:" + operation);
 			sb.append(",onDemandRate:" + onDemandRate);
 			sb.append(",reservationRates:" + reservationRates.size());
+			sb.append(",usagetype:" + usagetype);
+			sb.append(",preInstalledSw:" + preInstalledSw);
         	sb.append("}");
             return sb.toString();
         }

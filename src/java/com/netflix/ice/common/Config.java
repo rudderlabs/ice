@@ -22,14 +22,18 @@ import java.util.Properties;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ec2.model.AvailabilityZone;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.netflix.ice.tag.Region;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class Config {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
 
     public final String workS3BucketName;
     public final String workS3BucketRegion;
@@ -90,9 +94,14 @@ public abstract class Config {
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
     	for (Region region: Region.getAllRegions()) {
             AmazonEC2 ec2 = ec2Builder.withRegion(region.name).build();
-            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
-            for (AvailabilityZone az: result.getAvailabilityZones()) {
-            	region.addZone(az.getZoneName());
+            try {
+	            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
+	            for (AvailabilityZone az: result.getAvailabilityZones()) {
+	            	region.addZone(az.getZoneName());
+	            }
+            }
+            catch(AmazonEC2Exception e) {
+            	logger.info("failed to get zones for region " + region + ", " + e.getErrorMessage());
             }
     	}
     }
