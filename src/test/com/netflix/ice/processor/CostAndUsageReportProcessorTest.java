@@ -41,7 +41,7 @@ public class CostAndUsageReportProcessorTest {
 		CostAndUsageReportProcessor cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir + "/manifestTest.json");
         CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
-        LineItem lineItem = new CostAndUsageReportLineItem(true, cauReport);
+        LineItem lineItem = new CostAndUsageReportLineItem(true, null, cauReport);
 		lineItem.setItems(line.split(","));
 		return lineItem;
 	}

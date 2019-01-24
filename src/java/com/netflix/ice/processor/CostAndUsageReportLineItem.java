@@ -3,6 +3,7 @@ package com.netflix.ice.processor;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 		normalizationFactors.put("xlarge", 8.0);
 	}
 	    	
-    public CostAndUsageReportLineItem(boolean useBlended, CostAndUsageReport report) {
+    public CostAndUsageReportLineItem(boolean useBlended, DateTime costAndUsageNetUnblendedStartDate, CostAndUsageReport report) {
     	lineItemIdIndex = report.getColumnIndex("identity",  "LineItemId");
     	billTypeIndex = report.getColumnIndex("bill", "BillType");
         accountIdIndex = report.getColumnIndex("lineItem", "UsageAccountId");
@@ -49,8 +50,15 @@ public class CostAndUsageReportLineItem extends LineItem {
         usageQuantityIndex = report.getColumnIndex("lineItem", "UsageAmount");
         startTimeIndex = report.getColumnIndex("lineItem", "UsageStartDate");
         endTimeIndex = report.getColumnIndex("lineItem", "UsageEndDate");
-        rateIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedRate" : "UnblendedRate");
-        costIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedCost" : "UnblendedCost");
+        if (costAndUsageNetUnblendedStartDate != null &&
+        		(report.getStartTime().isEqual(costAndUsageNetUnblendedStartDate) || report.getStartTime().isAfter(costAndUsageNetUnblendedStartDate))) {        	
+            rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
+            costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
+        }
+        else {
+	        rateIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedRate" : "UnblendedRate");
+	        costIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedCost" : "UnblendedCost");
+        }
         resourceIndex = report.getColumnIndex("lineItem", "ResourceId");
         reservedIndex = report.getColumnIndex("pricing", "term");
         

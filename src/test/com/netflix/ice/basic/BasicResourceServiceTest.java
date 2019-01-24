@@ -29,7 +29,7 @@ public class BasicResourceServiceTest {
 	@Test
 	public void testGetResource() {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
-		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"DiscountedUsage", // LineItemType
 				"foobar@example.com", // resourceTags/user:Email
@@ -112,7 +112,7 @@ public class BasicResourceServiceTest {
 				"production", // resourceTags/user:Environment
 		};
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
-		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		
 		// Check for value in alias list
@@ -129,7 +129,7 @@ public class BasicResourceServiceTest {
 	@Test
 	public void testDefaultAccountTags() {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
-		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"DiscountedUsage", // LineItemType
 				"foobar@example.com", // resourceTags/user:Email

@@ -46,10 +46,13 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private Long startMilli;
 
 	private final ExecutorService pool;
-	
 
-    // For debugging, set the number of files to process. Set to 0 to disable.
-    //private int debugLimit = 0;
+	// The following two keys can be added to ice.properties for debugging purposes.
+	// For example:
+	//     ice.debug.curMonth=20190101-20190201
+	//     ice.debug.manifest=34d6d421-ef62-40f8-854c-b5181a123b1b
+    private final String debugMonthKey = "curMonth";
+    private final String debugManifestKey = "manifest";
 
     private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
 
@@ -146,7 +149,22 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                     list = Lists.newArrayList();
                     filesToProcess.put(key, list);
                 }
-                list.add(new CostAndUsageReport(filesToProcessInOneBucket.get(key), billingS3BucketRegion, accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
+                
+                S3ObjectSummary manifest = filesToProcessInOneBucket.get(key);
+                
+                // For debugging substitute alternate manifest (typically a short one from early in the month)
+                // property keys
+                String debugMonth = config.debugProperties.get(debugMonthKey);
+                if (debugMonth != null) {
+	                String fileKey = manifest.getKey();
+	                String debugManifest = config.debugProperties.get(debugManifestKey);
+	                if (fileKey.contains(debugMonth)) {
+	                	fileKey = fileKey.substring(0, fileKey.lastIndexOf("/")) + "/" + debugManifest + fileKey.substring(fileKey.lastIndexOf("/"));
+	                	manifest.setKey(fileKey);
+	                }
+                }
+               
+                list.add(new CostAndUsageReport(manifest, billingS3BucketRegion, accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
             }
         }
 
@@ -185,7 +203,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		        // process the file
 		        logger.info("processing " + file.getName() + "...");
 		        
-				CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, report);
+				CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, report);
 		        
 				if (file.getName().endsWith(".zip"))
 					data.endMilli = processReportZip(file, lineItem, data.delayedItems, data.costAndUsageData, ec2Prices);
@@ -218,7 +236,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		if (reportKeys.length == 0)
 			return dataTime.getMillis();
 
-		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
+		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, cau);
         if (config.resourceService != null)
         	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
         long endMilli = startMilli;
@@ -267,7 +285,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		
 		CostAndUsageReport cau = (CostAndUsageReport) report;
 		
-		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, cau);
+		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, cau);
         if (config.resourceService != null)
         	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
         List<String[]> delayedItems = Lists.newArrayList();
@@ -377,9 +395,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 if (lineNumber % 500000 == 0) {
                     logger.info("processed " + lineNumber + " lines...");
                 }
-//                if (lineNumber == 40000000) {//100000000      //
-//                    break;
-//                }
             }
         }
         catch (IOException e ) {
@@ -419,31 +434,4 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	public ReservationProcessor getReservationProcessor() {
 		return reservationProcessor;
 	}
-
-    /*
-	@Override
-	public List<File> downloadReport(MonthlyReport report, String localDir, long lastProcessed) {
-		List<File> files = Lists.newArrayList();
-		for (String fileKey: report.getReportKeys()) {
-			String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
-			String filename = fileKey.substring(prefix.length());
-	        File file = new File(localDir, filename);
-	        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + "/" + file.getName() + "...");
-	        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), prefix, file, lastProcessed,
-	                report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
-	        if (downloaded)
-	            logger.info("downloaded " + fileKey);
-	        else
-	            logger.info("file already downloaded " + fileKey + "...");
-	        
-	        files.add(file);
-	        logger.info(" added " + file.getName() + ", size: " + files.size());
-	        
-	        // For debugging, only process to the limit
-	        if (debugLimit > 0 && files.size() >= debugLimit)
-	        	break;
-		}
-		return files;
-	}
-*/
 }

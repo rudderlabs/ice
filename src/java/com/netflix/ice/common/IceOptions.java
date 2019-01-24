@@ -87,6 +87,16 @@ public class IceOptions {
     public static final String COST_AND_USAGE_START_DATE = "ice.costAndUsageStartDate";
     
     /**
+     * Start date for use of Enterprise Discount Program NetUnblended rates and costs.
+     */
+    public static final String COST_AND_USAGE_NET_UNBLENDED_START_DATE = "ice.costAndUsageNetUnblendedStartDate";
+    
+    /**
+     * Enterprise discount program discounts
+     */
+    public static final String EDP_DISCOUNTS = "ice.edpDiscounts";
+    
+    /**
      * User can configure their custom tags.
      */
     public static final String CUSTOM_TAGS = "ice.customTags";
@@ -231,4 +241,9 @@ public class IceOptions {
      * enable tag coverage metrics filtered and grouped by user tags
      */
     public static final String TAG_COVERAGE_WITH_USER_TAGS = "ice.tagCoverageWithUserTags";
+    
+    /**
+     * debug flags
+     */
+    public static final String DEBUG = "ice.debug";
 }

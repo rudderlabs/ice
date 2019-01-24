@@ -155,7 +155,13 @@ class BootStrap {
 					}
 				}
 			}
-
+			
+			// Stash any debug properties
+			for (String name: prop.stringPropertyNames()) {
+				if (name.startsWith(IceOptions.DEBUG + ".")) {
+					properties.setProperty(name, prop.getProperty(name));
+				}
+			}
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 				
@@ -175,6 +181,8 @@ class BootStrap {
                 properties.setProperty(IceOptions.BILLING_ACCESS_ROLENAME, prop.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_EXTERNALID, prop.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, ""));
 				properties.setProperty(IceOptions.COST_AND_USAGE_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_START_DATE, ""));
+				properties.setProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, ""));
+				properties.setProperty(IceOptions.EDP_DISCOUNTS, prop.getProperty(IceOptions.EDP_DISCOUNTS, ""));
 				
                 if (prop.getProperty(IceOptions.COMPANY_NAME) != null)
                     properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
@@ -203,8 +211,7 @@ class BootStrap {
 				
 				if (prop.getProperty(IceOptions.PROCESSOR_THREADS) != null)
 					properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));
-
-				
+									
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
 				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);
 				PriceListService priceListService = new PriceListService(

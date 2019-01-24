@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.common;
 
+import java.util.Map;
 import java.util.Properties;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -25,6 +26,7 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ec2.model.AvailabilityZone;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
+import com.google.common.collect.Maps;
 import com.netflix.ice.tag.Region;
 
 import org.joda.time.DateTime;
@@ -45,6 +47,7 @@ public abstract class Config {
     public final DateTime startDate;
     public final AWSCredentialsProvider credentialsProvider;
     public final boolean familyRiBreakout;
+    public final Map<String, String> debugProperties;
 
     /**
      *
@@ -86,6 +89,15 @@ public abstract class Config {
         this.resourceService = resourceService;
 
         AwsUtils.init(credentialsProvider, workS3BucketRegion);
+        
+        // Stash the arbitrary list of debug flags - names that start with "ice.debug."
+        debugProperties = Maps.newHashMap();
+        for (String name: properties.stringPropertyNames()) {
+        	if (name.startsWith(IceOptions.DEBUG)) {
+				String key = name.substring(IceOptions.DEBUG.length() + 1);
+        		debugProperties.put(key, properties.getProperty(name));
+        	}
+        }
         
         initZones();
     }

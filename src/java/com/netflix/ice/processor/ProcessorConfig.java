@@ -18,6 +18,7 @@
 package com.netflix.ice.processor;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.PriceListService;
 
@@ -27,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.SortedMap;
 
 public class ProcessorConfig extends Config {
     private static final Logger logger = LoggerFactory.getLogger(ProcessorConfig.class);
@@ -40,6 +42,8 @@ public class ProcessorConfig extends Config {
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
     public final DateTime costAndUsageStartDate;
+    public final DateTime costAndUsageNetUnblendedStartDate;
+    public final SortedMap<DateTime,Double> edpDiscounts;
 
     public final ReservationService reservationService;
     public final LineItemProcessor lineItemProcessor;
@@ -101,6 +105,18 @@ public class ProcessorConfig extends Config {
             costAndUsageStartDate = new DateTime(3000, 1, 1, 0, 0, DateTimeZone.UTC); // Arbitrary year in the future
         else
         	costAndUsageStartDate = new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
+        
+        yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, "").split("-");
+        costAndUsageNetUnblendedStartDate = yearMonth.length < 2 ? null : new DateTime(Integer.parseInt(yearMonth[0]), Integer.parseInt(yearMonth[1]), 1, 0, 0, DateTimeZone.UTC);
+        
+        edpDiscounts = Maps.newTreeMap();
+        String[] rates = properties.getProperty(IceOptions.EDP_DISCOUNTS, "").split(",");
+        for (String rate: rates) {
+        	String[] parts = rate.split(":");
+        	if (parts.length < 2)
+        		break;
+        	edpDiscounts.put(new DateTime(parts[0], DateTimeZone.UTC), Double.parseDouble(parts[1]) / 100);
+        }
 
         useBlended = properties.getProperty(IceOptions.USE_BLENDED) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.USE_BLENDED));
 
@@ -140,10 +156,29 @@ public class ProcessorConfig extends Config {
         billingFileProcessor.shutdown();
         reservationService.shutdown();
     }
+    
+    /**
+     * Return the EDP discount for the requested time
+     * @param dt
+     * @return discount
+     */
+    public Double getDiscount(DateTime dt) {
+    	SortedMap<DateTime, Double> subMap = edpDiscounts.headMap(dt.plusSeconds(1));
+    	return subMap.size() == 0 ? 0.0 : subMap.get(subMap.lastKey());
+    }
+
+    /**
+     * Return the discounted price
+     * @param dt
+     * @return discount
+     */
+    public Double getDiscountedCost(DateTime dt, Double cost) {
+    	return cost * (1 - getDiscount(dt));
+    }
 
     /**
      *
-     * @return singlton instance
+     * @return singleton instance
      */
     public static ProcessorConfig getInstance() {
         return instance;

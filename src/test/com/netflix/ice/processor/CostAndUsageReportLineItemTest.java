@@ -39,7 +39,7 @@ public class CostAndUsageReportLineItemTest {
 	@Test
 	public void testGetUsageQuantity() {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
-		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		assertEquals("Usage quantity is incorrect", Double.parseDouble(li.getUsageQuantity()), 1.0, 0.001);
 	}
@@ -47,7 +47,7 @@ public class CostAndUsageReportLineItemTest {
 	@Test
 	public void testResourceTags() {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
-		LineItem li = new CostAndUsageReportLineItem(false, caur);		
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		assertEquals("Wrong resource tags size", 1, li.getResourceTagsSize());
 		String[] tagsHeader = li.getResourceTagsHeader();

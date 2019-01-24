@@ -76,7 +76,7 @@ public class BasicLineItemProcessorTest {
 		cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir, "manifestTest.json");
         CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
-        cauLineItem = new CostAndUsageReportLineItem(false, cauReport);
+        cauLineItem = new CostAndUsageReportLineItem(false, null, cauReport);
         
 		Map<String, List<String>> tagKeys = Maps.newHashMap();
 		Map<String, List<String>> tagValues = Maps.newHashMap();
