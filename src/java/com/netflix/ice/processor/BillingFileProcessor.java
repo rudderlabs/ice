@@ -205,6 +205,8 @@ public class BillingFileProcessor extends Poller {
     private void addSavingsData(DateTime month, CostAndUsageData data, Product product, InstancePrices ec2Prices) throws Exception {
     	ReadWriteData usageData = data.getUsage(product);
     	ReadWriteData costData = data.getCost(product);
+    	
+    	double edpDiscount = config.getDiscount(startMilli);
         
     	/*
     	 * Run through all the spot instance usage and add savings data
@@ -218,7 +220,9 @@ public class BillingFileProcessor extends Poller {
     				Double cost = costData.getData(i).get(tg);
     				if (usage != null && cost != null) {
     					double onDemandRate = ec2Prices.getOnDemandRate(tg.region, tg.usageType);
-    					costData.getData(i).put(savingsTag, onDemandRate * usage - cost);
+    					// Don't include the EDP discount on top of the spot savings
+    					double edpRate = onDemandRate * (1 - edpDiscount);
+    					costData.getData(i).put(savingsTag, edpRate * usage - cost);
     				}
     			}
     		}

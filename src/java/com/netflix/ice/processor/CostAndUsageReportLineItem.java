@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.tag.Region;
 
 public class CostAndUsageReportLineItem extends LineItem {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -20,12 +21,20 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int purchaseOptionIndex;
 	private int lineItemTypeIndex;
 	private int lineItemNormalizationFactorIndex;
-	private int productNormalizationSizeFactorIndex;
+	private int productNormalizationSizeFactorIndex; // First appeared in 2017-07
 	private int productUsageTypeIndex;
 	private int publicOnDemandCostIndex;
 	private LineItemType lineItemType;
 	private int pricingUnitIndex;
 	private int reservationArnIndex;
+	private int productRegionIndex;
+	
+	// First appeared in 2018-01 (Net versions added in 2019-01)
+	private int reservationAmortizedUpfrontCostForUsageIndex; 
+	private int reservationRecurringFeeForUsageIndex;
+	private int reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex;
+	private int reservationUnusedQuantityIndex;
+	private int reservationUnusedRecurringFeeIndex;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -54,11 +63,21 @@ public class CostAndUsageReportLineItem extends LineItem {
         		(report.getStartTime().isEqual(costAndUsageNetUnblendedStartDate) || report.getStartTime().isAfter(costAndUsageNetUnblendedStartDate))) {        	
             rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
             costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
+	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontCostForUsage");
+	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "NetRecurringFeeForUsage");
+	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "NetUnusedAmortizedUpfrontFeeForBillingPeriod");
+	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "NetUnusedRecurringFee");
         }
         else {
 	        rateIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedRate" : "UnblendedRate");
 	        costIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedCost" : "UnblendedCost");
+	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "AmortizedUpfrontCostForUsage");
+	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "RecurringFeeForUsage");
+	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "UnusedAmortizedUpfrontFeeForBillingPeriod");
+	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "UnusedRecurringFee");
         }
+    	reservationUnusedQuantityIndex = report.getColumnIndex("reservation", "UnusedQuantity");
+    	
         resourceIndex = report.getColumnIndex("lineItem", "ResourceId");
         reservedIndex = report.getColumnIndex("pricing", "term");
         
@@ -68,12 +87,13 @@ public class CostAndUsageReportLineItem extends LineItem {
         purchaseOptionIndex = report.getColumnIndex("pricing", "PurchaseOption");
         lineItemTypeIndex = report.getColumnIndex("lineItem", "LineItemType");
         lineItemNormalizationFactorIndex = report.getColumnIndex("lineItem", "NormalizationFactor");
-        productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor"); // First appeared in 07-2017
+        productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor");
         productUsageTypeIndex = report.getColumnIndex("product",  "usagetype"); 
         
         publicOnDemandCostIndex = report.getColumnIndex("pricing", "publicOnDemandCost");        
         pricingUnitIndex = report.getColumnIndex("pricing", "unit");
         reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
+        productRegionIndex = report.getColumnIndex("product", "region");
     }
     
     public String toString() {
@@ -122,6 +142,16 @@ public class CostAndUsageReportLineItem extends LineItem {
         
     public BillType getBillType() {
     	return BillType.valueOf(items[billTypeIndex]);
+    }
+    
+    @Override
+    public String getCost() {
+    	if (lineItemType == LineItemType.DiscountedUsage) {
+    		String recurringFee = getRecurringFeeForUsage();
+    		if (!recurringFee.isEmpty())
+    			return recurringFee;
+    	}
+    	return items[costIndex];
     }
 
     @Override
@@ -236,6 +266,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return super.getUsageQuantity();
 	}
 	
+	public int getPublicOnDemandCostIndex() {
+		return publicOnDemandCostIndex;
+	}
+	
 	@Override
 	public String getPublicOnDemandCost() {
 		return items[publicOnDemandCostIndex];
@@ -268,13 +302,23 @@ public class CostAndUsageReportLineItem extends LineItem {
 	public int getReservationArnIndex() {
 		return reservationArnIndex;
 	}
+	
+	public int getProductRegionIndex() {
+		return productRegionIndex;
+	}
+	
+	@Override
+	public Region getProductRegion() {
+		String region = items[productRegionIndex];
+		return (region.isEmpty() || region.equals("global")) ? Region.US_EAST_1 : Region.getRegionByName(region);
+	}
 
 	public String getPricingUnit() {
 		String unit = items[pricingUnitIndex];
 		if (unit.equals("Hrs")) {
 			unit = "hours";
 		}
-		if (unit.equals("GB-Mo")) {
+		else if (unit.equals("GB-Mo")) {
 			unit = "GB";
 		}
 		else {
@@ -301,5 +345,66 @@ public class CostAndUsageReportLineItem extends LineItem {
 		}
 		return i > 0 ? arn.substring(i + 1) : arn;
 	}
+
+	public int getAmortizedUpfrontCostForUsageIndex() {
+		return reservationAmortizedUpfrontCostForUsageIndex;
+	}
+	
+	@Override
+	public String getAmortizedUpfrontCostForUsage() {
+		if (reservationAmortizedUpfrontCostForUsageIndex >= 0)
+			return items[reservationAmortizedUpfrontCostForUsageIndex];
+		return "";
+	}
+	
+	public int getRecurringFeeForUsageIndex() {
+		return reservationRecurringFeeForUsageIndex;
+	}
+	
+	@Override
+	public String getRecurringFeeForUsage() {
+		if (reservationRecurringFeeForUsageIndex >= 0)
+			return items[reservationRecurringFeeForUsageIndex];
+		return "";
+	}
+	
+	public int getUnusedAmortizedUpfrontFeeForBillingPeriodIndex() {
+		return reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex;
+	}
+	
+	public int getUnusedQuantityIndex() {
+		return reservationUnusedQuantityIndex;
+	}
+	
+	public int getUnusedRecurringFeeIndex() {
+		return reservationUnusedRecurringFeeIndex;
+	}
+
+	@Override
+	public Double getUnusedAmortizedUpfrontRate() {
+		// Return the recurring rate for an unused RI
+		if (reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex >= 0 &&
+				reservationUnusedQuantityIndex >= 0) {
+			Double amort = Double.parseDouble(items[reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex]);
+			Double quantity = Double.parseDouble(items[reservationUnusedQuantityIndex]);
+			if (amort != null && quantity != null)
+				return quantity == 0.0 ? 0.0 : amort / quantity;
+		}
+		return null;
+	}
+	
+	@Override
+	public Double getUnusedRecurringRate() {
+		// Return the recurring rate for an unused RI
+		if (reservationUnusedRecurringFeeIndex >= 0 &&
+				reservationUnusedQuantityIndex >= 0) {
+			Double fee = Double.parseDouble(items[reservationUnusedRecurringFeeIndex]);
+			Double quantity = Double.parseDouble(items[reservationUnusedQuantityIndex]);
+			if (fee != null && quantity != null)
+				return quantity == 0.0 ? 0.0 : fee / quantity;
+		}
+		return null;
+	}
+	
 }
 

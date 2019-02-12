@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -37,21 +36,21 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.csvreader.CsvReader;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
-import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 
 public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
-    private static Map<String, Double> ondemandRate = Maps.newHashMap();
     private ProcessorConfig config;
+    private LineItemProcessor lineItemProcessor;
     private ReservationProcessor reservationProcessor;
     private long startMilli;
     private long endMilli;
 
 	public DetailedBillingReportProcessor(ProcessorConfig config) throws IOException {
 		this.config = config;
+		lineItemProcessor = new BasicLineItemProcessor(config.accountService, config.productService, config.reservationService, config.resourceService);
         reservationProcessor = new DetailedBillingReservationProcessor(
 				config.accountService.getPayerAccounts(),
 				config.accountService.getReservationAccounts().keySet(),
@@ -181,7 +180,6 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData, Instances instances) throws Exception {
 
         CsvReader reader = new CsvReader(new InputStreamReader(tempIn), ',');
-        InstancePrices ec2Prices = config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2);
 
         long lineNumber = 0;
         List<String[]> delayedItems = Lists.newArrayList();
@@ -198,7 +196,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, lineItem, costAndUsageData, instances, ec2Prices);
+                    processOneLine(delayedItems, lineItem, costAndUsageData, instances);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -227,13 +225,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, lineItem, costAndUsageData, instances, ec2Prices);
+            processOneLine(null, lineItem, costAndUsageData, instances);
         }
     }
 
-    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances, InstancePrices ec2Prices) {
+    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
 
-        LineItemProcessor.Result result = config.lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, ec2Prices, ondemandRate, instances);
+        LineItemProcessor.Result result = lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, instances, 0.0);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

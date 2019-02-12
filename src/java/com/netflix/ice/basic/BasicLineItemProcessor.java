@@ -22,7 +22,6 @@ import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
-import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.tag.*;
 
 import org.apache.commons.lang.StringUtils;
@@ -40,11 +39,11 @@ import java.util.Map;
 public class BasicLineItemProcessor implements LineItemProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     
-    private AccountService accountService;
-    private ProductService productService;
-    private ReservationService reservationService;
+    protected AccountService accountService;
+    protected ProductService productService;
+    protected ReservationService reservationService;
 
-    private ResourceService resourceService;
+    protected ResourceService resourceService;
     
     public BasicLineItemProcessor(
     		AccountService accountService, 
@@ -57,44 +56,74 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	this.resourceService = resourceService;
     }
     
+    protected boolean ignore(LineItem lineItem) {    	
+        if (StringUtils.isEmpty(lineItem.getAccountId()) ||
+            StringUtils.isEmpty(lineItem.getProduct()) ||
+            StringUtils.isEmpty(lineItem.getCost()))
+            return true;
+
+        Account account = accountService.getAccountById(lineItem.getAccountId());
+        if (account == null)
+            return true;
+
+        Product product = productService.getProductByAwsName(lineItem.getProduct());
+        
+        if (product.isSupport()) {
+        	// Don't try and deal with support. Line items have lots of craziness
+        	return true;
+        }
+        
+    	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
+            StringUtils.isEmpty(lineItem.getOperation()) ||
+            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
+    		return true;
+    	}
+    	
+    	return false;
+    }
+    
+    protected String getUsageTypeStr(String usageTypeStr) {
+        int index = usageTypeStr.indexOf("-");
+        String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
+        Region region = regionShortName.isEmpty() ? null : Region.getRegionByShortName(regionShortName);
+        return region == null ? usageTypeStr : usageTypeStr.substring(index+1);
+    }
+    
+    protected Region getRegion(LineItem lineItem) {
+    	String usageTypeStr = lineItem.getUsageType();
+        int index = usageTypeStr.indexOf("-");
+        String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
+        Region region = regionShortName.isEmpty() ? null : Region.getRegionByShortName(regionShortName);
+        return region == null ? Region.US_EAST_1 : region;
+    }
+    
+    protected void addResourceInstance(LineItem lineItem, Instances instances, TagGroup tg) {
+        // Add all resources to the instance catalog
+        if (instances != null && lineItem.hasResources() && !tg.product.isDataTransfer() && !tg.product.isCloudWatch())
+        	instances.add(lineItem.getResource(), lineItem.getStartMillis(), tg.usageType.toString(), lineItem.getResourceTags(), tg.account, tg.region, tg.zone, tg.product);
+    }
+    
+    protected TagGroup getTagGroup(LineItem lineItem, Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup rg) {
+        return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, rg);
+    }
+    
     public Result process(
     		long startMilli, 
     		boolean processDelayed,
     		boolean isCostAndUsageReport,
     		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
-    		InstancePrices ec2Prices,
-    		Map<String, Double> ondemandRate, 
-    		Instances instances) {
+    		Instances instances,
+    		double edpDiscount) {
     	
-    	// Cost and Usage report-specific checks
-    	LineItemType lit = lineItem.getLineItemType();
-    	if (lit == LineItemType.Tax ||
-    		lit == LineItemType.EdpDiscount ||
-    		lit == LineItemType.RiVolumeDiscount)
+    	if (ignore(lineItem))
     		return Result.ignore;
     	
-        if (StringUtils.isEmpty(lineItem.getAccountId()) ||
-            StringUtils.isEmpty(lineItem.getProduct()) ||
-            StringUtils.isEmpty(lineItem.getCost()))
-            return Result.ignore;
 
         Account account = accountService.getAccountById(lineItem.getAccountId());
-        if (account == null)
-            return Result.ignore;
-
-        Product product = productService.getProductByAwsName(lineItem.getProduct());
+        Region region = getRegion(lineItem);
+        Zone zone = Zone.getZone(lineItem.getZone(), region);
         
-        if (product.isSupport()) {
-        	// Don't try and deal with support. Line items have lots of craziness
-        	return Result.ignore;
-        }
-        
-    	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-            StringUtils.isEmpty(lineItem.getOperation()) ||
-            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
-    		return Result.ignore;
-    	}
     	double usageValue = Double.parseDouble(lineItem.getUsageQuantity());
         double costValue = Double.parseDouble(lineItem.getCost());
 
@@ -105,57 +134,34 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         final String description = lineItem.getDescription();
         		
         ReformedMetaData reformedMetaData = reform(reservationService.getDefaultReservationUtilization(millisStart), 
-        		product, reservationUsage, lineItem.getOperation(), lineItem.getUsageType(), description, costValue,
+        		productService.getProductByAwsName(lineItem.getProduct()), reservationUsage, lineItem.getOperation(), lineItem.getUsageType(), description, costValue,
         		lineItem.getPurchaseOption(), lineItem.getPricingUnit());
-        product = reformedMetaData.product;
-        Operation operation = reformedMetaData.operation;
+        final Product product = reformedMetaData.product;
+        final Operation operation = reformedMetaData.operation;
         final UsageType usageType = reformedMetaData.usageType;
-        Zone zone = Zone.getZone(lineItem.getZone(), reformedMetaData.region);
+        
+        final TagGroup tagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, null);
 
         int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
         int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
 
-        if (instances != null && lineItem.hasResources() && !product.isDataTransfer() && !product.isCloudWatch())
-        	instances.add(lineItem.getResource(), lineItem.getStartMillis(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone, product);
+        // Add all resources to the instance catalog
+        addResourceInstance(lineItem, instances, tagGroup);
 
-        Result result = Result.hourly;
-        if (product.isEc2Instance()) {
-            result = processEc2Instance(processDelayed, reservationUsage, operation, zone);
-//            if (instances != null && lineItem.hasResources())
-//            	instances.add(lineItem.getResource(), usageType.toString(), lineItem.getResourceTags(), account, reformedMetaData.region, zone);
+        final Result result = getResult(lineItem, startMilli, tagGroup, processDelayed, reservationUsage, costValue);
+        
+        
+        // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
+        if (lineItem.getLineItemType() == LineItemType.RIFee) {
+        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, operation, usageType, null, lineItem.getReservationId());
+        	addUnusedReservationRate(lineItem, costAndUsageData, tgri);
         }
-        else if (product.isRedshift()) {
-            result = processRedshift(processDelayed, reservationUsage, operation, costValue);
-            //logger.info("Process Redshift " + operation + " " + costValue + " returned: " + result);
-        }
-        else if (product.isDataTransfer()) {
-            result = processDataTranfer(processDelayed, usageType);
-        }
-        else if (product.isCloudHsm()) {
-            result = processCloudhsm(processDelayed, usageType);
-        }
-        else if (product.isEbs()) {
-            result = processEbs(usageType);
-        }
-        else if (product.isRds() || product.isRdsInstance()) {
-            result = processRds(usageType, processDelayed, reservationUsage, operation, costValue);
-//            if (startIndex == 0 && reservationUsage) {
-//            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
-//            }
-        }
+
 
         if (result == Result.ignore || result == Result.delay)
             return result;
 
-        if (usageType.name.startsWith("TimedStorage-ByteHrs"))
-            result = Result.daily;
-
         boolean monthlyCost = StringUtils.isEmpty(description) ? false : description.toLowerCase().contains("-month");
-
-        ReadWriteData usageData = costAndUsageData.getUsage(null);
-        ReadWriteData costData = costAndUsageData.getCost(null);
-        ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(product);
-        ReadWriteData costDataOfProduct = costAndUsageData.getCost(product);
 
         if (result == Result.daily) {
             millisStart = new DateTime(millisStart, DateTimeZone.UTC).withTimeAtStartOfDay().getMillis();
@@ -164,7 +170,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (result == Result.monthly) {
             startIndex = 0;
-            endIndex = usageData.getNum();
+            endIndex = costAndUsageData.getUsage(null).getNum();
             int numHoursInMonth = new DateTime(startMilli, DateTimeZone.UTC).dayOfMonth().getMaximumValue() * 24;
             usageValue = usageValue * endIndex / numHoursInMonth;
             costValue = costValue * endIndex / numHoursInMonth;
@@ -173,16 +179,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (monthlyCost) {
             int numHoursInMonth = new DateTime(startMilli, DateTimeZone.UTC).dayOfMonth().getMaximumValue() * 24;
             usageValue = usageValue * numHoursInMonth;
-        }
-
-        TagGroup tagGroup = null;
-        TagGroup resourceTagGroup = null;
-        String reservationId = lineItem.getReservationId();
-        if (operation instanceof Operation.ReservationOperation && !reservationId.isEmpty()) {
-        	tagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null, reservationId);
-        }
-        else {
-        	tagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, null);
         }
 
         int[] indexes;
@@ -197,90 +193,129 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             indexes = new int[]{startIndex};
         }
 
-        if (costValue > 0 && !reservationUsage && product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances) {
-            String key = operation + "|" + tagGroup.region + "|" + usageType;
-            ondemandRate.put(key, costValue/usageValue);
-        }
-
+        TagGroup resourceTagGroup = null;
         if (resourceService != null) {
             if (lineItem.hasResources() && !lineItem.getResource().isEmpty()) {
             	// Line item has a resource ID that is not empty and the resource service is enabled.
-                ResourceGroup resourceGroup = resourceService.getResourceGroup(account, reformedMetaData.region, product, lineItem, millisStart);
-                if (tagGroup instanceof TagGroupRI) {
-                	resourceTagGroup = TagGroupRI.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup, reservationId);
-                }
-                else {
-                	resourceTagGroup = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, resourceGroup);
-                }
-            }
-        	
-            if (usageDataOfProduct == null) {
-                usageDataOfProduct = new ReadWriteData();
-                costDataOfProduct = new ReadWriteData();
-                costAndUsageData.putUsage(product, usageDataOfProduct);
-                costAndUsageData.putCost(product, costDataOfProduct);
+                ResourceGroup resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
+                resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
             }
         }
-
-        for (int i : indexes) {
-            if (!product.isMonitor()) {
-                Map<TagGroup, Double> usages = usageData.getData(i);
-                Map<TagGroup, Double> costs = costData.getData(i);
-                //
-                // For DBR reports, Redshift and RDS have cost as a monthly charge, but usage appears hourly.
-                //		EC2 has cost reported in each usage lineitem.
-                // For CAU reports, EC2, Redshift, and RDS have cost as a monthly charge, but usage appears hourly.
-                // 	so unlike EC2, we have to process the monthly line item to capture the cost,
-                // 	but we don't want to add the monthly line items to the usage.
-                // The reservation processor handles determination on what's unused.
-                if (result != Result.monthly || !(product.isRedshift() || product.isRdsInstance() || (product.isEc2Instance() && isCostAndUsageReport))) {
-                	addValue(usages, tagGroup, usageValue,  true);                	
-                }
-
-                addValue(costs, tagGroup, costValue, true);
-            }
-
-            if (resourceTagGroup != null) {
-                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-
-                if (!((product.isRedshift() || product.isRds()) && result == Result.monthly)) {
-                	addValue(usagesOfResource, resourceTagGroup, usageValue, !product.isMonitor());
-                }
-                
-                addValue(costsOfResource, resourceTagGroup, costValue, !product.isMonitor());
-                
-                // Collect statistics on tag coverage
-            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
-            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
-            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
-            }
-            else if (resourceService != null) {
-            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
-                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-
-                TagGroup tg = TagGroup.getTagGroup(account, reformedMetaData.region, zone, product, operation, usageType, ResourceGroup.getResourceGroup(product.name, true));
-            	addValue(usagesOfResource, tg, usageValue, !product.isMonitor());
-                addValue(costsOfResource, tg, costValue, !product.isMonitor());           	
-            }
-        }
-
+        
+        addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount);
         return result;
     }
 
-    private void addValue(Map<TagGroup, Double> map, TagGroup tagGroup, double value, boolean add) {
+    protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
+    		CostAndUsageData costAndUsageData, double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount) {
+        final ReadWriteData usageData = costAndUsageData.getUsage(null);
+        final ReadWriteData costData = costAndUsageData.getCost(null);
+        ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(tagGroup.product);
+        ReadWriteData costDataOfProduct = costAndUsageData.getCost(tagGroup.product);
+        final Product product = tagGroup.product;
+
+        if (resourceService != null) {
+            if (usageDataOfProduct == null) {
+                usageDataOfProduct = new ReadWriteData();
+                costDataOfProduct = new ReadWriteData();
+                costAndUsageData.putUsage(tagGroup.product, usageDataOfProduct);
+                costAndUsageData.putCost(tagGroup.product, costDataOfProduct);
+            }
+        }
+        
+        for (int i : indexes) {
+            Map<TagGroup, Double> usages = usageData.getData(i);
+            Map<TagGroup, Double> costs = costData.getData(i);
+            //
+            // For DBR reports, Redshift and RDS have cost as a monthly charge, but usage appears hourly.
+            //		EC2 has cost reported in each usage lineitem.
+            // The reservation processor handles determination on what's unused.
+            if (!monthly || !(product.isRedshift() || product.isRdsInstance())) {
+            	addValue(usages, tagGroup, usageValue);                	
+            }
+
+            addValue(costs, tagGroup, costValue);
+            
+            if (resourceService != null) {
+	            if (resourceTagGroup != null) {
+	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
+	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+	
+	                if (!((product.isRedshift() || product.isRds()) && monthly)) {
+	                	addValue(usagesOfResource, resourceTagGroup, usageValue);
+	                }
+	                
+	                addValue(costsOfResource, resourceTagGroup, costValue);
+	                
+	                // Collect statistics on tag coverage
+	            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
+	            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
+	            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
+	            }
+	            else {
+	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
+	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
+	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+	
+	                TagGroup tg = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, tagGroup.operation, tagGroup.usageType, ResourceGroup.getResourceGroup(product.name, true));
+	            	addValue(usagesOfResource, tg, usageValue);
+	                addValue(costsOfResource, tg, costValue);           	
+	            }
+            }
+        }
+    }
+
+    protected void addValue(Map<TagGroup, Double> map, TagGroup tagGroup, double value) {
         Double oldV = map.get(tagGroup);
         if (oldV != null) {
-            value = add ? value + oldV : value;
+            value += oldV;
         }
 
         map.put(tagGroup, value);
     }
+    
+    protected void addUnusedReservationRate(LineItem lineItem,
+    		CostAndUsageData costAndUsageData,
+    		TagGroupRI tg) {    	
+        return;        
+    }
 
+    protected Result getResult(LineItem lineItem, long startMilli, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {
+        Result result = Result.hourly;
+        if (tg.product.isEc2Instance()) {
+            result = processEc2Instance(processDelayed, reservationUsage, tg.operation, tg.zone);
+        }
+        else if (tg.product.isRedshift()) {
+            result = processRedshift(processDelayed, reservationUsage, tg.operation, costValue);
+            //logger.info("Process Redshift " + operation + " " + costValue + " returned: " + result);
+        }
+        else if (tg.product.isDataTransfer()) {
+            result = processDataTranfer(processDelayed, tg.usageType);
+        }
+        else if (tg.product.isCloudHsm()) {
+            result = processCloudhsm(processDelayed, tg.usageType);
+        }
+        else if (tg.product.isEbs()) {
+            result = processEbs(tg.usageType);
+        }
+        else if (tg.product.isRds() || tg.product.isRdsInstance()) {
+            result = processRds(tg.usageType, processDelayed, reservationUsage, tg.operation, costValue);
+//            if (startIndex == 0 && reservationUsage) {
+//            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
+//            }
+        }
+        
+        if (tg.usageType.name.startsWith("TimedStorage-ByteHrs"))
+            result = Result.daily;
+
+        return result;
+    }
+    
     private Result processEc2Instance(boolean processDelayed, boolean reservationUsage, Operation operation, Zone zone) {
         if (!processDelayed && zone == null && operation.isBonus() && reservationUsage)
-            return Result.ignore; // Ignore monthly cost on no upfront and partial upfront reservations
+            return Result.delay; // Delay monthly cost on no upfront and partial upfront reservations
+        else if (processDelayed && zone == null && operation.isBonus() && reservationUsage)
+            return Result.ignore; // Ignore monthly cost on no upfront and partial upfront reservations - We'll process the unused rates now if CUR
         else
             return Result.hourly;
     }
@@ -296,7 +331,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    private Result processDataTranfer(boolean processDelayed, UsageType usageType) {
+    protected Result processDataTranfer(boolean processDelayed, UsageType usageType) {
         if (!processDelayed && usageType.name.contains("PrevMon-DataXfer-"))
             return Result.delay;
         else if (processDelayed && usageType.name.contains("PrevMon-DataXfer-"))
@@ -305,7 +340,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    private Result processCloudhsm(boolean processDelayed, UsageType usageType) {
+    protected Result processCloudhsm(boolean processDelayed, UsageType usageType) {
         if (!processDelayed && usageType.name.contains("CloudHSMUpfront"))
             return Result.delay;
         else if (processDelayed && usageType.name.contains("CloudHSMUpfront"))
@@ -314,7 +349,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    private Result processEbs(UsageType usageType) {
+    protected Result processEbs(UsageType usageType) {
         if (usageType.name.startsWith("EBS:SnapshotUsage"))
             return Result.daily;
         else
@@ -350,16 +385,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         InstanceOs os = null;
         InstanceDb db = null;
 
-        // first try to retrieve region info
-        int index = usageTypeStr.indexOf("-");
-        String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
-        Region region = regionShortName.isEmpty() ? null : Region.getRegionByShortName(regionShortName);
-        if (region != null) {
-            usageTypeStr = usageTypeStr.substring(index+1);
-        }
-        else {
-            region = Region.US_EAST_1;
-        }
+        usageTypeStr = getUsageTypeStr(usageTypeStr);
 
         if (operationStr.equals("EBS Snapshot Copy")) {
             product = productService.getProductByName(Product.ebs);
@@ -377,7 +403,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if ((usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
         	boolean spot = usageTypeStr.startsWith("SpotUsage");
-            index = usageTypeStr.indexOf(":");
+            int index = usageTypeStr.indexOf(":");
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             if (reservationUsage && product.isEc2()) {
@@ -458,7 +484,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (usageTypeStr.startsWith("HeavyUsage")) {
         	// If DBR report: Line item for hourly "No Upfront" or "Partial Upfront" EC2 or monthly "No Upfront" or "Partial Upfront" for Redshift and RDS
         	// If Cost and Usage report: monthly "No Upfront" or "Partial Upfront" for EC2, RDS, and Redshift
-            index = usageTypeStr.indexOf(":");
+            int index = usageTypeStr.indexOf(":");
             if (index < 0) {
                 usageTypeStr = "m1.small";
             }
@@ -516,22 +542,22 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 //            }
         }
 
-        return new ReformedMetaData(region, product, operation, usageType);
+        return new ReformedMetaData(product, operation, usageType);
     }
 
-    private InstanceOs getInstanceOs(String operationStr) {
+    protected InstanceOs getInstanceOs(String operationStr) {
         int index = operationStr.indexOf(":");
         String osStr = index > 0 ? operationStr.substring(index) : "";
         return InstanceOs.withCode(osStr);
     }
 
-    private InstanceDb getInstanceDb(String operationStr) {
+    protected InstanceDb getInstanceDb(String operationStr) {
         int index = operationStr.indexOf(":");
         String osStr = index > 0 ? operationStr.substring(index) : "";
         return InstanceDb.withCode(osStr);
     }
 
-    private Operation getOperation(String operationStr, boolean reservationUsage, ReservationUtilization utilization) {
+    protected Operation getOperation(String operationStr, boolean reservationUsage, ReservationUtilization utilization) {
         if (operationStr.startsWith("RunInstances") ||
         		operationStr.startsWith("RunComputeNode") ||
         		operationStr.startsWith("CreateDBInstance")) {
@@ -540,7 +566,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return null;
     }
     
-    private static final Map<String, String> redshiftUsageTypeMap = Maps.newHashMap();
+    protected static final Map<String, String> redshiftUsageTypeMap = Maps.newHashMap();
     static {
     	redshiftUsageTypeMap.put("dw.hs1.xlarge", "ds1.xlarge");
     	redshiftUsageTypeMap.put("dw1.xlarge", "ds1.xlarge");
@@ -550,26 +576,24 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	redshiftUsageTypeMap.put("dw2.8xlarge", "dc1.8xlarge");
     }
 
-    private String currentRedshiftUsageType(String usageType) {
+    protected String currentRedshiftUsageType(String usageType) {
     	if (redshiftUsageTypeMap.containsKey(usageType))
     		return redshiftUsageTypeMap.get(usageType);
     	return usageType;
     }
     
     protected static class ReformedMetaData{
-        public final Region region;
         public final Product product;
         public final Operation operation;
         public final UsageType usageType;
-        public ReformedMetaData(Region region, Product product, Operation operation, UsageType usageType) {
-            this.region = region;
+        public ReformedMetaData(Product product, Operation operation, UsageType usageType) {
             this.product = product;
             this.operation = operation;
             this.usageType = usageType;
         }
         
         public String toString() {
-            return "\"" + region + "\",\"" + product + "\",\"" + operation + "\",\"" + usageType + "\"";
+            return "\"" + product + "\",\"" + operation + "\",\"" + usageType + "\"";
 
         }
     }

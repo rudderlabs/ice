@@ -46,7 +46,6 @@ public class ProcessorConfig extends Config {
     public final SortedMap<DateTime,Double> edpDiscounts;
 
     public final ReservationService reservationService;
-    public final LineItemProcessor lineItemProcessor;
     public final PriceListService priceListService;
     public final boolean useBlended;
     public final boolean processOnce;
@@ -70,7 +69,6 @@ public class ProcessorConfig extends Config {
      * @param productService (required)
      * @param reservationService (required)
      * @param resourceService (optional)
-     * @param lineItemProcessor (required)
      * @param randomizer (optional)
      */
     public ProcessorConfig(
@@ -80,17 +78,14 @@ public class ProcessorConfig extends Config {
             ProductService productService,
             ReservationService reservationService,
             ResourceService resourceService,
-            LineItemProcessor lineItemProcessor,
             PriceListService priceListService,
             boolean compress) throws Exception {
 
         super(properties, credentialsProvider, accountService, productService, resourceService);
 
         if (reservationService == null) throw new IllegalArgumentException("reservationService must be specified");
-        if (lineItemProcessor == null) throw new IllegalArgumentException("lineItemProcessor must be specified");
 
         this.reservationService = reservationService;
-        this.lineItemProcessor = lineItemProcessor;
         this.priceListService = priceListService;
 
         billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
@@ -159,12 +154,17 @@ public class ProcessorConfig extends Config {
     
     /**
      * Return the EDP discount for the requested time
+     * E.G. a 5% discount will return 0.05
      * @param dt
      * @return discount
      */
-    public Double getDiscount(DateTime dt) {
+    public double getDiscount(DateTime dt) {
     	SortedMap<DateTime, Double> subMap = edpDiscounts.headMap(dt.plusSeconds(1));
     	return subMap.size() == 0 ? 0.0 : subMap.get(subMap.lastKey());
+    }
+
+    public double getDiscount(long startMillis) {
+    	return getDiscount(new DateTime(startMillis));
     }
 
     /**
@@ -172,7 +172,7 @@ public class ProcessorConfig extends Config {
      * @param dt
      * @return discount
      */
-    public Double getDiscountedCost(DateTime dt, Double cost) {
+    public double getDiscountedCost(DateTime dt, Double cost) {
     	return cost * (1 - getDiscount(dt));
     }
 

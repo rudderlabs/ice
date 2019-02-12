@@ -61,7 +61,6 @@ public class Product extends Tag {
 	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
 	public static final String redshift     = "Redshift";
 	public static final String s3           = "Simple Storage Service";
-	public static final String monitor      = "Monitor"; // seems to refer to EC2 metrics, but I've never seen this in any reports -jimroth
     /*
      * ICE-defined product sub-category strings used to test identity in the "is" methods.
      */
@@ -198,10 +197,6 @@ public class Product extends Tag {
     
     public boolean isS3() {
     	return name.equals(getOverride(s3));
-    }
-    
-    public boolean isMonitor() {
-    	return name.equals(getOverride(monitor));
     }
     
     public boolean isEbs() {

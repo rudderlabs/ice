@@ -333,6 +333,13 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -407,6 +414,13 @@ public class ReservationProcessorTest {
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.112),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 
@@ -444,6 +458,13 @@ public class ReservationProcessorTest {
 		usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{				
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -499,6 +520,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 * 1.0 - 0.02352),
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
 			};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{				
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
@@ -560,6 +588,14 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 2.0 * -0.02352),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*
@@ -605,6 +641,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 2.0 * (0.175 - 0.095)),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -641,6 +684,13 @@ public class ReservationProcessorTest {
 		usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -685,6 +735,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 2.0 * (0.175 - 0.095)),
 			};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
@@ -743,6 +800,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesFixed, "m1.large", 0.0),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -784,6 +848,12 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.044 * 4.0 - 0.094),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.094),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -824,6 +894,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedPartial, "m1.large", 4.0 * 0.014),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsPartial, "m1.large", 4.0 * (0.044 - 0.014 - 0.01)),
 			};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartial, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.01),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartial, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.014),
+		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
@@ -881,6 +958,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -932,6 +1016,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.xlarge", 0.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*
@@ -968,6 +1059,12 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 0.0223),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*
@@ -1004,6 +1101,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 2.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartial, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 0.024),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartial, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 0.018),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*
@@ -1045,6 +1149,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsPartial, "c4.2xlarge", 0.398 - 0.121 - 0.121),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.121),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
@@ -1114,6 +1225,13 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.savingsPartial, "t2.medium.windows", 0.082 - 0.033 - 0.033),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.bonusReservedInstancesPartial, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.033),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.upfrontAmortizedPartial, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.033),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	@Test
@@ -1170,6 +1288,15 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(1), Region.EU_WEST_1, null, Operation.lentInstancesPartial, "c4.xlarge", 0.5 * 0.039),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.5 * 0.039),
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.5 * 0.039),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5 * 0.039),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5 * 0.039),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}	
 
 	@Test
@@ -1218,6 +1345,15 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, Operation.savingsPartial, "c3.4xlarge", 0.84 - 0.283 - 0.199 + 0.84 - 0.298 - 0.209),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartial, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 0.199),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartial, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 0.283),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartial, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 0.209),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartial, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 0.298),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	@Test
@@ -1290,6 +1426,21 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, Operation.savingsPartial, "c4.xlarge", 1.0 * (0.199 - 0.0674 - 0.067) + 8.0 * (0.199 - 0.0575 - 0.057)),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");
+		
+		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
+		costData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 0.067),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 0.0674),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0 * 0.0575),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0 * 0.0674),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0 * 0.067),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0 * 0.0575),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.upfrontAmortizedPartial, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0 * 0.0575),
+		};
+		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 	
 	/*

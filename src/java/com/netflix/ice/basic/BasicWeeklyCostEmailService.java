@@ -300,9 +300,6 @@ public class BasicWeeklyCostEmailService extends Poller {
     }
 
     private List<ResourceGroup> getResourceGroups(ApplicationGroup appGroup, Product product) {
-        if (product.isMonitor())
-            product = config.productService.getProductByName(Product.ec2);
-
         List<List<Product>> products = config.resourceService.getProductsWithResources();
         Product productForResource = null;
         for (List<Product> productList: products) {

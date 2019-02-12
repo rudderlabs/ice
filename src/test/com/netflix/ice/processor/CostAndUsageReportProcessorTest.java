@@ -48,11 +48,12 @@ public class CostAndUsageReportProcessorTest {
 	
 	@Test
 	public void testLineItem() throws IOException {
-		String cau1 = "somelineitemid,2017-08-01T00:00:00Z/2017-08-01T01:00:00Z,,AWS,Anniversary,123456789012,2017-08-01T00:00:00Z,2017-09-01T00:00:00Z,234567890123,DiscountedUsage,2017-08-01T00:00:00Z,2017-08-01T01:00:00Z,AmazonEC2,USW2-BoxUsage:c3.4xlarge,RunInstances,us-west-2a,i-02345901991a472d6,1.00000000,32.0,32.0,USD,0.0000000000,0.00000000,0.2632173639,0.26321736,\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\",,Amazon Elastic Compute Cloud,,,,,,,,,,2.8 GHz,,Yes,,,,,,,,,,,,55,,,Yes,,,,,,,,,,,,,Compute optimized,c3.4xlarge,,,No License required,US West (Oregon),AWS Region,,,,,,,30 GiB,,,,,,High,32,Linux,RunInstances,,,Intel Xeon E5-2680 v2 (Ivy Bridge),,NA,,64-bit,Intel AVX; Intel Turbo,Compute Instance,,,,,,,,,,,,AmazonEC2,9GHZN7VCNV2MGV4N,,,,2 x 160 SSD,,,,,Shared,,,,,,USW2-BoxUsage:c3.4xlarge,16,,,,,,1yr,standard,Partial Upfront,0.8400000000,0.8400000000,Reserved,Hrs,,,,arn:aws:ec2:us-west-2:123456789012:reserved-instances/aaaaaaaa-1942-qqqq-xxxx-cec03ddb1234,,,,,,,,,,";
+		String cau1 = "somelineitemid,2017-08-01T00:00:00Z/2017-08-01T01:00:00Z,,AWS,Anniversary,123456789012,2017-08-01T00:00:00Z,2017-09-01T00:00:00Z,234567890123,DiscountedUsage,2017-08-01T00:00:00Z,2017-08-01T01:00:00Z,AmazonEC2,USW2-BoxUsage:c3.4xlarge,RunInstances,us-west-2a,i-02345901991a472d6,1.00000000,32.0,32.0,USD,0.0000000000,0.00000000,0.2632173639,0.26321736,\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\",,Amazon Elastic Compute Cloud,,,,,,,,,,2.8 GHz,,Yes,,,,,,,,,,,,,55,,,Yes,,,,,,,,,,,,,,Compute optimized,c3.4xlarge,c3,,,No License required,US West (Oregon),AWS Region,,,,,,,30 GiB,,,,,,High,32,Linux,RunInstances,,,Intel Xeon E5-2680 v2 (Ivy Bridge),,NA,,64-bit,Intel AVX; Intel Turbo,Compute Instance,,,,,us-west-2,,,,,,,,AmazonEC2,Amazon Elastic Compute Cloud,9GHZN7VCNV2MGV4N,,,,2 x 160 SSD,,,,,Shared,,,,,,USW2-BoxUsage:c3.4xlarge,16,,,,,,1yr,standard,Partial Upfront,0.8400000000,0.8400000000,Reserved,Hrs,,,arn:aws:ec2:us-west-2:123456789012:reserved-instances/aaaaaaaa-1942-qqqq-xxxx-cec03ddb1234,,,,,,,,,,";
 		LineItem lineItem = getLineItem(cau1);
 		
 		assertEquals("AccountID wrong", "234567890123", lineItem.getAccountId());	    
 		assertEquals("Product is wrong", "Amazon Elastic Compute Cloud", lineItem.getProduct());	    
+		assertEquals("Region is wrong", "us-west-2", lineItem.getProductRegion().name);	    
 		assertEquals("Zone is wrong", "us-west-2a", lineItem.getZone());	    
 		assertEquals("Reserved is wrong", "Reserved", lineItem.getReserved());	    
 		assertEquals("Description is wrong", "\"Linux/UNIX (Amazon VPC) c3.4xlarge reserved instance applied\"", lineItem.getDescription());	    

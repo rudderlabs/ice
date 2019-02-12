@@ -213,7 +213,6 @@ class BootStrap {
 					properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));
 									
 				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
-				LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
 					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 
@@ -227,7 +226,6 @@ class BootStrap {
                         productService,
                         reservationService,
                         resourceService,
-                        lineItemProcessor,
 						priceListService,
 						true)
 				processorConfig.start();

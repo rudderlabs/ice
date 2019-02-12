@@ -6,6 +6,8 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
+import com.netflix.ice.tag.Region;
+
 public abstract class LineItem {
     public static final DateTimeFormatter amazonBillingDateFormat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.UTC);
     public static final DateTimeFormatter amazonBillingDateFormat2 = DateTimeFormat.forPattern("yyyy/MM/dd HH:mm:ss").withZone(DateTimeZone.UTC);
@@ -135,7 +137,7 @@ public abstract class LineItem {
 	}
 
 	public String getPublicOnDemandCost() {
-		return null;
+		return "";
 	}
 
 	public int getAccountIdIndex() {
@@ -224,7 +226,7 @@ public abstract class LineItem {
 		if (usageType.startsWith("AW-HW-1")) {
 			// AmazonWorkSpaces
 		}
-    	if (usageType.contains("Lambda-GB-Second") || usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB")) {
+		else if (usageType.contains("Lambda-GB-Second") || usageType.contains("Bytes") || usageType.contains("ByteHrs") || getDescription().contains("GB")) {
             unit = "GB";
     	}
         
@@ -237,4 +239,35 @@ public abstract class LineItem {
 	public String getReservationId() {
 		return "";
 	}
+	
+	/**
+	 * reservation/AmortizedUpfrontCostForUsage() appeared 2018-01 in CUR files
+	 * reservation/NetAmortizedUpfrontCostForUsage() appeared 2019-01 in CUR files
+	 * @return
+	 */
+	public String getAmortizedUpfrontCostForUsage() {
+		return "";
+	}
+	
+	/**
+	 * reservation/RecurringFeeForUsage appeared 2018-01 in CUR files
+	 * reservation/NetRecurringFeeForUsage appeared 2019-01 in CUR files
+	 * @return recurring fee
+	 */
+	public String getRecurringFeeForUsage() {
+		return "";
+	}
+	
+	public Double getUnusedAmortizedUpfrontRate() {
+		return null;
+	}
+	
+	public Double getUnusedRecurringRate() {
+		return null;
+	}
+
+	public Region getProductRegion() {
+		return null;
+	}
+
 }

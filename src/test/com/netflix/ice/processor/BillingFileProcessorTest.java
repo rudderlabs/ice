@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -30,7 +31,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
-import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.basic.BasicLineItemProcessorTest;
 import com.netflix.ice.basic.BasicLineItemProcessorTest.PricingTerm;
 import com.netflix.ice.basic.BasicLineItemProcessorTest.ProcessTest;
@@ -101,7 +101,6 @@ public class BillingFileProcessorTest {
 	interface ReportTest {
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				InstancePrices ec2Prices,
 				Instances instances) throws Exception;
 		
 		public ReservationProcessor getReservationProcessor();
@@ -111,7 +110,6 @@ public class BillingFileProcessorTest {
 		
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				InstancePrices ec2Prices,
 				Instances instances) throws Exception {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
@@ -131,7 +129,7 @@ public class BillingFileProcessorTest {
 	        	return 0L;
 	        }
 	        return cauProcessor.processReport(report.getStartTime(), report, files,
-	        		costAndUsageData, ec2Prices, instances);
+	        		costAndUsageData, instances);
 		}
 		
 		public ReservationProcessor getReservationProcessor() {
@@ -143,7 +141,6 @@ public class BillingFileProcessorTest {
 
 		public long Process(ProcessorConfig config, DateTime start,
 				CostAndUsageData costAndUsageData,
-				InstancePrices ec2Prices,
 				Instances instances) throws Exception {
 			
 			DetailedBillingReportProcessor dbrProcessor = new DetailedBillingReportProcessor(config);
@@ -191,10 +188,9 @@ public class BillingFileProcessorTest {
 		            ProductService productService,
 		            ReservationService reservationService,
 		            ResourceService resourceService,
-		            LineItemProcessor lineItemProcessor,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, credentialsProvider, accountService, productService, reservationService, resourceService, lineItemProcessor, priceListService, compress);
+				super(properties, credentialsProvider, accountService, productService, reservationService, resourceService, priceListService, compress);
 			}
 			
 			@Override
@@ -210,7 +206,6 @@ public class BillingFileProcessorTest {
 										productService,
 										reservationService,
 										null,
-										new BasicLineItemProcessor(accountService, productService, reservationService, null),
 										priceListService,
 										false);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
@@ -226,10 +221,8 @@ public class BillingFileProcessorTest {
 		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		reservationService.updateReservations(reservations, accountService, startMilli, productService);
-		
-		InstancePrices ec2Prices = priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2);
-		
-		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, ec2Prices, instances);
+				
+		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    
         int hours = (int) ((endMilli - startMilli)/3600000L);
         logger.info("cut hours to " + hours);
@@ -434,13 +427,13 @@ public class BillingFileProcessorTest {
 		BasicLineItemProcessorTest.init(accountService);
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
-		lineItemTest.newBasicLineItemProcessor();
-		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront", "reserved-instances/2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront", "reserved-instances/2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		String[] tag = new String[] { "Account1", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge", null };
 		ProcessTest test = lineItemTest.new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
 		
-		BasicLineItemProcessorTest.cauLineItem.setItems(test.cauItems);
-		CostAndUsageData costAndUsageData = lineItemTest.runProcessTest(test, BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true, priceListService);
+		BasicLineItemProcessorTest.cauLineItem.setItems(test.line.getCauLine(BasicLineItemProcessorTest.cauLineItem));
+		long startMilli = new DateTime("2017-06-01T00:00:00Z", DateTimeZone.UTC).getMillis();
+		CostAndUsageData costAndUsageData = test.runProcessTest(BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true, startMilli);
 
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{

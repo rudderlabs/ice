@@ -62,7 +62,7 @@ public class DetailedBillingReportLineItem extends LineItem {
     
     @Override
     public String[] getResourceTagsHeader() {
-    	return Arrays.copyOfRange(header, resourceIndex + 1, header.length);
+    	return resourceIndex < header.length ? Arrays.copyOfRange(header, resourceIndex + 1, header.length) : new String[]{};
     }
 
     @Override

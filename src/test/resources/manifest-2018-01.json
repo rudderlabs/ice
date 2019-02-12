@@ -1,5 +1,5 @@
 {
-  "assemblyId":"abcdefgh-e98d-48d6-86b4-29967358fe6c",
+  "assemblyId":"abcdefgh-a820-4572-8c9e-df096ab9b3c4",
   "account":"123456789012",
   "columns":[{
     "category":"identity",
@@ -111,6 +111,9 @@
     "name":"cacheEngine"
   },{
     "category":"product",
+    "name":"cacheMemorySizeGb"
+  },{
+    "category":"product",
     "name":"caseSeverityresponseTimes"
   },{
     "category":"product",
@@ -193,6 +196,9 @@
   },{
     "category":"product",
     "name":"fromLocationType"
+  },{
+    "category":"product",
+    "name":"georegioncode"
   },{
     "category":"product",
     "name":"gpu"
@@ -438,13 +444,34 @@
     "name":"unit"
   },{
     "category":"reservation",
+    "name":"AmortizedUpfrontCostForUsage"
+  },{
+    "category":"reservation",
+    "name":"AmortizedUpfrontFeeForBillingPeriod"
+  },{
+    "category":"reservation",
+    "name":"EffectiveCost"
+  },{
+    "category":"reservation",
+    "name":"EndTime"
+  },{
+    "category":"reservation",
+    "name":"ModificationStatus"
+  },{
+    "category":"reservation",
     "name":"NormalizedUnitsPerReservation"
   },{
     "category":"reservation",
     "name":"NumberOfReservations"
   },{
     "category":"reservation",
+    "name":"RecurringFeeForUsage"
+  },{
+    "category":"reservation",
     "name":"ReservationARN"
+  },{
+    "category":"reservation",
+    "name":"StartTime"
   },{
     "category":"reservation",
     "name":"TotalReservedNormalizedUnits"
@@ -455,6 +482,21 @@
     "category":"reservation",
     "name":"UnitsPerReservation"
   },{
+    "category":"reservation",
+    "name":"UnusedAmortizedUpfrontFeeForBillingPeriod"
+  },{
+    "category":"reservation",
+    "name":"UnusedNormalizedUnitQuantity"
+  },{
+    "category":"reservation",
+    "name":"UnusedQuantity"
+  },{
+    "category":"reservation",
+    "name":"UnusedRecurringFee"
+  },{
+    "category":"reservation",
+    "name":"UpfrontValue"
+  },{
     "category":"resourceTags",
     "name":"aws:createdBy"
   },{
@@ -463,29 +505,17 @@
   },{
     "category":"resourceTags",
     "name":"user:Email"
-  },{
-    "category":"resourceTags",
-    "name":"user:BusinessUnit"
-  },{
-    "category":"resourceTags",
-    "name":"user:Name"
-  },{
-    "category":"resourceTags",
-    "name":"user:Project"
-  },{
-    "category":"resourceTags",
-    "name":"user:Product"
   }],
   "charset":"UTF-8",
   "compression":"GZIP",
   "contentType":"text/csv",
-  "reportId":"16040782d03abcdefgh144edc39a0c0011bb0760f3c9dc00432f4c450045c9c",
+  "reportId":"12345678d03cba8c8123144edc39a0c0011bb0760f3c9dc00432f4c450045c9c",
   "reportName":"hourly-cost-and-usage",
   "billingPeriod":{
-    "start":"20170801T000000.000Z",
-    "end":"20170901T000000.000Z"
+    "start":"20180101T000000.000Z",
+    "end":"20180201T000000.000Z"
   },
   "bucket":"cost-and-usage-reports",
-  "reportKeys":["hourly/hourly-cost-and-usage/20170801-20170901/abcdefgh-e98d-48d6-86b4-29967358fe6c/hourly-cost-and-usage-01.csv.gz","hourly/hourly-cost-and-usage/20170801-20170901/abcdefgh-e98d-48d6-86b4-29967358fe6c/hourly-cost-and-usage-02.csv.gz"],
+  "reportKeys":[],
   "additionalArtifactKeys":[]
-  }
+}

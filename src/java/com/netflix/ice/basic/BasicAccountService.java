@@ -42,6 +42,7 @@ public class BasicAccountService implements AccountService {
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
 
+    // Used only for testing
     public BasicAccountService(List<Account> accounts,
     			Map<Account, List<Account>> payerAccounts,
     			Map<Account, Set<String>> reservationAccounts,

@@ -11,7 +11,6 @@ import org.junit.Test;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.netflix.ice.basic.BasicAccountService;
-import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
@@ -29,11 +28,10 @@ public class ProcessorConfigTest {
 				AccountService accountService, ProductService productService,
 				ReservationService reservationService,
 				ResourceService resourceService,
-				LineItemProcessor lineItemProcessor,
 				PriceListService priceListService, boolean compress)
 				throws Exception {
 			super(properties, credentialsProvider, accountService, productService,
-					reservationService, resourceService, lineItemProcessor,
+					reservationService, resourceService,
 					priceListService, compress);
 		}
 		
@@ -54,7 +52,6 @@ public class ProcessorConfigTest {
         ProductService productService = new BasicProductService(null);
         ReservationService reservationService = new BasicReservationService(null, null, false);
         ResourceService resourceService = null;
-        LineItemProcessor lineItemProcessor = new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);
         PriceListService priceListService = null;
         
         props.setProperty(IceOptions.START_MONTH, "2019-01");
@@ -72,7 +69,6 @@ public class ProcessorConfigTest {
 	            productService,
 	            reservationService,
 	            resourceService,
-	            lineItemProcessor,
 	            priceListService,
 	            true);
 		
