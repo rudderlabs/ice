@@ -190,9 +190,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	// Check that we're not overwriting a product we already added - usually indicates
         	// new pricelist changes with additional options that we're not looking for.
         	if (prices.containsKey(key)) {
-        		logger.error("Multiple products with same key: " + key);
-        		logger.error("Previous: " + prices.get(key));
-        		logger.error("Current: " + product);
+        		logger.error("Multiple products with same key: " + key + " Previous: " + prices.get(key) + " Current: " + product);
         	}
         	
         	prices.put(key, product);
@@ -211,7 +209,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         }
         else if (operation.startsWith("CreateDBInstance")) {
         	// RDS instance
-        	if (deploymentOption.equals("Multi-AZ"))
+        	if (deploymentOption.startsWith("Multi-AZ"))
         		usageTypeStr += ".multiaz";
             InstanceDb db = InstanceDb.withCode(osStr);
             usageTypeStr = usageTypeStr + "." + db;

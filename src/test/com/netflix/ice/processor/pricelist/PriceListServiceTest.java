@@ -151,4 +151,24 @@ public class PriceListServiceTest {
 		assertEquals("Fixed rate should be ", 5186.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.90, rate.hourly, 0.0001);
 	}
+	
+	@Test
+	public void testFetchRdsPriceList() throws Exception {
+		
+		Version version = new VersionIndex().new Version();
+		version.offerVersionUrl = "/offers/v1.0/aws/AmazonRDS/20190208201402/index.json";
+		version.versionEffectiveBeginDate = "2019-02-01T00:00:00Z";
+		version.versionEffectiveEndDate = "2019-02-28T23:59:59Z";
+		String versionId = "20190208201402";
+		
+		priceListService.fetch(ServiceCode.AmazonRDS, versionId, version);
+		
+		
+		version.offerVersionUrl = "/offers/v1.0/aws/AmazonRDS/20170116233509/index.json";
+		version.versionEffectiveBeginDate = "2017-01-01T00:00:00Z";
+		version.versionEffectiveEndDate = "2017-01-31T23:59:59Z";
+		versionId = "20170116233509";
+		
+		priceListService.fetch(ServiceCode.AmazonRDS, versionId, version);			
+	}
 }

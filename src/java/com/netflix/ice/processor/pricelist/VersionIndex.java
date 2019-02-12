@@ -61,6 +61,10 @@ public class VersionIndex {
 	public static final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeParser().withZone(DateTimeZone.UTC);
 	
 	Root index;
+	
+	protected VersionIndex() {
+		// Used for testing
+	}
 
 	public VersionIndex(InputStream in) throws IOException {
         Reader reader = null;
