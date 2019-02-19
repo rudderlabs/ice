@@ -18,7 +18,6 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -27,8 +26,6 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -45,8 +42,6 @@ import com.netflix.ice.tag.UsageType;
 public abstract class ReservationProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected final Map<Account, List<Account>> reservationBorrowers;
-    
     // hour of data to print debug statements. Set to -1 to turn off all debug logging.
     protected int debugHour = -1;
     protected String debugFamily = "db";
@@ -66,58 +61,12 @@ public abstract class ReservationProcessor {
     protected Product product;
     protected boolean familyBreakout;
 
-    public ReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners,
+    public ReservationProcessor(Set<Account> reservationOwners,
     		ProductService productService, PriceListService priceListService, boolean familyBreakout) throws IOException {
     	this.productService = productService;
     	this.priceListService = priceListService;
     	this.familyBreakout = familyBreakout;
     	
-        // Initialize the reservation owner and borrower account lists
-        reservationBorrowers = Maps.newHashMap();
-        // Associate all the accounts in a consolidated billing group with the reservation owner
-        Set<Account> payers = payerAccounts.keySet();
-        for (Account owner: reservationOwners) {
-        	// Find the owner account in the payerAccounts
-        	for (Account payer: payers) {
-        		if (payer.name.equals(owner.name)) {
-            		// Owner is a payer account. Add all the linked accounts as reservationBorrowers
-                    List<Account> list = payerAccounts.get(payer);
-                    for (Account borrower: list) {
-                        if (borrower.name.equals(owner.name))
-                            continue;
-                        addBorrower(owner, borrower);
-                    }
-                    break;
-        		}
-    			// Look for the owner in the linked account lists
-    			boolean found = false;
-    			for (Account linked: payerAccounts.get(payer)) {
-    				if (linked.name.equals(owner.name)) {
-    					found = true;
-    					break;
-    				}
-    			}
-    			if (found) {
-					// Add the payer and all the other linked accounts to the reservationBorrowers
-    				addBorrower(owner, payer);
-    				for (Account borrower: payerAccounts.get(payer)) {
-    					if (borrower.name.equals(owner.name))
-    						continue;
-    					addBorrower(owner, borrower);
-    				}
-    				break;
-    			}
-        	}
-        }
-    }
-    
-    private void addBorrower(Account owner, Account borrower) {
-        List<Account> from = reservationBorrowers.get(borrower);
-        if (from == null) {
-            from = Lists.newArrayList();
-            reservationBorrowers.put(borrower, from);
-        }
-        from.add(owner);
     }
     
     public void setDebugHour(int i) {

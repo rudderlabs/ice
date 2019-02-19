@@ -9,11 +9,23 @@ img          { border: none; }
 .prod .titlebar,
 .prod .titlebar .cmc,
 .prod .titlebar .region   { background-color: #E9231B; }
-.titlebar span            { text-shadow: #E9231B 3px 3px 2px; font-size: 24px; font-family: helvetica, verdana, arial, sans-serif; }
+.titlebar .mainHeader     { text-shadow: #E9231B 3px 3px 2px; font-size: 24px; font-family: helvetica, verdana, arial, sans-serif; }
 .prod .titlebar span      { text-shadow: #000 4px 4px 2px; }
 .titlebar span.mainHeader { padding: 10px 16px 10px 10px; }
+.titlebar .notice {
+    display: inline-block;
+    margin-top: 10px;
+    margin-left: 100px;
+    padding: 10px;
+    border: 2px solid;
+    border-radius: 5px;
+    font: 11px verdana, arial, helvetica, sans-serif; 
+    font-size: 1.2em;
+    color: #000;
+    background-color: #f0f9ff;
+}
 .titlebar img.console     { margin-right: 6px; height: 58px; }
-.titlebar .header         { float: left; height: 58px; }
+.titlebar .header         { float: left; height: 43px; padding-top:15px; }
 .titlebar .region         { float: left; margin: 0 7px 0 0; }
 .titlebar .region form    { float: left; display: inline-block; vertical-align: top; padding: 5px 5px 0 0; }
 .titlebar .region img     { float: left; display: inline-block; }
@@ -25,6 +37,7 @@ img          { border: none; }
 .cmc input[name=cmc]      { width: 80px; }
 .spinner       { padding: 5px; position: absolute; right: 0; }
 .diagnostics p { padding: 0; }
+
 body           { background: #FFF; color: #333; font: 11px verdana, arial, helvetica, sans-serif; }
 ul             { padding-left: 15px; }
 input.hidden   { visibility: hidden; }

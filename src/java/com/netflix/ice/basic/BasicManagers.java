@@ -114,6 +114,9 @@ public class BasicManagers extends Poller implements Managers {
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
+    	// Update the account list from the work bucket data configuration
+    	config.updateAccounts();
+    	
     	// Mark all the data managers so they update their caches
     	for (StalePoller m: tagGroupManagers.values()) {
     		m.stale();

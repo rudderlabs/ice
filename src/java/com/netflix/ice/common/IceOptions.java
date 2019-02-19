@@ -138,60 +138,15 @@ public class IceOptions {
     public static final String MONTHLY_CACHE_SIZE = "ice.monthlycachesize";
 
     /**
-     * Cost per monitor metric per hour, It's optional.
-     */
-    public static final String COST_PER_MONITORMETRIC_PER_HOUR = "ice.cost_per_monitormetric_per_hour";
-
-    /**
      * url prefix, e.g. http://ice.netflix.com/
      */
     public static final String URL_PREFIX = "ice.urlPrefix";
-
-    /**
-     * from email address. It must be registered in aws ses.
-     */
-    public static final String FROM_EMAIL = "ice.fromEmail";
-
-    /**
-     * ec2 ondemand hourly cost threshold to send alert email. The alert email will be sent at most once per day.
-     */
-    public static final String ONDEMAND_COST_ALERT_THRESHOLD = "ice.ondemandCostAlertThreshold";
-
-    /**
-     * ec2 ondemand hourly cost alert emails, separated by ","
-     */
-    public static final String ONDEMAND_COST_ALERT_EMAILS = "ice.ondemandCostAlertEmails";
 
     /**
     * What pricing data ice should use when calculating usage costs for resource groups
     */
     public static final String RESOURCE_GROUP_COST = "ice.resourceGroupCost";
 
-    /**
-    * Enable weekly cost email per application groups
-    */
-    public static final String WEEKLYEMAILS = "ice.weeklyCostEmails";
-
-    /**
-    * from email address for weekly cost emails. Must be registered in aws ses.
-    */
-    public static final String WEEKLYFROM = "ice.weeklyCostEmails_fromEmail";
-
-    /**
-    * bcc email address for weekly cost emails.
-    */
-    public static final String WEEKLYBCC = "ice.weeklyCostEmails_bccEmail";
-
-    /**
-    * from email to use when test flag is enabled.
-    */
-    public static final String WEEKLYTEST = "ice.weeklyCostEmails_testEmail";
-
-    /**
-    * from email to use when test flag is enabled.
-    */
-    public static final String NUM_WEEKS_FOR_WEEKLYEMAILS = "ice.weeklyCostEmails_numWeeks";
-    
     /**
      * enable single-pass run of billing file processor. Will shut down EC2 instance when pass completes.
      */
@@ -246,4 +201,9 @@ public class IceOptions {
      * debug flags
      */
     public static final String DEBUG = "ice.debug";
+    
+    /**
+     * dashboard notice
+     */
+    public static final String DASHBOARD_NOTICE = "ice.notice";
 }

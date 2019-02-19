@@ -58,7 +58,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		this.pool = Executors.newFixedThreadPool(config == null ? 5 : config.numthreads);
 		if (config != null) {
 	        reservationProcessor = new CostAndUsageReservationProcessor(
-					config.accountService.getPayerAccounts(),
 					config.accountService.getReservationAccounts().keySet(),
 					config.productService,
 					config.priceListService,

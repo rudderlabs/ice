@@ -18,7 +18,7 @@
 package com.netflix.ice.reader;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.netflix.ice.basic.BasicWeeklyCostEmailService;
+import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.TagType;
@@ -29,7 +29,12 @@ import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -39,48 +44,56 @@ public class ReaderConfig extends Config {
     private static ReaderConfig instance;
     private static final Logger logger = LoggerFactory.getLogger(ReaderConfig.class);
 
+    public final BasicAccountService accountService;
+    public final DateTime startDate;
     public final String companyName;
     public final String currencySign;
     public final double currencyRate;
     public final String highstockUrl;
-    public final ApplicationGroupService applicationGroupService;
     public final ThroughputMetricService throughputMetricService;
-    public final BasicWeeklyCostEmailService costEmailService;
     public final Managers managers;
     public final int monthlyCacheSize;
     public final boolean enableTagCoverageWithUserTag;
+    public final List<String> userTags;
+    public final boolean familyRiBreakout;
+    public final String dashboardNotice;
 
     /**
      *
      * @param properties (required)
      * @param managers (required)
-     * @param accountService (required)
      * @param productService (required)
-     * @param resourceService (optional)
      * @param applicationGroupService (optional)
      * @param throughputMetricService (optional)
+     * @throws IOException 
+     * @throws InterruptedException 
+     * @throws UnsupportedEncodingException 
      */
     public ReaderConfig(
             Properties properties,
             AWSCredentialsProvider credentialsProvider,
             Managers managers,
-            AccountService accountService,
             ProductService productService,
-            ResourceService resourceService,
-            ApplicationGroupService applicationGroupService,
-            ThroughputMetricService throughputMetricService,
-            BasicWeeklyCostEmailService costEmailService) {
-        super(properties, credentialsProvider, accountService, productService, resourceService);
+            ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException {
+        super(properties, credentialsProvider, productService);
+        
+        
+        WorkBucketDataConfig dataConfig = readWorkBucketDataConfig();
+        this.startDate = new DateTime(dataConfig.getStartMonth(), DateTimeZone.UTC);
+        this.userTags = dataConfig.getUserTags();
+        this.familyRiBreakout = dataConfig.getFamilyRiBreakout();
+        
+        // Account service is initialized here and refreshed while running by the DataManager
+        this.accountService = new BasicAccountService(dataConfig.getAccounts());
 
         companyName = properties.getProperty(IceOptions.COMPANY_NAME, "");
+        dashboardNotice = properties.getProperty(IceOptions.DASHBOARD_NOTICE, "");
         currencySign = properties.getProperty(IceOptions.CURRENCY_SIGN, "$");
         currencyRate = Double.parseDouble(properties.getProperty(IceOptions.CURRENCY_RATE, "1"));
         highstockUrl = properties.getProperty(IceOptions.HIGHSTOCK_URL, "http://code.highcharts.com/stock/highstock.js");
 
         this.managers = managers;
-        this.applicationGroupService = applicationGroupService;
         this.throughputMetricService = throughputMetricService;
-        this.costEmailService = costEmailService;
         this.monthlyCacheSize = Integer.parseInt(properties.getProperty(IceOptions.MONTHLY_CACHE_SIZE, "12"));
         this.enableTagCoverageWithUserTag = properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));
 
@@ -103,9 +116,6 @@ public class ReaderConfig extends Config {
         if (throughputMetricService != null)
             throughputMetricService.init();
         managers.init();
-        if (resourceService != null)
-            resourceService.init();
-        applicationGroupService.init();
     }
 
     /**
@@ -135,17 +145,12 @@ public class ReaderConfig extends Config {
             	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Instances);
             }
         }
-        
-        if (costEmailService != null)
-            costEmailService.start();
     }
 
     public void shutdown() {
         logger.info("Shutting down...");
 
         instance.managers.shutdown();
-        if (instance.costEmailService != null)
-            instance.costEmailService.shutdown();
     }
 
     private void readData(Product product, DataManager dataManager, Interval interval, ConsolidateType consolidateType, UsageUnit usageUnit) {
@@ -169,5 +174,41 @@ public class ReaderConfig extends Config {
         else {
             dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit, 0);
         }
+    }
+    
+    private WorkBucketDataConfig readWorkBucketDataConfig() throws InterruptedException, UnsupportedEncodingException, IOException {
+    	// Try to download the work bucket data configuration.
+    	// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
+    	WorkBucketDataConfig config = null;
+    	for (config = downloadConfig(); config == null; config = downloadConfig()) {
+    		Thread.sleep(60 * 1000L);
+    	}
+    	return config;    	
+    }
+    
+    private WorkBucketDataConfig downloadConfig() {
+    	File file = new File(localDir, workBucketDataConfigFilename);
+    	file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
+		boolean downloaded = AwsUtils.downloadFileIfNotExist(this.workS3BucketName, this.workS3BucketPrefix, file);
+    	if (downloaded) {
+        	String json;
+			try {
+				json = new String(Files.readAllBytes(file.toPath()), "UTF-8");
+			} catch (IOException e) {
+				logger.error("Error reading work bucket data configuration " + e);
+				return null;
+			}
+        	return new WorkBucketDataConfig(json);    	
+    	}
+    	return null;
+    }
+    
+    public void updateAccounts() {
+    	// Update the account list from the work bucket data configuration file
+    	WorkBucketDataConfig config = downloadConfig();
+    	if (config == null)
+    		return; // Fail silently
+    	
+    	accountService.updateAccounts(config.getAccounts());
     }
 }

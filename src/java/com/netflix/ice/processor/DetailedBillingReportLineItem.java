@@ -20,6 +20,7 @@ public class DetailedBillingReportLineItem extends LineItem {
                 break;
             }
         }
+        payerAccountIdIndex = 1;
         accountIdIndex = 2;
         productIndex = 5 + (withTags ? 0 : -1);
         zoneIndex = 11 + (withTags ? 0 : -1);

@@ -30,12 +30,15 @@
 </head>
 <body class="nactest" ng-controller="mainCtrl">
   <div class="titlebar" ng-show="!graphOnly()">
-    <div class="header" style="padding-top:15px; height:43px">
+    <div class="header">
       <a href="${resource(dir: '/')}">
         <span class="mainHeader">
           ${ReaderConfig.getInstance().companyName} AWS Usage Dashboard
         </span>
       </a>
+    </div>
+    <div class="notice" ng-show="${!ReaderConfig.getInstance().dashboardNotice.isEmpty()}">
+    	${ReaderConfig.getInstance().dashboardNotice}
     </div>
   </div>
   <ul class="nav" ng-show="!graphOnly()">
@@ -46,7 +49,7 @@
       <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#{{getTimeParams()}}" ng-click="reload()">AWS Details</a>
       <ul>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#{{getTimeParams()}}" ng-click="reload()">General Details</a></li>
-        <g:if test="${ReaderConfig.getInstance().resourceService != null}">
+        <g:if test="${ReaderConfig.getInstance().userTags.size() > 0}">
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showResourceGroups=true&{{getTimeParams()}}" ng-click="reload()">Details With Resource Groups</a></li>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showUserTags=true&{{getTimeParams()}}" ng-click="reload()">Details With User Tags</a></li>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'tagcoverage')}#showUserTags=false&{{getTimeParams()}}" ng-click="reload()">Tag Coverage</a></li>
@@ -68,13 +71,10 @@
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'utilization')}#showZones=true&{{getTimeParams()}}" ng-click="reload()">Elasticity By Zone</a></li>
       </ul>
     </li>
-    <g:if test="${ReaderConfig.getInstance().resourceService != null}">
+    <g:if test="${ReaderConfig.getInstance().userTags.size() > 0}">
     <li class="menuButton dropdown">
-      <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'breakdown')}#groupBy=ApplicationGroup&{{getTimeParams()}}" ng-click="reload()">Breakdown</a>
+      <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'resourceinfo')}" ng-click="reload()">Resources</a>
       <ul>
-        <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'breakdown')}#groupBy=ApplicationGroup&{{getTimeParams()}}" ng-click="reload()">By Application Group</a></li>
-        <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'breakdown')}#{{getTimeParams()}}" ng-click="reload()">By Resource Group</a></li>
-        <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'editappgroup')}" ng-click="reload()">Create New Application Group</a></li>
         <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'resourceinfo')}" ng-click="reload()">Resource Info</a></li>
       </ul>
     </li>

@@ -45,10 +45,10 @@ public interface AccountService {
     List<Account> getAccounts(List<String> accountNames);
 
     /**
-     * If you don't have reserved instances, you can return an empty map.
-     * @return Map of accounts. The keys are payer accounts, the values are list of linked accounts.
+     * Get the list of accounts.
+     * @return List of accounts
      */
-    Map<Account, List<Account>> getPayerAccounts();
+    List<Account> getAccounts();
 
     /**
      * Get a map of accounts containing the products that each holds reservations for.

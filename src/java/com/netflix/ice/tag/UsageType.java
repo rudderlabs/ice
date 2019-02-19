@@ -20,8 +20,8 @@ package com.netflix.ice.tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class UsageType extends Tag {
 	private static final long serialVersionUID = 1L;
-	private static final Logger logger = LoggerFactory.getLogger(UsageType.class);
+	//private static final Logger logger = LoggerFactory.getLogger(UsageType.class);
     public final String unit;
 
     private UsageType (String name, String unit) {
@@ -67,9 +67,10 @@ public class UsageType extends Tag {
             usageTypes.putIfAbsent(name, new UsageType(name, unit));
             usageType = usageTypes.get(name);
         }
-        else if (!usageType.unit.equals(unit)) {
-            logger.error("found different units for " + usageType + ", " + usageType.unit + ", " + unit);
-        }
+// We don't care about units at this time.
+//        else if (!usageType.unit.equals(unit)) {
+//            logger.error("found different units for " + usageType + ", " + usageType.unit + ", " + unit);
+//        }
         return usageType;
     }
 

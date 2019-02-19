@@ -22,7 +22,7 @@ public class BasicResourceService extends ResourceService {
     private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
     protected final String[] customTags;
-    private List<String> userTags;
+    private final List<String> userTags;
     
     @SuppressWarnings("unchecked")
 	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(

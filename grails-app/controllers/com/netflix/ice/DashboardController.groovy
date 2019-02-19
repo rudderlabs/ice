@@ -76,7 +76,6 @@ class DashboardController {
 		getAccounts: "GET",
 		getRegions: "GET",
 		getZones: "GET",
-		getResourceGroupLists: "GET",
 		getProducts: "GET",
 		getResourceGroups: "GET",
 		userTagValues: "GET",
@@ -85,18 +84,12 @@ class DashboardController {
 		tags: "GET",
 		getData: "POST",
 		getTimeSpan: "GET",
-		getApplicationGroup: "GET",
-		deleteApplicationGroup: "GET",
-		saveApplicationGroup: "POST",
 		instance: "GET",
 		summary: "GET",
 		detail: "GET",
 		tagcoverage: "GET",
 		reservation: "GET",
 		utilization: "GET",
-		breakdown: "GET",
-		editappgroup: "GET",
-		appgroup: "GET",
 	];
 			
     private static ReaderConfig getConfig() {
@@ -172,26 +165,6 @@ class DashboardController {
         render result as JSON
     }
 
-    def getResourceGroupLists = {
-        List<List<Product>> products = getConfig().resourceService.getProductsWithResources();
-
-        def result = [];
-        for (List<Product> productList: products) {
-            def resourceGroups = Sets.newTreeSet();
-            for (Product product: productList) {
-                TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
-                if (tagGroupManager == null)
-                    continue;
-                def temp = tagGroupManager.getResourceGroups(new TagLists(null, null, null, Lists.newArrayList(product), null, null, null));
-                resourceGroups.addAll(temp);
-            }
-
-            result.add([product: productList.get(0), data: resourceGroups]);
-        }
-        result = [status: 200, data: result]
-        render result as JSON
-    }
-
     def getProducts = {
         Object o = params;
         List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
@@ -201,7 +174,6 @@ class DashboardController {
         List<Product> products = getConfig().productService.getProducts(listParams("product"));
         boolean resources = params.getBoolean("resources");
         boolean showResourceGroups = params.getBoolean("showResourceGroups");
-        boolean showAppGroups = params.getBoolean("showAppGroups");
         boolean showZones = params.getBoolean("showZones");
         if (showZones && (zones == null || zones.size() == 0)) {
             zones = Lists.newArrayList(getManagers().getTagGroupManager(null).getZones(new TagLists(accounts)));
@@ -222,21 +194,6 @@ class DashboardController {
         else {
             TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
             data = tagGroupManager == null ? [] : tagGroupManager.getProducts(new TagLists(accounts, regions, zones, products, operations));
-        }
-
-        if (showAppGroups) {
-            List<List<Product>> tmp = getConfig().resourceService.getProductsWithResources();
-            Set<Product> set = Sets.newTreeSet();
-
-            for (Product product: data) {
-                for (List<Product> list: tmp) {
-                    if (list.contains(product)) {
-                        set.add(product);
-                        break;
-                    }
-                }
-            }
-            data = set;
         }
 
         def result = [status: 200, data: data]
@@ -400,7 +357,7 @@ class DashboardController {
     }
 	
 	def tags = {
-		List<String> userTags = config.resourceService.getUserTags();
+		List<String> userTags = config.userTags;
 		List<UserTag> data = Lists.newArrayList();
 		for (String tag: userTags)
 			data.add(new UserTag(tag));
@@ -470,30 +427,6 @@ class DashboardController {
         render result as JSON
     }
 
-    def getApplicationGroup = {
-        String name = params.get("name");
-        def result = getConfig().applicationGroupService.getApplicationGroup(name);
-
-        result = result == null ? [status: 404] : [status: 200, data: result];
-        render result as JSON
-    }
-
-    def saveApplicationGroup = {
-        def text = request.reader.text;
-        getConfig().applicationGroupService.saveApplicationGroup(new ApplicationGroup(text));
-
-        def result = [status: 200];
-        render result as JSON
-    }
-
-    def deleteApplicationGroup = {
-        String name = params.get("name");
-        getConfig().applicationGroupService.deleteApplicationGroup(name);
-
-        def result = [status: 200];
-        render result as JSON
-    }
-
     def getTimeSpan = {
         int spans = Integer.parseInt(params.spans);
         DateTime end = dateFormatter.parseDateTime(params.end);
@@ -544,12 +477,6 @@ class DashboardController {
 
     def utilization = {}
 
-    def breakdown = {}
-
-    def editappgroup = {}
-
-    def appgroup = {}
-	
 	def resourceinfo = {}
 
     private Map doGetData(JSONObject query) {
@@ -580,7 +507,6 @@ class DashboardController {
         List<ResourceGroup> resourceGroups = ResourceGroup.getResourceGroups(listParams(query, "resourceGroup"));
         DateTime end = query.has("spans") ? dayFormatter.parseDateTime(query.getString("end")) : dateFormatter.parseDateTime(query.getString("end"));
         ConsolidateType consolidateType = query.has("consolidate") ? ConsolidateType.valueOf(query.getString("consolidate")) : ConsolidateType.hourly;
-        ApplicationGroup appgroup = query.has("appgroup") ? new ApplicationGroup(query.getString("appgroup")) : null;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
@@ -597,7 +523,7 @@ class DashboardController {
 		int userTagGroupByIndex = 0;
 		if (showUserTags) {
 			String groupByTag = query.optString("groupByTag");			
-			String[] keys = config.resourceService.getUserTags();
+			String[] keys = config.userTags;
 			for (int i = 0; i < keys.length; i++) {
 				if (groupByTag != null && keys[i].equals(groupByTag)) {
 					userTagGroupByIndex = i;
@@ -681,7 +607,7 @@ class DashboardController {
 	               	logger.info("  product: " + product + ", tags:" + dataOfProduct.keySet());      
 					mergeTagCoverage(dataOfProduct, rawMetrics);
 				}
-				data = TagCoverageDataManager.processResult(rawMetrics, groupBy, aggregate, tagKeys, config.resourceService.getUserTags());
+				data = TagCoverageDataManager.processResult(rawMetrics, groupBy, aggregate, tagKeys, config.userTags);
 			}
 			else {
 				TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(null);
@@ -694,61 +620,12 @@ class DashboardController {
 					tagKeys
 				);			
 			}
-			logger.info("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.resourceService.getUserTags().get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
+			logger.info("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.userTags.get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
 		}
-        else if (groupBy == TagType.ApplicationGroup) {
-            data = Maps.newTreeMap();
-            if (products.size() == 0) {
-                products = Lists.newArrayList(getManagers().getProducts());
-            }
-
-            Map<String, ApplicationGroup> appgroups = getConfig().applicationGroupService.getApplicationGroups();
-            List<List<Product>> productsWithResources = getConfig().resourceService.getProductsWithResources();
-            for (String name: appgroups.keySet()) {
-                appgroup = appgroups.get(name);
-                if (appgroup.data == null)
-                    continue;
-                for (Product product: products) {
-                    if (product == null)
-                        continue;
-
-                    Product appgroupProduct = null;
-                    for (List<Product> list: productsWithResources) {
-                        if (list.contains(product)) {
-                            appgroupProduct = list.get(0);
-                            break;
-                        }
-                    }
-                    if (appgroupProduct == null)
-                        continue;
-
-                    List<ResourceGroup> resourceGroupsOfProduct = ResourceGroup.getResourceGroups(appgroup.data.get(appgroupProduct.toString()));
-                    if (resourceGroupsOfProduct.size() == 0)
-                        continue;
-
-                    DataManager dataManager = isCost ? getManagers().getCostManager(product, consolidateType) : getManagers().getUsageManager(product, consolidateType);
-                    if (dataManager == null)
-                        continue;
-                    Map<Tag, double[]> dataOfProduct = dataManager.getData(
-                        interval,
-                        new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, resourceGroupsOfProduct),
-                        null,
-                        aggregate,
-                        forReservation,
-						usageUnit
-                    );
-
-                    Map<Tag, double[]> tmp = Maps.newHashMap();
-                    tmp.put(new com.netflix.ice.tag.ApplicationGroup(name), dataOfProduct.get(Tag.aggregated));
-
-                    merge(tmp, data);
-                }
-            }
-        }
-        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || appgroup != null || showResourceGroups || showUserTags) {
+        else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || showResourceGroups || showUserTags) {
             data = Maps.newTreeMap();
 			if (products.size() == 0) {
-	            if (groupBy == TagType.ResourceGroup || appgroup != null || resourceGroups.size() > 0) {
+	            if (groupBy == TagType.ResourceGroup || resourceGroups.size() > 0) {
 	                products = Lists.newArrayList(getManagers().getProducts());
 	            }
 	            else if (showResourceGroups || showUserTags) {
@@ -767,18 +644,6 @@ class DashboardController {
                 if (product == null)
                     continue;
 
-                if (appgroup != null) {
-                    boolean found = false;
-                    List<List<Product>> tmp = getConfig().resourceService.getProductsWithResources();
-                    for (List<Product> list: tmp) {
-                        if (list.contains(product)) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                        continue;
-                }
                 DataManager dataManager = isCost ? getManagers().getCostManager(product, consolidateType) : getManagers().getUsageManager(product, consolidateType);
 				if (dataManager == null) {
 					//logger.error("No DataManager for product " + product);

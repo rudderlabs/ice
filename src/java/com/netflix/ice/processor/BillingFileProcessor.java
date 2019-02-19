@@ -23,26 +23,20 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClient;
-import com.amazonaws.services.simpleemail.model.*;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
-import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Product;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.text.NumberFormat;
 import java.util.*;
 
 /**
@@ -63,22 +57,14 @@ public class BillingFileProcessor extends Poller {
      */
     private CostAndUsageData costAndUsageData;
     private Instances instances;
-    private Double ondemandThreshold;
-    private String fromEmail;
-    private String alertEmails;
-    private String urlPrefix;
     
     private MonthlyReportProcessor dbrProcessor;
     private MonthlyReportProcessor cauProcessor;
     
 
-    public BillingFileProcessor(ProcessorConfig config, String urlPrefix, Double ondemandThreshold, String fromEmail, String alertEmails, boolean compress) throws Exception {
+    public BillingFileProcessor(ProcessorConfig config, boolean compress) throws Exception {
     	this.config = config;
     	this.compress = compress;
-        this.ondemandThreshold = ondemandThreshold;
-        this.fromEmail = fromEmail;
-        this.alertEmails = alertEmails;
-        this.urlPrefix = urlPrefix;
         
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
@@ -175,9 +161,6 @@ public class BillingFileProcessor extends Poller {
             logger.info("done archiving " + dataTime);
 
             updateProcessTime(AwsUtils.monthDateFormat.print(dataTime), processTime);
-            if (dataTime.equals(reportsToProcess.lastKey())) {
-                sendOndemandCostAlert();
-            }
         }
 
         logger.info("AWS usage processed.");
@@ -239,36 +222,6 @@ public class BillingFileProcessor extends Poller {
         instances.archive(startMilli); 	
     }
 
-
-    private Map<Long, Map<InstancePrices.Key, Double>> getOndemandCosts(long fromMillis) {
-        Map<Long, Map<InstancePrices.Key, Double>> ondemandCostsByHour = Maps.newHashMap();
-        ReadWriteData costs = costAndUsageData.getCost(null);
-
-        Collection<TagGroup> tagGroups = costs.getTagGroups();
-        for (int i = 0; i < costs.getNum(); i++) {
-            Long millis = startMilli + i * AwsUtils.hourMillis;
-            if (millis < fromMillis)
-                continue;
-
-            Map<InstancePrices.Key, Double> ondemandCosts = Maps.newHashMap();
-            ondemandCostsByHour.put(millis, ondemandCosts);
-
-            Map<TagGroup, Double> data = costs.getData(i);
-            for (TagGroup tagGroup : tagGroups) {
-                if (tagGroup.product.isEc2Instance() && tagGroup.operation == Operation.ondemandInstances &&
-                    data.get(tagGroup) != null) {
-                	InstancePrices.Key key = new InstancePrices.Key(tagGroup.region, tagGroup.usageType);
-                    if (ondemandCosts.get(key) != null)
-                        ondemandCosts.put(key, data.get(tagGroup) + ondemandCosts.get(key));
-                    else
-                        ondemandCosts.put(key, data.get(tagGroup));
-                }
-            }
-        }
-
-        return ondemandCostsByHour;
-    }
-
     private void updateLastMillis(long millis, String filename) {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
         String millisStr = millis + "";
@@ -311,69 +264,5 @@ public class BillingFileProcessor extends Poller {
     private void updateProcessTime(String timeStr, long millis) {
         updateLastMillis(millis, "lastProcessMillis_" + timeStr);
     }
-
-    private Long lastAlertMillis() {
-        return getLastMillis("ondemandAlertMillis");
-    }
-
-    private void updateLastAlertMillis(Long millis) {
-        updateLastMillis(millis, "ondemandAlertMillis");
-    }
-
-    private void sendOndemandCostAlert() {
-
-        if (ondemandThreshold == null || StringUtils.isEmpty(fromEmail) || StringUtils.isEmpty(alertEmails) ||
-            endMilli < lastAlertMillis() + AwsUtils.hourMillis * 24)
-            return;
-
-        Map<Long, Map<InstancePrices.Key, Double>> ondemandCosts = getOndemandCosts(lastAlertMillis() + AwsUtils.hourMillis);
-        Long maxHour = null;
-        double maxTotal = ondemandThreshold;
-
-        for (Long hour: ondemandCosts.keySet()) {
-            double total = 0;
-            for (Double value: ondemandCosts.get(hour).values())
-                total += value;
-
-            if (total > maxTotal) {
-                maxHour = hour;
-                maxTotal = total;
-            }
-        }
-
-        if (maxHour != null) {
-            NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
-            String subject = String.format("Alert: Ondemand cost per hour reached $%s at %s",
-                    numberFormat.format(maxTotal), AwsUtils.dateFormatter.print(maxHour));
-            StringBuilder body = new StringBuilder();
-            body.append(String.format("Total ondemand cost $%s at %s:<br><br>",
-                    numberFormat.format(maxTotal), AwsUtils.dateFormatter.print(maxHour)));
-            TreeMap<Double, String> costs = Maps.newTreeMap();
-            for (Map.Entry<InstancePrices.Key, Double> entry: ondemandCosts.get(maxHour).entrySet()) {
-                costs.put(entry.getValue(), entry.getKey().region + " " + entry.getKey().usageType + ": ");
-            }
-            for (Double cost: costs.descendingKeySet()) {
-                if (cost > 0)
-                    body.append(costs.get(cost)).append("$" + numberFormat.format(cost)).append("<br>");
-            }
-            body.append("<br>Please go to <a href=\"" + urlPrefix + "dashboard/reservation#usage_cost=cost&groupBy=UsageType&product=ec2_instance&operation=OndemandInstances\">Ice</a> for details.");
-            SendEmailRequest request = new SendEmailRequest();
-            request.withSource(fromEmail);
-            List<String> emails = Lists.newArrayList(alertEmails.split(","));
-            request.withDestination(new Destination(emails));
-            request.withMessage(new Message(new Content(subject), new Body().withHtml(new Content(body.toString()))));
-
-            AmazonSimpleEmailServiceClient emailService = AwsUtils.getAmazonSimpleEmailServiceClient();
-            try {
-                emailService.sendEmail(request);
-                updateLastAlertMillis(endMilli);
-                logger.info("updateLastAlertMillis " + endMilli);
-            }
-            catch (Exception e) {
-                logger.error("Error in sending alert emails", e);
-            }
-        }
-    }
-
 }
 

@@ -33,7 +33,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	}
 	
 	protected int getUserTagsSize() {
-		return config.resourceService.getUserTags().size();
+		return config.userTags.size();
 	}
     
 	@Override
@@ -90,7 +90,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	}
 	
 	protected List<String> getUserTags() {
-		return config.resourceService.getUserTags();
+		return config.userTags;
 	}
 
 	@Override

@@ -27,6 +27,11 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.Properties;
 import java.util.SortedMap;
 
@@ -35,6 +40,11 @@ public class ProcessorConfig extends Config {
     private static ProcessorConfig instance;
     protected static BillingFileProcessor billingFileProcessor;
 
+    public final String startMonth;
+    public final DateTime startDate;
+    public final AccountService accountService;
+    public final ResourceService resourceService;
+    public final boolean familyRiBreakout;
     public final String[] billingAccountIds;
     public final String[] billingS3BucketNames;
     public final String[] billingS3BucketRegions;
@@ -81,8 +91,21 @@ public class ProcessorConfig extends Config {
             PriceListService priceListService,
             boolean compress) throws Exception {
 
-        super(properties, credentialsProvider, accountService, productService, resourceService);
-
+        super(properties, credentialsProvider, productService);
+        
+        if (accountService == null) throw new IllegalArgumentException("accountService must be specified");
+        this.accountService = accountService;
+        
+        if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
+        this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
+        this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
+        this.resourceService = resourceService;
+        
+        // whether to separate out the family RI usage into its own operation category
+        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
+        
+        saveWorkBucketDataConfig();
+        
         if (reservationService == null) throw new IllegalArgumentException("reservationService must be specified");
 
         this.reservationService = reservationService;
@@ -126,12 +149,7 @@ public class ProcessorConfig extends Config {
         
         ProcessorConfig.instance = this;
 
-        billingFileProcessor = new BillingFileProcessor(this,
-            properties.getProperty(IceOptions.URL_PREFIX),
-            properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD) == null ? null :  Double.parseDouble(properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD)),
-            properties.getProperty(IceOptions.FROM_EMAIL),
-            properties.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS),
-            compress);
+        billingFileProcessor = new BillingFileProcessor(this, compress);
     }
 
     public void start () throws Exception {
@@ -182,5 +200,21 @@ public class ProcessorConfig extends Config {
      */
     public static ProcessorConfig getInstance() {
         return instance;
+    }
+    
+    /**
+     * Save the configuration items for the reader in the work bucket
+     * @throws IOException 
+     */
+    private void saveWorkBucketDataConfig() throws IOException {
+    	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout);
+        File file = new File(localDir, workBucketDataConfigFilename);
+    	OutputStream os = new FileOutputStream(file);
+    	OutputStreamWriter writer = new OutputStreamWriter(os);
+    	writer.write(wbdc.toJSON());
+    	writer.close();
+    	
+    	logger.info("Upload work bucket data config file");
+    	AwsUtils.upload(workS3BucketName, workS3BucketPrefix, file);
     }
 }

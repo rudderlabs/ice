@@ -50,6 +50,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     public CostAndUsageReportLineItem(boolean useBlended, DateTime costAndUsageNetUnblendedStartDate, CostAndUsageReport report) {
     	lineItemIdIndex = report.getColumnIndex("identity",  "LineItemId");
     	billTypeIndex = report.getColumnIndex("bill", "BillType");
+        payerAccountIdIndex = report.getColumnIndex("bill", "PayerAccountId");
         accountIdIndex = report.getColumnIndex("lineItem", "UsageAccountId");
         productIndex = report.getColumnIndex("product", "ProductName");
         zoneIndex = report.getColumnIndex("lineItem", "AvailabilityZone");

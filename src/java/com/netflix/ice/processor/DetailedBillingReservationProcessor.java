@@ -18,7 +18,6 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -39,16 +38,28 @@ import com.netflix.ice.tag.Zone;
 
 public class DetailedBillingReservationProcessor extends ReservationProcessor {
    protected Logger logger = LoggerFactory.getLogger(getClass());
+
+   protected final Set<Account> reservationBorrowers;
    
-   public DetailedBillingReservationProcessor(Map<Account, List<Account>> payerAccounts, Set<Account> reservationOwners,
+   public DetailedBillingReservationProcessor(Set<Account> reservationOwners,
 		   ProductService productService, PriceListService priceListService, boolean familyBreakout) throws IOException {
-	   super(payerAccounts, reservationOwners, productService, priceListService, familyBreakout);
+	   super(reservationOwners, productService, priceListService, familyBreakout);
+
+		// Initialize the reservation owner and borrower account lists
+		reservationBorrowers = Sets.newHashSet();
+	}
+   
+   public void addBorrower(Account account) {
+       reservationBorrowers.add(account);
+   }
+   
+   public void clearBorrowers() {
+		reservationBorrowers.clear();
    }
    
    private void borrow(int i, long time,
            Map<TagGroup, Double> usageMap,
            Map<TagGroup, Double> costMap,
-           List<Account> fromAccounts,
            TagGroup tagGroup,
            ReservationUtilization utilization,
            ReservationService reservationService,
@@ -59,11 +70,11 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		Double existing = usageMap.get(tagGroup);
 
 		if (debug)
-			logger.info("      borrow from accounts: " + fromAccounts + ", existing: " + existing + " from tagGroup " + tagGroup);
-		if (existing != null && fromAccounts != null) {
+			logger.info("      borrow from accounts: " + reservationBorrowers + ", existing: " + existing + " from tagGroup " + tagGroup);
+		if (existing != null && !reservationBorrowers.isEmpty()) {
 		
 			// process borrowing of matching usage type
-			for (Account from: fromAccounts) {
+			for (Account from: reservationBorrowers) {
 			    if (existing <= 0)
 			        break;
 			    
@@ -122,7 +133,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			}
 			
 			// Now process family-based borrowing
-			for (Account from: fromAccounts) {
+			for (Account from: reservationBorrowers) {
 			    if (existing <= 0)
 			        break;
 			    
@@ -554,7 +565,6 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			
 			    borrow(i, startMilli + i * AwsUtils.hourMillis,
 			    		usageMap, costMap,
-			           reservationBorrowers.get(tagGroup.account),
 			           tagGroup,
 			           utilization,
 			           reservationService,

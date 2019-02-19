@@ -37,18 +37,15 @@ public class BasicAccountService implements AccountService {
     // we want fast object comparisons.
     private static Map<String, Account> accountsById = Maps.newConcurrentMap();
     private static Map<String, Account> accountsByName = Maps.newConcurrentMap();
-    private Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
     private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
 
     // Used only for testing
     public BasicAccountService(List<Account> accounts,
-    			Map<Account, List<Account>> payerAccounts,
     			Map<Account, Set<String>> reservationAccounts,
                 Map<Account, String> reservationAccessRoles,
                 Map<Account, String> reservationAccessExternalIds) {
-        this.payerAccounts = payerAccounts;
         this.reservationAccounts = reservationAccounts;
         this.reservationAccessRoles = reservationAccessRoles;
         this.reservationAccessExternalIds = reservationAccessExternalIds;
@@ -122,19 +119,6 @@ public class BasicAccountService implements AccountService {
                 }
             }
         }
-		for (String name: properties.stringPropertyNames()) {
-			if (name.startsWith("ice.payeraccount.")) {
-				String accountName = name.substring("ice.payeraccount.".length());
-				String[] links = properties.getProperty(name).split(",");
-				List<Account> linkedAccounts = Lists.newArrayList();
-				for (String link: links) {
-					Account linkedAccount = accountsByName.get(link);
-					if (linkedAccount != null)
-						linkedAccounts.add(linkedAccount);
-				}
-				payerAccounts.put(accountsByName.get(accountName), linkedAccounts);
-			}
-		}
         for (String name: properties.stringPropertyNames()) {
             if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {					
                 String accountName = name.substring("ice.owneraccount.".length());
@@ -152,6 +136,42 @@ public class BasicAccountService implements AccountService {
                 reservationAccessExternalIds.put(accountsByName.get(accountName), externalId);					
             }
         }
+    }
+    
+    // Constructor used by the reader - initialized from the work bucket data config
+    public BasicAccountService(List<Account> accounts) {
+    	for (Account a: accounts) {
+    		accountsById.put(a.id, a);
+    		accountsByName.put(a.name, a);
+    	}
+    	// Reservation maps are not used by the reader.
+    }
+    
+    // Accounts for the reader are refreshed from the work bucket data config after each processor run
+    public void updateAccounts(List<Account> accounts) {
+     	// Run through the account list and update our maps
+    	for (Account a: accounts) {
+    		Account existingId = accountsById.get(a.id);
+    		if (existingId == null) {
+    			// Add the new account
+    			accountsById.put(a.id, a);
+    			accountsByName.put(a.name, a);
+    		}
+    	}
+		// We should never get conflicts on IDs and account IDs should never go away,
+		// but we do want to clean up old names due to name changes
+    	for (String name: accountsByName.keySet()) {
+    		boolean found = false;
+    		for (Account a: accounts) {
+    			if (name.equals(a.name)) {
+    				found = true;
+    				break;
+    			}
+    		}
+    		if (!found) {
+    			accountsByName.remove(name);
+    		}
+    	}
     }
 
     public Account getAccountById(String accountId) {
@@ -181,15 +201,18 @@ public class BasicAccountService implements AccountService {
         return account;
     }
 
+    public List<Account> getAccounts() {
+        List<Account> result = Lists.newArrayList();
+        for (Account a: accountsByName.values())
+            result.add(a);
+        return result;
+    }
+
     public List<Account> getAccounts(List<String> accountNames) {
         List<Account> result = Lists.newArrayList();
         for (String name: accountNames)
             result.add(accountsByName.get(name));
         return result;
-    }
-
-    public Map<Account, List<Account>> getPayerAccounts() {
-        return payerAccounts;
     }
 
     public Map<Account, Set<String>> getReservationAccounts() {

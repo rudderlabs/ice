@@ -20,7 +20,7 @@ import com.netflix.ice.processor.ProcessorConfig
 import com.netflix.ice.processor.ReservationService
 import com.netflix.ice.JSONConverter
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.StringUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -36,8 +36,7 @@ import com.netflix.ice.basic.BasicProductService
 import com.netflix.ice.basic.BasicReservationService
 import com.netflix.ice.basic.BasicLineItemProcessor
 import com.netflix.ice.basic.BasicResourceService
-import com.netflix.ice.processor.pricelist.PriceListService;
-import com.netflix.ice.basic.BasicS3ApplicationGroupService
+import com.netflix.ice.processor.pricelist.PriceListService
 import com.netflix.ice.basic.BasicManagers
 
 import org.joda.time.DateTime
@@ -50,9 +49,6 @@ import org.apache.commons.io.IOUtils
 
 import com.netflix.ice.common.ResourceService
 import com.netflix.ice.common.ProductService
-import com.netflix.ice.basic.BasicWeeklyCostEmailService
-import com.netflix.ice.reader.ApplicationGroupService
-
 
 class BootStrap {
     private static boolean initialized = false;
@@ -102,59 +98,12 @@ class BootStrap {
                         }
                     };
 
-            JSONConverter.register();
-
-            BasicAccountService accountService = new BasicAccountService(prop);
+			JSONConverter.register();
+				
             Properties properties = new Properties();
-            if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
-                properties.setProperty(IceOptions.START_MONTH, prop.getProperty(IceOptions.START_MONTH));
-            }
-            else {
-				DateTime now = new DateTime(DateTimeZone.UTC);
-                properties.setProperty(IceOptions.START_MONTH, "" + now.year().get() + "-" + now.monthOfYear().get());
-            }
             properties.setProperty(IceOptions.WORK_S3_BUCKET_NAME, prop.getProperty(IceOptions.WORK_S3_BUCKET_NAME));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_REGION, prop.getProperty(IceOptions.WORK_S3_BUCKET_REGION));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
-			
-			// Resource Tagging stuff
-			String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");        
-			String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");        
-			Map<String, List<String>> tagKeys = Maps.newHashMap();
-			for (String name: prop.stringPropertyNames()) {
-				if (name.startsWith("ice.tagKey.")) {
-					String key = name.substring("ice.tagKey.".length());
-					String[] aliases = prop.getProperty(name).split(",");
-					List<String> aliasList = Lists.newArrayList();
-					for (String alias: aliases) {
-						aliasList.add(alias);
-					}
-					tagKeys.put(key, aliasList);
-				}
-			}
-			Map<String, List<String>> tagValues = Maps.newHashMap();
-			for (String name: prop.stringPropertyNames()) {
-				if (name.startsWith("ice.tagValue.")) {
-					String value = name.substring("ice.tagValue.".length());
-					String[] aliases = prop.getProperty(name).split(",");
-					List<String> aliasList = Lists.newArrayList();
-					for (String alias: aliases) {
-						aliasList.add(alias);
-					}
-					tagValues.put(value, aliasList);
-				}
-			}
-			Map<BasicResourceService.Key, String> defaultTags = Maps.newHashMap();
-			for (String name: prop.stringPropertyNames()) {
-				if (name.startsWith("ice.accountTag.")) {
-					String[] key = name.substring("ice.accountTag.".length()).split("\\.");
-					String value = prop.getProperty(name);
-					
-					if (key.length > 1 && value != null) {
-						defaultTags.put(new BasicResourceService.Key(key[0], key[1]), value);
-					}
-				}
-			}
 			
 			// Stash any debug properties
 			for (String name: prop.stringPropertyNames()) {
@@ -162,10 +111,22 @@ class BootStrap {
 					properties.setProperty(name, prop.getProperty(name));
 				}
 			}
+			
+			ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 				
-                if (prop.getProperty(IceOptions.PROCESS_ONCE) != null) {
+				BasicAccountService accountService = new BasicAccountService(prop);
+
+				if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
+	                properties.setProperty(IceOptions.START_MONTH, prop.getProperty(IceOptions.START_MONTH));
+	            }
+	            else {
+					DateTime now = new DateTime(DateTimeZone.UTC);
+	                properties.setProperty(IceOptions.START_MONTH, "" + now.year().get() + "-" + now.monthOfYear().get());
+	            }
+
+			    if (prop.getProperty(IceOptions.PROCESS_ONCE) != null) {
                 	properties.setProperty(IceOptions.PROCESS_ONCE, prop.getProperty(IceOptions.PROCESS_ONCE));
 					if ("true".equals(prop.getProperty(IceOptions.PROCESS_ONCE))) {
 						properties.setProperty(IceOptions.PROCESSOR_REGION, getInstanceRegion());
@@ -184,25 +145,50 @@ class BootStrap {
 				properties.setProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, ""));
 				properties.setProperty(IceOptions.EDP_DISCOUNTS, prop.getProperty(IceOptions.EDP_DISCOUNTS, ""));
 				
-                if (prop.getProperty(IceOptions.COMPANY_NAME) != null)
-                    properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
-                if (prop.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR) != null)
-                    properties.setProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR, prop.getProperty(IceOptions.COST_PER_MONITORMETRIC_PER_HOUR));
-                if (prop.getProperty(IceOptions.FROM_EMAIL) != null)
-                    properties.setProperty(IceOptions.FROM_EMAIL, prop.getProperty(IceOptions.FROM_EMAIL));
-                if (prop.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS) != null)
-                    properties.setProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS, prop.getProperty(IceOptions.ONDEMAND_COST_ALERT_EMAILS));
-                if (prop.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD) != null)
-                    properties.setProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD, prop.getProperty(IceOptions.ONDEMAND_COST_ALERT_THRESHOLD));
-                if (prop.getProperty(IceOptions.URL_PREFIX) != null)
-                    properties.setProperty(IceOptions.URL_PREFIX, prop.getProperty(IceOptions.URL_PREFIX));
-
                 ReservationService.ReservationPeriod reservationPeriod =
                     ReservationService.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
                 ReservationService.ReservationUtilization reservationUtilization =
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
-				ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
+				// Resource Tagging stuff
+				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
+				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");
+				Map<String, List<String>> tagKeys = Maps.newHashMap();
+				for (String name: prop.stringPropertyNames()) {
+					if (name.startsWith("ice.tagKey.")) {
+						String key = name.substring("ice.tagKey.".length());
+						String[] aliases = prop.getProperty(name).split(",");
+						List<String> aliasList = Lists.newArrayList();
+						for (String alias: aliases) {
+							aliasList.add(alias);
+						}
+						tagKeys.put(key, aliasList);
+					}
+				}
+				Map<String, List<String>> tagValues = Maps.newHashMap();
+				for (String name: prop.stringPropertyNames()) {
+					if (name.startsWith("ice.tagValue.")) {
+						String value = name.substring("ice.tagValue.".length());
+						String[] aliases = prop.getProperty(name).split(",");
+						List<String> aliasList = Lists.newArrayList();
+						for (String alias: aliases) {
+							aliasList.add(alias);
+						}
+						tagValues.put(value, aliasList);
+					}
+				}
+				Map<BasicResourceService.Key, String> defaultTags = Maps.newHashMap();
+				for (String name: prop.stringPropertyNames()) {
+					if (name.startsWith("ice.accountTag.")) {
+						String[] key = name.substring("ice.accountTag.".length()).split("\\.");
+						String value = prop.getProperty(name);
+						
+						if (key.length > 1 && value != null) {
+							defaultTags.put(new BasicResourceService.Key(key[0], key[1]), value);
+						}
+					}
+				}
+				
                 ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags, tagKeys, tagValues, defaultTags);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
@@ -241,37 +227,17 @@ class BootStrap {
                     properties.setProperty(IceOptions.CURRENCY_SIGN, prop.getProperty(IceOptions.CURRENCY_SIGN));
                 if (prop.getProperty(IceOptions.HIGHSTOCK_URL) != null)
                     properties.setProperty(IceOptions.HIGHSTOCK_URL, prop.getProperty(IceOptions.HIGHSTOCK_URL));
-					
-                ApplicationGroupService applicationGroupService = new BasicS3ApplicationGroupService();
-                ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
-                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags, tagKeys, tagValues, defaultTags);
-                BasicWeeklyCostEmailService weeklyEmailService = null;
-
-                if ("true".equals(prop.getProperty(IceOptions.WEEKLYEMAILS))) {
-                    weeklyEmailService = new BasicWeeklyCostEmailService (
-                            Lists.newArrayList(accounts.values()),
-                            Region.getAllRegions(),
-                            Lists.newArrayList(productService.getProducts()),
-                            10,
-                            Integer.parseInt(prop.getProperty(IceOptions.NUM_WEEKS_FOR_WEEKLYEMAILS, "2")),
-                            prop.getProperty(IceOptions.URL_PREFIX),
-                            applicationGroupService,
-                            prop.getProperty(IceOptions.WEEKLYFROM),
-                            prop.getProperty(IceOptions.WEEKLYBCC, ""),
-                            prop.getProperty(IceOptions.WEEKLYTEST, "")
-                        )
-                }
+				if (prop.getProperty(IceOptions.COMPANY_NAME) != null)
+					properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
+				if (prop.getProperty(IceOptions.DASHBOARD_NOTICE) != null)
+					properties.setProperty(IceOptions.DASHBOARD_NOTICE, prop.getProperty(IceOptions.DASHBOARD_NOTICE));
 
                 readerConfig = new ReaderConfig(
                         properties,
                         credentialsProvider,
                         new BasicManagers(true),
-                        accountService,
                         productService,
-                        resourceService,
-                        applicationGroupService,
-                        null,
-                        weeklyEmailService
+                        null
                 );
                 readerConfig.start();
             }

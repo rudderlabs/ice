@@ -16,6 +16,7 @@ public abstract class LineItem {
     private int lineNumber = 0;
     
 	protected int accountIdIndex;
+	protected int payerAccountIdIndex;
 	protected int productIndex;
 	protected int zoneIndex;
 	protected int reservedIndex;
@@ -46,6 +47,10 @@ public abstract class LineItem {
     
     public String getAccountId() {
     	return items[accountIdIndex];
+    }
+    
+    public String getPayerAccountId() {
+    	return items[payerAccountIdIndex];
     }
     
     public String getProduct() {
@@ -142,6 +147,10 @@ public abstract class LineItem {
 
 	public int getAccountIdIndex() {
 		return accountIdIndex;
+	}
+
+	public int getPayerAccountIdIndex() {
+		return payerAccountIdIndex;
 	}
 
 	public int getProductIndex() {

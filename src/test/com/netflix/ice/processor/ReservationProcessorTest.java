@@ -49,7 +49,6 @@ public class ReservationProcessorTest {
 
     // reservationAccounts is a cross-linked list of accounts where each account
 	// can borrow reservations from any other.
-	private static Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
 	private static Map<Account, Set<String>> reservationOwners = Maps.newHashMap();
 	
 	private static final int numAccounts = 3;
@@ -60,17 +59,13 @@ public class ReservationProcessorTest {
 			// Create accounts of the form Account("111111111111", "Account1")
 			accounts.add(new Account(StringUtils.repeat(i.toString(), 12), "Account" + i.toString()));
 		}
-		// Populate the payerAccounts map - first account is payer, others are linked
 		// Every account is a reservation owner for these tests
 		Set<String> products = Sets.newHashSet("ec2", "rds", "redshift");
 		reservationOwners.put(accounts.get(0), products);
-        List<Account> linked = Lists.newArrayList();
 		for (int i = 1; i < numAccounts; i++) {
-			linked.add(accounts.get(i));
 			reservationOwners.put(accounts.get(i), products);
 		}
-    	payerAccounts.put(accounts.get(0), linked);
-		accountService = new BasicAccountService(accounts, payerAccounts, reservationOwners, null, null);
+		accountService = new BasicAccountService(accounts, reservationOwners, null, null);
 		
 		// Initialize the zones we use
 		Region.EU_WEST_1.addZone("eu-west-1b");
@@ -115,7 +110,7 @@ public class ReservationProcessorTest {
 	@Test
 	public void testConstructor() throws IOException {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
-		ReservationProcessor rp = new DetailedBillingReservationProcessor(payerAccounts, reservationOwners.keySet(), null, null, true);
+		ReservationProcessor rp = new DetailedBillingReservationProcessor(reservationOwners.keySet(), null, null, true);
 		assertNotNull("Contructor returned null", rp);
 	}
 	
@@ -174,7 +169,10 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		ReservationProcessor rp = new DetailedBillingReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService, true);
+		DetailedBillingReservationProcessor rp = new DetailedBillingReservationProcessor(rsvOwners, new BasicProductService(null), priceListService, true);
+		// Populate the accounts list in the reservation processor for borrowing
+		for (Account a: accounts)
+			rp.addBorrower(a);
 		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, product);
 	}	
 	private void runOneHourTestCostAndUsage(long startMillis, String[] reservationsCSV, Datum[] usageData, Datum[] costData, Datum[] expectedUsage, Datum[] expectedCost, String debugFamily) throws Exception {
@@ -190,7 +188,7 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		ReservationProcessor rp = new CostAndUsageReservationProcessor(payerAccounts, rsvOwners, new BasicProductService(null), priceListService, true);
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(null), priceListService, true);
 		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, null);
 	}
 	

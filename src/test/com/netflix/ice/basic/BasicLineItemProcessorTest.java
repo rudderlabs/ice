@@ -62,7 +62,7 @@ public class BasicLineItemProcessorTest {
 
     @BeforeClass
 	public static void beforeClass() throws Exception {
-    	init(new BasicAccountService(null, null, null, null, null));
+    	init(new BasicAccountService(null, null, null, null));
     }
     
     public static void init(AccountService as) throws Exception {

@@ -470,7 +470,7 @@ public class BillingFileProcessorTest {
 		Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
 		
 		payerAccounts.put(ReservationProcessorTest.accounts.get(0), linked);
-		ReservationProcessor rp = new CostAndUsageReservationProcessor(payerAccounts, owners, new BasicProductService(null), priceListService, true);
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(owners, new BasicProductService(null), priceListService, true);
 		ReservationProcessorTest.runTest(startMillis, resCSV, caud, null, "c4", Region.AP_SOUTHEAST_2, rp);
 
 		assertEquals("usage size wrong", expectedUsage.length, hourUsageData.size());

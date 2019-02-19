@@ -32,27 +32,6 @@ definitions:
         type: number
       data:
         $ref: '#/definitions/Names'
-  ApplicationGroup:
-    type: object
-    properties:
-      name:
-        type: string
-      owner:
-        type: string
-      data:
-        type: object
-        additionalProperties:
-          type: array
-          items:
-            type: string
-  ApplicationGroupResponse:
-    type: object
-    properties:
-      status:
-        type: integer
-      data:
-        $ref: '#/definitions/ApplicationGroup'
-
 parameters:
   accountParam:
     name: account
@@ -86,21 +65,10 @@ parameters:
     items:
       type: string
     required: true
-  nameParam:
-    name: name
-    in: query
-    description: name of application group
-    type: string
-    required: true
   resourcesParam:
     name: resources
     in: query
     description: If true, only return product names that can have tagged resources.
-    type: boolean
-    required: false
-  showAppGroupsParam:
-    name: showAppGroups
-    in: query
     type: boolean
     required: false
   showZonesParam:
@@ -114,15 +82,6 @@ parameters:
     type: boolean
     required: false
 
-responses:
-  successResponse:
-    description: success response
-    schema:
-      type: object
-      properties:
-        status:
-          type: integer
-  
 paths:
   /getAccounts:
     get:
@@ -164,7 +123,6 @@ paths:
         - $ref: '#/parameters/accountParam'
         - $ref: '#/parameters/regionParam'
         - $ref: '#/parameters/resourcesParam'
-        - $ref: '#/parameters/showAppGroupsParam'
         - $ref: '#/parameters/showZonesParam'
       responses:
         '200':
@@ -296,7 +254,7 @@ paths:
               groupBy:
                 description: Dimension to use for aggregation buckets (default = none)
                 type: string
-                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, ApplicationGroup, Tag]
+                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, Tag]
               consolidate:
                 type: string
                 description: default = hourly
@@ -306,7 +264,7 @@ paths:
               end:
                 type: string
               breakdown:
-                description: Produce data for breakdown by resource or application group (default = false)
+                description: Produce data for breakdown by resource (default = false)
                 type: boolean
               showsps:
                 type: boolean
@@ -320,8 +278,6 @@ paths:
               consolidateOps:
                 description: Consolidate EC2/RDS/Redshift instance operation types into Savings, RIs, Amortized RIs, and Unused RIs
                 type: boolean
-              appgroup:
-                type: string
               forReservation:
                 type: boolean
                 description: Requesting data for the Reservation dashboard. Includes Savings and Lent Opertions. (default = false)
@@ -429,68 +385,6 @@ paths:
                 type: string
               end:
                 type: string
-
-  /getApplicationGroup:
-    get:
-      description: Get application group by name
-      parameters:
-        - $ref: '#/parameters/nameParam'
-      responses:
-        '200':
-          description: application group
-          schema:
-            $ref: '#/definitions/ApplicationGroupResponse'
-        '404':
-          description: not found error
-          schema:
-            type: object
-            properties:
-              status:
-                type: integer
-
-  /deleteApplicationGroup:
-    get:
-      description: Delete application group by name
-      parameters:
-        - $ref: '#/parameters/nameParam'
-      responses:
-        '200':
-          $ref: '#/responses/successResponse'
-
-  /getResourceGroupLists:
-    get:
-      description: Get resource group lists.
-      responses:
-        '200':
-          description: resource groups list
-          schema:
-            type: object
-            properties:
-              status:
-                type: integer
-              data:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    product:
-                      $ref: '#/definitions/Name'
-                    data:
-                      type: array
-                      items:
-                        $ref: '#/definitions/Name'
-
-  /saveApplicationGroup:
-    post:
-      description: Save application group
-      parameters:
-        - name: applicationGroup
-          in: body
-          schema:
-            $ref: '#/definitions/ApplicationGroup'
-      responses:
-        '200':
-          $ref: '#/responses/successResponse'
 
   /instance:
     get:

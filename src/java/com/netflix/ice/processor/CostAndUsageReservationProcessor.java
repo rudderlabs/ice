@@ -1,7 +1,6 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,10 +20,9 @@ import com.netflix.ice.tag.Operation.ReservationOperation;
 public class CostAndUsageReservationProcessor extends ReservationProcessor {
 
 	public CostAndUsageReservationProcessor(
-			Map<Account, List<Account>> payerAccounts,
 			Set<Account> reservationOwners, ProductService productService,
 			PriceListService priceListService, boolean familyBreakout) throws IOException {
-		super(payerAccounts, reservationOwners, productService,
+		super(reservationOwners, productService,
 				priceListService, familyBreakout);
 	}
 	

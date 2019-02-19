@@ -44,7 +44,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     private ProcessorConfig config;
     private LineItemProcessor lineItemProcessor;
-    private ReservationProcessor reservationProcessor;
+    private DetailedBillingReservationProcessor reservationProcessor;
     private long startMilli;
     private long endMilli;
 
@@ -52,7 +52,6 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		this.config = config;
 		lineItemProcessor = new BasicLineItemProcessor(config.accountService, config.productService, config.reservationService, config.resourceService);
         reservationProcessor = new DetailedBillingReservationProcessor(
-				config.accountService.getPayerAccounts(),
 				config.accountService.getReservationAccounts().keySet(),
 				config.productService,
 				config.priceListService,
@@ -130,6 +129,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		    Instances instances) throws Exception {
 		
 		startMilli = endMilli = dataTime.getMillis();
+		reservationProcessor.clearBorrowers();
 		
         processBillingZipFile(dataTime, file, report.hasTags(), costAndUsageData, instances);
         
@@ -197,6 +197,10 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 try {
                 	lineItem.setItems(items);
                     processOneLine(delayedItems, lineItem, costAndUsageData, instances);
+                    String accountID = lineItem.getAccountId();
+                    if (!accountID.isEmpty()) {
+                        reservationProcessor.addBorrower(config.accountService.getAccountById(accountID));
+                    }
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
