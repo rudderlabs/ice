@@ -539,10 +539,13 @@ class DashboardController {
 		boolean tagCoverage = query.has("tagCoverage") ? query.getBoolean("tagCoverage") : false;
 		List<UserTag> tagKeys = UserTag.getUserTags(listParams(query, "tagKey"));
 		
-		if (elasticity || tagCoverage) {
+		if (elasticity) {
 			// elasticity is computed per day based on hourly data
-			// tagCoverage only aggregated hourly
 			consolidateType = ConsolidateType.hourly;
+		}
+		else if (tagCoverage) {
+			// tagCoverage not aggregated hourly
+			consolidateType = consolidateType == ConsolidateType.hourly ? ConsolidateType.daily : consolidateType;
 		}
 
         DateTime start;
@@ -591,7 +594,7 @@ class DashboardController {
 				for (Product product: products) {
 					if (product == null)
 						continue;
-	                TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(product);
+	                TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(product, consolidateType);
 					if (dataManager == null) {
 						continue;
 					}
@@ -601,8 +604,7 @@ class DashboardController {
 	                    new TagListsWithUserTags(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, userTagLists),
 	                    groupBy,
                         aggregate,
-						userTagGroupByIndex,
-	                    tagKeys
+						userTagGroupByIndex
 	                );
 	               	logger.info("  product: " + product + ", tags:" + dataOfProduct.keySet());      
 					mergeTagCoverage(dataOfProduct, rawMetrics);
@@ -610,7 +612,7 @@ class DashboardController {
 				data = TagCoverageDataManager.processResult(rawMetrics, groupBy, aggregate, tagKeys, config.userTags);
 			}
 			else {
-				TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(null);
+				TagCoverageDataManager dataManager = (TagCoverageDataManager) getManagers().getTagCoverageManager(null, consolidateType);
 				data = dataManager.getData(
 					interval,
 					new TagLists(accounts, regions, zones, products, operations, usageTypes, resourceGroups),

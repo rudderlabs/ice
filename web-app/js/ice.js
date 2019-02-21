@@ -1279,7 +1279,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Tag" }
   ],
     $scope.groupBy = $scope.groupBys[1];
-  $scope.consolidate = "hourly";
+  $scope.consolidate = "daily";
   $scope.end = new Date();
   $scope.start = new Date();
   var startMonth = $scope.end.getUTCMonth() - 1;

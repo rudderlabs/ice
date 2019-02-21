@@ -184,13 +184,12 @@ public class BillingFileProcessorTest {
 			public TestProcessorConfig(
 		            Properties properties,
 		            AWSCredentialsProvider credentialsProvider,
-		            AccountService accountService,
 		            ProductService productService,
 		            ReservationService reservationService,
 		            ResourceService resourceService,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, credentialsProvider, accountService, productService, reservationService, resourceService, priceListService, compress);
+				super(properties, credentialsProvider, productService, reservationService, resourceService, priceListService, compress);
 			}
 			
 			@Override
@@ -202,7 +201,6 @@ public class BillingFileProcessorTest {
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,
 										credentialsProvider,
-										accountService,
 										productService,
 										reservationService,
 										null,

@@ -53,7 +53,9 @@
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showResourceGroups=true&{{getTimeParams()}}" ng-click="reload()">Details With Resource Groups</a></li>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'detail')}#showUserTags=true&{{getTimeParams()}}" ng-click="reload()">Details With User Tags</a></li>
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'tagcoverage')}#showUserTags=false&{{getTimeParams()}}" ng-click="reload()">Tag Coverage</a></li>
+        <g:if test="${ReaderConfig.getInstance().enableTagCoverageWithUserTag}">
         <li class="menuButton"><a class="link_with_params" href="${resource(dir: 'dashboard', file: 'tagcoverage')}#showUserTags=true&{{getTimeParams()}}" ng-click="reload()">Tag Coverage With User Tags</a></li>
+		</g:if>
         </g:if>
       </ul>
     </li>

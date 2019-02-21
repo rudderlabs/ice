@@ -28,6 +28,13 @@
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>
         </div>
+        <div style="padding-top: 5px">Aggregate
+          <select ng-model="consolidate">
+            <option>daily</option>
+            <option>weekly</option>
+            <option>monthly</option>
+          </select>
+        </div>
         <div style="padding-top: 5px" ng-show="throughput_metricname">
           <input type="checkbox" ng-model="showsps" id="showsps">
           <label for="showsps">Show {{throughput_metricname}}</label>

@@ -10,10 +10,8 @@ import org.junit.Test;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
-import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
-import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
@@ -25,12 +23,12 @@ public class ProcessorConfigTest {
 
 		public TestConfig(Properties properties,
 				AWSCredentialsProvider credentialsProvider,
-				AccountService accountService, ProductService productService,
+				ProductService productService,
 				ReservationService reservationService,
 				ResourceService resourceService,
 				PriceListService priceListService, boolean compress)
 				throws Exception {
-			super(properties, credentialsProvider, accountService, productService,
+			super(properties, credentialsProvider, productService,
 					reservationService, resourceService,
 					priceListService, compress);
 		}
@@ -48,7 +46,6 @@ public class ProcessorConfigTest {
         @SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
         
-        AccountService accountService = new BasicAccountService(props);
         ProductService productService = new BasicProductService(null);
         ReservationService reservationService = new BasicReservationService(null, null, false);
         ResourceService resourceService = null;
@@ -65,7 +62,6 @@ public class ProcessorConfigTest {
 		ProcessorConfig config = new TestConfig(
 				props,
 	            credentialsProvider,
-	            accountService,
 	            productService,
 	            reservationService,
 	            resourceService,

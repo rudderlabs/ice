@@ -20,6 +20,11 @@ package com.netflix.ice.common;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.services.organizations.AWSOrganizations;
+import com.amazonaws.services.organizations.AWSOrganizationsClientBuilder;
+import com.amazonaws.services.organizations.model.Account;
+import com.amazonaws.services.organizations.model.ListAccountsRequest;
+import com.amazonaws.services.organizations.model.ListAccountsResult;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
@@ -63,7 +68,7 @@ public class AwsUtils {
     public static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HHa").withZone(DateTimeZone.UTC);
     public static long hourMillis = 3600000L;
 
-    private static String workS3BucketRegion;
+    public static String workS3BucketRegion;
     private static AmazonS3Client s3Client;
     private static AmazonSimpleEmailServiceClient emailServiceClient;
     private static AmazonSimpleDBClient simpleDBClient;
@@ -133,6 +138,33 @@ public class AwsUtils {
         }
         return simpleDBClient;
     }
+    
+    /**
+     * List all object summary with given prefix in the s3 bucket.
+     * @param bucket
+     * @param prefix
+     * @return
+     */
+    public static List<Account> listAccounts(String accountId, String assumeRole, String externalId) {
+    	AWSOrganizations organizations = null;
+
+        try {
+            if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
+            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            }
+            else {
+            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            }
+            
+        	ListAccountsResult result = organizations.listAccounts(new ListAccountsRequest());
+        	return result.getAccounts();
+        }
+        finally {
+        	organizations.shutdown();
+        }
+    }
+    
+
     /**
      * List all object summary with given prefix in the s3 bucket.
      * @param bucket

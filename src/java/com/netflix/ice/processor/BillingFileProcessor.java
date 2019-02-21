@@ -159,6 +159,9 @@ public class BillingFileProcessor extends Poller {
             archiveInstances();
             
             logger.info("done archiving " + dataTime);
+            
+            // Write out a new config in case we added accounts or zones while processing.
+            config.saveWorkBucketDataConfig();
 
             updateProcessTime(AwsUtils.monthDateFormat.print(dataTime), processTime);
         }

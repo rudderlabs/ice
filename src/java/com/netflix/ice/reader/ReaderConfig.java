@@ -18,10 +18,13 @@
 package com.netflix.ice.reader;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.google.common.collect.Lists;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UserTag;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -35,10 +38,11 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
- * COnfiguration class for reader/UI.
+ * Configuration class for reader/UI.
  */
 public class ReaderConfig extends Config {
     private static ReaderConfig instance;
@@ -85,6 +89,8 @@ public class ReaderConfig extends Config {
         
         // Account service is initialized here and refreshed while running by the DataManager
         this.accountService = new BasicAccountService(dataConfig.getAccounts());
+        
+        updateZones(dataConfig.getZones());
 
         companyName = properties.getProperty(IceOptions.COMPANY_NAME, "");
         dashboardNotice = properties.getProperty(IceOptions.DASHBOARD_NOTICE, "");
@@ -98,20 +104,6 @@ public class ReaderConfig extends Config {
         this.enableTagCoverageWithUserTag = properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));
 
         ReaderConfig.instance = this;
-
-//        AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
-//        logger.info("Deleting all files...");
-//        List<S3ObjectSummary> objectSummariesToDelete = AwsUtils.listAllObjects(instance.workS3BucketName, instance.workS3BucketPrefix);
-//        for (S3ObjectSummary objectSummary : objectSummariesToDelete) {
-//
-//            String fileKey = objectSummary.getKey();
-//
-//            String name = fileKey.substring(fileKey.lastIndexOf("/") + 1);
-//            if (name.startsWith("cost_") || name.startsWith("usage_") || name.startsWith("tagdb_")) {
-//                s3Client.deleteObject(instance.workS3BucketName, fileKey);
-//                continue;
-//            }
-//        }
 
         if (throughputMetricService != null)
             throughputMetricService.init();
@@ -131,18 +123,21 @@ public class ReaderConfig extends Config {
     	// Prime the data caches
         Managers managers = ReaderConfig.getInstance().managers;
         Collection<Product> products = managers.getProducts();
+        List<UserTag> userTagList = Lists.newArrayList();
+        for (String ut: userTags)
+        	userTagList.add(UserTag.get(ut));
         for (Product product: products) {
             TagGroupManager tagGroupManager = managers.getTagGroupManager(product);
             Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
             if (interval == null)
                 continue;
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
-                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances);
-            }
-            // Prime the tag coverage cache
-            if (product == null || enableTagCoverageWithUserTag) {
-            	readData(null, managers.getTagCoverageManager(product), interval, ConsolidateType.hourly, UsageUnit.Instances);
+                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
+                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
+                // Prime the tag coverage cache
+                if ((product == null || enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
+                	readData(product, managers.getTagCoverageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, userTagList);
+                }
             }
         }
     }
@@ -153,7 +148,7 @@ public class ReaderConfig extends Config {
         instance.managers.shutdown();
     }
 
-    private void readData(Product product, DataManager dataManager, Interval interval, ConsolidateType consolidateType, UsageUnit usageUnit) {
+    private void readData(Product product, DataManager dataManager, Interval interval, ConsolidateType consolidateType, UsageUnit usageUnit, List<UserTag> userTagList) {
         if (consolidateType == ConsolidateType.hourly) {
             DateTime start = interval.getStart().withDayOfMonth(1).withMillisOfDay(0);
             do {
@@ -172,7 +167,10 @@ public class ReaderConfig extends Config {
             while (start.isBefore(interval.getEnd()));
         }
         else {
-            dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit, 0);
+        	if (userTagList == null)
+        		dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit, 0);
+        	else
+        		dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, 0, userTagList);
         }
     }
     
@@ -203,12 +201,25 @@ public class ReaderConfig extends Config {
     	return null;
     }
     
-    public void updateAccounts() {
+    public void update() {
     	// Update the account list from the work bucket data configuration file
     	WorkBucketDataConfig config = downloadConfig();
     	if (config == null)
     		return; // Fail silently
     	
     	accountService.updateAccounts(config.getAccounts());
+    	updateZones(config.getZones());
+    }
+    
+    private void updateZones(Map<String, List<String>> zones) {
+    	for (String regionName: zones.keySet()) {
+    		Region r = Region.getRegionByName(regionName);
+    		if (r == null) {
+    			logger.error("Unknown region: " + regionName);
+    			continue;
+    		}
+    		for (String zoneName: zones.get(regionName))
+    			r.addZone(zoneName);
+    	}
     }
 }

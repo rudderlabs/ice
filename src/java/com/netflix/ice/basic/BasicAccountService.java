@@ -70,14 +70,6 @@ public class BasicAccountService implements AccountService {
      *
      *		example: ice.account.myAccount=123456789012
      * 
-     * Payer Account definition:
-     * 		payerAccountName:	name of the payer account when consolidated billing is used
-     * 		linkedAccounts:		comma separated list of linked account names
-     * 
-     *	ice.payeraccount.{payerAccountName}={linkedAccounts}
-     *
-     *		example: ice.payeraccount.myPayer=myFirtLinked,mySecondLinked
-     *
      * Reservation Owner Account
      * 		name: account name
 	 *		product: codes for products with purchased reserved instances. Possible values are ec2, rds, redshift
@@ -103,7 +95,24 @@ public class BasicAccountService implements AccountService {
      * 		example: ice.owneraccount.resHolder.externalId=112233445566
      */
 
+    public BasicAccountService(Properties properties, Map<String, String> defaultNames) {
+    	init(properties);
+    	// Add any additional accounts not specified in the properties
+    	for (String id: defaultNames.keySet()) {
+    		if (!accountsById.containsKey(id)) {
+    			Account a = new Account(id, defaultNames.get(id));
+    			accountsByName.put(a.name, a);
+    			accountsById.put(a.id, a);
+    		}
+    	}
+    }
+
+    // Used by test code
     public BasicAccountService(Properties properties) {
+    	init(properties);
+    }
+    
+    private void init(Properties properties) {
         for (String name: properties.stringPropertyNames()) {
             if (name.startsWith("ice.account.")) {
                 String accountName = name.substring("ice.account.".length());
@@ -152,7 +161,7 @@ public class BasicAccountService implements AccountService {
      	// Run through the account list and update our maps
     	for (Account a: accounts) {
     		Account existingId = accountsById.get(a.id);
-    		if (existingId == null) {
+    		if (existingId == null || !existingId.name.equals(a.name)) {
     			// Add the new account
     			accountsById.put(a.id, a);
     			accountsByName.put(a.name, a);
@@ -180,11 +189,11 @@ public class BasicAccountService implements AccountService {
             account = new Account(accountId, accountId);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
-            logger.info("getAccountById() created account " + accountId + ".");
+            logger.info("getAccountById() created account " + accountId + "=\"" + account.name + "\".");
         }
         return account;
     }
-
+    
     public Account getAccountByName(String accountName) {
         Account account = accountsByName.get(accountName);
         // for accounts that were not mapped to names in ice.properties (ice.account.xxx), this check will make sure that

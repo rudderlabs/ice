@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory
 import com.netflix.ice.common.IceOptions
 import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.auth.InstanceProfileCredentialsProvider
-import com.netflix.ice.basic.BasicAccountService
 import com.google.common.collect.Lists
 import com.netflix.ice.tag.Account
 import com.netflix.ice.tag.Region
@@ -105,6 +104,13 @@ class BootStrap {
             properties.setProperty(IceOptions.WORK_S3_BUCKET_REGION, prop.getProperty(IceOptions.WORK_S3_BUCKET_REGION));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
 			
+			// Grab all the account properties
+			for (String name: prop.stringPropertyNames()) {
+				if (name.startsWith("ice.account.") || name.startsWith("ice.owneraccount.")) {
+					properties.setProperty(name, prop.getProperty(name));
+				}
+			}
+			
 			// Stash any debug properties
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith(IceOptions.DEBUG + ".")) {
@@ -116,8 +122,6 @@ class BootStrap {
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 				
-				BasicAccountService accountService = new BasicAccountService(prop);
-
 				if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
 	                properties.setProperty(IceOptions.START_MONTH, prop.getProperty(IceOptions.START_MONTH));
 	            }
@@ -208,7 +212,6 @@ class BootStrap {
                 processorConfig = new ProcessorConfig(
                         properties,
                         credentialsProvider,
-                        accountService,
                         productService,
                         reservationService,
                         resourceService,
@@ -231,6 +234,8 @@ class BootStrap {
 					properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
 				if (prop.getProperty(IceOptions.DASHBOARD_NOTICE) != null)
 					properties.setProperty(IceOptions.DASHBOARD_NOTICE, prop.getProperty(IceOptions.DASHBOARD_NOTICE));
+				if (prop.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) != null)
+					properties.setProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS, prop.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));					
 
                 readerConfig = new ReaderConfig(
                         properties,

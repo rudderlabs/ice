@@ -18,9 +18,19 @@
 package com.netflix.ice.processor;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.AmazonEC2Exception;
+import com.amazonaws.services.ec2.model.AvailabilityZone;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
+import com.amazonaws.services.organizations.model.Account;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.PriceListService;
+import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.Zone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -32,6 +42,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.SortedMap;
 
@@ -84,7 +96,6 @@ public class ProcessorConfig extends Config {
     public ProcessorConfig(
             Properties properties,
             AWSCredentialsProvider credentialsProvider,
-            AccountService accountService,
             ProductService productService,
             ReservationService reservationService,
             ResourceService resourceService,
@@ -93,8 +104,18 @@ public class ProcessorConfig extends Config {
 
         super(properties, credentialsProvider, productService);
         
-        if (accountService == null) throw new IllegalArgumentException("accountService must be specified");
-        this.accountService = accountService;
+        initZones();
+        
+        billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
+        billingS3BucketRegions = properties.getProperty(IceOptions.BILLING_S3_BUCKET_REGION).split(",");
+        billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
+        billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
+        billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
+        billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        
+
+        Map<String, String> defaultNames = getDefaultAccountNames();
+        this.accountService = new BasicAccountService(properties, defaultNames);
         
         if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
@@ -104,20 +125,11 @@ public class ProcessorConfig extends Config {
         // whether to separate out the family RI usage into its own operation category
         familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
         
-        saveWorkBucketDataConfig();
-        
         if (reservationService == null) throw new IllegalArgumentException("reservationService must be specified");
 
         this.reservationService = reservationService;
         this.priceListService = priceListService;
 
-        billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
-        billingS3BucketRegions = properties.getProperty(IceOptions.BILLING_S3_BUCKET_REGION).split(",");
-        billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
-        billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
-        billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
-        billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
-        
         String[] yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_START_DATE, "").split("-");
         if (yearMonth.length < 2)
             costAndUsageStartDate = new DateTime(3000, 1, 1, 0, 0, DateTimeZone.UTC); // Arbitrary year in the future
@@ -201,13 +213,36 @@ public class ProcessorConfig extends Config {
     public static ProcessorConfig getInstance() {
         return instance;
     }
-    
+
+    protected void initZones() {
+        AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
+    	for (Region region: Region.getAllRegions()) {
+            AmazonEC2 ec2 = ec2Builder.withRegion(region.name).build();
+            try {
+	            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
+	            for (AvailabilityZone az: result.getAvailabilityZones()) {
+	            	region.addZone(az.getZoneName());
+	            }
+            }
+            catch(AmazonEC2Exception e) {
+            	logger.info("failed to get zones for region " + region + ", " + e.getErrorMessage());
+            }
+    	}
+    }
+        
     /**
      * Save the configuration items for the reader in the work bucket
      * @throws IOException 
      */
-    private void saveWorkBucketDataConfig() throws IOException {
-    	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout);
+    public void saveWorkBucketDataConfig() throws IOException {
+    	Map<String, List<String>> zones = Maps.newHashMap();
+    	for (Region r: Region.getAllRegions()) {
+    		List<String> zlist = Lists.newArrayList();
+    		for (Zone z: r.getZones())
+    			zlist.add(z.name);
+    		zones.put(r.name, zlist);
+    	}
+    	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), zones, resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout);
         File file = new File(localDir, workBucketDataConfigFilename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);
@@ -216,5 +251,23 @@ public class ProcessorConfig extends Config {
     	
     	logger.info("Upload work bucket data config file");
     	AwsUtils.upload(workS3BucketName, workS3BucketPrefix, file);
+    }
+    
+    /**
+     * get all the accounts from the organizations service so we can add the names if they're not specified in the ice.properties file.
+     */
+    private Map<String, String> getDefaultAccountNames() {
+    	Map<String, String> result = Maps.newHashMap();
+    	
+        for (int i = 0; i < billingS3BucketNames.length; i++) {
+            String accountId = billingAccountIds.length > i ? billingAccountIds[i] : "";
+            String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
+            String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+            
+            List<Account> accounts = AwsUtils.listAccounts(accountId, assumeRole, externalId);
+            for (Account a: accounts)
+            	result.put(a.getId(), a.getName());
+        }
+    	return result;
     }
 }

@@ -45,7 +45,7 @@ public class BasicManagers extends Poller implements Managers {
     private Map<Product, BasicTagGroupManager> tagGroupManagers = Maps.newHashMap();
     private TreeMap<Key, BasicDataManager> costManagers = Maps.newTreeMap();
     private TreeMap<Key, BasicDataManager> usageManagers = Maps.newTreeMap();
-    private TreeMap<String, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
+    private TreeMap<Key, TagCoverageDataManager> tagCoverageManagers = Maps.newTreeMap();
     private InstanceMetricsService instanceMetricsService = null;
     private InstancesService instancesService = null;
     private Long lastPollMillis = 0L;
@@ -97,8 +97,8 @@ public class BasicManagers extends Poller implements Managers {
         return usageManagers.get(new Key(product, consolidateType));
     }
     
-    public DataManager getTagCoverageManager(Product product) {
-        return tagCoverageManagers.get(product == null ? "all" : product.getFileName());
+    public DataManager getTagCoverageManager(Product product, ConsolidateType consolidateType) {
+        return tagCoverageManagers.get(new Key(product, consolidateType));
     }
     
     public Instances getInstances() {
@@ -114,8 +114,8 @@ public class BasicManagers extends Poller implements Managers {
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
-    	// Update the account list from the work bucket data configuration
-    	config.updateAccounts();
+    	// Update the reader configuration from the work bucket data configuration
+    	config.update();
     	
     	// Mark all the data managers so they update their caches
     	for (StalePoller m: tagGroupManagers.values()) {
@@ -174,11 +174,10 @@ public class BasicManagers extends Poller implements Managers {
                 		config.monthlyCacheSize, config.accountService, config.productService, null));
                 usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
-            }
-            if (product == null || config.enableTagCoverageWithUserTag) {
-	            String dbName = "coverage_hourly_" + (product == null ? "all" : product.getFileName());
-	            tagCoverageManagers.put(product == null ? "all" : product.getFileName(), new TagCoverageDataManager(config.startDate, dbName, ConsolidateType.hourly, tagGroupManager, compress,
-        				config.monthlyCacheSize, config.accountService, config.productService));
+                if ((product == null || config.enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
+    	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress,
+            				config.monthlyCacheSize, config.accountService, config.productService));
+                }
             }
         }
 

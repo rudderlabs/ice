@@ -62,7 +62,7 @@ public interface Managers {
      * 
      * @return
      */
-    DataManager getTagCoverageManager(Product product);
+    DataManager getTagCoverageManager(Product product, ConsolidateType consolidateType);
 
     /**
      * 
