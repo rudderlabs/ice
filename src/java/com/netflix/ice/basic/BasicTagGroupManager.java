@@ -58,7 +58,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
         file = new File(config.localDir, dbName + (compress ? compressExtension : ""));
         try {
-            stalePoll();
+            poll();
         }
         catch (Exception e) {
             logger.error("cannot poll data for " + file, e);

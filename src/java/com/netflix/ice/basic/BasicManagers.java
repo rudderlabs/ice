@@ -74,8 +74,6 @@ public class BasicManagers extends Poller implements Managers {
     public void init() {
         config = ReaderConfig.getInstance();
         lastProcessedPoller = new LastProcessedPoller(config.startDate);
-        instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
-        instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService, config.productService);
                 		
         doWork();
         start(1*60, 1*60, false);
@@ -130,8 +128,15 @@ public class BasicManagers extends Poller implements Managers {
     	for (StalePoller p: tagCoverageManagers.values()) {
     		p.stale();
     	}
-    	instancesService.stale();
-    	instanceMetricsService.stale();
+    	
+    	if (instancesService == null) {
+            instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+            instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService, config.productService);
+    	}
+    	else {
+	    	instancesService.stale();
+	    	instanceMetricsService.stale();
+    	}
     	
     	lastPollMillis = DateTime.now().getMillis();
     	

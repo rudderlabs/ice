@@ -20,6 +20,10 @@ public abstract class StalePoller extends Poller {
     		return;
     	stale = stalePoll();    	
 	}
+	
+	public boolean getStale() {
+		return stale;
+	}
 
 	/**
 	 * 

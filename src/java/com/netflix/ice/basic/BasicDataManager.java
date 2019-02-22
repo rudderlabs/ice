@@ -52,8 +52,6 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
     	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService);
         this.instanceMetricsService = instanceMetricsService;
-
-        start();
     }
     
     @Override
