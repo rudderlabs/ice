@@ -55,7 +55,7 @@ public abstract class ReservationProcessor {
     protected ProductService productService;
     protected PriceListService priceListService;
     
-    // The following are initialzed on each call to process()
+    // The following are initialized on each call to process()
     protected InstanceMetrics instanceMetrics = null;
     protected Map<Product, InstancePrices> prices;
     protected Product product;

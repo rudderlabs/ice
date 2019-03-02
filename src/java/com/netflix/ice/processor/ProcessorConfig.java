@@ -63,6 +63,12 @@ public class ProcessorConfig extends Config {
     public final String[] billingS3BucketPrefixes;
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
+    public final String[] kubernetesAccountIds;
+    public final String[] kubernetesS3BucketNames;
+    public final String[] kubernetesS3BucketRegions;
+    public final String[] kubernetesS3BucketPrefixes;
+    public final String[] kubernetesAccessRoleNames;
+    public final String[] kubernetesAccessExternalIds;
     public final DateTime costAndUsageStartDate;
     public final DateTime costAndUsageNetUnblendedStartDate;
     public final SortedMap<DateTime,Double> edpDiscounts;
@@ -83,6 +89,12 @@ public class ProcessorConfig extends Config {
     	ndjson,
     	bulk   	
     }
+    
+    public final String kubernetesComputeTag;
+    public final String kubernetesNamespaceTag;
+    public final String[] kubernetesUserTags;
+    public final String kubernetesClusterNameFormula;
+    public final Map<String, String> kubernetesNamespaceMappingRules;
 
     /**
      *
@@ -112,7 +124,24 @@ public class ProcessorConfig extends Config {
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        kubernetesS3BucketNames = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, "").split(",");
+        kubernetesS3BucketRegions = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, "").split(",");
+        kubernetesS3BucketPrefixes = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, "").split(",");
+        kubernetesAccountIds = properties.getProperty(IceOptions.KUBERNETES_ACCOUNT_ID, "").split(",");
+        kubernetesAccessRoleNames = properties.getProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, "").split(",");
+        kubernetesAccessExternalIds = properties.getProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, "").split(",");
         
+        kubernetesClusterNameFormula = properties.getProperty(IceOptions.KUBERNETES_CLUSTER_NAME_FORMULA, "");
+        kubernetesComputeTag = properties.getProperty(IceOptions.KUBERNETES_COMPUTE_TAG, "");
+        kubernetesNamespaceTag = properties.getProperty(IceOptions.KUBERNETES_NAMESPACE_TAG, "");
+        
+        String k8sUserTags = properties.getProperty(IceOptions.KUBERNETES_USER_TAGS, "");
+        kubernetesUserTags = k8sUserTags.isEmpty() ? null : properties.getProperty(IceOptions.KUBERNETES_USER_TAGS, "").split(",");
+        kubernetesNamespaceMappingRules = Maps.newHashMap();
+        for (String name: properties.stringPropertyNames()) {
+        	if (name.startsWith(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE))
+        		kubernetesNamespaceMappingRules.put(name.substring(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE.length()), properties.getProperty(name));
+        }
 
         Map<String, String> defaultNames = getDefaultAccountNames();
         this.accountService = new BasicAccountService(properties, defaultNames);
@@ -256,7 +285,7 @@ public class ProcessorConfig extends Config {
     /**
      * get all the accounts from the organizations service so we can add the names if they're not specified in the ice.properties file.
      */
-    private Map<String, String> getDefaultAccountNames() {
+    protected Map<String, String> getDefaultAccountNames() {
     	Map<String, String> result = Maps.newHashMap();
     	
         for (int i = 0; i < billingS3BucketNames.length; i++) {

@@ -268,7 +268,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	// Used for unit testing only.
 	protected long processReport(
 			DateTime dataTime,
-			MonthlyReport report,
+			Report report,
 			List<File> files,
 			CostAndUsageData costAndUsageData,
 		    Instances instances) throws IOException {

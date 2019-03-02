@@ -319,7 +319,7 @@ public class AwsUtils {
         else
             return null;
     }
-
+    
     public static void upload(String bucketName, String prefix, File file) {
         s3Client.putObject(bucketName, prefix + file.getName(), file);
     }

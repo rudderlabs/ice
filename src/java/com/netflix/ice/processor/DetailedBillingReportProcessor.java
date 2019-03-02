@@ -245,7 +245,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
 
-	private File downloadReport(MonthlyReport report, String localDir, long lastProcessed) {
+	private File downloadReport(Report report, String localDir, long lastProcessed) {
         String fileKey = report.getS3ObjectSummary().getKey();
         File file = new File(localDir, fileKey.substring(report.getPrefix().length()));
         logger.info("trying to download " + fileKey + "...");

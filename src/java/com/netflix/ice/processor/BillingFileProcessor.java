@@ -25,6 +25,7 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation.ReservationOperation;
@@ -143,6 +144,9 @@ public class BillingFileProcessor extends Poller {
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
+            
+            KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
+            kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
 
             /***** Debugging */
 //            used = costMap.get(redshiftHeavyTagGroup);

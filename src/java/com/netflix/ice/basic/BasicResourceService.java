@@ -42,7 +42,9 @@ public class BasicResourceService extends ResourceService {
     // Map containing the lineItem column indecies that match the canonical tag keys specified by CustomTags
     // Key is the Custom Tag name (without the "user:" prefix). First index in the list is always the exact
     // custom tag name match if present.
-    private Map<String, List<Integer>> tagIndecies;
+    private Map<String, List<Integer>> tagLineItemIndecies;
+    
+    private final Map<String, Integer> tagResourceGroupIndecies;
     
     private static final String USER_TAG_PREFIX = "user:";
     
@@ -95,6 +97,9 @@ public class BasicResourceService extends ResourceService {
     		Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues, Map<Key, String> defaultTags) {
 		super();
 		this.customTags = customTags;
+		this.tagResourceGroupIndecies = Maps.newHashMap();
+		for (int i = 0; i < customTags.length; i++)
+			tagResourceGroupIndecies.put(customTags[i], i);
 		
 		this.tagKeys = tagKeys;		
 		this.tagValuesInverted = Maps.newHashMap();
@@ -144,6 +149,11 @@ public class BasicResourceService extends ResourceService {
 	public List<String> getUserTags() {
 		return userTags;
 	}
+	
+	@Override
+	public int getUserTagIndex(String tag) {
+		return tagResourceGroupIndecies.get(tag);
+	}
 
     @Override
     public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
@@ -170,7 +180,7 @@ public class BasicResourceService extends ResourceService {
     @Override
     public String getUserTagValue(LineItem lineItem, String tag) {
     	// Grab the first non-empty value
-    	for (int index: tagIndecies.get(tag)) {
+    	for (int index: tagLineItemIndecies.get(tag)) {
     		if (lineItem.getResourceTagsSize() > index) {
     			String val = lineItem.getResourceTag(index);
     			if (!StringUtils.isEmpty(val)) {
@@ -212,11 +222,11 @@ public class BasicResourceService extends ResourceService {
     
     @Override
     public void initHeader(String[] header) {
-    	tagIndecies = Maps.newHashMap();
+    	tagLineItemIndecies = Maps.newHashMap();
     	for (String tag: userTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
     		List<Integer> indecies = Lists.newArrayList();
-    		tagIndecies.put(tag, indecies);
+    		tagLineItemIndecies.put(tag, indecies);
     		
     		// First check the preferred key name
     		int index = -1;

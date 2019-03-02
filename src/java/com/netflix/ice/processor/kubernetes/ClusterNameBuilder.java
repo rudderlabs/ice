@@ -1,0 +1,156 @@
+package com.netflix.ice.processor.kubernetes;
+
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.google.common.collect.Lists;
+import com.netflix.ice.tag.UserTag;
+
+public class ClusterNameBuilder {
+	final private static String rulesSeparator = "\\+";
+	final private List<Rule> rules;
+	
+	ClusterNameBuilder(String formula, String[] tagNames) {
+		this.rules = Lists.newArrayList();
+		
+		String[] rules = formula.split(rulesSeparator);
+		for (String rule: rules) {
+			this.rules.add(new Rule(rule, tagNames));
+		}
+	}
+	
+	public String getClusterName(UserTag[] userTags) {
+		StringBuilder sb = new StringBuilder(32);
+		for (Rule rule: rules) {
+			sb.append(rule.call(userTags));
+		}
+		return sb.toString();
+	}
+
+	class Rule {
+		final private static char funcSeparator = '.';
+		
+		public final String literal;
+		public final int tagIndex; // Tag to operate on
+		public final List<Function> funcs; // operation to perform
+		
+		Rule(String ruleString, String[] tagNames) {
+			String literal = null;
+			if (ruleString.startsWith("\"")) {
+				literal = ruleString.replaceAll("\"", "");
+			}
+			this.literal = literal;
+			if (literal != null) {
+				this.tagIndex = -1;
+				this.funcs = null;
+				return;
+			}
+			
+			String tagName = ruleString;
+			int sep = ruleString.indexOf(funcSeparator);
+			if (sep >= 0) {
+				tagName = ruleString.substring(0, sep);
+			}
+			int index = -1;
+			for (int i = 0; i < tagNames.length; i++) {
+				if (tagName.equals(tagNames[i])) {
+					index = i;
+					break;
+				}
+			}
+			if (index == -1)
+				throw(new IllegalArgumentException("Rule tag name not found"));
+			
+			this.tagIndex = index;
+			this.funcs = Lists.newArrayList();
+			
+			if (sep < 0)
+				return;
+			
+			String funcsString = ruleString.substring(ruleString.indexOf(funcSeparator) + 1);
+			StringBuilder sb = new StringBuilder(16);
+			boolean inQuote = false;
+			for (int i = 0; i < funcsString.length(); i++) {
+				char c = funcsString.charAt(i);
+				if (c == '"') {
+					inQuote = !inQuote;
+					sb.append(c);
+				}
+				else if (c == funcSeparator && !inQuote) {
+					funcs.add(new Function(sb.toString()));
+					sb = new StringBuilder(16);
+				}
+				else {
+					sb.append(c);
+				}
+			}
+			if (sb.length() > 0)
+				funcs.add(new Function(sb.toString()));
+		}
+		
+		public String call(UserTag[] userTags) {
+			String out = "";
+			if (literal != null) {
+				out = literal;
+			}
+			else if (userTags[tagIndex] != null) {
+				out = userTags[tagIndex].name;
+
+				for (Function f: funcs) {
+					out = f.call(out);
+				}
+			}
+			return out;
+		}
+	}
+	
+	enum Op {
+		toLower, // convert to lower case string. no arguments
+		toUpper, // convert to upper case string. no arguments
+		regex,   // apply regular expression and return the first group
+	}
+
+	class Function {
+		public Op op;
+		public String[] args;
+		private Pattern pattern = null;
+		
+		Function(String function) {
+			// Examples: "toLower()", "regex(.*-(.*), $1)"
+			op = Op.valueOf(function.substring(0, function.indexOf("(")));
+			args = function.substring(0, function.lastIndexOf(")")).substring(function.indexOf("(")+1).split(",");
+			for (int i = 0; i < args.length; i++) {
+				args[i] = args[i].trim();
+				// Strip the double quotes
+				if (args[i].startsWith("\""))
+					args[i] = args[i].substring(0, args[i].length()-1).substring(1);
+			}
+			if (args.length == 1 && args[0].isEmpty())
+				args = new String[]{};
+		}
+		
+		public String call(String in) {
+			String out = "";
+			
+			switch (op) {
+			case toLower:
+				out = in.toLowerCase();
+				break;
+				
+			case toUpper:
+				out = in.toUpperCase();
+				break;
+				
+			case regex:
+				if (pattern == null)
+					pattern = Pattern.compile(args[0]);
+				Matcher matcher = pattern.matcher(in);
+				if (matcher.matches())
+					out = matcher.group(1);
+				break;
+			}
+			return out;
+		}
+	}
+}

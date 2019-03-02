@@ -145,6 +145,12 @@ class BootStrap {
                 properties.setProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, prop.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_ROLENAME, prop.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_EXTERNALID, prop.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, ""));
+                properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME));
+                properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION));
+                properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, ""));
+                properties.setProperty(IceOptions.KUBERNETES_ACCOUNT_ID, prop.getProperty(IceOptions.KUBERNETES_ACCOUNT_ID, ""));
+                properties.setProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, prop.getProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, ""));
+                properties.setProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, prop.getProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, ""));
 				properties.setProperty(IceOptions.COST_AND_USAGE_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_START_DATE, ""));
 				properties.setProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, ""));
 				properties.setProperty(IceOptions.EDP_DISCOUNTS, prop.getProperty(IceOptions.EDP_DISCOUNTS, ""));
@@ -154,6 +160,13 @@ class BootStrap {
                 ReservationService.ReservationUtilization reservationUtilization =
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
+				// Copy any kubernetes properties
+				for (String name: prop.stringPropertyNames()) {
+					if (name.startsWith("ice.kubernetes.")) {
+						properties.setProperty(name, prop.getProperty(name));
+					}
+				}
+		
 				// Resource Tagging stuff
 				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
 				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");

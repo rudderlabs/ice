@@ -82,4 +82,10 @@ public abstract class ResourceService {
 	abstract public String getUserTagValue(LineItem lineItem, String tag);
 	
     abstract public boolean[] getUserTagCoverage(LineItem lineItem);
+
+    /**
+     * Get the user tag index in ResourceGroup for the requested tag
+     */
+	abstract public int getUserTagIndex(String tag);
+
 }

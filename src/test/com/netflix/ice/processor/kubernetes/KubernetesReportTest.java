@@ -1,0 +1,80 @@
+package com.netflix.ice.processor.kubernetes;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.util.List;
+
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.junit.Test;
+
+import com.netflix.ice.processor.kubernetes.KubernetesReport.KubernetesColumn;
+
+public class KubernetesReportTest {
+	private static final String resourceDir = "src/test/resources/";
+
+	class TestKubernetesReport extends KubernetesReport {
+
+		public TestKubernetesReport(DateTime month, String[] userTags) {
+			super(null, null, null, null, null, null, month, userTags);
+		}
+	}
+
+	@Test
+	public void testReadFile() {
+        String[] customTags = new String[]{ "Tag1", "Tag2", "Tag3" };
+		TestKubernetesReport tkr = new TestKubernetesReport(new DateTime("2019-01", DateTimeZone.UTC), customTags);
+		
+		File file = new File(resourceDir, "kubernetes-2019-01.csv");
+		tkr.readFile(file);
+		
+		assertEquals("Wrong number of clusters", 4, tkr.getClusters().size());
+		assertEquals("Should not have data at hour 0", 0, tkr.getData("dev-usw2a", 0).size());
+		assertEquals("Should have data at hour 395", 10, tkr.getData("dev-usw2a", 395).size());
+		
+		List<String[]> data = tkr.getData("dev-usw2a", 395);
+		
+		// find the kube-system namespace
+		String[] kubeSystem = null;
+		for (String[] item: data) {
+			if (tkr.getString(item, KubernetesColumn.Namespace).equals("kube-system")) {
+				kubeSystem = item;
+				break;
+			}
+		}
+		
+		assertNotNull("Missing item in report", kubeSystem);
+		class ItemValue {
+			KubernetesColumn col;
+			String value;
+			
+			ItemValue(KubernetesColumn c, String v) {
+				col = c;
+				value = v;
+			}
+		}
+		ItemValue[] itemValues = new ItemValue[]{
+				new ItemValue(KubernetesColumn.StartDate, "2019-01-17T11:00:00Z"),
+				new ItemValue(KubernetesColumn.EndDate, "2019-01-17T12:00:00Z"),
+				new ItemValue(KubernetesColumn.RequestsCPUCores, "1.960000000000001"),
+				new ItemValue(KubernetesColumn.UsedCPUCores, "0.09185591484457487"),
+				new ItemValue(KubernetesColumn.LimitsCPUCores, "1.7000000000000008"),
+				new ItemValue(KubernetesColumn.ClusterCPUCores, "156"),
+				new ItemValue(KubernetesColumn.RequestsMemoryGiB, "2.158203125"),
+				new ItemValue(KubernetesColumn.UsedMemoryGiB, "1.7474441528320312"),
+				new ItemValue(KubernetesColumn.LimitsMemoryGiB, "5.87890625"),
+				new ItemValue(KubernetesColumn.ClusterMemoryGiB, "576.1466674804688"),
+				new ItemValue(KubernetesColumn.NetworkInGiB, "0.0016675007839997604"),
+				new ItemValue(KubernetesColumn.ClusterNetworkInGiB, "0.004905043024983669"),
+				new ItemValue(KubernetesColumn.NetworkOutGiB, "0.00102091437826554"),
+				new ItemValue(KubernetesColumn.ClusterNetworkOutGiB, "0.003215055426130298"),
+				new ItemValue(KubernetesColumn.PersistentVolumeClaimGiB, "0"),
+				new ItemValue(KubernetesColumn.ClusterPersistentVolumeClaimGiB, "308"),
+		};
+		for (ItemValue iv: itemValues) {
+			assertEquals("Wrong value for " + iv.col, iv.value, tkr.getString(kubeSystem, iv.col));	
+		}
+	}
+
+}

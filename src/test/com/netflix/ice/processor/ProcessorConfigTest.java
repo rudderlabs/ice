@@ -2,6 +2,7 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
 
+import java.util.Map;
 import java.util.Properties;
 
 import org.joda.time.DateTime;
@@ -35,6 +36,11 @@ public class ProcessorConfigTest {
 		
 		@Override
 	    protected void initZones() {			
+		}
+		
+		@Override
+	    protected Map<String, String> getDefaultAccountNames() {
+			return null;
 		}
 		
 	}

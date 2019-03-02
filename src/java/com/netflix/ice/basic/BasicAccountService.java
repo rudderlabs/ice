@@ -97,13 +97,16 @@ public class BasicAccountService implements AccountService {
 
     public BasicAccountService(Properties properties, Map<String, String> defaultNames) {
     	init(properties);
-    	// Add any additional accounts not specified in the properties
-    	for (String id: defaultNames.keySet()) {
-    		if (!accountsById.containsKey(id)) {
-    			Account a = new Account(id, defaultNames.get(id));
-    			accountsByName.put(a.name, a);
-    			accountsById.put(a.id, a);
-    		}
+    	
+    	if (defaultNames != null) {
+	    	// Add any additional accounts not specified in the properties
+	    	for (String id: defaultNames.keySet()) {
+	    		if (!accountsById.containsKey(id)) {
+	    			Account a = new Account(id, defaultNames.get(id));
+	    			accountsByName.put(a.name, a);
+	    			accountsById.put(a.id, a);
+	    		}
+	    	}
     	}
     }
 
