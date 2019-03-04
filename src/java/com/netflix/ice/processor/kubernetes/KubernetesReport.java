@@ -232,7 +232,7 @@ public class KubernetesReport extends Report {
 
 	public List<String[]> getData(String cluster, int i) {
 		List<List<String[]>> clusterData = data.get(cluster);
-		return clusterData == null ? null : clusterData.get(i);
+		return clusterData == null || clusterData.size() <= i ? null : clusterData.get(i);
 	}
 	
 	public String getString(String[] item, KubernetesColumn col) {

@@ -79,6 +79,7 @@ public class Tagger {
 		
 		TaggerConfig config = getConfigFromWorkBucket(workBucketName, workBucketPrefix, localDir);
 		if (config == null) {
+			logger.warn("Could not read existing configuration for Kubernetes Tagger, creating config from properties file");
 			config = new TaggerConfig(tagsToCopy, rules, resourceService);
 			writeConfigToWorkBucket(config, workBucketName, workBucketPrefix, localDir);
 		}
@@ -109,7 +110,13 @@ public class Tagger {
 				logger.error("Error reading from file " + file.getName(), e);
 				return null;
 			}
-        	return new TaggerConfig(json);    	
+			try {
+				return new TaggerConfig(json);
+			}
+			catch (Exception e) {
+				logger.error("Error parsing json file " + file.getName());
+				return null;
+			}
     	}
     	return null;
 	}
