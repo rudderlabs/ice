@@ -156,8 +156,7 @@ public class BillingFileProcessor extends Poller {
                 config.resourceService.commit();
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archiveHourlyJson(startMilli, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService);
-            costAndUsageData.archive(startMilli, config.startDate, compress);
+            costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
             
             logger.info("archiving instance data...");
             archiveInstances();

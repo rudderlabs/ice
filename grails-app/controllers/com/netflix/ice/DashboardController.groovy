@@ -577,7 +577,7 @@ class DashboardController {
 		
         Map<Tag, double[]> data;
 		if (tagCoverage) {
-			logger.info("tagCoverage: groupBy=" + groupBy + ", aggregate=" + aggregate + ", tagKeys=" + tagKeys);
+			logger.debug("tagCoverage: groupBy=" + groupBy + ", aggregate=" + aggregate + ", tagKeys=" + tagKeys);
 			if (showUserTags) {
 				if (products.size() == 0) {
 					Set productSet = Sets.newTreeSet();
@@ -606,7 +606,7 @@ class DashboardController {
                         aggregate,
 						userTagGroupByIndex
 	                );
-	               	logger.info("  product: " + product + ", tags:" + dataOfProduct.keySet());      
+	               	logger.debug("  product: " + product + ", tags:" + dataOfProduct.keySet());      
 					mergeTagCoverage(dataOfProduct, rawMetrics);
 				}
 				data = TagCoverageDataManager.processResult(rawMetrics, groupBy, aggregate, tagKeys, config.userTags);
@@ -622,7 +622,7 @@ class DashboardController {
 					tagKeys
 				);			
 			}
-			logger.info("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.userTags.get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
+			logger.debug("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.userTags.get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
 		}
         else if (resourceGroups.size() > 0 || groupBy == TagType.ResourceGroup || showResourceGroups || showUserTags) {
             data = Maps.newTreeMap();
