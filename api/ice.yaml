@@ -388,7 +388,7 @@ paths:
 
   /instance:
     get:
-      description: Get information about an EC2, RDS, or Redshift instance.
+      description: Get information about an AWS resource instance (e.g. EC2, RDS, etc...).
       parameters:
         - name: id
           in: query

@@ -2030,8 +2030,8 @@ function resourceInfoCtrl($scope, $location, $http) {
     
     $http({
       method: "GET",
-      url: "instance/" + $scope.resource.name,
-      params: {}
+      url: "instance/",
+      params: { id: $scope.resource.name }
     }).success(function (result) {
         $scope.resourceInfo = JSON.stringify(result, null, "    ");
     }).error(function(result, status) {
