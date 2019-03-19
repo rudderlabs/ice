@@ -995,6 +995,10 @@ class DashboardController {
         }
         else if (consolidateType == ConsolidateType.weekly) {
             start = start.withHourOfDay(0).minusDays(1).withDayOfWeek(1).plusWeeks(1);
+			if (start.isAfter(end)) {
+				logger.warn("Start is after end: start=" + start + ", end=" + end);
+				end = start;
+			}
             //end = end.withHourOfDay(0).withDayOfWeek(1);
         }
         else if (consolidateType == ConsolidateType.monthly) {
