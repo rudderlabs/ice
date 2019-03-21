@@ -99,7 +99,6 @@ public class ProcessorConfig extends Config {
     /**
      *
      * @param properties (required)
-     * @param accountService (required)
      * @param productService (required)
      * @param reservationService (required)
      * @param resourceService (optional)

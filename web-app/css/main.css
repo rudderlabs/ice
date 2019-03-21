@@ -344,9 +344,9 @@ div.grippie { background: #EEEEEE url(../images/grippie.png) no-repeat scroll ce
 .chromeFrameInstallDefaultStyle { width: 96%; height: 90%; border: 5px solid blue; z-index: 1000; left: 410px; top: 360px; }
 
 .allNoneButton {padding: 0}
-.metaAccounts {width: 175px}
+.metaAccounts {width: 250px}
 .metaRegions {width: 115px}
-.metaProducts {width: 160px}
+.metaProducts {width: 175px}
 .metaOperations {width: 230px}
 .metaUsageTypes {width: 230px}
 .metaResourceGroups {width: 450px}
