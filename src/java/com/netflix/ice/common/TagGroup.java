@@ -117,7 +117,23 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             		(this.resourceGroup == null && other.resourceGroup == null) || (this.resourceGroup != null && other.resourceGroup != null && this.resourceGroup.equals(other.resourceGroup));
             
             if (match != valueMatch) {
-            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + System.identityHashCode(this.account) + ", " + System.identityHashCode(other.account));
+            	List<String> mismatches = Lists.newArrayList();
+            	if (this.account != other.account)
+            		mismatches.add("account");
+            	if (this.region != other.region)
+            		mismatches.add("region");
+            	if (this.zone != other.zone)
+            		mismatches.add("zone");
+            	if (this.product != other.product)
+            		mismatches.add("product");
+            	if (this.operation != other.operation)
+            		mismatches.add("operation");
+            	if (this.usageType != other.usageType)
+            		mismatches.add("usageType");
+            	if (this.resourceGroup != other.resourceGroup)
+            		mismatches.add("resourceGroup");
+            	
+            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + mismatches);
             	match = valueMatch;
             }          
         }
