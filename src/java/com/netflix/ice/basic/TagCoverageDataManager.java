@@ -7,8 +7,6 @@ import java.util.Map;
 
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
@@ -27,7 +25,7 @@ import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
 
 public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverageData, TagCoverageMetrics> implements DataManager {
-    private final static Logger staticLogger = LoggerFactory.getLogger(TagCoverageDataManager.class);
+    //private final static Logger staticLogger = LoggerFactory.getLogger(TagCoverageDataManager.class);
 
 	public TagCoverageDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
 			int monthlyCacheSize, AccountService accountService, ProductService productService) {

@@ -40,6 +40,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Configuration class for reader/UI.
@@ -47,6 +52,8 @@ import java.util.Properties;
 public class ReaderConfig extends Config {
     private static ReaderConfig instance;
     private static final Logger logger = LoggerFactory.getLogger(ReaderConfig.class);
+    
+    private final int numThreads = 16;
 
     public final BasicAccountService accountService;
     public final DateTime startDate;
@@ -118,7 +125,7 @@ public class ReaderConfig extends Config {
         return instance;
     }
 
-    public void start() {
+    public void start() throws InterruptedException, ExecutionException {
 
     	// Prime the data caches
         Managers managers = ReaderConfig.getInstance().managers;
@@ -126,20 +133,39 @@ public class ReaderConfig extends Config {
         List<UserTag> userTagList = Lists.newArrayList();
         for (String ut: userTags)
         	userTagList.add(UserTag.get(ut));
+        
+    	ExecutorService pool = Executors.newFixedThreadPool(numThreads);
+    	List<Future<Void>> futures = Lists.newArrayList();
+
+    	
         for (Product product: products) {
-            TagGroupManager tagGroupManager = managers.getTagGroupManager(product);
-            Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
-            if (interval == null)
-                continue;
-            for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
-                readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
-                // Prime the tag coverage cache
-                if ((product == null || enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
-                	readData(product, managers.getTagCoverageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, userTagList);
-                }
-            }
+        	futures.add(readDataForProduct(product, userTagList, pool));
         }
+		// Wait for completion
+		for (Future<Void> f: futures) {
+			f.get();
+		}
+    }
+    
+    public Future<Void> readDataForProduct(final Product product, final List<UserTag> userTagList, ExecutorService pool) {
+    	return pool.submit(new Callable<Void>() {
+    		@Override
+    		public Void call() throws Exception {
+                TagGroupManager tagGroupManager = managers.getTagGroupManager(product);
+                Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
+                if (interval == null)
+                    return null;
+                for (ConsolidateType consolidateType: ConsolidateType.values()) {
+                    readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
+                    readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
+                    // Prime the tag coverage cache
+                    if ((product == null || enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
+                    	readData(product, managers.getTagCoverageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, userTagList);
+                    }
+                }
+    	        return null;
+    		}
+    	});        
     }
 
     public void shutdown() {

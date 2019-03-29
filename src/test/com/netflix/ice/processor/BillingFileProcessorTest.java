@@ -19,7 +19,6 @@ import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +42,7 @@ import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.LineItemProcessor.Result;
@@ -62,6 +62,7 @@ public class BillingFileProcessorTest {
     
     private static final String resourcesDir = "src/test/resources/";
     private static final String resourcesReportDir = resourcesDir + "report/";
+    private static final String cauReportDir = resourcesReportDir + "Oct2017/";
 	private static PriceListService priceListService = null;
 	private static Properties properties;
 	private static AccountService accountService;
@@ -69,12 +70,11 @@ public class BillingFileProcessorTest {
 	private static Zone ap_southeast_2a;
 	
 
-    @BeforeClass
-    public static void init() throws Exception {
+    private static void init(String propertiesFilename) throws Exception {
 		ReservationProcessorTest.init();
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
-        properties = getProperties();        
+        properties = getProperties(propertiesFilename);        
 		accountService = new BasicAccountService(properties);
 		productService = new BasicProductService(null);
 		
@@ -87,9 +87,9 @@ public class BillingFileProcessorTest {
     }
     
     
-	private static Properties getProperties() throws IOException {
+	private static Properties getProperties(String propertiesFilename) throws IOException {
 		Properties prop = new Properties();
-		File file = new File(resourcesReportDir, "ice.properties");
+		File file = new File(propertiesFilename);
         InputStream is = new FileInputStream(file);
 		prop.load(is);
 	    is.close();
@@ -114,14 +114,14 @@ public class BillingFileProcessorTest {
 			
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
 			reservationProcessor = cauProcessor.getReservationProcessor();
-			File manifest = new File(resourcesReportDir, "hourly-cost-and-usage-Manifest.json");
+			File manifest = new File(cauReportDir, "hourly-cost-and-usage-Manifest.json");
 			CostAndUsageReport report = new CostAndUsageReport(manifest, cauProcessor);
 			
 	    	List<File> files = Lists.newArrayList();
 	    	for (String key: report.getReportKeys()) {
 				String prefix = key.substring(0, key.lastIndexOf("/") + 1);
 				String filename = key.substring(prefix.length());
-	    		files.add(new File(resourcesReportDir, filename));
+	    		files.add(new File(cauReportDir, filename));
 	    	}
 	        Long startMilli = report.getStartTime().getMillis();
 	        if (startMilli != start.getMillis()) {
@@ -159,7 +159,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	public void testFileData(ReportTest reportTest) throws Exception {
+	public void testFileData(ReportTest reportTest, String prefix) throws Exception {
 		class BasicTestReservationService extends BasicReservationService {
 			BasicTestReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
 				super(term, defaultUtilization, false);
@@ -176,10 +176,7 @@ public class BillingFileProcessorTest {
 		
 		@SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
-		
-		PriceListService priceListService = new PriceListService(null, null, null);
-		priceListService.init();
-		
+				
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
 		            Properties properties,
@@ -195,6 +192,10 @@ public class BillingFileProcessorTest {
 			@Override
 			protected void initZones() {
 				
+			}
+			@Override
+		    protected Map<String, String> getDefaultAccountNames() {
+				return Maps.newHashMap();
 			}
 		}
 		
@@ -253,7 +254,7 @@ public class BillingFileProcessorTest {
     		}
         }
                 
-        File expectedUsage = new File(resourcesReportDir, "usage.csv");
+        File expectedUsage = new File(resourcesReportDir, prefix+"usage.csv");
         if (!expectedUsage.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference usage data...");
@@ -264,7 +265,7 @@ public class BillingFileProcessorTest {
         	logger.info("Comparing against reference usage data...");
         	compareData(costAndUsageData.getUsage(null), "Usage", expectedUsage, accountService, productService, ignore);
         }
-        File expectedCost = new File(resourcesReportDir, "cost.csv");
+        File expectedCost = new File(resourcesReportDir, prefix+"cost.csv");
         if (!expectedCost.exists()) {
         	// Comparison file doesn't exist yet, write out our current results
         	logger.info("Saving reference cost data...");
@@ -310,7 +311,17 @@ public class BillingFileProcessorTest {
 		// For each hour see that the length and entries match
 		for (int i = 0; i < data.getNum(); i++) {
 			Map<TagGroup, Double> expected = expectedData.getData(i);
-			Map<TagGroup, Double> got = data.getData(i);
+			Map<TagGroup, Double> got = Maps.newHashMap();
+			for (Entry<TagGroup, Double> entry: data.getData(i).entrySet()) {
+				// Convert any TagGroupRIs to TagGroups since the RI version isn't reconstituted from file
+				if (entry.getKey() instanceof TagGroupRI) {
+					TagGroup tg = entry.getKey();
+					got.put(TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup), entry.getValue());					
+				}
+				else {
+					got.put(entry.getKey(), entry.getValue());
+				}
+			}
 			int expectedLen = expected.keySet().size();
 	        Set<TagGroup> keys = Sets.newTreeSet();
 	        keys.addAll(got.keySet());
@@ -412,16 +423,19 @@ public class BillingFileProcessorTest {
 	
 	@Test
 	public void testCostAndUsageReport() throws Exception {
-		testFileData(new CostAndUsageTest());
+		init(cauReportDir + "ice.properties");
+		testFileData(new CostAndUsageTest(), "cau-");
 	}
 	
 	@Test
 	public void testDetailedBillingReport() throws Exception {
-		testFileData(new DetailedBillingReportTest());
+		init(resourcesReportDir + "ice.properties");
+		testFileData(new DetailedBillingReportTest(), "dbr-");
 	}
 	
 	@Test
 	public void testAllUpfrontUsage() throws Exception {
+		init(resourcesReportDir + "ice.properties");
 		BasicLineItemProcessorTest.init(accountService);
 		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
 		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
