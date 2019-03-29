@@ -129,9 +129,9 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             	if (this.operation != other.operation)
             		mismatches.add("operation");
             	if (this.usageType != other.usageType)
-            		mismatches.add("usageType");
+            		mismatches.add("usageType("+ this.usageType.hashCode() + "," + other.usageType.hashCode() + ")");
             	if (this.resourceGroup != other.resourceGroup)
-            		mismatches.add("resourceGroup");
+            		mismatches.add("resourceGroup(" + this.resourceGroup.hashCode() + "," + other.resourceGroup.hashCode() + ")");
             	
             	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + mismatches);
             	match = valueMatch;

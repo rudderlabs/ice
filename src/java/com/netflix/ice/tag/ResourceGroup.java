@@ -70,20 +70,16 @@ public class ResourceGroup extends Tag {
     		return getResourceGroup(name.split(splitRegex, -1));
     	}
         ResourceGroup resourceGroup = resourceGroups.get(name);
-        if (resourceGroup == null) {
-            resourceGroups.putIfAbsent(name, new ResourceGroup(name, isProductName));
-            resourceGroup = resourceGroups.get(name);
-        }
+        if (resourceGroup == null)
+        	resourceGroup = resourceGroups.putIfAbsent(name, new ResourceGroup(name, isProductName));
         return resourceGroup;
     }
 
     public static ResourceGroup getResourceGroup(String[] tags) {
     	String name = StringUtils.join(tags, separator);
         ResourceGroup resourceGroup = resourceGroups.get(name);
-        if (resourceGroup == null) {
-            resourceGroups.putIfAbsent(name, new ResourceGroup(tags));
-            resourceGroup = resourceGroups.get(name);
-        }
+        if (resourceGroup == null)
+        	resourceGroup = resourceGroups.putIfAbsent(name, new ResourceGroup(tags));
         return resourceGroup;
     }
 
