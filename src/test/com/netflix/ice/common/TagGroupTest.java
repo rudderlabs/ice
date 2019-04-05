@@ -50,6 +50,10 @@ public class TagGroupTest {
 		assertTrue("Should be equal", tg1 == tg2);
 		assertEquals("Should be equal", tg1, tg1);
 		assertEquals("Should be equal", tg1, tg2);
+		
+		TagGroup tga = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByName("Data Transfer"), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW2-AWS-Out-Bytes", "GB"), null);
+		TagGroup tgb = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByName("Data Transfer"), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW1-AWS-Out-Bytes", "GB"), null);
+		assertFalse("Should not be equal", tga.equals(tgb));
 	}
 
 }
