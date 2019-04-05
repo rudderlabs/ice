@@ -134,6 +134,11 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             		mismatches.add("resourceGroup(" + this.resourceGroup.hashCode() + "," + other.resourceGroup.hashCode() + ")");
             	
             	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + mismatches);
+            	logger.error("usageTypes: " + this.usageType.name + "," + this.usageType.unit + ";" + other.usageType.name + "," + other.usageType.unit);
+            	logger.error("this.usageType lookup: " + UsageType.getUsageType(this.usageType.name, this.usageType.unit).hashCode());
+            	logger.error("other.usageType lookup: " + UsageType.getUsageType(other.usageType.name, other.usageType.unit).hashCode());
+            	
+            	
             	match = valueMatch;
             }          
         }
