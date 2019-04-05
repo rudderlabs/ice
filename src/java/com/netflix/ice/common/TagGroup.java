@@ -110,11 +110,11 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             boolean valueMatch = 
             		this.account.equals(other.account) &&
             		this.region.equals(other.region) &&
-            		(this.zone == null && other.zone == null) || (this.zone != null && other.zone != null && this.zone.equals(other.zone)) &&
+            		((this.zone == null && other.zone == null) || (this.zone != null && other.zone != null && this.zone.equals(other.zone))) &&
             		this.product.equals(other.product) &&
             		this.operation.equals(other.operation) &&
             		this.usageType.equals(other.usageType) &&
-            		(this.resourceGroup == null && other.resourceGroup == null) || (this.resourceGroup != null && other.resourceGroup != null && this.resourceGroup.equals(other.resourceGroup));
+            		((this.resourceGroup == null && other.resourceGroup == null) || (this.resourceGroup != null && other.resourceGroup != null && this.resourceGroup.equals(other.resourceGroup)));
             
             if (match != valueMatch) {
             	List<String> mismatches = Lists.newArrayList();
@@ -133,7 +133,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             	if (this.resourceGroup != other.resourceGroup)
             		mismatches.add("resourceGroup(" + this.resourceGroup.hashCode() + "," + other.resourceGroup.hashCode() + ")");
             	
-            	logger.error("non-equivalent tag sets in TagGroup comparison: " + this + ", " + mismatches);
+            	logger.error("non-equivalent tag sets in TagGroup comparison: (" + this + "), (" + other + "), " + mismatches);
+            	
             	match = valueMatch;
             }          
         }
