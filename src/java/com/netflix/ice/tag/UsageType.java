@@ -63,8 +63,14 @@ public class UsageType extends Tag {
 
     public static UsageType getUsageType(String name, String unit) {
         UsageType usageType = usageTypes.get(name);
-        if (usageType == null)
-        	usageType = usageTypes.putIfAbsent(name, new UsageType(name, unit));
+        if (usageType == null) {
+            usageTypes.putIfAbsent(name, new UsageType(name, unit));
+            usageType = usageTypes.get(name);
+        }
+// We don't care about units at this time.
+//        else if (!usageType.unit.equals(unit)) {
+//            logger.error("found different units for " + usageType + ", " + usageType.unit + ", " + unit);
+//        }
         return usageType;
     }
 
