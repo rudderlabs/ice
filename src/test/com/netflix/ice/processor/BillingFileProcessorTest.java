@@ -31,6 +31,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicLineItemProcessorTest;
+import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.basic.BasicLineItemProcessorTest.PricingTerm;
 import com.netflix.ice.basic.BasicLineItemProcessorTest.ProcessTest;
 import com.netflix.ice.basic.BasicLineItemProcessorTest.Which;
@@ -199,12 +200,16 @@ public class BillingFileProcessorTest {
 			}
 		}
 		
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		ResourceService resourceService = new BasicResourceService(productService, new String[]{}, new String[]{}, tagKeys, tagValues, null);
+		
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,
 										credentialsProvider,
 										productService,
 										reservationService,
-										null,
+										resourceService,
 										priceListService,
 										false);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
@@ -219,7 +224,7 @@ public class BillingFileProcessorTest {
         
 		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
-		reservationService.updateReservations(reservations, accountService, startMilli, productService);
+		reservationService.updateReservations(reservations, accountService, startMilli, productService, resourceService);
 				
 		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    

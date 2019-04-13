@@ -8,8 +8,10 @@ import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 
 import com.amazonaws.services.ec2.model.ReservedInstances;
+import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
 import com.amazonaws.services.redshift.model.ReservedNode;
+import com.google.common.collect.Lists;
 import com.netflix.ice.common.LineItem;
 
 /*
@@ -164,6 +166,11 @@ public class CanonicalReservedInstances {
      * parent reservation ID if this was modified
      */
     private String parentReservationId;
+    
+    /*
+     * tags
+     */
+    private List<Tag> tags;
 
     public CanonicalReservedInstances(String accountId, String region, ReservedInstances ri, String parentReservationId) {
 		this.accountId = accountId;
@@ -191,6 +198,7 @@ public class CanonicalReservedInstances {
         	this.recurringCharges.add(new RecurringCharge(rc.getFrequency(), rc.getAmount()));
         }
         this.parentReservationId = parentReservationId;
+        this.tags = ri.getTags();
 	}
     
     public CanonicalReservedInstances(String accountId, String region, ReservedDBInstance ri) {
@@ -214,11 +222,12 @@ public class CanonicalReservedInstances {
         this.currencyCode = ri.getCurrencyCode();
         this.offeringType = ri.getOfferingType();
         this.offeringClass = null;
-        this.recurringCharges = new ArrayList<RecurringCharge>();
+        this.recurringCharges = Lists.newArrayList();
         for (com.amazonaws.services.rds.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
         }
         this.parentReservationId = null;
+        this.tags = Lists.newArrayList();
     }
 
     public CanonicalReservedInstances(String accountId, String region, ReservedNode ri) {
@@ -242,11 +251,12 @@ public class CanonicalReservedInstances {
         this.currencyCode = ri.getCurrencyCode();
         this.offeringType = ri.getOfferingType();
         this.offeringClass = null;
-        this.recurringCharges = new ArrayList<RecurringCharge>();
+        this.recurringCharges = Lists.newArrayList();
         for (com.amazonaws.services.redshift.model.RecurringCharge rc: ri.getRecurringCharges()) {
         	this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
         }
         this.parentReservationId = null;
+        this.tags = Lists.newArrayList();
     }
 
     public CanonicalReservedInstances(String csv) {
@@ -271,7 +281,7 @@ public class CanonicalReservedInstances {
         currencyCode = tokens[17];
         offeringType = tokens[18];
         // Recurring charges in the form "f:c|f:c"
-        recurringCharges = new ArrayList<RecurringCharge>();
+        recurringCharges = Lists.newArrayList();
         if (tokens.length > 19 && !tokens[19].isEmpty()) {
 	        String[] charges = tokens[19].split("\\|");
 	        for (String charge: charges) {
@@ -282,6 +292,14 @@ public class CanonicalReservedInstances {
     		parentReservationId = tokens[20];
     	if (tokens.length > 21)
     		offeringClass = tokens[21];
+    	tags = Lists.newArrayList();
+    	if (tokens.length > 22 && !tokens[22].isEmpty()) {
+    		String[] tagArray = tokens[22].split("\\|");
+    		for (String t: tagArray) {
+    			String[] parts = t.split(":");
+    			tags.add(new Tag(parts[0], parts[1]));
+    		}
+    	}
     }
     
 	public String getAccountId() {
@@ -470,17 +488,25 @@ public class CanonicalReservedInstances {
 			"OfferingType",
 			"RecurringCharges",
 			"ParentReservationId",
+			"OfferingClass",
+			"Tags",
 		};
 		return StringUtils.join(cols, ",");
 	}
 
 	public String toString() {
     	// First prep the recurring charges
-    	List<String> charges = new ArrayList<String>();
+    	List<String> charges = Lists.newArrayList();
     	for (RecurringCharge rc: recurringCharges) {
     		charges.add(rc.toString());
     	}
-    	String rcs = StringUtils.join(charges.toArray(new String[0]), "|");
+    	String rcs = String.join("|", charges);
+    	List<String> tagList = Lists.newArrayList();
+    	for (Tag t: tags) {
+    		tagList.add(t.getKey() + ":" + t.getValue());
+    	}
+    	String tagsStr = String.join("|", tagList);
+    	
     	// Now build the line
     	String[] fields = new String[] {
     			accountId,
@@ -505,8 +531,9 @@ public class CanonicalReservedInstances {
     	        rcs,
     	        parentReservationId,
     	        offeringClass,
+    	        tagsStr,
         };
-    	return StringUtils.join(fields, ",");
+    	return String.join(",", fields);
     }
 	
 	public boolean isEC2() {
@@ -545,6 +572,14 @@ public class CanonicalReservedInstances {
 
 	public void setOfferingClass(String offeringClass) {
 		this.offeringClass = offeringClass;
+	}
+
+	public List<Tag> getTags() {
+		return tags;
+	}
+
+	public void setTags(List<Tag> tags) {
+		this.tags = tags;
 	}
 
 }

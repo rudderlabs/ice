@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.ivy.util.StringUtils;
@@ -21,9 +22,11 @@ import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
+import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
@@ -88,7 +91,8 @@ public class ReservationProcessorTest {
 		ap_southeast_2a = Zone.getZone("ap-southeast-2a");
 	}
 	
-	private static ProductService productService = new BasicProductService(null);
+	private static ProductService productService;
+	private static ResourceService resourceService;
 	public static AccountService accountService;
 	private static PriceListService priceListService;
 	private static Zone eu_west_1b;
@@ -105,6 +109,15 @@ public class ReservationProcessorTest {
 	public static void init() throws Exception {
 		priceListService = new PriceListService(resourceDir, null, null);
 		priceListService.init();
+
+		Properties props = new Properties();
+		props.setProperty("RDS", "Relational Database Service");
+		props.setProperty("EC2", "Elastic Compute Cloud");
+		productService = new BasicProductService(props);
+
+		Map<String, List<String>> tagKeys = Maps.newHashMap();
+		Map<String, List<String>> tagValues = Maps.newHashMap();
+		resourceService = new BasicResourceService(productService, new String[]{}, new String[]{}, tagKeys, tagValues, null);
 	}
 	
 	@Test
@@ -189,7 +202,7 @@ public class ReservationProcessorTest {
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
 		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(null), priceListService, true);
-		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, null);
+		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, product);
 	}
 	
 	private void runOneHourTestWithOwnersAndProcessor(
@@ -274,7 +287,7 @@ public class ReservationProcessorTest {
 		}
 				
 		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.FIXED, false);
-		reservationService.updateReservations(reservations, accountService, startMillis, productService);
+		reservationService.updateReservations(reservations, accountService, startMillis, productService, resourceService);
 		
 		rp.setDebugHour(0);
 		rp.setDebugFamily(debugFamily);
@@ -910,7 +923,7 @@ public class ReservationProcessorTest {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,1464699998099,1496235997000,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,1464699998099,1496235997000,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -1519,7 +1532,7 @@ public class ReservationProcessorTest {
 		long startMillis = 1494004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,1493283689633,1524819688000,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+			"111111111111,EC2,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,1493283689633,1524819688000,31536000,0.0,1060.0,2,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121,,,Foo:Bar",
 		};
 		
 		ResourceGroup rg = ResourceGroup.getResourceGroup("Prod_MyAPI", false);
@@ -1528,18 +1541,35 @@ public class ReservationProcessorTest {
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesPartial, "c4.2xlarge", ResourceGroup.getResourceGroup(Product.ec2Instance, true), 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
+		ResourceGroup unusedRg = ResourceGroup.getResourceGroup(Product.ec2Instance, true);
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 0.121),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", null, 0.121),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.savingsPartial, "c4.2xlarge", null, 0.398 - 0.121 - 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesPartial, "c4.2xlarge", unusedRg, 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", null, 2 * 0.121),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.savingsPartial, "c4.2xlarge", null, 0.398 - 2 * (0.121 + 0.121)),
 		};
 
-		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);		
+		runOneHourTestWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);
+		
+		/* Cost and Usage version */
+		usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartial, "c4.2xlarge", rg, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		expectedCostData = new Datum[]{
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.reservedInstancesPartial, "c4.2xlarge", rg, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", rg, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartial, "c4.2xlarge", rg, 0.398 - 0.121 - 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesPartial, "c4.2xlarge", unusedRg, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartial, "c4.2xlarge", unusedRg, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.savingsPartial, "c4.2xlarge", unusedRg, -0.121 - 0.121),
+			};
+		runOneHourTestCostAndUsageWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);		
 	}
 	
 	/*
