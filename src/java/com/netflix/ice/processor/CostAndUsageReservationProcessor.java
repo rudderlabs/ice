@@ -16,6 +16,7 @@ import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.ResourceGroup;
 
 public class CostAndUsageReservationProcessor extends ReservationProcessor {
 
@@ -53,7 +54,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    		}
 	    	}
 	    }
-		
+	    
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
 			Set<String> reservationIds = reservationService.getReservations(startMilli + i * AwsUtils.hourMillis, product);
@@ -68,7 +69,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(reservationId);
 			    double reservedUnused = reservation.capacity;
 			    TagGroup rtg = reservation.tagGroup;
-			    
+							    
 			    ReservationUtilization utilization = ((ReservationOperation) rtg.operation).getUtilization();
 		        InstancePrices instancePrices = prices.get(reservation.tagGroup.product);
 			    double onDemandRate = instancePrices.getOnDemandRate(reservation.tagGroup.region, reservation.tagGroup.usageType);			    
@@ -139,16 +140,17 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 
 			    // Unused
 			    // Grab the unused rate for this RI if CUR on/after 2018-01 and remove the rates from the cost map
-			    TagGroupRI unusedRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup, reservationId);
+			    ResourceGroup riResourceGroup = product == null ? null : rtg.resourceGroup;
+			    TagGroupRI unusedRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, riResourceGroup, reservationId);
 			    Double unusedRate = costMap.remove(unusedRateTag);
 			    Double amortizationRate = null;
 			    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
-				    TagGroupRI amortizationRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup, reservationId);
+				    TagGroupRI amortizationRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, riResourceGroup, reservationId);
 				    amortizationRate = costMap.remove(amortizationRateTag);
 			    }
 			    			    
 			    if (Math.abs(reservedUnused) > 0.0001) {
-				    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
+				    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, riResourceGroup);
 				    add(toBeAdded, unusedTagGroup, reservedUnused);
 				    double unusedHourlyCost = reservedUnused * ((unusedRate != null) ? unusedRate : reservation.reservationHourlyCost);
 				    add(costMap, unusedTagGroup, unusedHourlyCost);
@@ -159,11 +161,11 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    if (reservation.upfrontAmortized > 0.0 || (amortizationRate != null && amortizationRate > 0.0)) {
 					    // assign unused amortization to owner
 					    double unusedFixedCost = reservedUnused * ((amortizationRate != null) ? amortizationRate : reservation.upfrontAmortized);
-				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, rtg.resourceGroup);
+				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, riResourceGroup);
 					    add(costMap, upfrontTagGroup, unusedFixedCost);
 					    
 					    // subtract amortization and hourly rate from savings for owner
-				        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, rtg.resourceGroup);
+				        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, riResourceGroup);
 					    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
 				    }
 			    }

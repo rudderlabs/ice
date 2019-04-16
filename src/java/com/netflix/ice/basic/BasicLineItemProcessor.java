@@ -195,11 +195,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         TagGroup resourceTagGroup = null;
         if (resourceService != null) {
-            if (lineItem.hasResources() && !lineItem.getResource().isEmpty()) {
-            	// Line item has a resource ID that is not empty and the resource service is enabled.
-                ResourceGroup resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
-                resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
-            }
+            ResourceGroup resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
+            resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
         
         addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount);

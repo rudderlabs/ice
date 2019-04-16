@@ -8,6 +8,7 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
@@ -162,11 +163,35 @@ public class BasicResourceService extends ResourceService {
        	boolean hasTag = false;
        	for (int i = 0; i < customTags.length; i++) {
         	String v = getUserTagValue(lineItem, customTags[i]);
-        	if (v == null)
+        	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags[i]);
         	tags[i] = v;
         	hasTag = v == null ? hasTag : true;
         }
+        // If we didn't have any tags, just return a ResourceGroup
+        return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
+    }
+    
+    @Override
+    public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags) {
+        // Build the resource group based on the values of the custom tags
+    	String[] tags = new String[customTags.length];
+       	boolean hasTag = false;
+       	for (int i = 0; i < customTags.length; i++) {
+           	String v = null;
+   			// find first matching key with a legitimate value
+       		for (Tag riTag: reservedInstanceTags) {
+       			if (riTag.getKey().toLowerCase().equals(customTags[i].toLowerCase())) {
+       				v = riTag.getValue();
+       				if (v != null && !v.isEmpty())
+       					break;
+       			}
+       		}
+        	if (v == null || v.isEmpty())
+        		v = getDefaultUserTagValue(account, customTags[i]);
+        	tags[i] = v;
+        	hasTag = v == null ? hasTag : true;
+       	}
         // If we didn't have any tags, just return a ResourceGroup
         return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
     }
