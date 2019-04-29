@@ -25,9 +25,6 @@ import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -40,7 +37,7 @@ import java.util.TreeMap;
 
 public class TagGroup implements Comparable<TagGroup>, Serializable {
 	private static final long serialVersionUID = 3L;
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    //private final Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public final Account account;
     public final Product product;
@@ -104,7 +101,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 this.operation == other.operation &&
                 this.usageType == other.usageType &&
                 this.resourceGroup == other.resourceGroup;
-        
+/* For debugging & ensuring we don't inadvertently create TagGroup permutations       
         if (!match) {
         	// Check for value match
             boolean valueMatch = 
@@ -138,7 +135,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             	match = valueMatch;
             }          
         }
-        
+*/        
         return match;
     }
 

@@ -34,6 +34,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Zone;
 
 public class DetailedBillingReservationProcessor extends ReservationProcessor {
@@ -139,10 +140,11 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    
 			    // Scan all the regional reservations looking for matching account, region, and family with unused reservations
 			    for (TagGroup rtg: reservationTagGroups) {
+			    	ResourceGroup riResourceGroup = product == null ? null : rtg.resourceGroup;
 			    	if (rtg.zone != null || rtg.account != from || rtg.region != tagGroup.region || !sameFamily(rtg, tagGroup))
 			    		continue;
 			    	
-			        TagGroup unusedRegionalTagGroup = TagGroup.getTagGroup(from, rtg.region, null, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, rtg.resourceGroup);
+			        TagGroup unusedRegionalTagGroup = TagGroup.getTagGroup(from, rtg.region, null, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, riResourceGroup);
 			        Double unused = usageMap.get(unusedRegionalTagGroup);
 			
 			        if (unused != null && unused > 0) {
@@ -188,7 +190,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			            }
 			            
 			            if (product == null) {
-				            TagGroup lentTagGroup = TagGroup.getTagGroup(from, rtg.region, rtg.zone, rtg.product, Operation.getLentInstances(utilization), rtg.usageType, rtg.resourceGroup);
+				            TagGroup lentTagGroup = TagGroup.getTagGroup(from, rtg.region, rtg.zone, rtg.product, Operation.getLentInstances(utilization), rtg.usageType, riResourceGroup);
 				            
 				            // Lent is in reservation units
 				            Double existingLent = usageMap.get(lentTagGroup);
@@ -242,7 +244,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		Set<TagGroup> bonusTags) {
 	
 	    boolean debug = debugReservations(i, tagGroup, utilization);
-		TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, tagGroup.resourceGroup);
+	    ResourceGroup riResourceGroup = product == null ? null : tagGroup.resourceGroup;
+		TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, riResourceGroup);
 		Double unused = usageMap.get(unusedTagGroup);
 		Operation op = familyBreakout ? Operation.getFamilyReservedInstances(utilization) : Operation.getReservedInstances(utilization);
 
@@ -446,14 +449,17 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		if (debugHour >= 0)
 			logger.info("--------------- processAvailabilityZoneReservations ----------- " + reservations.size() + " reservations");
 		
-		for (TagGroup tagGroup: reservations) {
+		for (TagGroup reservationTagGroup: reservations) {
+			// Get the tagGroup without the resource if we're processing non-product report
+			ResourceGroup riResourceGroup = product == null ? null : reservationTagGroup.resourceGroup;
+			TagGroup tagGroup = TagGroup.getTagGroup(reservationTagGroup.account, reservationTagGroup.region, reservationTagGroup.zone, reservationTagGroup.product, reservationTagGroup.operation, reservationTagGroup.usageType, riResourceGroup);
 			// For each of the owner AZ reservation tag groups...
 			if (tagGroup.zone == null)
 				continue;
 			
 		    TagGroup bonusTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBonusReservedInstances(utilization), tagGroup.usageType, null);
 		    TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
-	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
+	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, riResourceGroup);
 	        
 	        InstancePrices instancePrices = prices.get(tagGroup.product);
 	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
@@ -465,7 +471,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    Map<TagGroup, Double> costMap = costData.getData(i);
 			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
-			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, utilization, instancePrices);
+			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, reservationTagGroup, utilization, instancePrices);
 			    boolean debug = debugReservations(i, tagGroup, utilization);
 
 			    // Do we have any usage from the current reservation?
@@ -591,8 +597,9 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			if (tagGroup.zone != null)
 				continue;
 			
+			ResourceGroup riResourceGroup = product == null ? null : tagGroup.resourceGroup;
 	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
-	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, null);
+	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, riResourceGroup);
 	        
 	        InstancePrices instancePrices = prices.get(tagGroup.product);
 	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
@@ -677,7 +684,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			if (tagGroup.operation != unusedOp)
 				continue;
 			
-	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, tagGroup.resourceGroup);
+	        TagGroup savingsTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getSavings(utilization), tagGroup.usageType, null);
 			
 	        double onDemandRate = prices.get(tagGroup.product).getOnDemandRate(tagGroup.region, tagGroup.usageType);
 

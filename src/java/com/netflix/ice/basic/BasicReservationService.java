@@ -44,6 +44,7 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
@@ -296,7 +297,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         if (archiveLastModified < DateTime.now().minusHours(6).getMillis()) {
         	pullReservations(reservations);
         }
-        updateReservations(reservations, config.accountService, config.startDate.getMillis(), config.productService);
+        updateReservations(reservations, config.accountService, config.startDate.getMillis(), config.productService, config.resourceService);
     }
     
     private void pullReservations(Map<ReservationKey, CanonicalReservedInstances> reservations) {
@@ -578,7 +579,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         logger.info("uploaded " + file);
     }
 
-    public void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService) {
+    public void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService, ResourceService resourceService) {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
@@ -660,7 +661,10 @@ public class BasicReservationService extends Poller implements ReservationServic
             	continue;
             }
 
-            TagGroup reservationKey = TagGroup.getTagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, null);
+            ResourceGroup resourceGroup = null;
+            if (resourceService != null)
+            	resourceGroup = resourceService.getResourceGroup(account, product, reservedInstances.getTags());
+            TagGroup reservationKey = TagGroup.getTagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, resourceGroup);
             Reservation reservation = new Reservation(reservedInstances.getReservationId(), reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             List<Reservation> reservations = reservationMap.get(utilization).get(reservationKey);

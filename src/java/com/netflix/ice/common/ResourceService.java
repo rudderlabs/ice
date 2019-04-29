@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.common;
 
+import com.amazonaws.services.ec2.model.Tag;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
@@ -60,6 +61,8 @@ public abstract class ResourceService {
     public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart){
         return ResourceGroup.getResourceGroup(product.name, true);
     }
+    
+    abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags);
 
     /**
      * Get products with resources. See example in SampleMapDbResourceService. This method will be used by UI to list

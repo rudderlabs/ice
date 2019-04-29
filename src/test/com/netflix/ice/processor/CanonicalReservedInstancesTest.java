@@ -7,6 +7,7 @@ import java.util.List;
 import org.joda.time.DateTime;
 import org.junit.Test;
 
+import com.amazonaws.services.ec2.model.Tag;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.processor.CanonicalReservedInstances.RecurringCharge;
 
@@ -33,56 +34,76 @@ public class CanonicalReservedInstancesTest {
 	private static final String offeringType = "All Upfront";
 	private static final String recurringCharges = "hourly:1.0|monthly:30.0";
 	private static final String parentReservationId = "bbbbbbbb-cccc-cccc-ddddddddddddddddd";
+	private static final String offeringClass = "standard";
+	private static final String tags = "foo:bar|Tag:Value";
 	
 	
 	private void compareValues(CanonicalReservedInstances cri, int numRecurring) {
-		assertTrue("Account doesn't match", account.equals(cri.getAccountId()));
-		assertTrue("Region doesn't match", region.equals(cri.getRegion()));
-		assertTrue("Product doesn't match", product.equals(cri.getProduct()));
-		assertTrue("ReservationID doesn't match", reservationId.equals(cri.getReservationId()));
-		assertTrue("OfferingId doesn't match", offeringId.equals(cri.getReservationOfferingId()));
-		assertTrue("InstanceType doesn't match", instanceType.equals(cri.getInstanceType()));
-		assertTrue("Scope doesn't match", scope.equals(cri.getScope()));
-		assertTrue("Zone doesn't match", zone.equals(cri.getAvailabilityZone()));
-		assertTrue("MultiAZ doesn't match", multiAZ.equals(cri.getMultiAZ().toString()));
+		assertEquals("Account doesn't match", account, cri.getAccountId());
+		assertEquals("Region doesn't match", region, cri.getRegion());
+		assertEquals("Product doesn't match", product, cri.getProduct());
+		assertEquals("ReservationID doesn't match", reservationId, cri.getReservationId());
+		assertEquals("OfferingId doesn't match", offeringId, cri.getReservationOfferingId());
+		assertEquals("InstanceType doesn't match", instanceType, cri.getInstanceType());
+		assertEquals("Scope doesn't match", scope, cri.getScope());
+		assertEquals("Zone doesn't match", zone, cri.getAvailabilityZone());
+		assertEquals("MultiAZ doesn't match", multiAZ, cri.getMultiAZ().toString());
 		String s = LineItem.amazonBillingDateFormat.print(new DateTime(cri.getStart().getTime()));
-		assertTrue("Start doesn't match", start.equals(s));
+		assertEquals("Start doesn't match", start, s);
 		String e = LineItem.amazonBillingDateFormat.print(new DateTime(cri.getEnd().getTime()));
-		assertTrue("End doesn't match", end.equals(e));
-		assertTrue("Duration doesn't match", duration.equals(cri.getDuration().toString()));
+		assertEquals("End doesn't match", end, e);
+		assertEquals("Duration doesn't match", duration, cri.getDuration().toString());
 		assertEquals("UsagePrice doesn't match", Double.parseDouble(usagePrice), cri.getUsagePrice(), 0.001);
 		assertEquals("FixedPrice doesn't match", Double.parseDouble(fixedPrice), cri.getFixedPrice(), 0.001);
-		assertTrue("InstanceCount doesn't match", instanceCount.equals(cri.getInstanceCount().toString()));
-		assertTrue("Description doesn't match", description.equals(cri.getProductDescription()));
-		assertTrue("State doesn't match", state.equals(cri.getState()));
-		assertTrue("Currency doesn't match", currency.equals(cri.getCurrencyCode()));
-		assertTrue("OfferingType doesn't match", offeringType.equals(cri.getOfferingType()));
+		assertEquals("InstanceCount doesn't match", instanceCount, cri.getInstanceCount().toString());
+		assertEquals("Description doesn't match", description, cri.getProductDescription());
+		assertEquals("State doesn't match", state, cri.getState());
+		assertEquals("Currency doesn't match", currency, cri.getCurrencyCode());
+		assertEquals("OfferingType doesn't match", offeringType, cri.getOfferingType());
 		List<RecurringCharge> rcsA = cri.getRecurringCharges();
 		String[] rcsB = recurringCharges.split("\\|");
 		assertEquals("Number of recurring charges is wrong", rcsA.size(), numRecurring);
 		for (int i = 0; i < numRecurring; i++) {
 			String[] rcB = rcsB[i].split(":");
-			assertTrue("Recurrence frequency for index " + i + " doesn't match", rcB[0].equals(rcsA.get(i).frequency));
+			assertEquals("Recurrence frequency for index " + i + " doesn't match", rcB[0], rcsA.get(i).frequency);
 			assertEquals("Recurrence cost for index " + i + " doesn't match", Double.parseDouble(rcB[1]), rcsA.get(i).cost, 0.001);
 		}
-		assertTrue("ParentReservationId doesn't match", parentReservationId.equals(cri.getParentReservationId()));
+		assertEquals("ParentReservationId doesn't match", parentReservationId, cri.getParentReservationId());
+		assertEquals("OfferingClass doesn't match", offeringClass, cri.getOfferingClass());
+		int foundCount = 0;
+		for (String expectedTag: tags.split("\\|")) {
+			String[] tagParts = expectedTag.split(":");
+			for (Tag t: cri.getTags()) {
+				if (t.getKey().equals(tagParts[0])) {
+					foundCount++;
+					assertEquals("Wrong tag value for " + tagParts[0], tagParts[1], t.getValue());
+				}
+			}
+		}
+		assertEquals("Not all tags were found", tags.split("\\|").length, foundCount);
 	}
 
 	@Test
 	public void testCSVConstructor() {
-		String testRes = account + "," + product + "," + region + "," + reservationId + "," + offeringId + "," + instanceType + "," + scope + "," +
-				zone + "," + multiAZ + "," + start + "," + end + "," + duration + "," + usagePrice + "," + fixedPrice + "," + instanceCount + "," +
-				description + "," + state + "," + currency + "," + offeringType + "," + recurringCharges + "," + parentReservationId;
-		CanonicalReservedInstances cri = new CanonicalReservedInstances(testRes);
+		String[] testRes = new String[]{
+				account, product, region, reservationId, offeringId, instanceType, scope,
+				zone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount,
+				description, state, currency, offeringType, recurringCharges, parentReservationId,
+				offeringClass, tags
+		};
+		CanonicalReservedInstances cri = new CanonicalReservedInstances(String.join(",", testRes));
 		compareValues(cri, 2);
 	}
 	
 	@Test
 	public void testCSVConstructorNoRecurring() {
-		String testRes = account + "," + product + "," + region + "," + reservationId + "," + offeringId + "," + instanceType + "," + scope + "," +
-				zone + "," + multiAZ + "," + start + "," + end + "," + duration + "," + usagePrice + "," + fixedPrice + "," + instanceCount + "," +
-				description + "," + state + "," + currency + "," + offeringType + ",," + parentReservationId;
-		CanonicalReservedInstances cri = new CanonicalReservedInstances(testRes);
+		String[] testRes = new String[]{
+				account, product, region, reservationId, offeringId, instanceType, scope,
+				zone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount,
+				description, state, currency, offeringType, "", parentReservationId,
+				offeringClass, tags
+		};
+		CanonicalReservedInstances cri = new CanonicalReservedInstances(String.join(",", testRes));
 		compareValues(cri, 0);
 	}
 }
