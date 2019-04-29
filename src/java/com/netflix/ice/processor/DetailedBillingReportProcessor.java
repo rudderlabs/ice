@@ -71,8 +71,8 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
             String billingAccessRoleName = config.billingAccessRoleNames.length > i ? config.billingAccessRoleNames[i] : "";
             String billingAccessExternalId = config.billingAccessExternalIds.length > i ? config.billingAccessExternalIds[i] : "";
 
-            logger.info("trying to list objects in billing bucket " + billingS3BucketName + " using assume role, and external id "
-                    + billingAccessRoleName + " " + billingAccessExternalId);
+            logger.info("trying to list objects in billing bucket " + billingS3BucketName +
+            		" using assume role \"" + billingAccessRoleName + "\", and external id \"" + billingAccessExternalId + "\"");
             List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketRegion, billingS3BucketPrefix,
                     accountId, billingAccessRoleName, billingAccessExternalId);
             logger.info("found " + objectSummaries.size() + " in billing bucket " + billingS3BucketName);

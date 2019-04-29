@@ -111,8 +111,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
             	continue; 
             }
             
-            logger.info("trying to list objects in cost and usage report bucket " + billingS3BucketName + " using assume role, and external id "
-                    + billingAccessRoleName + " " + billingAccessExternalId);
+            logger.info("trying to list objects in cost and usage report bucket " + billingS3BucketName +
+            		" using assume role \"" + billingAccessRoleName + "\", and external id \"" + billingAccessExternalId + "\"");
             List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketRegion, billingS3BucketPrefix,
                     accountId, billingAccessRoleName, billingAccessExternalId);
             logger.info("found " + objectSummaries.size() + " in cost and usage report bucket " + billingS3BucketName);

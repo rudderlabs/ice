@@ -72,8 +72,8 @@ public class KubernetesProcessor {
 
             String fileKey = kubernetesS3BucketPrefix + reportPrefix + AwsUtils.monthDateFormat.print(start);
 
-            logger.info("trying to list objects in kubernetes bucket " + kubernetesS3BucketName + " using assume role, and external id "
-                    + kubernetesAccessRoleName + " " + kubernetesAccessExternalId + ": " + fileKey);
+            logger.info("trying to list objects in kubernetes bucket " + kubernetesS3BucketName +
+            		" using assume role \"" + accountId + ":" + kubernetesAccessRoleName + "\", and external id \"" + kubernetesAccessExternalId + "\" with key " + fileKey);
             
             List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(kubernetesS3BucketName, kubernetesS3BucketRegion, fileKey,
                     accountId, kubernetesAccessRoleName, kubernetesAccessExternalId);

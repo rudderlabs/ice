@@ -292,6 +292,8 @@ public class ProcessorConfig extends Config {
             String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
             String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
             
+            logger.info("Get default account names for organization " + accountId +
+            		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
             List<Account> accounts = AwsUtils.listAccounts(accountId, assumeRole, externalId);
             for (Account a: accounts)
             	result.put(a.getId(), a.getName());

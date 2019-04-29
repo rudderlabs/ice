@@ -285,6 +285,22 @@ ice.factory('highchart', function () {
         legends[i].style = "color: rgb(192, 192, 192)";
         legends[i].iconStyle = "background-color: rgb(192, 192, 192)";
       }
+    },
+
+    order: function (legends) {
+      var newIndex = 0;
+      for (var i = 0; i < legends.length; i++) {
+        if (legends[i].name === 'aggregated')
+          continue;
+        for (var index = 0; index < hc_chart.series.length - 1; index++) {
+          if (legends[i].name === hc_chart.series[index].name) {
+            hc_chart.series[index].update({ index: newIndex }, false);
+            newIndex++;
+            break;
+          }
+        }
+      }
+      hc_chart.redraw();
     }
   }
 });
@@ -1092,6 +1108,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
       }
     }
     data.sort(compare);
+    highchart.order(data);
   }
 
   $scope.graphOnly = function () {

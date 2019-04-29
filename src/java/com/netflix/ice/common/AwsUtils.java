@@ -170,7 +170,8 @@ public class AwsUtils {
         	return results;
         }
         finally {
-        	organizations.shutdown();
+        	if (organizations != null)
+        		organizations.shutdown();
         }
     }
     

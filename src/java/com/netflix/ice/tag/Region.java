@@ -36,6 +36,7 @@ public class Region extends Tag {
     public static final Region EU_WEST_2 = new Region("eu-west-2", "EUW2", "EU", "EU (London)");
     public static final Region EU_WEST_3 = new Region("eu-west-3", "EUW3", "EU", "EU (Paris)");
     public static final Region EU_NORTH_1 = new Region("eu-north-1", "EUN1", "EU", "EU (Stockholm)");
+    public static final Region AP_EAST_1 = new Region("ap-east-1", "APE1", "AP", "Asia Pacific (Hong Kong)");
     public static final Region AP_NORTHEAST_1 = new Region("ap-northeast-1","APN1", "JP", "Asia Pacific (Tokyo)");
     public static final Region AP_NORTHEAST_2 = new Region("ap-northeast-2","APN2", "AP", "Asia Pacific (Seoul)");
     public static final Region AP_NORTHEAST_3 = new Region("ap-northeast-3","APN3", "AP", "Asia Pacific (Osaka-Local)");
@@ -58,6 +59,7 @@ public class Region extends Tag {
         regionsByShortName.put(EU_WEST_2.shortName, EU_WEST_2);
         regionsByShortName.put(EU_WEST_3.shortName, EU_WEST_3);
         regionsByShortName.put(EU_NORTH_1.shortName, EU_NORTH_1);
+        regionsByShortName.put(AP_EAST_1.shortName, AP_EAST_1);
         regionsByShortName.put(AP_NORTHEAST_1.shortName, AP_NORTHEAST_1);
         regionsByShortName.put(AP_NORTHEAST_2.shortName, AP_NORTHEAST_2);
         regionsByShortName.put(AP_NORTHEAST_3.shortName, AP_NORTHEAST_3);
@@ -67,13 +69,14 @@ public class Region extends Tag {
         regionsByShortName.put(SA_EAST_1.shortName, SA_EAST_1);
 
         // Only populate unique values
-        regionsByShortName.put(US_EAST_1.cloudFrontName, US_EAST_1);
-        regionsByShortName.put(CA_CENTRAL_1.cloudFrontName, CA_CENTRAL_1);
-        regionsByShortName.put(EU_WEST_1.cloudFrontName, EU_WEST_1);
-        regionsByShortName.put(AP_NORTHEAST_1.cloudFrontName, AP_NORTHEAST_1);
-        regionsByShortName.put(AP_SOUTHEAST_1.cloudFrontName, AP_SOUTHEAST_1);
-        regionsByShortName.put(AP_SOUTH_1.cloudFrontName, AP_SOUTH_1);
-        regionsByShortName.put(SA_EAST_1.cloudFrontName, SA_EAST_1);
+        regionsByShortName.put(US_EAST_1.cloudFrontName, US_EAST_1);			/* US */
+        regionsByShortName.put(CA_CENTRAL_1.cloudFrontName, CA_CENTRAL_1);		/* CA */
+        regionsByShortName.put(EU_WEST_1.cloudFrontName, EU_WEST_1);			/* EU */
+        regionsByShortName.put(AP_NORTHEAST_1.cloudFrontName, AP_NORTHEAST_1);	/* JP */
+        regionsByShortName.put(AP_SOUTHEAST_1.cloudFrontName, AP_SOUTHEAST_1);	/* AP */
+        regionsByShortName.put(AP_SOUTHEAST_2.cloudFrontName, AP_SOUTHEAST_2);	/* AU */
+        regionsByShortName.put(AP_SOUTH_1.cloudFrontName, AP_SOUTH_1);			/* IN */
+        regionsByShortName.put(SA_EAST_1.cloudFrontName, SA_EAST_1);			/* SA */
 
         regionsByName.put(US_EAST_1.name, US_EAST_1);
         regionsByName.put(US_EAST_2.name, US_EAST_2);
@@ -85,6 +88,7 @@ public class Region extends Tag {
         regionsByName.put(EU_WEST_2.name, EU_WEST_2);
         regionsByName.put(EU_WEST_3.name, EU_WEST_3);
         regionsByName.put(EU_NORTH_1.name, EU_NORTH_1);
+        regionsByName.put(AP_EAST_1.name, AP_EAST_1);
         regionsByName.put(AP_NORTHEAST_1.name, AP_NORTHEAST_1);
         regionsByName.put(AP_NORTHEAST_2.name, AP_NORTHEAST_2);
         regionsByName.put(AP_NORTHEAST_3.name, AP_NORTHEAST_3);
