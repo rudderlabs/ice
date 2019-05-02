@@ -78,7 +78,7 @@ class DashboardController {
 		getZones: "GET",
 		getProducts: "GET",
 		getResourceGroups: "GET",
-		userTagValues: "GET",
+		userTagValues: "POST",
 		getOperations: "POST",
 		getUsageTypes: "POST",
 		tags: "GET",
@@ -223,11 +223,13 @@ class DashboardController {
     }
 		
 	def userTagValues = {
-		int index = Integer.parseInt(params.get("index"));
-		List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
-		List<Region> regions = Region.getRegions(listParams("region"));
-		List<Zone> zones = Zone.getZones(listParams("zone"));
-		List<Product> products = getConfig().productService.getProducts(listParams("product"));
+        def text = request.reader.text;
+        JSONObject query = (JSONObject)JSON.parse(text);
+        List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
+        List<Region> regions = Region.getRegions(listParams(query, "region"));
+        List<Zone> zones = Zone.getZones(listParams(query, "zone"));
+        List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
+		int index = query.getInt("index");
 
         Collection<UserTag> data = Sets.newTreeSet();
 		// Add "None" entry

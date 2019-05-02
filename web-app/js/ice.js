@@ -305,7 +305,7 @@ ice.factory('highchart', function () {
   }
 });
 
-ice.factory('usage_db', function ($window, $http, $filter, $route) {
+ice.factory('usage_db', function ($window, $http, $filter) {
 
   var graphonly = false;
 
@@ -632,8 +632,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -660,8 +661,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -686,8 +688,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -718,8 +721,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -746,8 +750,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -764,8 +769,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -778,9 +784,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
         this.addParams(params, "product", $scope.regions, $scope.selected_products);
       }
       $http({
-        method: "GET",
+        method: "POST",
         url: "userTagValues",
-        params: params
+        data: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.userTagValues[index] = result.data;
@@ -793,8 +799,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -825,8 +832,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -858,8 +866,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -877,8 +886,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
         }
         if (fn)
           fn(result.data);
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     
     },
@@ -897,8 +907,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
         }
         if (fn)
           fn(result.data);
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });    
     },
 
@@ -926,8 +937,9 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (fn)
             fn(result.data);
         }
-      }).error(function () {
-        $window.location.reload();
+      }).error(function (result) {
+        if (result.status === 401)
+          $window.location.reload();
       });
     },
 
@@ -990,9 +1002,10 @@ ice.factory('usage_db', function ($window, $http, $filter, $route) {
           if (result.status === 200 && result.data && fn) {
             fn(result);
           }
-        }).error(function () {
-          $window.location.reload();
-        });
+        }).error(function (result) {
+          if (result.status === 401)
+            $window.location.reload();
+          });
       }
       else {
         jQuery("#download_form").empty();

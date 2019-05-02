@@ -57,14 +57,6 @@ parameters:
     items:
       type: string
     required: true
-  operationParam:
-    name: operation
-    in: query
-    description: Comma separated list of operation names.
-    type: array
-    items:
-      type: string
-    required: true
   resourcesParam:
     name: resources
     in: query
@@ -73,11 +65,6 @@ parameters:
     required: false
   showZonesParam:
     name: showZones
-    in: query
-    type: boolean
-    required: false
-  forReservationsParam:
-    name: forReservations
     in: query
     type: boolean
     required: false
@@ -155,18 +142,32 @@ paths:
             $ref: '#/definitions/NamesResponse'
 
   /userTagValues:
-    get:
+    post:
       description: Get the list of values for a given user tag.
       operationId: getUserTagValues
       parameters:
-        - name: index
-          in: query
-          description: tag index in list returned by userTags
-          type: number
+        - name: userTagValuesRequest
+          in: body
           required: true
-        - $ref: '#/parameters/accountParam'
-        - $ref: '#/parameters/regionParam'
-        - $ref: '#/parameters/productParam'
+          schema:
+            type: object
+            properties:
+              index:
+                description: tag index in list returned by userTags
+                type: number
+              account:
+                description: Comma separated list of account names
+                type: string
+              region:
+                description: Comma separated list of region names
+                type: string
+              zone:
+                description: Comma separated list of zone names
+                type: string
+              product:
+                description: Comma separated list of product names
+                type: string
+            required: [index]
       responses:
         '200':
           description: collection of user tag values used for tagable resources
@@ -174,14 +175,32 @@ paths:
             $ref: '#/definitions/NamesResponse'
 
   /getOperations:
-    get:
+    post:
       description: Get the list of operations for the supplied products used by the provided accounts in the specified regions.
       parameters:
-        - $ref: '#/parameters/accountParam'
-        - $ref: '#/parameters/regionParam'
-        - $ref: '#/parameters/productParam'
-        - $ref: '#/parameters/resourcesParam'
-        - $ref: '#/parameters/forReservationsParam'
+        - name: operationsRequest
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              account:
+                description: Comma separated list of account names
+                type: string
+              region:
+                description: Comma separated list of region names
+                type: string
+              zone:
+                description: Comma separated list of zone names
+                type: string
+              product:
+                description: Comma separated list of product names
+                type: string
+              resources:
+                description: If true, only return product names that can have tagged resources.
+                type: boolean
+              forReservations:
+                type: boolean
       responses:
         '200':
           description: collection of operations
@@ -189,14 +208,35 @@ paths:
             $ref: '#/definitions/NamesResponse'
 
   /getUsageTypes:
-    get:
+    post:
       description: Get the list of usage types for the accounts, regions, products, and operations provided.
       parameters:
-        - $ref: '#/parameters/accountParam'
-        - $ref: '#/parameters/regionParam'
-        - $ref: '#/parameters/productParam'
-        - $ref: '#/parameters/operationParam'
-        - $ref: '#/parameters/resourcesParam'
+        - name: usageTypesRequest
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              account:
+                description: Comma separated list of account names
+                type: string
+              region:
+                description: Comma separated list of region names
+                type: string
+              zone:
+                description: Comma separated list of zone names
+                type: string
+              product:
+                description: Comma separated list of product names
+                type: string
+              operation:
+                description: Comma separated list of operation names
+                type: string
+              resources:
+                description: If true, only return product names that can have tagged resources.
+                type: boolean
+              showResourceGroups:
+                type: boolean
       responses:
         '200':
           description: collection of usage types
