@@ -312,11 +312,8 @@ paths:
               factorsps:
                 type: boolean
                 description: default = false
-              family:
-                description: Consolidate EC2/RDS instance usage types of the same family into a single type
-                type: boolean
-              consolidateOps:
-                description: Consolidate EC2/RDS/Redshift instance operation types into Savings, RIs, Amortized RIs, and Unused RIs
+              consolidateGroups:
+                description: Consolidate EC2/RDS/Redshift instance usage types of the same family into a single type or operation types into Savings, RIs, Amortized RIs, and Unused RIs
                 type: boolean
               forReservation:
                 type: boolean

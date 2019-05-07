@@ -513,8 +513,7 @@ class DashboardController {
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
         boolean showResourceGroups = query.has("showResourceGroups") ? query.getBoolean("showResourceGroups") : false;
-		boolean consolidateOps = query.has("consolidateOps") ? query.getBoolean("consolidateOps") : false;
-		boolean consolidateFamily = query.has("family") ? query.getBoolean("family") : false;
+		boolean consolidateGroups = query.has("consolidateGroups") ? query.getBoolean("consolidateGroups") : false;
 		
 		// Still support the old name "showResourceGroupTags" for new name showUserTags
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
@@ -703,9 +702,9 @@ class DashboardController {
 			consolidateType = ConsolidateType.daily;
 		}
 		else {
-			if (groupBy == TagType.UsageType && consolidateFamily)
+			if (groupBy == TagType.UsageType && consolidateGroups)
 				data = consolidateFamilies(data);
-			else if (groupBy == TagType.Operation && consolidateOps)
+			else if (groupBy == TagType.Operation && consolidateGroups)
 				data = consolidateOperations(data);
 	        stats = getStats(data);
 		}
@@ -915,6 +914,7 @@ class DashboardController {
 		//	Amortization = AmortizedRIs - *
 		//  Used RIs = Used RIs - * + Borrowed RIs - *
 		//  Unused RIs = Unused RIs - *
+		//	Lent RIs = Lent RIs - *
 		//  Savings = Savings - *
 		Map<Tag, double[]> result = Maps.newTreeMap();
 		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {

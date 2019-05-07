@@ -367,15 +367,78 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         params[name] = selected;
     },
 
+    filterSelected: function (selected, filter) {
+      var result = [];
+      for (var i in selected)
+        if (!filter || selected[i].name.toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
+          result.push(selected[i]);
+      return result;
+    },
+
+    addDimensionParams: function($scope, params) {
+      var hasDimension = false;
+      for (var i = 0; i < $scope.dimensions.length; i++) {
+        if ($scope.dimensions[i]) {
+          hasDimension = true;
+          break;
+        }
+      }
+      if (!hasDimension)
+        return;
+
+      if ($scope.dimensions[$scope.ACCOUNT_INDEX]) {
+        var accounts = this.filterSelected($scope.selected_accounts, $scope.filter_accounts);
+        if (accounts.length > 0)
+          params.account = { selected: accounts, filter: $scope.filter_accounts };
+      }
+      if ($scope.showZones) {
+        if ($scope.dimensions[$scope.ZONE_INDEX]) {
+          var zones = this.filterSelected($scope.selected_zones, $scope.filter_zones);
+          if (zones.length > 0)
+            params.zone = { selected: zones, filter: $scope.filter_zones };
+        }
+      }
+      else {
+        if ($scope.dimensions[$scope.REGION_INDEX]) {
+          var regions = this.filterSelected($scope.selected_regions, $scope.filter_regions);
+          if (regions.length > 0)
+            params.region = { selected: regions, filter: $scope.filter_regions };
+        }
+      }
+      if ($scope.dimensions[$scope.PRODUCT_INDEX]) {
+        var products = this.filterSelected($scope.selected_products, $scope.filter_products);
+        if (products.length > 0)
+          params.product = { selected: products, filter: $scope.filter_products };
+      }
+      if ($scope.dimensions[$scope.OPERATION_INDEX]) {
+        var operations = this.filterSelected($scope.selected_operations, $scope.filter_operations);
+        if (operations.length > 0)
+          params.operation = { selected: operations, filter: $scope.filter_operations };
+      }
+      if ($scope.dimensions[$scope.USAGETYPE_INDEX]) {
+        var usageTypes = this.filterSelected($scope.selected_usageTypes, $scope.filter_usageTypes);
+        if (usageTypes.length > 0)
+          params.usageType = { selected: usageTypes, filter: $scope.filter_usageTypes };
+      }
+
+      params.dimensions = $scope.dimensions.join(",");
+    },
+
     addUserTagParams: function ($scope, params) {
+      var hasEnabledTags = false;
+      for (var i = 0; i < $scope.enabledUserTags.length; i++) {
+        if ($scope.enabledUserTags[i]) {
+          hasEnabledTags = true;
+          break;
+        }
+      }
+      if (!hasEnabledTags)
+        return;
+      
       params.enabledUserTags = $scope.enabledUserTags.join(",");
-      var keys = [];
-      for (var key in $scope.userTags)
-        keys.push($scope.userTags[key].name);
-      params.userTags = keys.join(",");
       for (var i = 0; i < $scope.userTags.length; i++) {
         if ($scope.enabledUserTags[i]) {
-          params["tag-" + $scope.userTags[i].name] = { selected: $scope.selected_userTagValues[i], from: $scope.userTagValues[i] };
+          params["tag-" + $scope.userTags[i].name] = { selected: $scope.selected_userTagValues[i] };
         }
         if ($scope.filter_userTagValues[i])
           params["filter-tag-" + $scope.userTags[i].name] = $scope.filter_userTagValues[i];
@@ -424,7 +487,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     },
 
     getParams: function (hash, $scope) {
-      var result = {};
+      $scope.tagParams = {};
+      $scope.tagFilterParams = {};
       if (hash) {
         var params = hash.split("&");
         for (i = 0; i < params.length; i++) {
@@ -515,11 +579,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("usageType=") === 0) {
             $scope.selected__usageTypes = params[i].substr(10).split(",");
           }
-          else if (params[i].indexOf("family=") === 0) {
-            $scope.family = "true" === params[i].substr(7);
-          }
-          else if (params[i].indexOf("consolidateOps=") === 0) {
-            $scope.consolidateOps = "true" === params[i].substr(15);
+          else if (params[i].indexOf("consolidateGroups=") === 0) {
+            $scope.consolidateGroups = "true" === params[i].substr(18);
           }
           else if (params[i].indexOf("resourceGroup=") === 0) {
             $scope.selected__resourceGroups = params[i].substr(14).split(",");
@@ -534,6 +595,12 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             for (var k = 0; k < tags.length; k++) {
               $scope.userTags[k] = { name: tags[k] };
             }
+          }
+          else if (params[i].indexOf("dimensions=") === 0) {
+            var dims = params[i].substr(11).split(",");
+            $scope.dimensions = Array($scope.NUM_DIMENSIONS);
+            for (j = 0; j < $scope.NUM_DIMENSIONS; j++)
+              $scope.dimensions[j] = "true" === dims[j];
           }
           else if (params[i].indexOf("enabledUserTags=") === 0) {
             var enabled = params[i].substr(16).split(",");
@@ -559,28 +626,35 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("filter-usageTypes=") === 0) {
             $scope.filter_usageTypes = params[i].substr(18);
           }
-          
+          else if (params[i].indexOf("tag-") === 0) {
+            var parts = params[i].substr(4).split("=");
+            $scope.tagParams[parts[0]] = parts[1];
+          }
+          else if (params[i].indexOf("filter-tag-") === 0) {
+            var parts = params[i].substr(11).split("=");
+            $scope.tagFilterParams[parts[0]] = parts[1];
+          }
         }
-        if ($scope.showUserTags) {
-          $scope.filter_userTagValues = Array($scope.userTags.length);
-          $scope.selected__userTagValues = Array($scope.userTags.length);
-          for (i = 0; i < params.length; i++) {
-            if (params[i].indexOf("tag-") === 0) {
-              var parts = params[i].substr(4).split("=");
-              for (j = 0; j < $scope.userTags.length; j++) {
-                if ($scope.userTags[j].name === parts[0]) {
-                  $scope.selected__userTagValues[j] = parts[1].split(",");
-                }
-              }
+      }
+      if (time) {
+        timeParams = time;
+      }
+    },
+
+    processParams: function ($scope) {
+      if ($scope.showUserTags) {
+        $scope.filter_userTagValues = Array($scope.userTags.length);
+        $scope.selected__userTagValues = Array($scope.userTags.length);
+        for (var key in $scope.tagParams) {
+          for (j = 0; j < $scope.userTags.length; j++) {
+            if ($scope.userTags[j].name === key) {
+              $scope.selected__userTagValues[j] = $scope.tagParams[key].split(",");
             }
-            else if (params[i].indexOf("filter-tag-") === 0) {
-              var parts = params[i].substr(11).split("=");
-              for (j = 0; j < $scope.userTags.length; j++) {
-                if ($scope.userTags[j].name === parts[0]) {
-                  $scope.filter_userTagValues[j] = parts[1];
-                }
-              }
-            }
+          }
+        }
+        for (var key in $scope.tagFilterParams) {
+          if ($scope.userTags[j].name === key) {
+            $scope.filter_userTagValues[j] = $scope.tagFilterParams[key];
           }
         }
       }
@@ -607,11 +681,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           break;
         }
       }
-
-      if (time) {
-        timeParams = time;
-      }
-      return result;
     },
 
     getAccounts: function ($scope, fn, params) {
@@ -766,6 +835,23 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.userTags = result.data;
+
+          $scope.groupByTags = $scope.userTags;
+          if ($scope.userTags.length > 0) {
+            $scope.groupByTag = $scope.userTags[0];
+            for (var j in $scope.groupByTags) {
+              if ($scope.groupByTags[j].name === $scope.initialGroupByTag) {
+                $scope.groupByTag = $scope.groupByTags[j];
+                break;
+              }
+            }
+            if ($scope.enabledUserTags.length != $scope.userTags.length) {
+              $scope.enabledUserTags = Array($scope.userTags.length);
+              for (var i = 0; i < $scope.userTags.length; i++)
+                $scope.enabledUserTags[i] = false;
+            }
+          }    
+
           if (fn)
             fn(result.data);
         }
@@ -957,18 +1043,27 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         breakdown: false,
         showsps: $scope.showsps ? true : false,
         factorsps: $scope.factorsps ? true : false,
-        family: $scope.family ? true : false,
-        consolidateOps: $scope.consolidateOps ? true : false,
+        consolidateGroups: $scope.consolidateGroups ? true : false,
         tagCoverage: $scope.tagCoverage ? true : false,
       }, params);
-      this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts);
-      if ($scope.showZones)
-        this.addParams(params, "zone", $scope.zones, $scope.selected_zones, $scope.selected__zones, $scope.filter_zones);
-      else
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions, $scope.selected__regions, $scope.filter_regions);
-      this.addParams(params, "product", $scope.products, $scope.selected_products, $scope.selected__products, $scope.filter_products);
-      this.addParams(params, "operation", $scope.operations, $scope.selected_operations, $scope.selected__operations, $scope.filter_operations);
-      this.addParams(params, "usageType", $scope.usageTypes, $scope.selected_usageTypes, $scope.selected__usageTypes, $scope.filter_usageTypes);
+
+      if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts);
+      if ($scope.showZones) {
+        if ($scope.dimensions[$scope.ZONE_INDEX])
+          this.addParams(params, "zone", $scope.zones, $scope.selected_zones, $scope.selected__zones, $scope.filter_zones);
+      }
+      else {
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions, $scope.selected__regions, $scope.filter_regions);
+      }
+      if ($scope.dimensions[$scope.PRODUCT_INDEX])
+        this.addParams(params, "product", $scope.products, $scope.selected_products, $scope.selected__products, $scope.filter_products);
+      if ($scope.dimensions[$scope.OPERATION_INDEX])
+        this.addParams(params, "operation", $scope.operations, $scope.selected_operations, $scope.selected__operations, $scope.filter_operations);
+      if ($scope.dimensions[$scope.USAGETYPE_INDEX])
+        this.addParams(params, "usageType", $scope.usageTypes, $scope.selected_usageTypes, $scope.selected__usageTypes, $scope.filter_usageTypes);
+
       if ($scope.tagCoverage) {
         if ($scope.isGroupByTagKey())
           this.addParams(params, "tagKey", $scope.tagKeys, $scope.selected_tagKeys, $scope.selected__tagKeys, $scope.filter_tagKeys);
@@ -1034,6 +1129,71 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
 function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
   $scope.currencySign = global_currencySign;
+
+  $scope.ACCOUNT_INDEX = 0;
+  $scope.REGION_INDEX = 1;
+  $scope.ZONE_INDEX = 2;
+  $scope.PRODUCT_INDEX = 3;
+  $scope.OPERATION_INDEX = 4;
+  $scope.USAGETYPE_INDEX = 5;
+  $scope.NUM_DIMENSIONS = 6;
+
+
+  $scope.init = function ($scope) {
+    $scope.dimensions = [false, false, false, false, false, false];
+    $scope.showsps = false;
+    $scope.factorsps = false;
+    $scope.consolidateGroups = false;
+    $scope.showResourceGroups = false;
+    $scope.plotType = 'area';
+    $scope.consolidate = "hourly";
+    $scope.legends = [];
+    $scope.showZones = false;
+    $scope.end = new Date();
+    $scope.start = new Date();
+    $scope.usage_cost = "cost";
+    $scope.groupByTag = {}
+    $scope.initialGroupByTag = '';
+    $scope.showUserTags = false;
+  }
+
+  $scope.initUserTagVars = function ($scope) {
+    $scope.enabledUserTags = [];
+    $scope.userTags = [];
+    $scope.userTagValues = [];
+    $scope.selected_userTagValues = [];
+    $scope.selected__userTagValues = [];
+    $scope.filter_userTagValues = [];
+  }
+
+  $scope.addCommonParams = function ($scope, params) {
+    params.start = $scope.start;
+    params.end = $scope.end;
+    if ($scope.usage_cost)
+      params.usage_cost = $scope.usage_cost;
+    if ($scope.usageUnit)
+      params.usageUnit = $scope.usageUnit;
+    if ($scope.plotType)
+      params.plotType = $scope.plotType;
+    if ($scope.showsps)
+      params.showsps = "" + $scope.showsps;
+    if ($scope.factorsps)
+      params.factorsps = "" + $scope.factorsps;
+    if ($scope.showUserTags)
+      params.showUserTags = "" + $scope.showUserTags;
+    if ($scope.groupBy.name)
+      params.groupBy = $scope.groupBy.name;
+    if ($scope.consolidateGroups)
+      params.consolidateGroups = "" + $scope.consolidateGroups;
+    if ($scope.groupByTag && $scope.groupByTag.name)
+      params.groupByTag = $scope.groupByTag.name;
+    if ($scope.showResourceGroups)
+      params.showResourceGroups = "" + $scope.showResourceGroups;
+    if ($scope.consolidate)
+      params.consolidate = $scope.consolidate;
+    if ($scope.showZones)
+      params.showZones = "" + $scope.showZones;
+  }
 
   window.onhashchange = function () {
     window.location.reload();
@@ -1135,9 +1295,8 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
+  $scope.init($scope);
   var predefinedQuery = {};
-  $scope.legends = [];
-  $scope.usage_cost = "cost";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "Account" },
@@ -1147,16 +1306,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.showsps = false;
-  $scope.factorsps = false;
   $scope.groupBy = $scope.groupBys[4];
-  $scope.family = false;
-  $scope.consolidateOps = false;
-  $scope.consolidate = "hourly";
-  $scope.showZones = false;
-  $scope.plotType = 'area';
-  $scope.end = new Date();
-  $scope.start = new Date();
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1174,28 +1324,9 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.updateUrl = function () {
     $scope.end = jQuery('#end').datetimepicker().val();
     $scope.start = jQuery('#start').datetimepicker().val();
-    var params = {
-      usage_cost: $scope.usage_cost,
-      usageUnit: $scope.usageUnit,
-      start: $scope.start,
-      end: $scope.end,
-      groupBy: $scope.groupBy.name,
-      family: "" + $scope.family,
-      consolidateOps: "" + $scope.consolidateOps,
-      showZones: "" + $scope.showZones,
-      consolidate: $scope.consolidate,
-      plotType: $scope.plotType,
-      showsps: "" + $scope.showsps,
-      factorsps: "" + $scope.factorsps,
-      account: { selected: $scope.selected_accounts, from: $scope.accounts, filter: $scope.filter_accounts },
-      product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
-      operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes }
-    };
-    if ($scope.showZones)
-      params.zone = { selected: $scope.selected_zones, from: $scope.zones };
-    else
-      params.region = { selected: $scope.selected_regions, from: $scope.regions };
+    var params = {};
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
     usage_db.updateUrl($location, params);
   }
 
@@ -1252,6 +1383,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     predefinedQuery = { operation: $scope.reservationOps.join(",") };
 
     usage_db.getParams($location.hash(), $scope);
+    usage_db.processParams($scope);
 
     usage_db.getAccounts($scope, null, {});
     if ($scope.showZones)
@@ -1282,18 +1414,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 }
 
 function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
-  $scope.showsps = false;
-  $scope.factorsps = false;
-  $scope.showResourceGroups = false;
-  $scope.enabledUserTags = [];
-  $scope.userTags = [];
-  $scope.userTagValues = [];
-  $scope.selected_userTagValues = [];
-  $scope.selected__userTagValues = [];
-  $scope.filter_userTagValues = [];
+  $scope.init($scope);
+  $scope.initUserTagVars($scope);
   $scope.resources = true; // limit products, operations, and usageTypes to those that have tagged resources
   $scope.plotType = "line";
-  $scope.legends = [];
   $scope.usage_cost = "";
   $scope.usageUnit = "";
   $scope.tagCoverage = true;
@@ -1308,10 +1432,8 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "UsageType" },
     { name: "Tag" }
   ],
-    $scope.groupBy = $scope.groupBys[1];
+  $scope.groupBy = $scope.groupBys[1];
   $scope.consolidate = "daily";
-  $scope.end = new Date();
-  $scope.start = new Date();
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1338,32 +1460,16 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.end = jQuery('#end').datetimepicker().val();
     $scope.start = jQuery('#start').datetimepicker().val();
     var params = {
-      usage_cost: $scope.usage_cost,
-      start: $scope.start,
-      end: $scope.end,
-      groupBy: $scope.groupBy.name,
-      showResourceGroups: "" + $scope.showResourceGroups,
-      showUserTags: "" + $scope.showUserTags,
-      consolidate: $scope.consolidate,
-      plotType: $scope.plotType,
-      showsps: "" + $scope.showsps,
-      factorsps: "" + $scope.factorsps,
       tagCoverage: "" + $scope.tagCoverage,
-      account: { selected: $scope.selected_accounts, from: $scope.accounts, filter: $scope.filter_accounts },
-      region: { selected: $scope.selected_regions, from: $scope.regions, filter: $scope.filter_regions },
-      product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
-      operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes }
     };
-    if ($scope.groupByTag) {
-      params.groupByTag = $scope.groupByTag.name;
-    }
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
     if ($scope.showUserTags) {
       usage_db.addUserTagParams($scope, params);
     }
 
     if ($scope.isGroupByTagKey())
-      params.tagKey = { selected: $scope.selected_tagKeys, from: $scope.tagKeys };
+      params.tagKey = { selected: $scope.selected_tagKeys };
     else
       params.tagKey = $scope.selected_tagKey.name;
 
@@ -1425,27 +1531,6 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     });
   }
 
-  $scope.getUserTags = function () {
-    usage_db.getUserTags($scope, function (data) {
-      $scope.groupByTags = $scope.userTags;
-      if ($scope.userTags.length > 0) {
-        $scope.groupByTag = $scope.userTags[0];
-        for (var j in $scope.groupByTags) {
-          if ($scope.groupByTags[j].name === $scope.initialGroupByTag) {
-            $scope.groupByTag = $scope.groupByTags[j];
-            break;
-          }
-        }
-        if ($scope.enabledUserTags.length != $scope.userTags.length) {
-          $scope.enabledUserTags = Array($scope.userTags.length);
-          for (var i = 0; i < $scope.userTags.length; i++)
-            $scope.enabledUserTags[i] = false;
-        }
-      }
-      $scope.getData();
-    });
-  }
-
   $scope.updateUserTags = function (index) {
     usage_db.getUserTagValues($scope, index, function (data) {
       index++;
@@ -1478,6 +1563,13 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   usage_db.getParams($location.hash(), $scope);
+  usage_db.processParams($scope);
+
+  $scope.getUserTags = function () {
+    usage_db.getUserTags($scope, function (data) {      
+      $scope.getData();
+    });
+  }
 
   var fn = function () {
     usage_db.getTags($scope, function (data) {
@@ -1507,8 +1599,8 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
 
 function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
+  $scope.init($scope);
   var predefinedQuery = {};
-  $scope.legends = [];
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
@@ -1519,14 +1611,9 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.showsps = false;
-  $scope.factorsps = false;
   $scope.groupBy = $scope.groupBys[0];
   $scope.consolidate = "daily";
-  $scope.showZones = false;
   $scope.plotType = 'line';
-  $scope.end = new Date();
-  $scope.start = new Date();
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1546,25 +1633,9 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.updateUrl = function () {
     $scope.end = jQuery('#end').datetimepicker().val();
     $scope.start = jQuery('#start').datetimepicker().val();
-    var params = {
-      usage_cost: $scope.usage_cost,
-      start: $scope.start,
-      end: $scope.end,
-      groupBy: $scope.groupBy.name,
-      showZones: "" + $scope.showZones,
-      consolidate: $scope.consolidate,
-      plotType: "line",
-      showsps: "" + $scope.showsps,
-      factorsps: "" + $scope.factorsps,
-      account: { selected: $scope.selected_accounts, from: $scope.accounts, filter: $scope.filter_accounts },
-      product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
-      operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes }
-    };
-    if ($scope.showZones)
-      params.zone = { selected: $scope.selected_zones, from: $scope.zones };
-    else
-      params.region = { selected: $scope.selected_regions, from: $scope.regions };
+    var params = {};
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
     usage_db.updateUrl($location, params);
   }
 
@@ -1617,6 +1688,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   var fn = function (data) {
     predefinedQuery = { operation: $scope.utilizationOps.join(",") };
     usage_db.getParams($location.hash(), $scope);
+    usage_db.processParams($scope);
 
     usage_db.getAccounts($scope, null, {});
     if ($scope.showZones)
@@ -1648,18 +1720,8 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
 function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
-  $scope.showsps = false;
-  $scope.factorsps = false;
-  $scope.showResourceGroups = false;
-  $scope.enabledUserTags = [];
-  $scope.userTags = [];
-  $scope.userTagValues = [];
-  $scope.selected_userTagValues = [];
-  $scope.selected__userTagValues = [];
-  $scope.filter_userTagValues = [];
-  $scope.plotType = "area";
-  $scope.legends = [];
-  $scope.usage_cost = "cost";
+  $scope.init($scope);
+  $scope.initUserTagVars($scope);
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "None" },
@@ -1672,14 +1734,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Tag" }
   ],
   $scope.groupBy = $scope.groupBys[2];
-  $scope.groupByTag = {}
-  $scope.initialGroupByTag = '';
-  $scope.groupByTags = []
-  $scope.family = false;
-  $scope.consolidateOps = false;
-  $scope.consolidate = "hourly";
-  $scope.end = new Date();
-  $scope.start = new Date();
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1701,29 +1755,11 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.updateUrl = function () {
     $scope.end = jQuery('#end').datetimepicker().val();
     $scope.start = jQuery('#start').datetimepicker().val();
-    var params = {
-      usage_cost: $scope.usage_cost,
-      usageUnit: $scope.usageUnit,
-      start: $scope.start,
-      end: $scope.end,
-      groupBy: $scope.groupBy.name,
-      family: "" + $scope.family,
-      consolidateOps: "" + $scope.consolidateOps,
-      groupByTag: $scope.groupByTag.name,
-      showResourceGroups: "" + $scope.showResourceGroups,
-      showUserTags: "" + $scope.showUserTags,
-      consolidate: $scope.consolidate,
-      plotType: $scope.plotType,
-      showsps: "" + $scope.showsps,
-      factorsps: "" + $scope.factorsps,
-      account: { selected: $scope.selected_accounts, from: $scope.accounts, filter: $scope.filter_accounts },
-      region: { selected: $scope.selected_regions, from: $scope.regions, filter: $scope.filter_regions },
-      product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
-      operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes },
-    };
+    var params = {};
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
     if ($scope.showResourceGroups) {
-      params.resourceGroup = { selected: $scope.selected_resourceGroups, from: $scope.resourceGroups };
+      params.resourceGroup = { selected: $scope.selected_resourceGroups };
     }
     if ($scope.showUserTags) {
       usage_db.addUserTagParams($scope, params);
@@ -1795,27 +1831,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     });
   }
 
-  $scope.getUserTags = function () {
-    usage_db.getUserTags($scope, function (data) {
-      $scope.groupByTags = $scope.userTags;
-      if ($scope.userTags.length > 0) {
-        $scope.groupByTag = $scope.userTags[0];
-        for (var j in $scope.groupByTags) {
-          if ($scope.groupByTags[j].name === $scope.initialGroupByTag) {
-            $scope.groupByTag = $scope.groupByTags[j];
-            break;
-          }
-        }
-        if ($scope.enabledUserTags.length != $scope.userTags.length) {
-          $scope.enabledUserTags = Array($scope.userTags.length);
-          for (var i = 0; i < $scope.userTags.length; i++)
-            $scope.enabledUserTags[i] = false;
-        }
-      }
-      $scope.getData();
-    });
-  }
-
   $scope.updateUserTags = function (index) {
     usage_db.getUserTagValues($scope, index, function (data) {
       index++;
@@ -1843,17 +1858,21 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     });
   }
 
-  usage_db.getParams($location.hash(), $scope);
-  
+  var getUserTags = function () {
+    if ($scope.showUserTags)
+      usage_db.getUserTags($scope, fn);
+    else
+      fn();
+  }
+
   var fn = function () {
+    usage_db.processParams($scope);
+
     usage_db.getAccounts($scope, function (data) {
         $scope.updateRegions();
     });
 
-    if ($scope.showUserTags)
-      $scope.getUserTags();
-    else
-      $scope.getData();
+    $scope.getData();
 
     jQuery("#start, #end").datetimepicker({
       showTime: false,
@@ -1866,6 +1885,8 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     jQuery('#start').datetimepicker().val($scope.start);
   }
 
+  usage_db.getParams($location.hash(), $scope);
+
   if ($scope.spans) {
     $http({
       method: "GET",
@@ -1874,16 +1895,16 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     }).success(function (result) {
       $scope.end = result.end;
       $scope.start = result.start;
-      fn();
+      getUserTags();
     });
   }
   else
-    fn();
+    getUserTags();
 }
 
 function summaryCtrl($scope, $location, usage_db, highchart) {
 
-  $scope.usage_cost = "cost";
+  $scope.init($scope);
   $scope.usageUnit = "";
   $scope.groupBys = [
     { name: "Account" },
@@ -1892,11 +1913,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ],
-    $scope.groupBy = $scope.groupBys[2];
-  $scope.consolidate = "hourly";
-  $scope.plotType = "area";
-  $scope.end = new Date();
-  $scope.start = new Date();
+  $scope.groupBy = $scope.groupBys[2];
   var startMonth = $scope.end.getUTCMonth() - 6;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1910,14 +1927,12 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
   $scope.start = highchart.dateFormat($scope.start); //$filter('date')($scope.start, "y-MM-dd hha");
 
   $scope.updateUrl = function () {
-    usage_db.updateUrl($location, {
+    var params = {
       groupBy: $scope.groupBy.name,
-      account: { selected: $scope.selected_accounts, from: $scope.accounts, filter: $scope.filter_accounts },
-      region: { selected: $scope.selected_regions, from: $scope.regions, filter: $scope.filter_regions },
-      product: { selected: $scope.selected_products, from: $scope.products, filter: $scope.filter_products },
-      operation: { selected: $scope.selected_operations, from: $scope.operations, filter: $scope.filter_operations },
-      usageType: { selected: $scope.selected_usageTypes, from: $scope.usageTypes, filter: $scope.filter_usageTypes }
-    });
+    }
+
+    usage_db.addDimensionParams($scope, params);
+    usage_db.updateUrl($location, params);
   }
 
   $scope.order = function (index) {

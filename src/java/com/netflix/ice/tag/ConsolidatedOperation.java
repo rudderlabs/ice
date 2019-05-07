@@ -15,6 +15,7 @@ public class ConsolidatedOperation extends Tag {
 		consolidatedName.put("Amortized RIs", "Amortized RIs");
 		consolidatedName.put("Bonus RIs", "RIs");
 		consolidatedName.put("Borrowed RIs", "RIs");
+		consolidatedName.put("Lent RIs", "Lent RIs");
 		consolidatedName.put("Savings", "Savings");
 		consolidatedName.put("Unused RIs", "Unused RIs");
 		consolidatedName.put("Used RIs", "RIs");
@@ -27,6 +28,7 @@ public class ConsolidatedOperation extends Tag {
 		seqMap.put("RIs", 3);
 		seqMap.put("Amortized RIs", 4);
 		seqMap.put("Unused RIs", 5);
+		seqMap.put("Lent RIs", 7);
 	}
 
 	public ConsolidatedOperation(String name) {
