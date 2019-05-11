@@ -1363,6 +1363,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     updateUsageTypes();
   }
 
+  $scope.operationsChanged = function () {
+    updateUsageTypes();
+  }
+
   $scope.usageCostChanged = function () {
     updateOperations();
   }
@@ -1670,6 +1674,10 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.productsChanged = function () {
     updateOperations();
+    updateUsageTypes();
+  }
+
+  $scope.operationsChanged = function () {
     updateUsageTypes();
   }
 

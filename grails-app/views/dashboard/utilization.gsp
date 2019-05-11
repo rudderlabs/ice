@@ -33,8 +33,8 @@
       <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]"> Account</input></td>
       <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]"> Region</input></td>
       <td ng-show="showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[ZONE_INDEX]"> Zone</input></td>
-      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]"> Product</input></td>
-      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]"> Operation</input></td>
+      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsChanged()"> Product</input></td>
+      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsChanged()"> Operation</input></td>
       <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]"> UsageType</input></td>
     </tr>
     <tr>
