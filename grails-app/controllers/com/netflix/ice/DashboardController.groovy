@@ -228,13 +228,17 @@ class DashboardController {
         List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
         List<Region> regions = Region.getRegions(listParams(query, "region"));
         List<Zone> zones = Zone.getZones(listParams(query, "zone"));
-        List<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
+        Collection<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
 		int index = query.getInt("index");
 
         Collection<UserTag> data = Sets.newTreeSet();
 		// Add "None" entry
 		data.add(UserTag.get(UserTag.none))
 		
+		// If no products specified, get them all
+		if (products.empty)
+			products = getConfig().productService.getProducts();
+
         for (Product product: products) {
 
             TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);

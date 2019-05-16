@@ -869,6 +869,13 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     },
 
     getUserTagValues: function ($scope, index, fn, params) {
+      if (!$scope.enabledUserTags[index]) {
+        $scope.userTagValues[index] = {};
+        if (fn)
+          fn({});
+        return;
+      }
+
       if (!params) {
         params = {};
         params.index = index;
@@ -1541,6 +1548,10 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.updateUsageTypes();
   }
 
+  $scope.userTagValuesChanged = function (index) {
+    $scope.updateUserTags(index);
+  }
+
   $scope.updateUsageTypes = function () {
     usage_db.getUsageTypes($scope, function (data) {
     });
@@ -1837,6 +1848,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.operationsChanged = function () {
     $scope.updateUsageTypes();
+  }
+
+  $scope.userTagValuesChanged = function (index) {
+    $scope.updateUserTags(index);
   }
 
   $scope.updateUsageTypes = function () {
