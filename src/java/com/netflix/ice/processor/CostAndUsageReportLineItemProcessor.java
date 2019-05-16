@@ -27,6 +27,7 @@ import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.LineItem.LineItemType;
+import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
@@ -85,45 +86,58 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	@Override
     protected void addUnusedReservationRate(LineItem lineItem,
     		CostAndUsageData costAndUsageData,
-    		TagGroupRI tg) {
+    		TagGroupRI tg,
+    		long startMilli) {
     	
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
         if (lineItem.getLineItemType() != LineItemType.RIFee)
         	return;
-        
-        TagGroupRI tagGroup = TagGroupRI.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, null, lineItem.getReservationId());
-        ReadWriteData costData = costAndUsageData.getCost(null);
-        int endIndex = costData.getNum();
-        int[] indexes;
-        if (endIndex > 1) {
-            indexes = new int[endIndex];
-            for (int i = 0; i < indexes.length; i++)
-                indexes[i] = i;
-        }
-        else {
-            indexes = new int[]{0};
-        }
-        
+
+        // Only add rate for hours that the RI is in effect
+        long millisStart = lineItem.getStartMillis();
+        long millisEnd = lineItem.getEndMillis();
+        int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
+        int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
+
         Double recurringRate = lineItem.getUnusedRecurringRate();
         TagGroupRI recurringTagGroup = null;
         TagGroupRI amortTagGroup = null;
-        if (recurringRate != null) {
-    		ReservationOperation unusedOp = ReservationOperation.getUnusedInstances(((ReservationOperation) tagGroup.operation).getUtilization());
-    		recurringTagGroup = TagGroupRI.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, unusedOp, tagGroup.usageType, null, tagGroup.reservationId);
+        if (recurringRate != null && recurringRate > 0.0) {
+    		ReservationOperation unusedOp = ReservationOperation.getUnusedInstances(((ReservationOperation) tg.operation).getUtilization());
+    		recurringTagGroup = TagGroupRI.getTagGroup(tg.account, tg.region, tg.zone, tg.product, unusedOp, tg.usageType, null, tg.reservationId);
+    		logger.debug("UnusedRecurringRate: " + recurringRate + ", for " + recurringTagGroup + ", hours=" + startIndex + "-" + endIndex);
         }
         Double amortRate = lineItem.getUnusedAmortizedUpfrontRate();
-        if (amortRate != null) {
-    		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getUtilization());
-    		amortTagGroup = TagGroupRI.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, amortOp, tagGroup.usageType, null, tagGroup.reservationId);
+        if (amortRate != null && amortRate > 0.0) {
+    		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tg.operation).getUtilization());
+    		amortTagGroup = TagGroupRI.getTagGroup(tg.account, tg.region, tg.zone, tg.product, amortOp, tg.usageType, null, tg.reservationId);
+    		logger.debug("UnusedAmortizationRate: " + amortRate + ", for " + amortTagGroup + ", hours=" + startIndex + "-" + endIndex);
         }
-        
-        for (int i : indexes) {
+                
+        ReadWriteData costData = costAndUsageData.getCost(null);
+        ReadWriteData costDataOfProduct = costAndUsageData.getCost(tg.product);
+
+        if (resourceService != null && costDataOfProduct == null) {
+            costDataOfProduct = new ReadWriteData();
+            costAndUsageData.putCost(tg.product, costDataOfProduct);
+        }
+
+        for (int i = startIndex; i < endIndex; i++) {
             Map<TagGroup, Double> costs = costData.getData(i);
-            if (recurringRate != null)
+            if (recurringRate != null && recurringRate > 0.0)
             	addValue(costs, recurringTagGroup, recurringRate);
-            if (amortRate != null)
+            if (amortRate != null && amortRate > 0.0)
             	addValue(costs, amortTagGroup, amortRate);
-        }    	
+            
+            if (resourceService != null) {
+                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+            	
+                if (recurringRate != null && recurringRate > 0.0)
+                	addValue(costsOfResource, recurringTagGroup, recurringRate);
+                if (amortRate != null && amortRate > 0.0)
+                	addValue(costsOfResource, amortTagGroup, amortRate);
+            }
+        }
     }
 
 	@Override
@@ -187,9 +201,10 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             }
 
             if (resourceService != null) {
+                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
+                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+                
 	            if (resourceTagGroup != null) {
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
 	
 	                if (!((product.isRedshift() || product.isRds()) && monthly)) {
 	                	addValue(usagesOfResource, resourceTagGroup, usageValue);
@@ -216,10 +231,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
 	            }
 	            else {
-	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-	
+	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.	
 	                TagGroup tg = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, tagGroup.operation, tagGroup.usageType, ResourceGroup.getResourceGroup(product.name, true));
 	            	addValue(usagesOfResource, tg, usageValue);
 	                addValue(costsOfResource, tg, costValue);           	

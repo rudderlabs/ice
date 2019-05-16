@@ -168,9 +168,13 @@ public class CostAndUsageReportLineItem extends LineItem {
     @Override
     public String getUsageType() {
     	String purchaseOption = getPurchaseOption();
+    	String usageType = null;
     	if ((lineItemType == LineItemType.RIFee || lineItemType == LineItemType.DiscountedUsage) && (purchaseOption.isEmpty() || !purchaseOption.equals("All Upfront")))
-    		return items[productUsageTypeIndex];
-    	return items[usageTypeIndex];
+    		usageType = items[productUsageTypeIndex];
+    	if (usageType == null || usageType.isEmpty())
+    		usageType = items[usageTypeIndex];
+    	
+    	return usageType;
     }
     
     @Override

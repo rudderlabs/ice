@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicLineItemProcessor.ReformedMetaData;
+import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ResourceService;
@@ -35,7 +36,6 @@ import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.LineItemProcessor.Result;
-import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Product;
@@ -89,11 +89,13 @@ public class BasicLineItemProcessorTest {
     }
     
     public BasicLineItemProcessor newBasicLineItemProcessor() {
-    	return newBasicLineItemProcessor(cauLineItem);
+    	return newBasicLineItemProcessor(cauLineItem, null);
     }
 	
-    public BasicLineItemProcessor newBasicLineItemProcessor(LineItem lineItem) {
-		ReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
+    public BasicLineItemProcessor newBasicLineItemProcessor(LineItem lineItem, Reservation reservation) {
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
+		if (reservation != null)
+			reservationService.injectReservation(reservation);
     	
     	resourceService.initHeader(lineItem.getResourceTagsHeader());
     	if (lineItem instanceof CostAndUsageReportLineItem)
@@ -200,6 +202,9 @@ public class BasicLineItemProcessorTest {
 		public String amortization = "";
 		public String recurring = "";
 		public String publicOnDemandCost = "";
+		public String unusedQuantity = "";
+		public String unusedAmortizedUpfrontFeeForBillingPeriod = "";
+		public String unusedRecurringFee = "";
 		
 		// For basic testing
 		public Line(LineItemType lineItemType, String account, String region, String zone, String product, String type, String operation, 
@@ -245,6 +250,13 @@ public class BasicLineItemProcessorTest {
 			this.resource = resource;
 			this.environment = environment;
 			this.email = email;
+		}
+		
+		// For RIFee unused testing
+		public void setUnused(String unusedQuantity, String unusedAmortizedUpfrontFeeForBillingPeriod, String unusedRecurringFee) {
+			this.unusedQuantity = unusedQuantity;
+			this.unusedAmortizedUpfrontFeeForBillingPeriod = unusedAmortizedUpfrontFeeForBillingPeriod;
+			this.unusedRecurringFee = unusedRecurringFee;
 		}
 		
 		String[] getDbrLine() {
@@ -302,8 +314,11 @@ public class BasicLineItemProcessorTest {
 				items[recurringIndex] = recurring;
 			if (lineItemType == LineItemType.RIFee) {
 				int unusedIndex = lineItem.getUnusedQuantityIndex();
-				if (unusedIndex >= 0)
-					items[unusedIndex] = "1";
+				if (unusedIndex >= 0) {
+					items[unusedIndex] = unusedQuantity;
+					items[lineItem.getUnusedRecurringFeeIndex()] = unusedRecurringFee;
+					items[lineItem.getUnusedAmortizedUpfrontFeeForBillingPeriodIndex()] = unusedAmortizedUpfrontFeeForBillingPeriod;
+				}
 			}
 			if (lineItemType == LineItemType.DiscountedUsage) {
 				int publicOnDemandCostIndex = lineItem.getPublicOnDemandCostIndex();
@@ -337,6 +352,7 @@ public class BasicLineItemProcessorTest {
 		private int numExpectedUsageTags;
 		private int numExpectedCostTags;
 		private int numExpectedResourceCostTags;
+		private Reservation reservation = null;
 				
 		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth) {
 			this.which = which;
@@ -389,6 +405,10 @@ public class BasicLineItemProcessorTest {
 			this.resourceCost = resourceCost;
 			this.numExpectedResourceCostTags = numExpectedResourceCostTags;
 		}
+		
+		public void addReservation(Reservation res) {
+			this.reservation = res;
+		}
 	
 		public void run() throws Exception {        
 			long startMilli = new DateTime("2017-06-01T00:00:00Z", DateTimeZone.UTC).getMillis();
@@ -434,7 +454,7 @@ public class BasicLineItemProcessorTest {
 			Instances instances = null;
 			CostAndUsageData costAndUsageData = new CostAndUsageData(null);
 			
-			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem);
+			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
 	        
 			Result result = lineItemProc.process(startMilli, delayed, isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
@@ -621,6 +641,18 @@ public class BasicLineItemProcessorTest {
 	}
 	
 	@Test
+	public void testReservedNoUpfrontUnusedMonthlyFee() throws Exception {
+		Line line = new Line(LineItemType.RIFee, "234567890123", "eu-west-1", "", "Amazon Elastic Compute Cloud", "EU-HeavyUsage:t2.small", "RunInstances", "USD 0.0146 hourly fee per Linux/UNIX (Amazon VPC), t2.small instance", PricingTerm.none, "2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z", "18600", "271.56", "", "arn", "", "", "");
+		line.setUnused("95", "0", "1.4");
+		String[] tag = new String[] { "234567890123", "eu-west-1", null, "EC2 Instance", "Unused RIs - No Upfront", "t2.small", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 0.0, 32.45, Result.ignore, 31, 0.0, true, 0, 1);
+		TagGroup tg = TagGroup.getTagGroup(tag[0], tag[1], tag[2], tag[3], tag[4], tag[5], "hours", null, accountService, productService);
+		Reservation r = new Reservation("arn", tg, 25, 0, 0, ReservationUtilization.HEAVY, 0.0, 0.028);
+		test.addReservation(r);
+		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z");
+	}
+	
+	@Test
 	public void testReservedPartialUpfrontMonthlyFee() throws Exception {
 		Line line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "", "arn");
 		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
@@ -629,6 +661,7 @@ public class BasicLineItemProcessorTest {
 
 		// Test reservation/unused rates
 		line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.large", "RunInstances", "USD 0.0 hourly fee per Linux/UNIX (Amazon VPC), c4.large instance", PricingTerm.none, "2019-01-01T00:00:00Z", "2019-01-31T23:59:59Z", "744", "0", "", "arn", "34.36895", "32.45", "");
+		line.setUnused("1", "34.36895", "0.01");
 		tag = new String[] { "234567890123", "ap-southeast-2", null, "EC2 Instance", "Unused RIs - Partial Upfront", "c4.large", null };
 		test = new ProcessTest(Which.cau, line, tag, 0.0, 32.45, Result.ignore, 31, 34.36895, true, 0, 2);
 		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z");

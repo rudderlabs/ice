@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
+import org.joda.time.DateTime;
+
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
@@ -42,6 +44,9 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			ReadWriteData costData,
 			Long startMilli) {
 		
+	    // Unused rates and amortization for RIs were added to CUR on 2018-01
+		long unusedDataStart = DateTime.parse("2018-01-01T00:00:00Z").getMillis();
+		
 		// Scan the first hour and look for reservation usage with no ARN and log errors
 	    for (TagGroup tagGroup: usageData.getData(0).keySet()) {
 	    	if (tagGroup.operation instanceof ReservationOperation) {
@@ -71,8 +76,8 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    TagGroup rtg = reservation.tagGroup;
 							    
 			    ReservationUtilization utilization = ((ReservationOperation) rtg.operation).getUtilization();
-		        InstancePrices instancePrices = prices.get(reservation.tagGroup.product);
-			    double onDemandRate = instancePrices.getOnDemandRate(reservation.tagGroup.region, reservation.tagGroup.usageType);			    
+		        InstancePrices instancePrices = prices.get(rtg.product);
+			    double onDemandRate = instancePrices.getOnDemandRate(rtg.region, rtg.usageType);			    
 		        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
 			    
 			    for (TagGroup tagGroup: usageMap.keySet()) {
@@ -93,8 +98,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
 					    // See if we have amortization in the map already
 					    TagGroupRI atg = TagGroupRI.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(utilization), tg.usageType, tg.resourceGroup, tg.reservationId);
-					    amort = costMap.remove(atg);
-					    
+					    amort = costMap.remove(atg);					    
 				    }
 				    
 				    // See if we have savings in the map already
@@ -108,7 +112,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    	double adjustedAmortization = (amort != null && amort > 0) ? amort : adjustedUsed * reservation.upfrontAmortized;
 				    	double adjustedSavings = (savings != null && savings > 0) ? savings : adjustedUsed * savingsRate;
 					    reservedUnused -= adjustedUsed;
-					    if (reservation.tagGroup.account == tg.account) {
+					    if (rtg.account == tg.account) {
 						    // Used by owner account, mark as used
 						    TagGroup usedTagGroup = null;
 						    if (used == adjustedUsed || !familyBreakout)
@@ -139,35 +143,51 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    }
 
 			    // Unused
-			    // Grab the unused rate for this RI if CUR on/after 2018-01 and remove the rates from the cost map
-			    ResourceGroup riResourceGroup = product == null ? null : rtg.resourceGroup;
-			    TagGroupRI unusedRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, riResourceGroup, reservationId);
-			    Double unusedRate = costMap.remove(unusedRateTag);
-			    Double amortizationRate = null;
-			    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
-				    TagGroupRI amortizationRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, riResourceGroup, reservationId);
-				    amortizationRate = costMap.remove(amortizationRateTag);
+			    boolean haveUnused = Math.abs(reservedUnused) > 0.0001;
+			    
+			    // Grab the unused and amortization rates for this RI if CUR on/after 2018-01 and remove the rates from the cost map
+			    Double unusedRate = 0.0;
+			    if (utilization == ReservationUtilization.PARTIAL || utilization == ReservationUtilization.HEAVY) {
+				    TagGroupRI unusedRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, null, reservationId);
+				    unusedRate = costMap.remove(unusedRateTag);
+				    if (haveUnused && unusedRate == null) {
+				    	if (startMilli >= unusedDataStart)
+				    		logger.error("Unused rate not in cost data " + i + ", grab from reservation " + unusedRateTag);
+				    	unusedRate = reservation.reservationHourlyCost;
+				    }
 			    }
-			    			    
-			    if (Math.abs(reservedUnused) > 0.0001) {
+			    
+			    Double amortizationRate = 0.0;
+			    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
+				    TagGroupRI amortizationRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, null, reservationId);
+				    amortizationRate = costMap.remove(amortizationRateTag);
+				    if (haveUnused && amortizationRate == null) {
+				    	if (startMilli >= unusedDataStart)
+				    		logger.error("Amortization rate not in cost data " + i + ", grab from reservation " + amortizationRateTag);
+				    	amortizationRate = reservation.upfrontAmortized;
+				    }
+			    }
+			    
+			    if (haveUnused) {			    	
+				    ResourceGroup riResourceGroup = product == null ? null : rtg.resourceGroup;
 				    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, riResourceGroup);
 				    add(toBeAdded, unusedTagGroup, reservedUnused);
-				    double unusedHourlyCost = reservedUnused * ((unusedRate != null) ? unusedRate : reservation.reservationHourlyCost);
+				    double unusedHourlyCost = reservedUnused * unusedRate;
 				    add(costMap, unusedTagGroup, unusedHourlyCost);
 
 				    if (reservedUnused < 0.0) {
 				    	logger.error("Too much usage assigned to RI: " + i + ", unused=" + reservedUnused + ", tag: " + unusedTagGroup);
 				    }
-				    if (reservation.upfrontAmortized > 0.0 || (amortizationRate != null && amortizationRate > 0.0)) {
+				    double unusedFixedCost = reservedUnused * amortizationRate;
+				    if (amortizationRate > 0.0) {
 					    // assign unused amortization to owner
-					    double unusedFixedCost = reservedUnused * ((amortizationRate != null) ? amortizationRate : reservation.upfrontAmortized);
 				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, riResourceGroup);
 					    add(costMap, upfrontTagGroup, unusedFixedCost);
-					    
-					    // subtract amortization and hourly rate from savings for owner
-				        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, riResourceGroup);
-					    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
 				    }
+					    
+				    // subtract amortization and hourly rate from savings for owner
+			        TagGroup savingsTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getSavings(utilization), rtg.usageType, riResourceGroup);
+				    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
 			    }
 		    }
 		    // Remove the entries we replaced

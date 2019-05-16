@@ -1603,5 +1603,79 @@ public class ReservationProcessorTest {
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4");		
 	}
 
-
+	/*
+	 * Test Partial Upfront Amortized and Unused costs from CUR line items - first released 2018-01
+	 */
+	@Test
+	public void testPartialUpfrontNetCosts() throws Exception {
+		long startMillis = DateTime.parse("2019-01-01").getMillis();
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,123.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
+		};
+		
+		/* One instance used, one unused */
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		Datum[] costData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.024),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.020),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesPartial, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.010),
+		};
+		
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartial, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesPartial, "m1.small", 1.0),
+		};
+		
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartial, "m1.small", 0.024),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedPartial, "m1.small", 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartial, "m1.small", 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesPartial, "m1.small", 0.010),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsPartial, "m1.small", 0.020),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartial, "m1.small", -(0.010 + 0.014)),
+		};
+		
+		runOneHourTestCostAndUsageWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", reservationOwners.keySet(), null);		
+	}
+	
+	/*
+	 * Test No Upfront Unused costs from CUR line items - first released 2018-01
+	 */
+	@Test
+	public void testNoUpfrontNetCosts() throws Exception {
+		long startMillis = DateTime.parse("2019-01-01T00:00:00Z").getMillis();
+		String[] resCSV = new String[]{
+			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
+			"111111111111,EC2,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,0.0,2,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.028",
+		};
+		
+		/* One instance used, one unused */
+		Datum[] usageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+		};
+		Datum[] costData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.028),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.016),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.022),
+		};
+		
+		Datum[] expectedUsageData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesHeavy, "m1.small", 1.0),
+		};
+		
+		Datum[] expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.small", 0.028),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesHeavy, "m1.small", 0.022),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsHeavy, "m1.small", 0.016),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsHeavy, "m1.small", -0.022),
+		};
+		
+		runOneHourTestCostAndUsageWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", reservationOwners.keySet(), null);		
+	}
 }

@@ -21,6 +21,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
+import com.netflix.ice.processor.ReservationService.ReservationInfo;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.*;
 
@@ -132,10 +133,19 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         boolean reservationUsage = lineItem.isReserved();
         final String description = lineItem.getDescription();
+        
+        ReservationUtilization utilization = reservationService.getDefaultReservationUtilization(millisStart);
+        String purchaseOption = lineItem.getPurchaseOption();
+        String reservationId = lineItem.getReservationId();
+        if (StringUtils.isEmpty(purchaseOption) && StringUtils.isNotEmpty(reservationId)) {
+        	ReservationInfo resInfo = reservationService.getReservation(reservationId);
+        	if (resInfo != null)
+        		utilization = ((Operation.ReservationOperation) resInfo.tagGroup.operation).getUtilization();
+        }
         		
-        ReformedMetaData reformedMetaData = reform(reservationService.getDefaultReservationUtilization(millisStart), 
+        ReformedMetaData reformedMetaData = reform(utilization, 
         		productService.getProductByAwsName(lineItem.getProduct()), reservationUsage, lineItem.getOperation(), lineItem.getUsageType(), description, costValue,
-        		lineItem.getPurchaseOption(), lineItem.getPricingUnit());
+        		purchaseOption, lineItem.getPricingUnit());
         final Product product = reformedMetaData.product;
         final Operation operation = reformedMetaData.operation;
         final UsageType usageType = reformedMetaData.usageType;
@@ -149,14 +159,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         addResourceInstance(lineItem, instances, tagGroup);
 
         final Result result = getResult(lineItem, startMilli, tagGroup, processDelayed, reservationUsage, costValue);
-        
-        
+                
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
-        if (lineItem.getLineItemType() == LineItemType.RIFee) {
-        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, operation, usageType, null, lineItem.getReservationId());
-        	addUnusedReservationRate(lineItem, costAndUsageData, tgri);
+        if (processDelayed && lineItem.getLineItemType() == LineItemType.RIFee) {
+        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, operation, usageType, null, reservationId);
+        	addUnusedReservationRate(lineItem, costAndUsageData, tgri, startMilli);
         }
-
 
         if (result == Result.ignore || result == Result.delay)
             return result;
@@ -273,7 +281,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     
     protected void addUnusedReservationRate(LineItem lineItem,
     		CostAndUsageData costAndUsageData,
-    		TagGroupRI tg) {    	
+    		TagGroupRI tg, long startMilli) {    	
         return;        
     }
 
@@ -404,7 +412,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             if (reservationUsage && product.isEc2()) {
-            	if (purchaseOption != null) {
+            	if (StringUtils.isNotEmpty(purchaseOption)) {
             		operation = Operation.getBonusReservedInstances(ReservationUtilization.get(purchaseOption));
             	}
             	else if (cost == 0)
@@ -423,7 +431,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = currentRedshiftUsageType(usageTypeStr.split(":")[1]);
             
             if (reservationUsage) {
-            	if (purchaseOption != null) {
+            	if (StringUtils.isNotEmpty(purchaseOption)) {
             		operation = Operation.getBonusReservedInstances(ReservationUtilization.get(purchaseOption));
             	}
             	else {
@@ -458,7 +466,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
             
             if (reservationUsage) {
-            	if (purchaseOption != null) {
+            	if (StringUtils.isNotEmpty(purchaseOption)) {
             		operation = Operation.getBonusReservedInstances(ReservationUtilization.get(purchaseOption));
             	}
             	else {
@@ -498,8 +506,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	            operation = getOperation(operationStr, reservationUsage, ReservationUtilization.get(purchaseOption));
             }
             else {
-	            // No way to tell what purchase option this is for without referencing reservation.
-	            // TODO look up reservation from ARN if this is Cost and Usage.
+	            // No way to tell what purchase option this is
 	            operation = getOperation(operationStr, reservationUsage, defaultReservationUtilization);
             }
             os = getInstanceOs(operationStr);

@@ -710,7 +710,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getRegions: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       }
       $http({
         method: "GET",
@@ -739,7 +740,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getZones: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.ZONE_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       }
       $http({
         method: "GET",
@@ -766,8 +768,10 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getProducts: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions);
 
         if ($scope.showResourceGroups || $scope.resources) {
           params.resources = true;
@@ -799,9 +803,12 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getResourceGroups: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
-        this.addParams(params, "product", $scope.regions, $scope.selected_products);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        if ($scope.dimensions[$scope.PRODUCT_INDEX])
+          this.addParams(params, "product", $scope.regions, $scope.selected_products);
       }
       $http({
         method: "GET",
@@ -865,9 +872,12 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
         params.index = index;
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
-        this.addParams(params, "product", $scope.regions, $scope.selected_products);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        if ($scope.dimensions[$scope.PRODUCT_INDEX])
+          this.addParams(params, "product", $scope.regions, $scope.selected_products);
       }
       $http({
         method: "POST",
@@ -894,9 +904,12 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getOperations: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
-        this.addParams(params, "product", $scope.products, $scope.selected_products);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        if ($scope.dimensions[$scope.PRODUCT_INDEX])
+          this.addParams(params, "product", $scope.regions, $scope.selected_products);
         if ($scope.showResourceGroups) {
           this.addParams(params, "resourceGroup", $scope.resourceGroups, $scope.selected_resourceGroups);
           params.resources = true;
@@ -927,10 +940,14 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     getUsageTypes: function ($scope, fn, params) {
       if (!params) {
         params = {};
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
-        this.addParams(params, "region", $scope.regions, $scope.selected_regions);
-        this.addParams(params, "product", $scope.products, $scope.selected_products);
-        this.addParams(params, "operation", $scope.operations, $scope.selected_operations);
+        if ($scope.dimensions[$scope.ACCOUNT_INDEX])
+          this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
+        if ($scope.dimensions[$scope.REGION_INDEX])
+          this.addParams(params, "region", $scope.regions, $scope.selected_regions);
+        if ($scope.dimensions[$scope.PRODUCT_INDEX])
+          this.addParams(params, "product", $scope.regions, $scope.selected_products);
+        if ($scope.dimensions[$scope.OPERATION_INDEX])
+          this.addParams(params, "operation", $scope.operations, $scope.selected_operations);
         if ($scope.showResourceGroups)
           this.addParams(params, "resourceGroup", $scope.resourceGroups, $scope.selected_resourceGroups);
         if ($scope.showResourceGroups || $scope.resources)

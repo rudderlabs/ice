@@ -124,6 +124,11 @@ public class BasicReservationService extends Poller implements ReservationServic
         }
     }
     
+    // For testing
+    public void injectReservation(Reservation res) {
+    	reservationsById.put(res.id, res);
+    }
+    
     /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
@@ -219,6 +224,8 @@ public class BasicReservationService extends Poller implements ReservationServic
      */
     public ReservationInfo getReservation(String id) {
     	Reservation reservation = reservationsById.get(id);
+    	if (reservation == null)
+    		return null;
 	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.hourlyFixedPrice, reservation.usagePrice);
     }
     
