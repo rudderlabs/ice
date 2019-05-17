@@ -28,12 +28,11 @@
     <tr>
       <td>Start</td>
       <td>Show</td>
-      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsChanged()"> Account</input></td>
-      <td class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsChanged()"> Region</input></td>
-      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsChanged()"> Product</input></td>
-      <td ng-show="showResourceGroups">ResourceGroup</td>
-      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsChanged()"> Operation</input></td>
-      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]"> UsageType</input></td>
+      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input></td>
+      <td class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
+      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsEnabled()"> Product</input></td>
+      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsEnabled()"> Operation</input></td>
+      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]" ng-change="usageTypesEnabled()"> UsageType</input></td>
     </tr>
     <tr>
       <td>
@@ -101,12 +100,6 @@
 	        <button ng-click="selected_products = []; productsChanged()" class="allNoneButton">-</button>
       	</div>
       </td>
-      <td ng-show="showResourceGroups">
-        <select ng-model="selected_resourceGroups" ng-options="a.name for a in resourceGroups | filter:filter_resourceGroups" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaResourceGroups metaSelect"></select>
-        <br><input ng-model="filter_resourceGroups" type="text" class="metaFilter" placeholder="filter">
-        <button ng-click="selected_resourceGroups = resourceGroups; resourceGroupsChanged()" class="allNoneButton">+</button>
-        <button ng-click="selected_resourceGroups = []; resourceGroupsChanged()" class="allNoneButton">-</button>
-      </td>
       <td>
       	<div ng-show="dimensions[OPERATION_INDEX]">
 	        <select ng-model="selected_operations" ng-options="a.name for a in operations | filter:filter_operations" ng-change="operationsChanged()" multiple="multiple" class="metaOperations metaSelect"></select>
@@ -134,114 +127,114 @@
         </div>      
       </td>
       <td ng-show="userTagValues.length > 0">
-        <input type="checkbox" ng-model="enabledUserTags[0]" ng-change="userTagValuesChanged(0)"> {{userTags[0].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[0]" ng-change="userTagsChanged(0)"> {{userTags[0].name}}</input>
       	<div ng-show="enabledUserTags[0]">
-          <select ng-model="selected_userTagValues[0]" ng-options="a.name for a in userTagValues[0] | filter:filter_userTagValues[0]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[0]" ng-options="a.name for a in userTagValues[0] | filter:filter_userTagValues[0]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[0]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[0] = userTagValues[0]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[0] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[0] = userTagValues[0]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[0] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 1">
-        <input type="checkbox" ng-model="enabledUserTags[1]" ng-change="userTagValuesChanged(1)"> {{userTags[1].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[1]" ng-change="userTagsChanged(1)"> {{userTags[1].name}}</input>
       	<div ng-show="enabledUserTags[1]">
-          <select ng-model="selected_userTagValues[1]" ng-options="a.name for a in userTagValues[1] | filter:filter_userTagValues[1]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[1]" ng-options="a.name for a in userTagValues[1] | filter:filter_userTagValues[1]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[1]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[1] = userTagValues[1]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[1] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[1] = userTagValues[1]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[1] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 2">
-        <input type="checkbox" ng-model="enabledUserTags[2]" ng-change="userTagValuesChanged(2)"> {{userTags[2].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[2]" ng-change="userTagsChanged(2)"> {{userTags[2].name}}</input>
       	<div ng-show="enabledUserTags[2]">
-          <select ng-model="selected_userTagValues[2]" ng-options="a.name for a in userTagValues[2] | filter:filter_userTagValues[2]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[2]" ng-options="a.name for a in userTagValues[2] | filter:filter_userTagValues[2]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[2]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[2] = userTagValues[2]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[2] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[2] = userTagValues[2]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[2] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 3">
-        <input type="checkbox" ng-model="enabledUserTags[3]" ng-change="userTagValuesChanged(3)"> {{userTags[3].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[3]" ng-change="userTagsChanged(3)"> {{userTags[3].name}}</input>
       	<div ng-show="enabledUserTags[3]">
-          <select ng-model="selected_userTagValues[3]" ng-options="a.name for a in userTagValues[3] | filter:filter_userTagValues[3]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[3]" ng-options="a.name for a in userTagValues[3] | filter:filter_userTagValues[3]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[3]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[3] = userTagValues[3]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[3] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[3] = userTagValues[3]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[3] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 4">
-        <input type="checkbox" ng-model="enabledUserTags[4]" ng-change="userTagValuesChanged(4)"> {{userTags[4].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[4]" ng-change="userTagsChanged(4)"> {{userTags[4].name}}</input>
       	<div ng-show="enabledUserTags[4]">
-          <select ng-model="selected_userTagValues[4]" ng-options="a.name for a in userTagValues[4] | filter:filter_userTagValues[4]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[4]" ng-options="a.name for a in userTagValues[4] | filter:filter_userTagValues[4]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[4]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[4] = userTagValues[4]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[4] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[4] = userTagValues[4]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[4] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 5">
-        <input type="checkbox" ng-model="enabledUserTags[5]" ng-change="userTagValuesChanged(5)"> {{userTags[5].name}}</input>
+        <input type="checkbox" ng-model="enabledUserTags[5]" ng-change="userTagsChanged(5)"> {{userTags[5].name}}</input>
       	<div ng-show="enabledUserTags[5]">
-          <select ng-model="selected_userTagValues[5]" ng-options="a.name for a in userTagValues[5] | filter:filter_userTagValues[5]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[5]" ng-options="a.name for a in userTagValues[5] | filter:filter_userTagValues[5]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[5]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[5] = userTagValues[5]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[5] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[5] = userTagValues[5]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[5] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
     <tr ng-show="userTagValues.length > 6">
       <td></td>
       <td ng-show="userTagValues.length > 6">
-      	<input type="checkbox" ng-model="enabledUserTags[6]" ng-change="userTagValuesChanged(6)"> {{userTags[6].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[6]" ng-change="userTagsChanged(6)"> {{userTags[6].name}}</input>
       	<div ng-show="enabledUserTags[6]">
-	      <select ng-model="selected_userTagValues[6]" ng-options="a.name for a in userTagValues[6] | filter:filter_userTagValues[6]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+	      <select ng-model="selected_userTagValues[6]" ng-options="a.name for a in userTagValues[6] | filter:filter_userTagValues[6]" multiple="multiple" class="metaUserTags metaSelect"></select>
 	      <br><input ng-model="filter_userTagValues[6]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[6] = userTagValues[6]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[6] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[6] = userTagValues[6]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[6] = []" class="allNoneButton">-</button>
 		</div>      
 	  </td>
       <td ng-show="userTagValues.length > 7">
-      	<input type="checkbox" ng-model="enabledUserTags[7]" ng-change="userTagValuesChanged(7)"> {{userTags[7].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[7]" ng-change="userTagsChanged(7)"> {{userTags[7].name}}</input>
       	<div ng-show="enabledUserTags[7]">
-          <select ng-model="selected_userTagValues[7]" ng-options="a.name for a in userTagValues[7] | filter:filter_userTagValues[7]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[7]" ng-options="a.name for a in userTagValues[7] | filter:filter_userTagValues[7]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[7]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[7] = userTagValues[7]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[7] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[7] = userTagValues[7]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[7] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 8">
-      	<input type="checkbox" ng-model="enabledUserTags[8]" ng-change="userTagValuesChanged(8)"> {{userTags[8].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[8]" ng-change="userTagsChanged(8)"> {{userTags[8].name}}</input>
       	<div ng-show="enabledUserTags[8]">
-          <select ng-model="selected_userTagValues[8]" ng-options="a.name for a in userTagValues[8] | filter:filter_userTagValues[8]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[8]" ng-options="a.name for a in userTagValues[8] | filter:filter_userTagValues[8]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[8]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[8] = userTagValues[8]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[8] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[8] = userTagValues[8]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[8] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 9">
-      	<input type="checkbox" ng-model="enabledUserTags[9]" ng-change="userTagValuesChanged(9)"> {{userTags[9].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[9]" ng-change="userTagsChanged(9)"> {{userTags[9].name}}</input>
       	<div ng-show="enabledUserTags[9]">
-          <select ng-model="selected_userTagValues[9]" ng-options="a.name for a in userTagValues[9] | filter:filter_userTagValues[9]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[9]" ng-options="a.name for a in userTagValues[9] | filter:filter_userTagValues[9]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[9]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[9] = userTagValues[9]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[9] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[9] = userTagValues[9]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[9] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 10">
-      	<input type="checkbox" ng-model="enabledUserTags[10]" ng-change="userTagValuesChanged(10)"> {{userTags[10].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[10]" ng-change="userTagsChanged(10)"> {{userTags[10].name}}</input>
       	<div ng-show="enabledUserTags[10]">
-          <select ng-model="selected_userTagValues[10]" ng-options="a.name for a in userTagValues[10] | filter:filter_userTagValues[10]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[10]" ng-options="a.name for a in userTagValues[10] | filter:filter_userTagValues[10]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[10]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[10] = userTagValues[10]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[10] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[10] = userTagValues[10]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[10] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
       <td ng-show="userTagValues.length > 11">
-      	<input type="checkbox" ng-model="enabledUserTags[11]" ng-change="userTagValuesChanged(11)"> {{userTags[11].name}}</input>
+      	<input type="checkbox" ng-model="enabledUserTags[11]" ng-change="userTagsChanged(11)"> {{userTags[11].name}}</input>
       	<div ng-show="enabledUserTags[11]">
-          <select ng-model="selected_userTagValues[11]" ng-options="a.name for a in userTagValues[11] | filter:filter_userTagValues[11]" ng-change="resourceGroupsChanged()" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <select ng-model="selected_userTagValues[11]" ng-options="a.name for a in userTagValues[11] | filter:filter_userTagValues[11]" multiple="multiple" class="metaUserTags metaSelect"></select>
           <br><input ng-model="filter_userTagValues[11]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[11] = userTagValues[11]; resourceGroupsChanged()" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[11] = []; resourceGroupsChanged()" class="allNoneButton">-</button>
+          <button ng-click="selected_userTagValues[11] = userTagValues[11]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[11] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
@@ -251,10 +244,10 @@
     <img src="${resource(dir: '/')}images/spinner.gif" ng-show="loading">
     <a href="javascript:void(0)" class="monitor" style="background-image: url(${resource(dir: '/')}images/tango/16/apps/utilities-system-monitor.png)"
        ng-click="updateUrl(); getData()" ng-show="!loading"
-       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 || selected_products.length == 0 || showResourceGroups && selected_resourceGroups.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
+       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
     <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
        ng-click="download()" ng-show="!loading"
-       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 || selected_products.length == 0 || showResourceGroups && selected_resourceGroups.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
+       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
   </div>
 
   <table style="width: 100%; margin-top: 20px">

@@ -40,7 +40,7 @@ parameters:
     type: array
     items:
       type: string
-    required: true
+    required: false
   regionParam:
     name: region
     in: query
@@ -48,7 +48,7 @@ parameters:
     items:
       type: string
     description: Comma separated list of region names.
-    required: true
+    required: false
   productParam:
     name: product
     in: query
@@ -56,7 +56,15 @@ parameters:
     type: array
     items:
       type: string
-    required: true
+    required: false
+  operationParam:
+    name: operation
+    in: query
+    description: Comma separated list of operation names.
+    type: array
+    items:
+      type: string
+    required: false
   resourcesParam:
     name: resources
     in: query
@@ -109,6 +117,7 @@ paths:
       parameters:
         - $ref: '#/parameters/accountParam'
         - $ref: '#/parameters/regionParam'
+        - $ref: '#/parameters/operationParam'
         - $ref: '#/parameters/resourcesParam'
         - $ref: '#/parameters/showZonesParam'
       responses:
@@ -201,6 +210,9 @@ paths:
                 type: boolean
               forReservations:
                 type: boolean
+              usage_cost:
+                description: If "cost" remove Lent operations. If "usage" remove Amortization and Savings operations.
+                type: string
       responses:
         '200':
           description: collection of operations

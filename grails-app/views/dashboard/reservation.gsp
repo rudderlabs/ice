@@ -29,12 +29,12 @@
     <tr>
       <td>Start</td>
       <td>Show</td>
-      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]"> Account</input></td>
-      <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]"> Region</input></td>
-      <td ng-show="showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[ZONE_INDEX]"> Zone</input></td>
-      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsChanged()"> Product</input></td>
-      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsChanged()"> Operation</input></td>
-      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]"> UsageType</input></td>
+      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input></td>
+      <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
+      <td ng-show="showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[ZONE_INDEX]" ng-change="zonesEnabled()"> Zone</input></td>
+      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsEnabled()"> Product</input></td>
+      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsEnabled()"> Operation</input></td>
+      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]" ng-change="usageTypesEnabled()"> UsageType</input></td>
     </tr>
     <tr>
       <td>

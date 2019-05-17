@@ -30,12 +30,11 @@
     <tr>
       <td>Start</td>
       <td>Show</td>
-      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]"> Account</input></td>
-      <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]"> Region</input></td>
-      <td ng-show="showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[ZONE_INDEX]"> Zone</input></td>
-      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsChanged()"> Product</input></td>
-      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsChanged()"> Operation</input></td>
-      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]"> UsageType</input></td>
+      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input></td>
+      <td class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
+      <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsEnabled()"> Product</input></td>
+      <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsEnabled()"> Operation</input></td>
+      <td class="metaUsageTypes"><input type="checkbox" ng-model="dimensions[USAGETYPE_INDEX]" ng-change="usageTypesEnabled()"> UsageType</input></td>
     </tr>
     <tr>
       <td>
@@ -72,20 +71,12 @@
 	        <button ng-click="selected_accounts = []; accountsChanged()" class="allNoneButton">-</button>
       	</div>
       </td>
-      <td ng-show="1-showZones">
+      <td>
       	<div ng-show="dimensions[REGION_INDEX]">
 	        <select ng-model="selected_regions" ng-options="a.name for a in regions | filter:filter_regions" ng-change="regionsChanged()" multiple="multiple" class="metaRegions metaSelect"></select>
 	        <br><input ng-model="filter_regions" type="text" class="metaFilter" placeholder="filter">
 	        <button ng-click="selected_regions = regions; regionsChanged()" class="allNoneButton">+</button>
 	        <button ng-click="selected_regions = []; regionsChanged()" class="allNoneButton">-</button>
-      	</div>
-      </td>
-      <td ng-show="showZones">
-      	<div ng-show="dimensions[ZONE_INDEX]">
-	        <select ng-model="selected_zones" ng-options="a.name for a in zones | filter:filter_zones" ng-change="zonesChanged()" multiple="multiple" class="metaRegions metaSelect"></select>
-	        <br><input ng-model="filter_zones" type="text" class="metaFilter" placeholder="filter">
-	        <button ng-click="selected_zones = zones; zonesChanged()" class="allNoneButton">+</button>
-	        <button ng-click="selected_zones = []; zonesChanged()" class="allNoneButton">-</button>
       	</div>
       </td>
       <td>
@@ -119,10 +110,10 @@
     <img src="${resource(dir: '/')}images/spinner.gif" ng-show="loading">
     <a href="javascript:void(0)" class="monitor" style="background-image: url(${resource(dir: '/')}images/tango/16/apps/utilities-system-monitor.png)"
        ng-click="updateUrl(); getData()" ng-show="!loading"
-       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
+       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
     <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
        ng-click="download()" ng-show="!loading"
-       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
+       ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
   </div>
 
   <table style="width: 100%; margin-top: 20px">
