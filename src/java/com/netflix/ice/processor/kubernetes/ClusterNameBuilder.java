@@ -8,24 +8,34 @@ import com.google.common.collect.Lists;
 import com.netflix.ice.tag.UserTag;
 
 public class ClusterNameBuilder {
+	final private static String formulaSeparator = ",";
 	final private static String rulesSeparator = "\\+";
-	final private List<Rule> rules;
+	final private List<List<Rule>> formulae;
 	
-	ClusterNameBuilder(String formula, String[] tagNames) {
-		this.rules = Lists.newArrayList();
-		
-		String[] rules = formula.split(rulesSeparator);
-		for (String rule: rules) {
-			this.rules.add(new Rule(rule, tagNames));
+	ClusterNameBuilder(String formulae, String[] tagNames) {
+		this.formulae = Lists.newArrayList();
+		for (String formula: formulae.split(formulaSeparator)) {
+			List<Rule> rules = Lists.newArrayList();
+			
+			String[] rulesStrs = formula.split(rulesSeparator);
+			for (String rule: rulesStrs) {
+				rules.add(new Rule(rule, tagNames));
+			}
+			this.formulae.add(rules);
 		}
 	}
 	
-	public String getClusterName(UserTag[] userTags) {
-		StringBuilder sb = new StringBuilder(32);
-		for (Rule rule: rules) {
-			sb.append(rule.call(userTags));
+	public List<String> getClusterNames(UserTag[] userTags) {
+		List<String> ret = Lists.newArrayList();
+		for (List<Rule> rules: formulae) {
+			StringBuilder sb = new StringBuilder(32);
+			for (Rule rule: rules) {
+				sb.append(rule.call(userTags));
+			}
+			if (sb.length() > 0)
+				ret.add(sb.toString());
 		}
-		return sb.toString();
+		return ret;
 	}
 
 	class Rule {

@@ -33,7 +33,7 @@ public class KubernetesProcessor {
     private final int computeIndex;
     private final int namespaceIndex;
     private final String computeValue;
-    private final String[] tagsToCopy;
+    protected final String[] tagsToCopy;
     private final ClusterNameBuilder clusterNameBuilder;
     private final Tagger tagger;
 
@@ -111,11 +111,7 @@ public class KubernetesProcessor {
 	}
 	
 	protected void process(ReadWriteData costData) {
-		Set<String> clusters = Sets.newHashSet();
-		for (KubernetesReport report: reports) {
-			clusters.addAll(report.getClusters());
-		}
-		
+		// Process each hour of data
 		for (int i = 0; i < costData.getNum(); i++) {
 			Map<TagGroup, Double> hourCostData = costData.getData(i);
 			// Get a copy of the key set since we'll be updating the map
@@ -130,13 +126,15 @@ public class KubernetesProcessor {
 					continue;
 				}
 				
-				String clusterName = clusterNameBuilder.getClusterName(ut);
-								
-				if (!clusterName.isEmpty()) {
+				List<String> clusterNames = clusterNameBuilder.getClusterNames(ut);
+				if (clusterNames.size() > 0) {
 					for (KubernetesReport report: reports) {
-						List<String[]> hourClusterData = report.getData(clusterName, i);
-						if (hourClusterData != null)
-							processHourClusterData(hourCostData, tg, clusterName, report, hourClusterData);
+						for (String clusterName: clusterNames) {
+							List<String[]> hourClusterData = report.getData(clusterName, i);
+							if (hourClusterData != null) {
+								processHourClusterData(hourCostData, tg, clusterName, report, hourClusterData);
+							}
+						}
 					}					
 				}
 			}
