@@ -2072,10 +2072,10 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
 }
 
 function resourceInfoCtrl($scope, $location, $http) {
-  $scope.resource = ""
+  $scope.resource = {};
 
   $scope.isDisabled = function () {
-    return $scope.resource.name == "";
+    return !$scope.resource.name ;
   }
 
   $scope.getResourceInfo = function() {
@@ -2083,15 +2083,17 @@ function resourceInfoCtrl($scope, $location, $http) {
     
     $http({
       method: "GET",
-      url: "instance/",
+      url: "instance",
       params: { id: $scope.resource.name }
     }).success(function (result) {
         $scope.resourceInfo = JSON.stringify(result, null, "    ");
     }).error(function(result, status) {
-      if (status === 404)
-        alert("Resource " + $scope.resource.name + " does not exist.");
+      if (result.status === 401)
+        $window.location.reload();
+      else if (status === 404)
+        $scope.resourceInfo = "Resource " + $scope.resource.name + " does not exist.";
       else
-        alert("Error getting resource " + $scope.resource.name + ": " + status);
+        $scope.resourceInfo = "Error getting resource " + $scope.resource.name + ": " + status;
     });
   
   }
