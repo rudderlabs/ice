@@ -25,6 +25,7 @@ import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.ThroughputMetricService;
+
 import org.apache.commons.io.IOUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Hours;
@@ -33,6 +34,7 @@ import org.joda.time.PeriodType;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -84,7 +86,7 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
                 logger.info("trying to re-read data for " + file);
                 FileInputStream in = new FileInputStream(file);
                 try {
-                    String[] strs = IOUtils.toString(in).split(",");
+                    String[] strs = IOUtils.toString(in, StandardCharsets.UTF_8).split(",");
                     double[] values = new double[strs.length];
                     for (int i = 0; i < strs.length; i++)
                         values[i] = Double.parseDouble(strs[i]);
@@ -107,7 +109,7 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
 
                 FileInputStream in = new FileInputStream(file);
                 try {
-                    String[] strs = IOUtils.toString(in).split(",");
+                    String[] strs = IOUtils.toString(in, StandardCharsets.UTF_8).split(",");
                     double[] values = new double[strs.length];
                     for (int i = 0; i < strs.length; i++)
                         values[i] = Double.parseDouble(strs[i]);

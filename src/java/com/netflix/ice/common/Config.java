@@ -37,7 +37,14 @@ public abstract class Config {
     public final ProductService productService;
     public final AWSCredentialsProvider credentialsProvider;
     public final Map<String, String> debugProperties;
-
+    private TagCoverage tagCoverage;
+    
+    public enum TagCoverage {
+    	none,
+    	basic,
+    	withUserTags   	
+    }
+    
     /**
      *
      * @param properties (required)
@@ -64,6 +71,7 @@ public abstract class Config {
 
         this.credentialsProvider = credentialsProvider;
         this.productService = productService;
+        this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
 
         AwsUtils.init(credentialsProvider, workS3BucketRegion);
         
@@ -76,5 +84,21 @@ public abstract class Config {
         	}
         }
     }
+
+	public TagCoverage getTagCoverage() {
+		return tagCoverage;
+	}
+	
+	public boolean hasTagCoverage() {
+		return tagCoverage != TagCoverage.none;
+	}
+	
+	public boolean hasTagCoverageWithUserTags() {
+		return tagCoverage == TagCoverage.withUserTags;
+	}
+
+	protected void setTagCoverage(TagCoverage tagCoverage) {
+		this.tagCoverage = tagCoverage;
+	}
     
 }

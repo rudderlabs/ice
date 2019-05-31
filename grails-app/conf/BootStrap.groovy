@@ -103,7 +103,8 @@ class BootStrap {
             properties.setProperty(IceOptions.WORK_S3_BUCKET_NAME, prop.getProperty(IceOptions.WORK_S3_BUCKET_NAME));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_REGION, prop.getProperty(IceOptions.WORK_S3_BUCKET_REGION));
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
-			
+			properties.setProperty(IceOptions.TAG_COVERAGE, prop.getProperty(IceOptions.TAG_COVERAGE, ""));
+				
 			// Grab all the account properties
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith("ice.account.") || name.startsWith("ice.owneraccount.")) {
@@ -247,8 +248,6 @@ class BootStrap {
 					properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
 				if (prop.getProperty(IceOptions.DASHBOARD_NOTICE) != null)
 					properties.setProperty(IceOptions.DASHBOARD_NOTICE, prop.getProperty(IceOptions.DASHBOARD_NOTICE));
-				if (prop.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) != null)
-					properties.setProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS, prop.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));					
 
                 readerConfig = new ReaderConfig(
                         properties,

@@ -22,10 +22,12 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.*;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Product;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -170,6 +172,7 @@ public class BasicManagers extends Poller implements Managers {
         for (Product product: newProducts) {
         	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true);
             tagGroupManagers.put(product, tagGroupManager);
+            boolean loadTagCoverage = (product == null && config.getTagCoverage() != TagCoverage.none) || (product != null && config.getTagCoverage() == TagCoverage.withUserTags);
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
                 
@@ -179,7 +182,7 @@ public class BasicManagers extends Poller implements Managers {
                 		config.monthlyCacheSize, config.accountService, config.productService, null));
                 usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
-                if ((product == null || config.enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
+                if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
     	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress,
             				config.monthlyCacheSize, config.accountService, config.productService));
                 }

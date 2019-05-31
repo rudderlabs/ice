@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.tag.Account;
 
 public class WorkBucketDataConfigTest {
@@ -35,7 +36,7 @@ public class WorkBucketDataConfigTest {
 		userTags.add("Tag2");
 		userTags.add("Tag3");
 		
-		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, false);
+		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, false, TagCoverage.basic);
 		
 		String json = wbdc.toJSON();
 		WorkBucketDataConfig got = new WorkBucketDataConfig(json);
@@ -45,6 +46,7 @@ public class WorkBucketDataConfigTest {
 		assertEquals("Bad zones", zones, got.getZones());
 		assertEquals("Bad user tags", userTags, got.getUserTags());
 		assertEquals("Bad familyRiBreakout value", false, got.getFamilyRiBreakout());
+		assertEquals("Bad tagCoverage value", TagCoverage.basic, got.getTagCoverage());
 	}
 
 }

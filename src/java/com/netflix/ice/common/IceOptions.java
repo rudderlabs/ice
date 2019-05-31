@@ -254,9 +254,9 @@ public class IceOptions {
     public static final String WRITE_JSON_FILES = "ice.writeJsonFiles";
     
     /**
-     * enable tag coverage metrics filtered and grouped by user tags
+     * enable tag coverage metrics: none, basic, withUserTags
      */
-    public static final String TAG_COVERAGE_WITH_USER_TAGS = "ice.tagCoverageWithUserTags";
+    public static final String TAG_COVERAGE = "ice.tagCoverage";
     
     /**
      * debug flags

@@ -29,6 +29,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
@@ -216,7 +217,7 @@ public class ReservationProcessorTest {
 			ReservationProcessor reservationProcessor,
 			Product product) throws Exception {
 		
-		CostAndUsageData caud = new CostAndUsageData(null);
+		CostAndUsageData caud = new CostAndUsageData(null, TagCoverage.none);
 		if (product != null) {
 			caud.putUsage(product, new ReadWriteData());
 			caud.putCost(product, new ReadWriteData());

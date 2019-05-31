@@ -64,7 +64,6 @@ public class ReaderConfig extends Config {
     public final ThroughputMetricService throughputMetricService;
     public final Managers managers;
     public final int monthlyCacheSize;
-    public final boolean enableTagCoverageWithUserTag;
     public final List<String> userTags;
     public final boolean familyRiBreakout;
     public final String dashboardNotice;
@@ -94,6 +93,19 @@ public class ReaderConfig extends Config {
         this.userTags = dataConfig.getUserTags();
         this.familyRiBreakout = dataConfig.getFamilyRiBreakout();
         
+        // update tagCoverage to level supported by processor
+        switch (dataConfig.getTagCoverage()) {
+        case none:
+        	setTagCoverage(TagCoverage.none);
+        	break;
+        case basic:
+        	if (getTagCoverage() == TagCoverage.withUserTags)
+        		setTagCoverage(TagCoverage.basic);
+        	break;
+		default:
+			break;        	
+        }
+        
         // Account service is initialized here and refreshed while running by the DataManager
         this.accountService = new BasicAccountService(dataConfig.getAccounts());
         
@@ -108,7 +120,6 @@ public class ReaderConfig extends Config {
         this.managers = managers;
         this.throughputMetricService = throughputMetricService;
         this.monthlyCacheSize = Integer.parseInt(properties.getProperty(IceOptions.MONTHLY_CACHE_SIZE, "12"));
-        this.enableTagCoverageWithUserTag = properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.TAG_COVERAGE_WITH_USER_TAGS));
 
         ReaderConfig.instance = this;
 
@@ -155,11 +166,12 @@ public class ReaderConfig extends Config {
                 Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
                 if (interval == null)
                     return null;
+                boolean loadTagCoverage = (product == null && getTagCoverage() != TagCoverage.none) || (product != null && getTagCoverage() == TagCoverage.withUserTags);
                 for (ConsolidateType consolidateType: ConsolidateType.values()) {
                     readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
                     readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
                     // Prime the tag coverage cache
-                    if ((product == null || enableTagCoverageWithUserTag) && consolidateType != ConsolidateType.hourly) {
+                    if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
                     	readData(product, managers.getTagCoverageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, userTagList);
                     }
                 }

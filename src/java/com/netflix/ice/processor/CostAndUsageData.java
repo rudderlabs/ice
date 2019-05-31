@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
@@ -32,15 +34,20 @@ public class CostAndUsageData {
     private Map<Product, ReadWriteData> costDataByProduct;
     private Map<Product, ReadWriteTagCoverageData> tagCoverage;
     private List<String> userTags;
+    private boolean collectTagCoverageWithUserTags;
     
-	public CostAndUsageData(List<String> userTags) {
-		usageDataByProduct = Maps.newHashMap();
-		costDataByProduct = Maps.newHashMap();
-		tagCoverage = Maps.newHashMap();
-        usageDataByProduct.put(null, new ReadWriteData());
-        costDataByProduct.put(null, new ReadWriteData());
-		tagCoverage.put(null, new ReadWriteTagCoverageData(userTags == null ? 0 : userTags.size()));
+	public CostAndUsageData(List<String> userTags, Config.TagCoverage tagCoverage) {
+		this.usageDataByProduct = Maps.newHashMap();
+		this.costDataByProduct = Maps.newHashMap();
+        this.usageDataByProduct.put(null, new ReadWriteData());
+        this.costDataByProduct.put(null, new ReadWriteData());
+        this.tagCoverage = null;
         this.userTags = userTags;
+        this.collectTagCoverageWithUserTags = tagCoverage == TagCoverage.withUserTags;
+        if (userTags != null && tagCoverage != TagCoverage.none) {
+    		this.tagCoverage = Maps.newHashMap();
+        	this.tagCoverage.put(null, new ReadWriteTagCoverageData(userTags.size()));
+        }
 	}
 	
 	public ReadWriteData getUsage(Product product) {
@@ -88,16 +95,18 @@ public class CostAndUsageData {
 			else {
 				cost.putAll(entry.getValue());
 			}
-		}		
-		for (Entry<Product, ReadWriteTagCoverageData> entry: data.tagCoverage.entrySet()) {
-			ReadWriteTagCoverageData tc = getTagCoverage(entry.getKey());
-			if (tc == null) {
-				tagCoverage.put(entry.getKey(), entry.getValue());
-			}
-			else {
-				tc.putAll(entry.getValue());
-			}
-		}		
+		}
+		if (tagCoverage != null && data.tagCoverage != null) {
+			for (Entry<Product, ReadWriteTagCoverageData> entry: data.tagCoverage.entrySet()) {
+				ReadWriteTagCoverageData tc = getTagCoverage(entry.getKey());
+				if (tc == null) {
+					tagCoverage.put(entry.getKey(), entry.getValue());
+				}
+				else {
+					tc.putAll(entry.getValue());
+				}
+			}	
+		}
 	}
 	
     public void cutData(int hours) {
@@ -113,7 +122,11 @@ public class CostAndUsageData {
      * Add an entry to the tag coverage statistics for the given TagGroup
      */
     public void addTagCoverage(Product product, int index, TagGroup tagGroup, boolean[] userTagCoverage) {
-    	if (!tagGroup.product.hasResourceTags()) {
+    	if (tagCoverage == null || !tagGroup.product.hasResourceTags()) {
+    		return;
+    	}
+    	
+    	if (!collectTagCoverageWithUserTags && product != null) {
     		return;
     	}
     	
@@ -308,6 +321,9 @@ public class CostAndUsageData {
      * Archive summary data for tag coverage. For tag coverage, we don't keep hourly data.
      */
     private void archiveSummaryTagCoverage(long startMilli, DateTime startDate, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    	if (tagCoverage == null) {
+    		return;
+    	}
 
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 

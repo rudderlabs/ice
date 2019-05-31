@@ -21,6 +21,7 @@ import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -452,7 +453,7 @@ public class BasicLineItemProcessorTest {
 	
 		public CostAndUsageData runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
-			CostAndUsageData costAndUsageData = new CostAndUsageData(null);
+			CostAndUsageData costAndUsageData = new CostAndUsageData(null, TagCoverage.none);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
 	        

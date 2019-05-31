@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -220,7 +221,7 @@ public class BillingFileProcessor extends Poller {
     
 
     void init() {
-    	costAndUsageData = new CostAndUsageData(config.resourceService == null ? null : config.resourceService.getUserTags());
+    	costAndUsageData = new CostAndUsageData(config.resourceService == null ? null : config.resourceService.getUserTags(), config.getTagCoverage());
         instances = new Instances(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
     }
 
@@ -234,7 +235,7 @@ public class BillingFileProcessor extends Poller {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(millisStr.length());
 
-        s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr), metadata);
+        s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr, StandardCharsets.UTF_8), metadata);
     }
 
     private Long getLastMillis(String filename) {
@@ -242,7 +243,7 @@ public class BillingFileProcessor extends Poller {
         InputStream in = null;
         try {
             in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + filename).getObjectContent();
-            return Long.parseLong(IOUtils.toString(in));
+            return Long.parseLong(IOUtils.toString(in, StandardCharsets.UTF_8));
         }
         catch (AmazonServiceException ase) {
         	if (ase.getStatusCode() == 404) {

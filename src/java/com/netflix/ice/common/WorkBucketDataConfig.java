@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.Gson;
+import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.tag.Account;
 
 /**
@@ -15,13 +16,15 @@ public class WorkBucketDataConfig {
     private final boolean familyRiBreakout;
     private final List<Account> accounts;
     private final Map<String, List<String>> zones;
+    private final TagCoverage tagCoverage;
 	
-	public WorkBucketDataConfig(String startMonth, List<Account> accounts, Map<String, List<String>> zones, List<String> userTags, boolean familyRiBreakout) {
+	public WorkBucketDataConfig(String startMonth, List<Account> accounts, Map<String, List<String>> zones, List<String> userTags, boolean familyRiBreakout, TagCoverage tagCoverage) {
 		this.startMonth = startMonth;
 		this.accounts = accounts;
 		this.zones = zones;
 		this.userTags = userTags;
 		this.familyRiBreakout = familyRiBreakout;
+		this.tagCoverage = tagCoverage;
 	}
 	
 	public WorkBucketDataConfig(String json) {
@@ -32,6 +35,7 @@ public class WorkBucketDataConfig {
 		this.zones = c.zones;
 		this.userTags = c.userTags;
 		this.familyRiBreakout = c.familyRiBreakout;
+		this.tagCoverage = c.tagCoverage;
 	}
 
 	public String getStartMonth() {
@@ -52,6 +56,10 @@ public class WorkBucketDataConfig {
 
 	public boolean getFamilyRiBreakout() {
 		return familyRiBreakout;
+	}
+	
+	public TagCoverage getTagCoverage() {
+		return tagCoverage;
 	}
 	
 	public String toJSON() {

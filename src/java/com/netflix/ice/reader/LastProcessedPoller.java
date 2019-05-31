@@ -1,6 +1,7 @@
 package com.netflix.ice.reader;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.io.IOUtils;
 import org.joda.time.DateTime;
@@ -63,7 +64,7 @@ public class LastProcessedPoller extends Poller {
         InputStream in = null;
         try {
             in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + filename).getObjectContent();
-            Long millis = Long.parseLong(IOUtils.toString(in));
+            Long millis = Long.parseLong(IOUtils.toString(in, StandardCharsets.UTF_8));
             //logger.info(filename + ": " + millis);
             return millis;
         }
