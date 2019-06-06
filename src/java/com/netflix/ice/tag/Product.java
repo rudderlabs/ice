@@ -60,6 +60,7 @@ public class Product extends Tag {
 	public static final String rds          = "RDS Service";
 	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
 	public static final String redshift     = "Redshift";
+	public static final String registrar	= "Registrar";
 	public static final String s3           = "Simple Storage Service";
     /*
      * ICE-defined product sub-category strings used to test identity in the "is" methods.
@@ -193,6 +194,10 @@ public class Product extends Tag {
     
     public boolean isRedshift() {
     	return name.equals(getOverride(redshift));
+    }
+    
+    public boolean isRegistrar() {
+    	return name.equals(getOverride(registrar));
     }
     
     public boolean isS3() {

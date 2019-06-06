@@ -57,7 +57,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(LineItem lineItem) {
+    protected boolean ignore(long startMilli, LineItem lineItem) {
     	// Cost and Usage report-specific checks
     	LineItemType lit = lineItem.getLineItemType();
     	if (lit == LineItemType.Tax ||
@@ -65,7 +65,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		lit == LineItemType.RiVolumeDiscount)
     		return true;
     	
-    	return super.ignore(lineItem);
+    	return super.ignore(startMilli, lineItem);
     }
 
 	@Override

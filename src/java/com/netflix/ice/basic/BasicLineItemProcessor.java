@@ -57,7 +57,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	this.resourceService = resourceService;
     }
     
-    protected boolean ignore(LineItem lineItem) {    	
+    protected boolean ignore(long startMilli, LineItem lineItem) {    	
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -79,7 +79,22 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             StringUtils.isEmpty(lineItem.getUsageQuantity())) {
     		return true;
     	}
-    	
+
+    	if (!product.isRegistrar()) {
+    		// Registrar product renewals occur before they expire, so often start in the following month.
+    		// We handle the out-of-date-range problem later.
+    		// All other cases are ignored here.
+	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
+	        if (lineItem.getStartMillis() >= nextMonthStartMillis) {
+	        	logger.error("line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	return true;
+	        }
+	        if (lineItem.getEndMillis() > nextMonthStartMillis) {
+	        	logger.error("line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	return true;
+	        }
+    	}
+        
     	return false;
     }
     
@@ -117,7 +132,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		Instances instances,
     		double edpDiscount) {
     	
-    	if (ignore(lineItem))
+    	if (ignore(startMilli, lineItem))
     		return Result.ignore;
     	
 
@@ -130,7 +145,17 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();
-
+        
+        if (productService.getProductByAwsName(lineItem.getProduct()).isRegistrar()) {
+        	// Put all out-of-month registrar fees at the start of the month
+	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
+        	if (millisStart > nextMonthStartMillis) {
+        		millisStart = startMilli;
+        	}
+        	// Put the whole fee in the first hour
+        	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
+        }
+        
         boolean reservationUsage = lineItem.isReserved();
         final String description = lineItem.getDescription();
         

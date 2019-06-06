@@ -73,27 +73,28 @@ public class Tagger {
 		}
 	}
 	
-	public Tagger(String[] tagsToCopy, Map<String, String> rules, ResourceService resourceService, String workBucketName, String workBucketPrefix, String localDir) throws IOException {
+	public Tagger(String[] tagsToCopy, Map<String, String> rules, ResourceService resourceService, String kubernetesBucketName, String kubernetesBucketPrefix, String localDir,
+			String workBucketName, String workBucketPrefix) throws IOException {
 		this.resourceService = resourceService;
 		this.numCustomTags = resourceService.getCustomTags().length;
 		
-		TaggerConfig config = getConfigFromWorkBucket(workBucketName, workBucketPrefix, localDir);
+		TaggerConfig config = getConfigFromKubernetesBucket(kubernetesBucketName, kubernetesBucketPrefix, localDir);
 		if (config == null) {
-			logger.warn("Could not read existing configuration for Kubernetes Tagger, creating config from properties file");
+			logger.info("Could not read existing configuration for Kubernetes Tagger in " + kubernetesBucketName + "/" + kubernetesBucketPrefix + ", creating config from properties file");
 			config = new TaggerConfig(tagsToCopy, rules, resourceService);
-			writeConfigToWorkBucket(config, workBucketName, workBucketPrefix, localDir);
 		}
+		writeConfigToWorkBucket(config, workBucketName, workBucketPrefix, localDir, kubernetesBucketName, kubernetesBucketPrefix);
 		this.config = config;
 	}
 	
-	protected TaggerConfig getConfigFromWorkBucket(String workBucketName, String workBucketPrefix, String localDir) {
+	protected TaggerConfig getConfigFromKubernetesBucket(String kubernetesBucketName, String kubernetesBucketPrefix, String localDir) {
 		if (localDir == null)
 			return null;
 		
-		// See if we have a a config in the work bucket
+		// See if we have a a config in the kubernetes bucket
     	File file = new File(localDir, taggerConfigFilename);
     	file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
-		boolean downloaded = AwsUtils.downloadFileIfNotExist(workBucketName, workBucketPrefix, file);
+		boolean downloaded = AwsUtils.downloadFileIfNotExist(kubernetesBucketName, kubernetesBucketPrefix, file);
     	if (downloaded) {
         	String json;
 			try {
@@ -121,17 +122,18 @@ public class Tagger {
     	return null;
 	}
 	
-	protected void writeConfigToWorkBucket(TaggerConfig config, String workBucketName, String workBucketPrefix, String localDir) throws IOException {
+	protected void writeConfigToWorkBucket(TaggerConfig config, String workBucketName, String workBucketPrefix, String localDir, String bucketName, String bucketPrefix) throws IOException {
 		if (localDir == null)
 			return;
 		
-        File file = new File(localDir, taggerConfigFilename);
+		String filename = bucketName + (bucketPrefix.isEmpty() ? "" : "_" + bucketPrefix.replace("/", "_")) + "_" + taggerConfigFilename;
+        File file = new File(localDir, filename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);
     	writer.write(config.toJSON());
     	writer.close();
     	
-    	logger.info("Upload work bucket data config file");
+    	logger.info("Upload kubernetes tagging config to work bucket");
     	AwsUtils.upload(workBucketName, workBucketPrefix, file);
 	}
 

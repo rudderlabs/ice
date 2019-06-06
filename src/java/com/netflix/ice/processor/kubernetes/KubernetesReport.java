@@ -56,12 +56,14 @@ public class KubernetesReport extends Report {
     private Map<String, Integer> userTagIndecies = null;
     // Map of clusters with hourly data for the month - index will range from 0 to 743
     private Map<String, List<List<String[]>>> data = null;
+    private final Tagger tagger;
 
-	public KubernetesReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix, DateTime month, String[] userTags) {
+	public KubernetesReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix, DateTime month, String[] userTags, Tagger tagger) {
     	super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix);
     	this.month = month;
     	this.startMillis = month.getMillis();
-    	this.userTags = Lists.newArrayList(userTags);
+    	this.userTags = Lists.newArrayList(userTags);    	
+		this.tagger = tagger;
 	}
 
 	public long loadReport(String localDir)
@@ -245,6 +247,10 @@ public class KubernetesReport extends Report {
 	
 	public String getUserTag(String[] item, String col) {
 		return userTagIndecies.get(col) == null ? "" : item[userTagIndecies.get(col)];
+	}
+
+	public Tagger getTagger() {
+		return tagger;
 	}
 	
 }

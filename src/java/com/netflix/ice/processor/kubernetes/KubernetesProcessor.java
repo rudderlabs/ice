@@ -35,7 +35,6 @@ public class KubernetesProcessor {
     private final String computeValue;
     protected final String[] tagsToCopy;
     private final ClusterNameBuilder clusterNameBuilder;
-    private final Tagger tagger;
 
 	public KubernetesProcessor(ProcessorConfig config, DateTime start) throws IOException {
 		this.config = config;
@@ -46,7 +45,6 @@ public class KubernetesProcessor {
 		this.computeValue = computeTag[1];
 		this.namespaceIndex = config.kubernetesNamespaceTag.isEmpty() ? -1 : config.resourceService.getUserTagIndex(config.kubernetesNamespaceTag);
 		this.tagsToCopy = config.kubernetesUserTags;
-		this.tagger = new Tagger(this.tagsToCopy, config.kubernetesNamespaceMappingRules, config.resourceService, config.workS3BucketName, config.workS3BucketPrefix, config.localDir);
 		
 		List<KubernetesReport> reports = null;
 		if (this.clusterNameBuilder != null)
@@ -55,7 +53,7 @@ public class KubernetesProcessor {
 		
 	}	
 	
-	protected List<KubernetesReport> getReportsToProcess(DateTime start) {
+	protected List<KubernetesReport> getReportsToProcess(DateTime start) throws IOException {
         List<KubernetesReport> filesToProcess = Lists.newArrayList();
 
         // list the kubernetes report files in the kubernetes buckets
@@ -80,7 +78,10 @@ public class KubernetesProcessor {
             logger.info("found " + objectSummaries.size() + " in billing bucket " + kubernetesS3BucketName);
             
             if (objectSummaries.size() > 0) {
-            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId, kubernetesAccessRoleName, kubernetesAccessExternalId, kubernetesS3BucketPrefix, start, tagsToCopy));
+            	Tagger tagger = new Tagger(this.tagsToCopy, config.kubernetesNamespaceMappingRules, config.resourceService,
+            			kubernetesS3BucketName, kubernetesS3BucketPrefix, config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId,
+            			kubernetesAccessRoleName, kubernetesAccessExternalId, kubernetesS3BucketPrefix, start, tagsToCopy, tagger));
             }
         }
 
@@ -147,6 +148,7 @@ public class KubernetesProcessor {
 			return;
 		
 		double unusedCost = totalCost;
+		Tagger tagger = report.getTagger();
 		for (String[] item: hourClusterData) {
 			double allocatedCost = getAllocatedCost(tg, totalCost, report, item);
 			if (allocatedCost == 0.0)
