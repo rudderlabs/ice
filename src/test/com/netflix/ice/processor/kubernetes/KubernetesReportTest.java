@@ -17,7 +17,7 @@ public class KubernetesReportTest {
 	class TestKubernetesReport extends KubernetesReport {
 
 		public TestKubernetesReport(DateTime month, String[] userTags) {
-			super(null, null, null, null, null, null, month, userTags);
+			super(null, null, null, null, null, null, month, userTags, null);
 		}
 	}
 

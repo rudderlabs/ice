@@ -27,7 +27,7 @@ public class TaggerTest {
 	class TestKubernetesReport extends KubernetesReport {
 
 		public TestKubernetesReport(DateTime month, String[] userTags) {
-			super(null, null, null, null, null, null, month, userTags);
+			super(null, null, null, null, null, null, month, userTags, null);
 		}
 		
 		@Override
@@ -63,7 +63,7 @@ public class TaggerTest {
 		Map<String, String> rules = Maps.newHashMap();
 		rules.put("Tag2.Foo", "bar");
 		rules.put("Tag1.Bar", ".*bar.*");
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null);
+		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null);
 		UserTag[] userTags = new UserTag[customTags.length];
 		t.tag(tkr, item, userTags);
 		assertEquals("Incorrect tagged value", "Bar", userTags[0].name);
@@ -92,7 +92,7 @@ public class TaggerTest {
 		rules.put("Tag2.Foo", "bar");
 		rules.put("Tag1.Bar", ".*bar.*");
 		
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null);
+		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null);
 		
 		String json = t.config.toJSON();		
 		TaggerConfig testConfig = t.new TaggerConfig(json);

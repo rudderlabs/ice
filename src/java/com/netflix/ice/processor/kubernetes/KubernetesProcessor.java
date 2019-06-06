@@ -28,7 +28,7 @@ public class KubernetesProcessor {
     public static final String reportPrefix = "kubernetes-";
     public static final double vCpuToMemoryCostRatio = 10.9;
     
-    private final ProcessorConfig config;
+    protected final ProcessorConfig config;
     private final List<KubernetesReport> reports;
     private final int computeIndex;
     private final int namespaceIndex;
@@ -158,8 +158,10 @@ public class KubernetesProcessor {
 			
 			String namespace = report.getString(item, KubernetesColumn.Namespace);
 			if (namespaceIndex >= 0)
-				userTags[namespaceIndex] = UserTag.get(namespace);		
-			tagger.tag(report, item, userTags);
+				userTags[namespaceIndex] = UserTag.get(namespace);
+			
+			if (tagger != null)
+				tagger.tag(report, item, userTags);
 			
 			TagGroup allocated = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, ResourceGroup.getResourceGroup(userTags));
 			

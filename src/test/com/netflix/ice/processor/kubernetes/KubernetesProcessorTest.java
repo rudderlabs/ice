@@ -73,17 +73,17 @@ public class KubernetesProcessorTest {
 		}
 
 		@Override
-		protected List<KubernetesReport> getReportsToProcess(DateTime start) {
+		protected List<KubernetesReport> getReportsToProcess(DateTime start) throws IOException {
 	        List<KubernetesReport> filesToProcess = Lists.newArrayList();
-        	filesToProcess.add(new TestKubernetesReport(tagsToCopy));
+        	filesToProcess.add(new TestKubernetesReport(tagsToCopy, null));
 			return filesToProcess;
 		}
 	}
 	
 	class TestKubernetesReport extends KubernetesReport {
 
-		public TestKubernetesReport(String[] userTags) {
-			super(null, null, null, null, null, null, new DateTime("2019-01", DateTimeZone.UTC), userTags);
+		public TestKubernetesReport(String[] userTags, Tagger tagger) {
+			super(null, null, null, null, null, null, new DateTime("2019-01", DateTimeZone.UTC), userTags, tagger);
 
 			File file = new File(resourceDir, "kubernetes-2019-01.csv");
 			readFile(file);			
@@ -142,7 +142,7 @@ public class KubernetesProcessorTest {
 	@Test
 	public void testProcessHourClusterData() throws Exception {
 		KubernetesProcessor kp = newKubernetesProcessor("Cluster");		
-		TestKubernetesReport tkr = new TestKubernetesReport(new String[]{});
+		TestKubernetesReport tkr = new TestKubernetesReport(new String[]{}, null);
 		
 		// Test the data for cluster "dev-usw2a"
 		String clusterName = "dev-usw2a";
