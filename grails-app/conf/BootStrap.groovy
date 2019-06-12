@@ -166,39 +166,9 @@ class BootStrap {
 						properties.setProperty(name, prop.getProperty(name));
 					}
 				}
-		
 				// Resource Tagging stuff
 				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
 				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");
-				Map<String, List<String>> tagKeys = Maps.newHashMap();
-				for (String name: prop.stringPropertyNames()) {
-					if (name.startsWith("ice.tagKey.")) {
-						String key = name.substring("ice.tagKey.".length());
-						String[] aliases = prop.getProperty(name).split(",");
-						List<String> aliasList = Lists.newArrayList();
-						for (String alias: aliases) {
-							aliasList.add(alias);
-						}
-						tagKeys.put(key, aliasList);
-					}
-				}
-				Map<String, List<String>> tagValues = Maps.newHashMap();
-				for (String name: prop.stringPropertyNames()) {
-					if (name.startsWith("ice.tagValue.")) {
-						String value = name.substring("ice.tagValue.".length());
-						String[] aliases = prop.getProperty(name).split(",");
-						List<String> aliasList = Lists.newArrayList();
-						for (String alias: aliases) {
-							aliasList.add(alias);
-						}
-						tagValues.put(value, aliasList);
-					}
-				}
-				Map<BasicResourceService.Key, String> defaultTags = Maps.newHashMap();
-				for (String name: prop.stringPropertyNames()) {
-					if (name.startsWith("ice.accountTag.")) {
-						String[] key = name.substring("ice.accountTag.".length()).split("\\.");
-						String value = prop.getProperty(name);
 
                 ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags);
 
