@@ -4,8 +4,6 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.joda.time.DateTime;
@@ -15,7 +13,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicLineItemProcessor.ReformedMetaData;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
@@ -63,7 +60,7 @@ public class BasicLineItemProcessorTest {
 
     @BeforeClass
 	public static void beforeClass() throws Exception {
-    	init(new BasicAccountService(null, null, null, null));
+    	init(new BasicAccountService());
     }
     
     public static void init(AccountService as) throws Exception {
@@ -76,10 +73,8 @@ public class BasicLineItemProcessorTest {
 
 		cauLineItem = newCurLineItem(manifest2017, null);
         
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		String[] customTags = new String[]{ "Environment", "Email" };
-		resourceService = new BasicResourceService(productService, customTags, new String[]{}, tagKeys, tagValues, null);
+		resourceService = new BasicResourceService(productService, customTags, new String[]{});
 	}
     
     private static CostAndUsageReportLineItem newCurLineItem(String manifestFilename, DateTime costAndUsageNetUnblendedStartDate) throws IOException {
@@ -98,7 +93,7 @@ public class BasicLineItemProcessorTest {
 		if (reservation != null)
 			reservationService.injectReservation(reservation);
     	
-    	resourceService.initHeader(lineItem.getResourceTagsHeader());
+    	resourceService.initHeader(lineItem.getResourceTagsHeader(), "123456789012");
     	if (lineItem instanceof CostAndUsageReportLineItem)
     		return new CostAndUsageReportLineItemProcessor(accountService, productService, reservationService, resourceService);
     	else
@@ -264,6 +259,7 @@ public class BasicLineItemProcessorTest {
 			String[] items = new String[Line.numDbrItems];
 			for (int i = 0; i < items.length; i++)
 				items[i] = "";
+			items[1] = account; // payer account
 			items[2] = account;
 			items[11] = zone;
 			items[5] = product;
@@ -282,6 +278,7 @@ public class BasicLineItemProcessorTest {
 	        String[] items = new String[lineItem.size()];
 			for (int i = 0; i < items.length; i++)
 				items[i] = "";
+			items[lineItem.getPayerAccountIdIndex()] = account;
 			items[lineItem.getAccountIdIndex()] = account;
 			items[lineItem.getZoneIndex()] = zone;
 			items[lineItem.getProductRegionIndex()] = region;

@@ -24,8 +24,10 @@ import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ec2.model.AvailabilityZone;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.amazonaws.services.organizations.model.Account;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.pricelist.PriceListService;
@@ -42,9 +44,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.SortedMap;
 
 public class ProcessorConfig extends Config {
@@ -95,6 +100,8 @@ public class ProcessorConfig extends Config {
     public final String[] kubernetesUserTags;
     public final String kubernetesClusterNameFormula;
     public final Map<String, String> kubernetesNamespaceMappingRules;
+    
+    private static final String billingDataConfigBasename = "ice_config.";
 
     /**
      *
@@ -141,22 +148,26 @@ public class ProcessorConfig extends Config {
         	if (name.startsWith(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE))
         		kubernetesNamespaceMappingRules.put(name.substring(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE.length()), properties.getProperty(name));
         }
+        
+        if (reservationService == null)
+        	throw new IllegalArgumentException("reservationService must be specified");
 
-        Map<String, String> defaultNames = getDefaultAccountNames();
-        this.accountService = new BasicAccountService(properties, defaultNames);
+        this.reservationService = reservationService;
+        this.priceListService = priceListService;
+        this.resourceService = resourceService;
+
+    	Map<String, String> defaultNames = getDefaultAccountNames();
+        Map<String, AccountConfig> accountConfigs = getAccountConfigs(properties, defaultNames);
+        processBillingDataConfig(accountConfigs, defaultNames);
+        this.accountService = new BasicAccountService(accountConfigs);
         
         if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
         this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
-        this.resourceService = resourceService;
         
         // whether to separate out the family RI usage into its own operation category
         familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
         
-        if (reservationService == null) throw new IllegalArgumentException("reservationService must be specified");
-
-        this.reservationService = reservationService;
-        this.priceListService = priceListService;
 
         String[] yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_START_DATE, "").split("-");
         if (yearMonth.length < 2)
@@ -287,11 +298,17 @@ public class ProcessorConfig extends Config {
      */
     protected Map<String, String> getDefaultAccountNames() {
     	Map<String, String> result = Maps.newHashMap();
+    	Set<String> done = Sets.newHashSet();
     	
         for (int i = 0; i < billingS3BucketNames.length; i++) {
-            String accountId = billingAccountIds.length > i ? billingAccountIds[i] : "";
+            String accountId = billingAccountIds[i];
             String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
             String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+            
+            // Only process each payer account once. Can have two if processing both DBRs and CURs
+            if (done.contains(accountId))
+            	continue;            
+            done.add(accountId);
             
             logger.info("Get default account names for organization " + accountId +
             		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
@@ -301,4 +318,136 @@ public class ProcessorConfig extends Config {
         }
     	return result;
     }
+    
+    /*
+     * Pull account configs from the properties
+     */
+    private Map<String, AccountConfig> getAccountConfigs(Properties properties, Map<String, String> defaultNames) {
+    	Map<String, AccountConfig> accountConfigs = Maps.newHashMap();
+    	
+        if (defaultNames != null) {
+	        // Start with all the default names in the map
+	        for (Entry<String, String> entry: defaultNames.entrySet()) {
+	            accountConfigs.put(entry.getKey(), new AccountConfig(entry.getKey(), entry.getValue(), entry.getValue(), null, null, null, null));
+	        }
+        }
+    	
+        /* 
+         * Overwrite with any definitions in the properties. The following property key values are used:
+         * 
+         * Account definition:
+         * 		name:	account name
+         * 		id:		account id
+         * 
+         *	ice.account.{name}={id}
+         *
+         *		example: ice.account.myAccount=123456789012
+         * 
+         * Reservation Owner Account
+         * 		name: account name
+    	 *		product: codes for products with purchased reserved instances. Possible values are ec2, rds, redshift
+         * 
+         *	ice.owneraccount.{name}={products}
+         *
+         *		example: ice.owneraccount.resHolder=ec2,rds
+         *
+         * Reservation Owner Account Role
+         * 		name: account name
+         * 		role: IAM role name to assume when pulling reservations from an owner account
+         * 
+         * 	ice.owneraccount.{name}.role={role}
+         * 
+         * 		example: ice.owneraccount.resHolder.role=ice
+         * 
+         * Reservation Owner Account ExternalId
+         * 		name: account name
+         * 		externalId: external ID for the reservation owner account
+         * 
+         * 	ice.owneraccount.{name}.externalId={externalId}
+         * 
+         * 		example: ice.owneraccount.resHolder.externalId=112233445566
+         */
+        for (String name: properties.stringPropertyNames()) {
+            if (name.startsWith("ice.account.")) {
+                String accountName = name.substring("ice.account.".length());
+                String id = properties.getProperty(name);
+                String ownerAccount = "ice.owneraccount." + accountName;
+                String[] products = properties.getProperty(ownerAccount, "").split(",");
+                String role = null;
+                String externalId = null;
+                List<String> riProducts = null;
+                if (!products[0].isEmpty()) {
+                	role = properties.getProperty(ownerAccount + ".role");
+                	externalId = properties.getProperty(ownerAccount + ".externalId");
+                    riProducts = Lists.newArrayList(products);
+                }
+                accountConfigs.put(id, new AccountConfig(id, accountName, defaultNames.get(id), null, riProducts, role, externalId));
+            }
+        }
+        return accountConfigs;
+    }
+    
+
+    
+    /**
+     * get the billing data configurations specified along side the billing reports and override any account names and default tagging
+     */
+    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+        for (int i = 0; i < billingS3BucketNames.length; i++) {
+        	String bucket = billingS3BucketNames[i];
+        	String region = billingS3BucketRegions[i];
+        	String prefix = billingS3BucketPrefixes[i];
+            String accountId = billingAccountIds[i];
+            String roleName = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
+            String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+            
+        	BillingDataConfig billingDataConfig = readBillingDataConfig(bucket, region, prefix, accountId, roleName, externalId);
+        	if (billingDataConfig == null)
+        		continue;
+        	
+        	for (AccountConfig account: billingDataConfig.accounts) {
+        		if (account.id == null || account.id.isEmpty())
+        			continue;
+        		account.awsName = defaultNames.get(account.id);
+        		accountConfigs.put(account.id, account);
+    			
+            	resourceService.putDefaultTags(account.id, account.tags);        			
+        	}
+        	
+        	resourceService.setTagConfigs(accountId, billingDataConfig.tags);
+        }    	
+    }
+    
+    private BillingDataConfig readBillingDataConfig(String bucket, String region, String prefix, String accountId, String roleName, String externalId) {
+    	// Make sure prefix ends with /
+    	prefix = prefix.endsWith("/") ? prefix : prefix + "/";
+    	
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bucket, region, prefix + billingDataConfigBasename, accountId, roleName, externalId);
+    	if (configFiles.size() == 0)
+    		return null;
+    	
+    	String fileKey = configFiles.get(0).getKey();
+        File file = new File(localDir, fileKey.substring(prefix.length()));
+        
+		boolean downloaded = AwsUtils.downloadFileIfChangedSince(bucket, region, prefix, file, 0, accountId, roleName, externalId);
+    	if (downloaded) {
+        	String body;
+			try {
+				body = new String(Files.readAllBytes(file.toPath()), "UTF-8");
+			} catch (IOException e) {
+				logger.error("Error reading account properties " + e);
+				return null;
+			}
+        	logger.info("downloaded billing data config: " + bucket + "/" + fileKey);
+        	try {
+				return new BillingDataConfig(body);
+			} catch (Exception e) {
+				logger.error("Failed to parse billing data config: " + bucket + "/" + fileKey);
+				e.printStackTrace();
+				return null;
+			}    	
+    	}
+    	return null;
+    }
+
 }

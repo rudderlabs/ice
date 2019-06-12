@@ -13,6 +13,7 @@ public class CostAndUsageReportLineItemTest {
 	String[] item = {
 			"somelineitemid",	// LineItemId
 			"Anniversary",		// BillType
+			"234567890123",		// PayerAccountId
 			"234567890123",		// UsageAccountId
 			"DiscountedUsage",	// LineItemType
 			"2017-09-01T00:00:00Z",	// UsageStartDate

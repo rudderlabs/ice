@@ -65,7 +65,7 @@ public class BasicDataManagerTest {
 	
 	@Test
 	public void loadHourlyDataFromFile() throws Exception {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, as, ps, null);
@@ -89,7 +89,7 @@ public class BasicDataManagerTest {
 	
 	@Test
 	public void loadMonthlyDataFromFile() throws Exception {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, as, ps, null);
@@ -142,7 +142,7 @@ public class BasicDataManagerTest {
 	
 	@Test
 	public void groupByUserTagAndFilterByUserTag() {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		Double[][] rawData = new Double[][]{
@@ -184,7 +184,7 @@ public class BasicDataManagerTest {
 	
 	@Test
 	public void groupByUserTagAndFilterByEmptyUserTag() {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		Double[][] rawData = new Double[][]{
@@ -223,7 +223,7 @@ public class BasicDataManagerTest {
 	
 	@Test
 	public void groupByNoneWithUserTagFilters() {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		Double[][] rawData = new Double[][]{

@@ -18,12 +18,14 @@
 package com.netflix.ice.common;
 
 import com.amazonaws.services.ec2.model.Tag;
+import com.netflix.ice.processor.TagConfig;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Please see a sample of subclass in SampleMapDbResourceService class.
@@ -80,8 +82,12 @@ public abstract class ResourceService {
     /**
      * Initialize the billing file user tags from the userTags header
      */
-    abstract public void initHeader(String[] header);
+    abstract public void initHeader(String[] header, String payerAccountId);
 
+    abstract public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs);
+    
+    abstract public void putDefaultTags(String accountId, Map<String, String> tags);
+    
 	abstract public String getUserTagValue(LineItem lineItem, String tag);
 	
     abstract public boolean[] getUserTagCoverage(LineItem lineItem);

@@ -27,7 +27,7 @@ public class ReadWriteTagCoverageDataTest {
 
 	@Test
 	public void loadFile() throws Exception {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		ReadWriteTagCoverageData data = new ReadWriteTagCoverageData(12);

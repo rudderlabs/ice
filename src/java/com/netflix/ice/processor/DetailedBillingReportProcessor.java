@@ -131,7 +131,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		startMilli = endMilli = dataTime.getMillis();
 		reservationProcessor.clearBorrowers();
 		
-        processBillingZipFile(dataTime, file, report.hasTags(), costAndUsageData, instances);
+        processBillingZipFile(dataTime, file, report.hasTags(), costAndUsageData, instances, report.accountId);
         
         return endMilli;
 	}
@@ -142,7 +142,8 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     		File file,
     		boolean withTags,
     		CostAndUsageData costAndUsageData,
-    		Instances instances) throws Exception {
+    		Instances instances,
+    		String accountId) throws Exception {
 
         InputStream input = new FileInputStream(file);
         ZipArchiveInputStream zipInput = new ZipArchiveInputStream(input);
@@ -153,7 +154,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                processBillingFile(dataTime, entry.getName(), zipInput, withTags, costAndUsageData, instances);
+                processBillingFile(dataTime, entry.getName(), zipInput, withTags, costAndUsageData, instances, accountId);
             }
         }
         catch (IOException e) {
@@ -177,7 +178,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
     
-    private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData, Instances instances) throws Exception {
+    private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData, Instances instances, String accountId) throws Exception {
 
         CsvReader reader = new CsvReader(new InputStreamReader(tempIn), ',');
 
@@ -190,7 +191,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
             lineItem = new DetailedBillingReportLineItem(config.useBlended, withTags, headers);
             if (config.resourceService != null)
-            	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
+            	config.resourceService.initHeader(lineItem.getResourceTagsHeader(), accountId);
 
             while (reader.readRecord()) {
                 String[] items = reader.getValues();

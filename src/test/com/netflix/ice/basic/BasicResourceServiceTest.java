@@ -18,6 +18,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.CostAndUsageReport;
 import com.netflix.ice.processor.CostAndUsageReportLineItem;
+import com.netflix.ice.processor.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ResourceGroup;
@@ -31,6 +32,7 @@ public class BasicResourceServiceTest {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
+				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
 				"foobar@example.com", // resourceTags/user:Email
 				"Prod", // resourceTags/user:Environment
@@ -39,14 +41,12 @@ public class BasicResourceServiceTest {
 		};
 
 		li.setItems(item);
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
-		rs.initHeader(li.getResourceTagsHeader());
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
 		
 		ResourceGroup resource = rs.getResourceGroup(null, null, ps.getProductByName(Product.ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
@@ -54,13 +54,11 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testUserTags() {
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
 	}
@@ -76,19 +74,25 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testGetUserTagValue() {
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
 		String[] customTags = new String[]{
 				"Environment"
 			};
 		
+		
+		Map<String, List<String>> tagValues = Maps.newHashMap();
 		tagValues.put("Prod", Lists.newArrayList("production", "prd"));
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
+		TagConfig tc = new TagConfig("Environment", null, tagValues);
+		
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		List<TagConfig> configs = Lists.newArrayList();
+		configs.add(tc);
+		rs.setTagConfigs("234567890123", configs);
 
 		String[] item = {
 				"somelineitemid",	// LineItemId
 				"Anniversary",		// BillType
+				"234567890123",		// PayerAccountId
 				"234567890123",		// UsageAccountId
 				"DiscountedUsage",	// LineItemType
 				"2017-09-01T00:00:00Z",	// UsageStartDate
@@ -116,7 +120,7 @@ public class BasicResourceServiceTest {
 		li.setItems(item);
 		
 		// Check for value in alias list
-		rs.initHeader(li.getResourceTagsHeader());		
+		rs.initHeader(li.getResourceTagsHeader(), "234567890123");		
 		String tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
 		assertEquals("Incorrect tag value alias", "Prod", tagValue);
 		
@@ -131,6 +135,7 @@ public class BasicResourceServiceTest {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
+				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
 				"foobar@example.com", // resourceTags/user:Email
 				"", // resourceTags/user:Environment
@@ -138,17 +143,16 @@ public class BasicResourceServiceTest {
 				"serviceAPI", // resourceTags/user:Product
 		};
 		li.setItems(item);
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		Map<BasicResourceService.Key, String> defaultTags = Maps.newHashMap();
-		defaultTags.put(new BasicResourceService.Key("AccountTagTest", "Environment"), "Prod");
-
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, defaultTags);
-		rs.initHeader(li.getResourceTagsHeader());		
+		Map<String, String> defaultTags = Maps.newHashMap();
+		defaultTags.put("Environment", "Prod");
+		
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		rs.putDefaultTags("12345", defaultTags);
+		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
 		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest"), null, ps.getProductByName(Product.ec2Instance), li, 0);
 		UserTag[] userTags = resourceGroup.getUserTags();
@@ -157,8 +161,6 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testGetUserTagCoverage() {
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
 		ProductService ps = new BasicProductService(null);
 		String[] customTags = new String[]{
 				"Environment", "Department", "Email"
@@ -209,9 +211,14 @@ public class BasicResourceServiceTest {
 			public String getLineItemId() {
 				return null;
 			}
+			
+			@Override
+			public String getPayerAccountId() {
+				return "123456789012";
+			}
 		}
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
-		rs.initHeader(new String[]{ "user:Email", "user:Department", "user:Environment" });
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		rs.initHeader(new String[]{ "user:Email", "user:Department", "user:Environment" }, "1234");
 		LineItem lineItem = new TestLineItem(new String[]{ "joe@company.com", "1234", "" });
 		boolean[] coverage = rs.getUserTagCoverage(lineItem);
 		

@@ -27,7 +27,7 @@ public class InstanceTest {
 	public void testSerializer() {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		Account account = as.getAccountById("123456789012");
@@ -53,7 +53,7 @@ public class InstanceTest {
 		Map<String, String> tags = Maps.newHashMap();
 		String tagValue = "= I have equal signs, and a comma =";
 		tags.put("Name", tagValue);
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 				
@@ -80,7 +80,7 @@ public class InstanceTest {
 		tags.put("Environment", "prod");
 		tags.put("Email", "foo@bar.com");
 		tags.put("Name", "= I have equal signs, and a comma =");
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
@@ -101,7 +101,7 @@ public class InstanceTest {
 	@Test
 	public void testNoTags() {
 		Map<String, String> tags = Maps.newHashMap();
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 				
@@ -115,7 +115,7 @@ public class InstanceTest {
 	public void testNoZone() {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 				
@@ -128,7 +128,7 @@ public class InstanceTest {
 	@Test
 	public void testNoTagsNoZone() {
 		Map<String, String> tags = Maps.newHashMap();
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 				

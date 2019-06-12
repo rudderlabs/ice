@@ -73,12 +73,12 @@ public class Tagger {
 		}
 	}
 	
-	public Tagger(String[] tagsToCopy, Map<String, String> rules, ResourceService resourceService, String kubernetesBucketName, String kubernetesBucketPrefix, String localDir,
-			String workBucketName, String workBucketPrefix) throws IOException {
+	public Tagger(String[] tagsToCopy, Map<String, String> rules, ResourceService resourceService, String kubernetesBucketName, String region, String kubernetesBucketPrefix, String localDir,
+			String accountId, String roleName, String externalId, String workBucketName, String workBucketPrefix) throws IOException {
 		this.resourceService = resourceService;
 		this.numCustomTags = resourceService.getCustomTags().length;
 		
-		TaggerConfig config = getConfigFromKubernetesBucket(kubernetesBucketName, kubernetesBucketPrefix, localDir);
+		TaggerConfig config = getConfigFromKubernetesBucket(kubernetesBucketName, region, kubernetesBucketPrefix, localDir, accountId, roleName, externalId);
 		if (config == null) {
 			logger.info("Could not read existing configuration for Kubernetes Tagger in " + kubernetesBucketName + "/" + kubernetesBucketPrefix + ", creating config from properties file");
 			config = new TaggerConfig(tagsToCopy, rules, resourceService);
@@ -87,14 +87,13 @@ public class Tagger {
 		this.config = config;
 	}
 	
-	protected TaggerConfig getConfigFromKubernetesBucket(String kubernetesBucketName, String kubernetesBucketPrefix, String localDir) {
+	protected TaggerConfig getConfigFromKubernetesBucket(String kubernetesBucketName, String region, String kubernetesBucketPrefix, String localDir, String accountId, String roleName, String externalId) {
 		if (localDir == null)
 			return null;
 		
 		// See if we have a a config in the kubernetes bucket
     	File file = new File(localDir, taggerConfigFilename);
-    	file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
-		boolean downloaded = AwsUtils.downloadFileIfNotExist(kubernetesBucketName, kubernetesBucketPrefix, file);
+		boolean downloaded = AwsUtils.downloadFileIfChangedSince(kubernetesBucketName, region, kubernetesBucketPrefix, file, 0, accountId, roleName, externalId);
     	if (downloaded) {
         	String json;
 			try {

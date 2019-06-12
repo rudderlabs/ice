@@ -23,6 +23,7 @@ import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.AccountConfig;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.processor.ReservationService;
@@ -64,6 +65,10 @@ public class KubernetesProcessorTest {
 	    protected Map<String, String> getDefaultAccountNames() {
 			return null;
 		}
+		
+		@Override
+	    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		}
 	}
 	
 	class TestKubernetesProcessor extends KubernetesProcessor {
@@ -98,9 +103,7 @@ public class KubernetesProcessorTest {
         
         ReservationService reservationService = new BasicReservationService(null, null, false);
         
-        Map<String, List<String>> tagKeys = Maps.newHashMap();
-        Map<String, List<String>> tagValues = Maps.newHashMap();
-        ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{}, tagKeys, tagValues, null);
+        ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
         String kubernetesUserTags = "UserTag1,UserTag2";
         
         props.setProperty(IceOptions.START_MONTH, "2019-01");

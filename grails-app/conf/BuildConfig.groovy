@@ -102,7 +102,8 @@ grails.project.dependency.resolution = {
                 'org.codehaus.woodstox:wstx-asl:3.2.9',
                 'jfree:jfreechart:1.0.13',
                 'org.json:json:20090211',
-                'org.mapdb:mapdb:0.9.1'
+                'org.mapdb:mapdb:0.9.1',
+				'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.6.7'
 
         ) { // Exclude superfluous and dangerous transitive dependencies
             excludes(

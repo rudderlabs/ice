@@ -80,7 +80,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		return true;
     	}
 
-    	if (!product.isRegistrar()) {
+    	if (!product.isRegistrar() && lineItem.getLineItemType() != LineItemType.RIFee) {
     		// Registrar product renewals occur before they expire, so often start in the following month.
     		// We handle the out-of-date-range problem later.
     		// All other cases are ignored here.

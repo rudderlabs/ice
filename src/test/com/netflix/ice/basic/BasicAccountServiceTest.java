@@ -4,29 +4,38 @@ import static org.junit.Assert.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.processor.AccountConfig;
 import com.netflix.ice.tag.Account;
 
 public class BasicAccountServiceTest {
 
 	@Test
-	public void testConstructor() {
-		Properties props = new Properties();
-		props.setProperty("ice.account.account1", "123456789012");
-		Map<String, String> defaultNames = Maps.newHashMap();
-		defaultNames.put("123456789012", "org_account1");
-		defaultNames.put("234567890123", "org_account2");
-		BasicAccountService bas = new BasicAccountService(props, defaultNames);
+	public void testAccountConfigMapConstructor() {
+		Map<String, AccountConfig> configs = Maps.newHashMap();
+		
+		configs.put("123456789012", new AccountConfig("123456789012", "account1", "account 1", null, Lists.newArrayList("ec2"), "role", "12345"));
+		configs.put("234567890123", new AccountConfig("234567890123", "account2", "account 2", null, null, null, null));
+		BasicAccountService bas = new BasicAccountService(configs);
+		
+		assertEquals("Wrong number of accounts", 2, bas.getAccounts().size());
+		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").name);
+		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").id);
+		assertEquals("Wrong number of accounts with reserved instances", 1, bas.getReservationAccounts().size());
+		assertEquals("Wrong number of reserved instance products", 1, bas.getReservationAccounts().values().iterator().next().size());
+	}
+	
+	@Test
+	public void testAccountListConstructor() {
+		Account a = new Account("123456789012", "account1");
+		BasicAccountService bas = new BasicAccountService(Lists.newArrayList(a));
 		
 		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").name);
-		assertEquals("Wrong name for account2 by ID", "org_account2", bas.getAccountById("234567890123").name);
-		assertEquals("Wrong name for account1 by name", "123456789012", bas.getAccountByName("account1").id);
-		assertEquals("Wrong name for account2 by name", "234567890123", bas.getAccountByName("org_account2").id);
+		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").id);
 	}
 	
 	@Test

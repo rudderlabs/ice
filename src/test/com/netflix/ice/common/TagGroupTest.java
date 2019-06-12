@@ -26,7 +26,7 @@ public class TagGroupTest {
 
 	@Test
 	public void testRdsTags() {		
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		
 		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProductByAwsName("AWS Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProductByAwsName("AWS Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
@@ -44,7 +44,7 @@ public class TagGroupTest {
 	
 	@Test
 	public void testEquals() {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByAwsName("Amazon Relational Food Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByAwsName("Amazon Relational Food Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertTrue("Should be equal", tg1 == tg2);

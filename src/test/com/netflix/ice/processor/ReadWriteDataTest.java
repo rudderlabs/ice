@@ -31,6 +31,7 @@ import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
@@ -55,7 +56,15 @@ public class ReadWriteDataTest {
 	
 	@BeforeClass
 	public static void init() throws IOException {
-		as = new BasicAccountService(getProperties());
+		Properties p = getProperties();
+		List<Account> accounts = Lists.newArrayList();
+        for (String name: p.stringPropertyNames()) {
+            if (name.startsWith("ice.account.")) {
+                String accountName = name.substring("ice.account.".length());
+                accounts.add(new Account(p.getProperty(name), accountName));
+            }
+        }
+		as = new BasicAccountService(accounts);
         ps = new BasicProductService(null);
 	}
 	

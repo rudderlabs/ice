@@ -235,7 +235,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
 		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, cau);
         if (config.resourceService != null)
-        	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
+        	config.resourceService.initHeader(lineItem.getResourceTagsHeader(), report.accountId);
         long endMilli = startMilli;
         double edpDiscount = config.getDiscount(startMilli);
         
@@ -271,7 +271,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			Report report,
 			List<File> files,
 			CostAndUsageData costAndUsageData,
-		    Instances instances) throws IOException {
+		    Instances instances,
+		    String payerAccountId) throws IOException {
 		
 		this.instances = instances;
 		startMilli = dataTime.getMillis();
@@ -282,7 +283,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		
 		CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, cau);
         if (config.resourceService != null)
-        	config.resourceService.initHeader(lineItem.getResourceTagsHeader());
+        	config.resourceService.initHeader(lineItem.getResourceTagsHeader(), payerAccountId);
         List<String[]> delayedItems = Lists.newArrayList();
         
 		for (File file: files) {

@@ -17,16 +17,17 @@ package com.netflix.ice.basic;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.processor.AccountConfig;
 import com.netflix.ice.tag.Account;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 public class BasicAccountService implements AccountService {
@@ -40,117 +41,27 @@ public class BasicAccountService implements AccountService {
     private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
-
-    // Used only for testing
-    public BasicAccountService(List<Account> accounts,
-    			Map<Account, Set<String>> reservationAccounts,
-                Map<Account, String> reservationAccessRoles,
-                Map<Account, String> reservationAccessExternalIds) {
-        this.reservationAccounts = reservationAccounts;
-        this.reservationAccessRoles = reservationAccessRoles;
-        this.reservationAccessExternalIds = reservationAccessExternalIds;
-        if (accounts != null) {
-	        for (Account account: accounts) {
-	            accountsByName.put(account.name, account);
-	            accountsById.put(account.id, account);
-	        }
-        }
-    }
     
-    /*
-     * Create an AccountService instance based on values from a Properties object (typically ice.properties file)
-     * 
-     * The following property key values are used:
-     * 
-     * Account definition:
-     * 		name:	account name
-     * 		id:		account id
-     * 
-     *	ice.account.{name}={id}
-     *
-     *		example: ice.account.myAccount=123456789012
-     * 
-     * Reservation Owner Account
-     * 		name: account name
-	 *		product: codes for products with purchased reserved instances. Possible values are ec2, rds, redshift
-     * 
-     *	ice.owneraccount.{name}={products}
-     *
-     *		example: ice.owneraccount.resHolder=ec2,rds
-     *
-     * Reservation Owner Account Role
-     * 		name: account name
-     * 		role: IAM role name to assume when pulling reservations from an owner account
-     * 
-     * 	ice.owneraccount.{name}.role={role}
-     * 
-     * 		example: ice.owneraccount.resHolder.role=ice
-     * 
-     * Reservation Owner Account ExternalId
-     * 		name: account name
-     * 		externalId: external ID for the reservation owner account
-     * 
-     * 	ice.owneraccount.{name}.externalId={externalId}
-     * 
-     * 		example: ice.owneraccount.resHolder.externalId=112233445566
-     */
-
-    public BasicAccountService(Properties properties, Map<String, String> defaultNames) {
-    	init(properties);
-    	
-    	if (defaultNames != null) {
-	    	// Add any additional accounts not specified in the properties
-	    	for (String id: defaultNames.keySet()) {
-	    		if (!accountsById.containsKey(id)) {
-	    			Account a = new Account(id, defaultNames.get(id));
-	    			accountsByName.put(a.name, a);
-	    			accountsById.put(a.id, a);
-	    		}
-	    	}
+    // Constructor used by the processor
+    public BasicAccountService(Map<String, AccountConfig> configs) {
+    	for (AccountConfig a: configs.values()) {
+			Account account = new Account(a.id, a.name, a.awsName);
+			accountsByName.put(a.name, account);
+			accountsById.put(a.id, account);
+			if (a.riProducts != null && a.riProducts.size() > 0) {
+				reservationAccounts.put(account, Sets.newHashSet(a.riProducts));
+			}
+			if (!StringUtils.isEmpty(a.role)) {
+				reservationAccessRoles.put(account,  a.role);
+			}
+			if (!StringUtils.isEmpty(a.externalId)) {
+				reservationAccessExternalIds.put(account, a.externalId);
+			}
     	}
     }
 
-    // Used by test code
-    public BasicAccountService(Properties properties) {
-    	init(properties);
-    }
-    
-    private void init(Properties properties) {
-        for (String name: properties.stringPropertyNames()) {
-            if (name.startsWith("ice.account.")) {
-                String accountName = name.substring("ice.account.".length());
-                Account account = new Account(properties.getProperty(name), accountName);
-                
-                // Only add accounts if they don't exist already so that we can
-                // support concurrent JUnit tests with same account data.
-                // TagGroup cache needs this.
-                Account existing = accountsByName.get(accountName);
-                if (existing == null || !existing.equals(account)) {
-                	accountsByName.put(accountName, account);
-                	accountsById.put(account.id, account);
-                }
-            }
-        }
-        for (String name: properties.stringPropertyNames()) {
-            if (name.startsWith("ice.owneraccount.") && !name.endsWith(".role") && !name.endsWith(".externalId")) {					
-                String accountName = name.substring("ice.owneraccount.".length());
-				String[] products = properties.getProperty(name).split(",");
-				Set<String> productSet = new HashSet<String>();
-				for (String product: products) {
-					productSet.add(product);
-				}
-				reservationAccounts.put(accountsByName.get(accountName), productSet);
-				
-                String role = properties.getProperty(name + ".role", "");
-                reservationAccessRoles.put(accountsByName.get(accountName), role);
-
-                String externalId = properties.getProperty(name + ".externalId", "");
-                reservationAccessExternalIds.put(accountsByName.get(accountName), externalId);					
-            }
-        }
-    }
-    
     // Constructor used by the reader - initialized from the work bucket data config
+    // Also used by unit test code.
     public BasicAccountService(List<Account> accounts) {
     	for (Account a: accounts) {
     		accountsById.put(a.id, a);
@@ -158,6 +69,9 @@ public class BasicAccountService implements AccountService {
     	}
     	// Reservation maps are not used by the reader.
     }
+    
+    // Used by test code
+    public BasicAccountService() {}
     
     // Accounts for the reader are refreshed from the work bucket data config after each processor run
     public void updateAccounts(List<Account> accounts) {

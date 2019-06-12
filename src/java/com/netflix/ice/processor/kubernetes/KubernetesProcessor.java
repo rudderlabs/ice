@@ -79,7 +79,8 @@ public class KubernetesProcessor {
             
             if (objectSummaries.size() > 0) {
             	Tagger tagger = new Tagger(this.tagsToCopy, config.kubernetesNamespaceMappingRules, config.resourceService,
-            			kubernetesS3BucketName, kubernetesS3BucketPrefix, config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+            			kubernetesS3BucketName, kubernetesS3BucketRegion, kubernetesS3BucketPrefix, config.localDir, accountId, kubernetesAccessRoleName, kubernetesAccessExternalId,
+            			config.workS3BucketName, config.workS3BucketPrefix);
             	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId,
             			kubernetesAccessRoleName, kubernetesAccessExternalId, kubernetesS3BucketPrefix, start, tagsToCopy, tagger));
             }

@@ -105,13 +105,6 @@ class BootStrap {
             properties.setProperty(IceOptions.WORK_S3_BUCKET_PREFIX, prop.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX));
 			properties.setProperty(IceOptions.TAG_COVERAGE, prop.getProperty(IceOptions.TAG_COVERAGE, ""));
 				
-			// Grab all the account properties
-			for (String name: prop.stringPropertyNames()) {
-				if (name.startsWith("ice.account.") || name.startsWith("ice.owneraccount.")) {
-					properties.setProperty(name, prop.getProperty(name));
-				}
-			}
-			
 			// Stash any debug properties
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith(IceOptions.DEBUG + ".")) {
@@ -122,7 +115,6 @@ class BootStrap {
 			ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
-				
 				if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
 	                properties.setProperty(IceOptions.START_MONTH, prop.getProperty(IceOptions.START_MONTH));
 	            }
@@ -156,7 +148,14 @@ class BootStrap {
 				properties.setProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, prop.getProperty(IceOptions.COST_AND_USAGE_NET_UNBLENDED_START_DATE, ""));
 				properties.setProperty(IceOptions.EDP_DISCOUNTS, prop.getProperty(IceOptions.EDP_DISCOUNTS, ""));
 				
-                ReservationService.ReservationPeriod reservationPeriod =
+				// Grab all the account properties
+				for (String name: prop.stringPropertyNames()) {
+					if (name.startsWith("ice.account.") || name.startsWith("ice.owneraccount.")) {
+						properties.setProperty(name, prop.getProperty(name));
+					}
+				}
+
+				ReservationService.ReservationPeriod reservationPeriod =
                     ReservationService.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
                 ReservationService.ReservationUtilization reservationUtilization =
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
@@ -200,14 +199,8 @@ class BootStrap {
 					if (name.startsWith("ice.accountTag.")) {
 						String[] key = name.substring("ice.accountTag.".length()).split("\\.");
 						String value = prop.getProperty(name);
-						
-						if (key.length > 1 && value != null) {
-							defaultTags.put(new BasicResourceService.Key(key[0], key[1]), value);
-						}
-					}
-				}
-				
-                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags, tagKeys, tagValues, defaultTags);
+
+                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags);
 
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 				properties.setProperty(IceOptions.FAMILY_RI_BREAKOUT, prop.getProperty(IceOptions.FAMILY_RI_BREAKOUT, ""));

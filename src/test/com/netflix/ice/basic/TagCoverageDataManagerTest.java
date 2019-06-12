@@ -114,7 +114,7 @@ public class TagCoverageDataManagerTest {
 
 	@Test
 	public void loadFile() throws Exception {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
 		TagCoverageDataManager data = new TestDataFilePoller(DateTime.now(), null, null, true, 0, as, ps, 12);

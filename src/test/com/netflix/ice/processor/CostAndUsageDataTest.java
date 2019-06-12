@@ -21,7 +21,7 @@ public class CostAndUsageDataTest {
 
 	@Test
 	public void testAddTagCoverage() {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		String[] userTags = new String[]{ "Email, Environment" };
 		CostAndUsageData cau = new CostAndUsageData(Lists.newArrayList(userTags), TagCoverage.withUserTags);

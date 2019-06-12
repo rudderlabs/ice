@@ -77,7 +77,14 @@ public class BillingFileProcessorTest {
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
         properties = getProperties(propertiesFilename);        
-		accountService = new BasicAccountService(properties);
+		List<Account> accounts = Lists.newArrayList();
+        for (String name: properties.stringPropertyNames()) {
+            if (name.startsWith("ice.account.")) {
+                String accountName = name.substring("ice.account.".length());
+                accounts.add(new Account(properties.getProperty(name), accountName));
+            }
+        }
+		accountService = new BasicAccountService(accounts);
 		productService = new BasicProductService(null);
 		
 		// Add all the zones we need for our test data		
@@ -131,7 +138,7 @@ public class BillingFileProcessorTest {
 	        	return 0L;
 	        }
 	        return cauProcessor.processReport(report.getStartTime(), report, files,
-	        		costAndUsageData, instances);
+	        		costAndUsageData, instances, "123456789012");
 		}
 		
 		public ReservationProcessor getReservationProcessor() {
@@ -199,11 +206,14 @@ public class BillingFileProcessorTest {
 		    protected Map<String, String> getDefaultAccountNames() {
 				return Maps.newHashMap();
 			}
+			
+			@Override
+		    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+			
+			}
 		}
 		
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
-		ResourceService resourceService = new BasicResourceService(productService, new String[]{}, new String[]{}, tagKeys, tagValues, null);
+		ResourceService resourceService = new BasicResourceService(productService, new String[]{}, new String[]{});
 		
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,

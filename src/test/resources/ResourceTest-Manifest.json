@@ -2,6 +2,9 @@
   "assemblyId":"9797f397-5193-4295-8ddf-ed4a1d37fe95",
   "account":"661443485395",
   "columns":[{
+    "category":"bill",
+    "name":"PayerAccountId"
+  },{
     "category":"lineItem",
     "name":"LineItemType"
   },{

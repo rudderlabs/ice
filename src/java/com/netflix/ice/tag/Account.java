@@ -17,13 +17,23 @@
  */
 package com.netflix.ice.tag;
 
+import org.apache.commons.lang.StringUtils;
+
 public class Account extends Tag {
 	private static final long serialVersionUID = 1L;
 	
 	public final String id;
+	public final String awsName; /* Name of account returned by Organizations */
 
     public Account(String accountId, String accountName) {
         super(accountName);
         this.id = accountId;
+        this.awsName = null;
+    }
+    
+    public Account(String accountId, String accountName, String awsName) {
+        super(StringUtils.isEmpty(accountName) ? awsName : accountName);
+        this.id = accountId;
+        this.awsName = awsName;
     }
 }

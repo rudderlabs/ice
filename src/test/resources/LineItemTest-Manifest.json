@@ -8,6 +8,9 @@
     "category":"bill",
     "name":"BillType"
   },{
+    "category":"bill",
+    "name":"PayerAccountId"
+  },{
     "category":"lineItem",
     "name":"UsageAccountId"
   },{

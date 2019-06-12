@@ -29,7 +29,7 @@ public class ReadOnlyTagCoverageDataTest {
 
 	@Test
 	public void testDeserialize() throws IOException {
-		AccountService as = new BasicAccountService(new Properties());
+		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
 		
         ByteArrayOutputStream output = new ByteArrayOutputStream();

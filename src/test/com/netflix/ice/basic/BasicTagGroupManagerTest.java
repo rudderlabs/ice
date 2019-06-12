@@ -5,7 +5,6 @@ import static org.junit.Assert.*;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 
 import org.joda.time.DateTime;
@@ -29,7 +28,7 @@ import com.netflix.ice.tag.UserTag;
 
 public class BasicTagGroupManagerTest {
 	private static ProductService productService = new BasicProductService(null);
-	private static AccountService accountService = new BasicAccountService(new Properties());
+	private static AccountService accountService = new BasicAccountService();
 	public final static DateTime testMonth = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
 
 	@BeforeClass

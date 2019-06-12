@@ -14,6 +14,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.processor.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -34,11 +35,12 @@ public class BasicResourceService extends ResourceService {
     
 	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
 
-    // Map of tags where each tag has a list of aliases.
-    private final Map<String, List<String>> tagKeys;
+    // Map of tags where each tag has a list of aliases. Outer key is the payerAccountId.
+    private Map<String, Map<String, TagConfig>> tagConfigs;
     
     // Map of tag values to canonical name. All keys are lower case.
-    private final Map<String, String> tagValuesInverted;
+    // Maps are nested by Payer Account ID, Tag Key, then Value
+    private Map<String, Map<String, Map<String, String>>> tagValuesInverted;
     
     // Map containing the lineItem column indecies that match the canonical tag keys specified by CustomTags
     // Key is the Custom Tag name (without the "user:" prefix). First index in the list is always the exact
@@ -49,68 +51,17 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
     
-	public static class Key implements Comparable<Key> {
-        public final String account;
-        public final String tag;
-        
-        public Key(String account, String tag) {
-            this.account = account;
-            this.tag = tag;
-        }
-
-        public int compareTo(Key t) {
-            int result = this.account.compareTo(t.account);
-            if (result != 0)
-                return result;
-            result = this.tag.compareTo(t.tag);
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return account + "|" + tag;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o == null)
-                return false;
-            Key other = (Key)o;
-            return
-                this.account.equals(other.account) &&
-                this.tag.equals(other.tag);
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + this.account.hashCode();
-            result = prime * result + this.tag.hashCode();
-            return result;
-        }
-	}
     // Map of default user tag values for each account. These are returned if the requested resource doesn't
-    // have a tag value.
-    private final Map<Key, String> defaultTags;
+    // have a tag value. Outer key is the account ID, inner map key is the tag name.
+    private Map<String, Map<String, String>> defaultTags;
 
-    public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags,
-    		Map<String, List<String>> tagKeys, Map<String, List<String>> tagValues, Map<Key, String> defaultTags) {
+    public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags) {
 		super();
 		this.customTags = customTags;
+		this.tagValuesInverted = Maps.newHashMap();
 		this.tagResourceGroupIndecies = Maps.newHashMap();
 		for (int i = 0; i < customTags.length; i++)
 			tagResourceGroupIndecies.put(customTags[i], i);
-		
-		this.tagKeys = tagKeys;		
-		this.tagValuesInverted = Maps.newHashMap();
-		for (Entry<String, List<String>> entry: tagValues.entrySet()) {			
-			for (String val: entry.getValue()) {
-				this.tagValuesInverted.put(val.toLowerCase(), entry.getKey());
-			}
-			// Handle upper/lower case differences of key
-			this.tagValuesInverted.put(entry.getKey().toLowerCase(), entry.getKey());
-		}
 		
         for (List<String> l: productNamesWithResources) {
         	List<Product> lp = Lists.newArrayList();
@@ -132,10 +83,43 @@ public class BasicResourceService extends ResourceService {
 		}
 		
 		this.defaultTags = Maps.newHashMap();
-		if (defaultTags != null) {
-			this.defaultTags.putAll(defaultTags);
-		}
+		this.tagConfigs = Maps.newHashMap();
+		this.tagValuesInverted = Maps.newHashMap();
 	}
+    
+    @Override
+    public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {
+    	if (tagConfigs == null) {
+    		// Remove existing configs and indecies
+    		this.tagConfigs.remove(payerAccountId);
+    		this.tagValuesInverted.remove(payerAccountId);
+    		return;
+    	}
+    	
+    	Map<String, TagConfig> configs = Maps.newHashMap();
+    	for (TagConfig config: tagConfigs) {
+    		configs.put(config.name, config);
+    	}
+    	this.tagConfigs.put(payerAccountId, configs);
+    	
+    	// Created inverted indexes for each of the tag value alias sets
+		Map<String, Map<String, String>> indecies = Maps.newHashMap();
+		for (TagConfig config: tagConfigs) {
+			if (config.values == null || config.values.isEmpty())
+				continue;
+			
+			Map<String, String> invertedIndex = Maps.newConcurrentMap();
+			for (Entry<String, List<String>> entry: config.values.entrySet()) {			
+				for (String val: entry.getValue()) {
+					invertedIndex.put(val.toLowerCase(), entry.getKey());
+				}
+				// Handle upper/lower case differences of key
+				invertedIndex.put(entry.getKey().toLowerCase(), entry.getKey());
+			}
+			indecies.put(config.name, invertedIndex);
+		}
+		this.tagValuesInverted.put(payerAccountId, indecies);
+    }
 
 	@Override
     public void init() {		
@@ -196,21 +180,29 @@ public class BasicResourceService extends ResourceService {
         return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
     }
     
+    @Override
+    public void putDefaultTags(String accountId, Map<String, String> tags) {
+    	defaultTags.put(accountId, tags);
+    }
+    
     private String getDefaultUserTagValue(Account account, String tag) {
     	// return the default user tag value for the specified account if there is one.
-    	Key key = new Key(account.name, tag);
-    	return defaultTags.get(key);
+    	Map<String, String> defaults = defaultTags.get(account.id);
+    	return defaults == null ? null : defaults.get(tag);
     }
     
     @Override
     public String getUserTagValue(LineItem lineItem, String tag) {
+    	Map<String, Map<String, String>> indecies = tagValuesInverted.get(lineItem.getPayerAccountId());    	
+    	Map<String, String> invertedIndex = indecies == null ? null : indecies.get(tag);
+    	
     	// Grab the first non-empty value
     	for (int index: tagLineItemIndecies.get(tag)) {
     		if (lineItem.getResourceTagsSize() > index) {
     			String val = lineItem.getResourceTag(index);
     			if (!StringUtils.isEmpty(val)) {
-	    			if (tagValuesInverted.containsKey(val.toLowerCase())) {
-	    				val = tagValuesInverted.get(val.toLowerCase());
+    				if (invertedIndex != null && invertedIndex.containsKey(val.toLowerCase())) {
+	    				val = invertedIndex.get(val.toLowerCase());
 	    			}
 	    			return val;
     			}
@@ -246,8 +238,16 @@ public class BasicResourceService extends ResourceService {
     }
     
     @Override
-    public void initHeader(String[] header) {
+    public void initHeader(String[] header, String payerAccountId) {
     	tagLineItemIndecies = Maps.newHashMap();
+    	Map<String, TagConfig> configs = tagConfigs.get(payerAccountId);
+    	
+    	/*
+    	 * Create a list of billing report line item indecies for
+    	 * each of the configured user tags. The list will first have
+    	 * the exact match for the name if it exists in the report
+    	 * followed by any case variants and specified aliases
+    	 */
     	for (String tag: userTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
     		List<Integer> indecies = Lists.newArrayList();
@@ -274,14 +274,17 @@ public class BasicResourceService extends ResourceService {
             	}
             }
             // Look for aliases
-            if (tagKeys.containsKey(tag)) {
-            	for (String alias: tagKeys.get(tag)) {
-            		String fullAlias = USER_TAG_PREFIX + alias;
-                    for (int i = 0; i < header.length; i++) {
-                    	if (fullAlias.equalsIgnoreCase(header[i])) {
-                    		indecies.add(i);
-                    	}
-                    }
+            if (configs != null && configs.containsKey(tag)) {
+            	TagConfig config = configs.get(tag);
+            	if (config != null && config.aliases != null) {
+	            	for (String alias: config.aliases) {
+	            		String fullAlias = USER_TAG_PREFIX + alias;
+	                    for (int i = 0; i < header.length; i++) {
+	                    	if (fullAlias.equalsIgnoreCase(header[i])) {
+	                    		indecies.add(i);
+	                    	}
+	                    }
+	            	}
             	}
             }
     	}

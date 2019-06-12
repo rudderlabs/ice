@@ -57,19 +57,24 @@ public class ReservationProcessorTest {
 	
 	private static final int numAccounts = 3;
 	public static List<Account> accounts = Lists.newArrayList();
+	public static Map<String, AccountConfig> accountConfigs = Maps.newHashMap();
 	static {
 		// Auto-populate the accounts list based on numAccounts
+		
+		// Every account is a reservation owner for these tests
+		List<String> products = Lists.newArrayList("ec2", "rds", "redshift");
 		for (Integer i = 1; i <= numAccounts; i++) {
 			// Create accounts of the form Account("111111111111", "Account1")
-			accounts.add(new Account(StringUtils.repeat(i.toString(), 12), "Account" + i.toString()));
+			String id = StringUtils.repeat(i.toString(), 12);
+			String name = "Account" + i.toString();
+			accountConfigs.put(id, new AccountConfig(id, name, null, null, products, null, null));			
 		}
-		// Every account is a reservation owner for these tests
-		Set<String> products = Sets.newHashSet("ec2", "rds", "redshift");
-		reservationOwners.put(accounts.get(0), products);
-		for (int i = 1; i < numAccounts; i++) {
-			reservationOwners.put(accounts.get(i), products);
+		AccountService as = new BasicAccountService(accountConfigs);
+		for (Integer i = 1; i <= numAccounts; i++) {
+			// Load the account list for the tests to use
+			accounts.add(as.getAccountByName("Account" + i.toString()));
 		}
-		accountService = new BasicAccountService(accounts, reservationOwners, null, null);
+		accountService = as;
 		
 		// Initialize the zones we use
 		Region.EU_WEST_1.addZone("eu-west-1b");
@@ -116,9 +121,7 @@ public class ReservationProcessorTest {
 		props.setProperty("EC2", "Elastic Compute Cloud");
 		productService = new BasicProductService(props);
 
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
-		resourceService = new BasicResourceService(productService, new String[]{}, new String[]{}, tagKeys, tagValues, null);
+		resourceService = new BasicResourceService(productService, new String[]{}, new String[]{});
 	}
 	
 	@Test

@@ -43,6 +43,10 @@ public class ProcessorConfigTest {
 			return null;
 		}
 		
+		@Override
+		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		}
+		
 	}
 
 	@Test

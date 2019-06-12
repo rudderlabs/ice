@@ -3,7 +3,6 @@ package com.netflix.ice.processor.kubernetes;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 import org.joda.time.DateTime;
@@ -48,9 +47,7 @@ public class TaggerTest {
 	@Before
 	public void init() {
 		ps = new BasicProductService(null);
-		Map<String, List<String>> tagKeys = Maps.newHashMap();
-		Map<String, List<String>> tagValues = Maps.newHashMap();
-		rs = new BasicResourceService(ps, customTags, new String[]{}, tagKeys, tagValues, null);
+		rs = new BasicResourceService(ps, customTags, new String[]{});
 	}
 
 
@@ -63,7 +60,7 @@ public class TaggerTest {
 		Map<String, String> rules = Maps.newHashMap();
 		rules.put("Tag2.Foo", "bar");
 		rules.put("Tag1.Bar", ".*bar.*");
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null);
+		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null, null, null, null, null);
 		UserTag[] userTags = new UserTag[customTags.length];
 		t.tag(tkr, item, userTags);
 		assertEquals("Incorrect tagged value", "Bar", userTags[0].name);
@@ -92,7 +89,7 @@ public class TaggerTest {
 		rules.put("Tag2.Foo", "bar");
 		rules.put("Tag1.Bar", ".*bar.*");
 		
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null);
+		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null, null, null, null, null);
 		
 		String json = t.config.toJSON();		
 		TaggerConfig testConfig = t.new TaggerConfig(json);
