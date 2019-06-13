@@ -1,8 +1,6 @@
 package com.netflix.ice.processor;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,7 +8,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -18,7 +15,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,35 +25,24 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.netflix.ice.basic.BasicAccountService;
-import com.netflix.ice.basic.BasicLineItemProcessorTest;
 import com.netflix.ice.basic.BasicResourceService;
-import com.netflix.ice.basic.BasicLineItemProcessorTest.PricingTerm;
-import com.netflix.ice.basic.BasicLineItemProcessorTest.ProcessTest;
-import com.netflix.ice.basic.BasicLineItemProcessorTest.Which;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.Config.TagCoverage;
-import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
-import com.netflix.ice.processor.LineItemProcessor.Result;
-import com.netflix.ice.processor.ReservationProcessorTest.Datum;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
-import com.netflix.ice.tag.Account;
-import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.Zone;
 
 public class BillingFileProcessorTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -67,9 +52,7 @@ public class BillingFileProcessorTest {
     private static final String cauReportDir = resourcesReportDir + "Oct2017/";
 	private static PriceListService priceListService = null;
 	private static Properties properties;
-	private static AccountService accountService;
 	private static ProductService productService;
-	private static Zone ap_southeast_2a;
 	
 
     private static void init(String propertiesFilename) throws Exception {
@@ -77,22 +60,10 @@ public class BillingFileProcessorTest {
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
         properties = getProperties(propertiesFilename);        
-		List<Account> accounts = Lists.newArrayList();
-        for (String name: properties.stringPropertyNames()) {
-            if (name.startsWith("ice.account.")) {
-                String accountName = name.substring("ice.account.".length());
-                accounts.add(new Account(properties.getProperty(name), accountName));
-            }
-        }
-		accountService = new BasicAccountService(accounts);
 		productService = new BasicProductService(null);
 		
 		// Add all the zones we need for our test data		
 		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
-		
-		
-		
-		ap_southeast_2a = Zone.getZone("ap-southeast-2a");
     }
     
     
@@ -235,7 +206,7 @@ public class BillingFileProcessorTest {
         
 		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
-		reservationService.updateReservations(reservations, accountService, startMilli, productService, resourceService);
+		reservationService.updateReservations(reservations, config.accountService, startMilli, productService, resourceService);
 				
 		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    
@@ -263,7 +234,7 @@ public class BillingFileProcessorTest {
         if (ignoreFile.exists()) {
     		try {
     			BufferedReader in = new BufferedReader(new FileReader(ignoreFile));
-    			ignore = deserializeTagGroupsCsv(accountService, productService, in);
+    			ignore = deserializeTagGroupsCsv(config.accountService, productService, in);
     			in.close();
     		} catch (Exception e) {
     			logger.error("Error reading ignore tags file " + e);
@@ -279,7 +250,7 @@ public class BillingFileProcessorTest {
         else {
         	// Compare results against the expected data
         	logger.info("Comparing against reference usage data...");
-        	compareData(costAndUsageData.getUsage(null), "Usage", expectedUsage, accountService, productService, ignore);
+        	compareData(costAndUsageData.getUsage(null), "Usage", expectedUsage, config.accountService, productService, ignore);
         }
         File expectedCost = new File(resourcesReportDir, prefix+"cost.csv");
         if (!expectedCost.exists()) {
@@ -290,7 +261,7 @@ public class BillingFileProcessorTest {
         else {
         	// Compare results against the expected data
         	logger.info("Comparing against reference cost data...");
-        	compareData(costAndUsageData.getCost(null), "Cost", expectedCost, accountService, productService, ignore);
+        	compareData(costAndUsageData.getCost(null), "Cost", expectedCost, config.accountService, productService, ignore);
         }
 	}
 		
@@ -362,8 +333,12 @@ public class BillingFileProcessorTest {
 			}
 			int numPrinted = 0;
 			for (TagGroup tg: notFound) {
-				logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
-				if (numPrinted++ > 100)
+				//logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
+				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
+					logger.info("Tag not found:   " + tg + ", value: " + expected.get(tg));
+					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
+				}
+				if (numPrinted++ > 1000)
 					break;
 			}
 				
@@ -380,12 +355,20 @@ public class BillingFileProcessorTest {
 			}
 			numPrinted = 0;
 			for (TagGroup tg: extras) {
-				logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
-				if (numPrinted++ > 100)
+				//logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
+				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
+					logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
+					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
+				}
+				if (numPrinted++ > 1000)
 					break;
 			}
-			if (numNotFound > 0 || numExtra > 0)
+			if (numNotFound > 0 || numExtra > 0) {
 				logger.info("Hour "+i+" Tags not found: " + numNotFound + ", found " + numFound + ", extra " + numExtra);
+				for (Product a: productService.getProducts()) {
+					logger.info(a.name + ": " + a.hashCode() + ", " + System.identityHashCode(a) + ", " + System.identityHashCode(a.name));
+				}
+			}
 			
 			// Compare the values on found tags
 			int numMatches = 0;
@@ -447,70 +430,6 @@ public class BillingFileProcessorTest {
 	public void testDetailedBillingReport() throws Exception {
 		init(resourcesReportDir + "ice.properties");
 		testFileData(new DetailedBillingReportTest(), "dbr-");
-	}
-	
-	@Test
-	public void testAllUpfrontUsage() throws Exception {
-		init(resourcesReportDir + "ice.properties");
-		BasicLineItemProcessorTest.init(accountService);
-		BasicLineItemProcessorTest lineItemTest = new BasicLineItemProcessorTest();
-		BasicLineItemProcessorTest.accountService = ReservationProcessorTest.accountService;
-		BasicLineItemProcessorTest.Line line = lineItemTest.new Line(LineItemType.DiscountedUsage, "111111111111", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront", "reserved-instances/2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
-		String[] tag = new String[] { "Account1", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge", null };
-		ProcessTest test = lineItemTest.new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
-		
-		BasicLineItemProcessorTest.cauLineItem.setItems(test.line.getCauLine(BasicLineItemProcessorTest.cauLineItem));
-		long startMilli = new DateTime("2017-06-01T00:00:00Z", DateTimeZone.UTC).getMillis();
-		CostAndUsageData costAndUsageData = test.runProcessTest(BasicLineItemProcessorTest.cauLineItem, "Cost and Usage", true, startMilli);
-
-		long startMillis = 1491004800000L;
-		String[] resCSV = new String[]{
-			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Availability Zone,ap-southeast-2a,false,1464702209129,1496238208000,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-		};
-		
-		ReservationProcessorTest resTest = new ReservationProcessorTest();
-
-		Datum[] expectedUsage = new Datum[]{
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.reservedInstancesFixed, "c4.2xlarge", 1.0),
-		};
-		
-		Datum[] expectedCost = new Datum[]{
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.reservedInstancesFixed, "c4.2xlarge", 0.0),
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.upfrontAmortizedFixed, "c4.2xlarge", 0.095),
-			resTest.new Datum(ReservationProcessorTest.accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.savingsFixed, "c4.2xlarge", 0.522 - 0.095),
-		};
-
-		Map<TagGroup, Double> hourUsageData = costAndUsageData.getUsage(null).getData(0);
-		Map<TagGroup, Double> hourCostData = costAndUsageData.getCost(null).getData(0);
-
-		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
-		ud.add(hourUsageData);
-		CostAndUsageData caud = new CostAndUsageData(null, TagCoverage.none);
-		caud.getUsage(null).setData(ud, 0, false);
-		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
-		cd.add(hourCostData);
-		caud.getCost(null).setData(cd, 0, false);
-
-		Set<Account> owners = Sets.newHashSet(ReservationProcessorTest.accounts.get(1));
-		List<Account> linked = Lists.newArrayList();
-		linked.add(ReservationProcessorTest.accounts.get(1));
-		Map<Account, List<Account>> payerAccounts = Maps.newHashMap();
-		
-		payerAccounts.put(ReservationProcessorTest.accounts.get(0), linked);
-		ReservationProcessor rp = new CostAndUsageReservationProcessor(owners, new BasicProductService(null), priceListService, true);
-		ReservationProcessorTest.runTest(startMillis, resCSV, caud, null, "c4", Region.AP_SOUTHEAST_2, rp);
-
-		assertEquals("usage size wrong", expectedUsage.length, hourUsageData.size());
-		for (Datum datum: expectedUsage) {
-			assertNotNull("should have usage tag group " + datum.tagGroup, hourUsageData.get(datum.tagGroup));	
-			assertEquals("wrong usage value for tag " + datum.tagGroup, datum.value, hourUsageData.get(datum.tagGroup), 0.001);
-		}
-		assertEquals("cost size wrong", expectedCost.length, hourCostData.size());
-		for (Datum datum: expectedCost) {
-			assertNotNull("should have cost tag group " + datum.tagGroup, hourCostData.get(datum.tagGroup));	
-			assertEquals("wrong cost value for tag " + datum.tagGroup, datum.value, hourCostData.get(datum.tagGroup), 0.001);
-		}
 	}
 	
 }

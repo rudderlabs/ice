@@ -28,21 +28,22 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 
 public class BasicProductService implements ProductService {
+    //Logger logger = LoggerFactory.getLogger(getClass());
 	/*
 	 * Product lookup maps built dynamically as we encounter the product names while
 	 * processing billing reports or reading tagdb files.
 	 * 
 	 * Map of products keyed by the full Amazon name including the AWS and Amazon prefix
 	 */
-    private static ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
+    private ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
     /*
      * Map of products keyed by the name without the AWS or Amazon prefix. Also has entries for override names
      */
-    private static ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
+    private ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
     /*
      * Map of products keyed by the filename used for saving the data
      */
-    private static ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
+    private ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
        
     public BasicProductService(Properties overrideProductNames) {
 		super();
@@ -57,6 +58,7 @@ public class BasicProductService implements ProductService {
         if (product == null) {
             product = new Product(awsName);
             addProduct(product);
+            //logger.info("getProductByAwsName() created product: " + product.name + " for: " + awsName);
         }
         return product;
     }
@@ -68,6 +70,7 @@ public class BasicProductService implements ProductService {
     		String name = Product.getNameFromFileName(fileName);
     		product = new Product(name);
     		addProduct(product);
+            //logger.info("getProductByFileName() created product: " + product.name + " for filename: " + fileName);
     	}
     	return product;
     }
@@ -77,6 +80,7 @@ public class BasicProductService implements ProductService {
         if (product == null) {
             product = new Product(name);
             addProduct(product);
+            //logger.info("getProductByName() created product: " + product.name);
         }
         return product;
     }

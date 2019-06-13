@@ -6,6 +6,8 @@ import java.util.Properties;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
@@ -15,6 +17,7 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
 public class TagGroupTest {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
 	private static ProductService ps;
 	
 	@BeforeClass
@@ -55,5 +58,5 @@ public class TagGroupTest {
 		TagGroup tgb = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByName("Data Transfer"), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW1-AWS-Out-Bytes", "GB"), null);
 		assertFalse("Should not be equal", tga.equals(tgb));
 	}
-
+	
 }

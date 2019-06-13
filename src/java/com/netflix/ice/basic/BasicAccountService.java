@@ -34,10 +34,8 @@ public class BasicAccountService implements AccountService {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
-    // Keep the accounts in static maps. TagGroups have a cache and
-    // we want fast object comparisons.
-    private static Map<String, Account> accountsById = Maps.newConcurrentMap();
-    private static Map<String, Account> accountsByName = Maps.newConcurrentMap();
+    private Map<String, Account> accountsById = Maps.newConcurrentMap();
+    private Map<String, Account> accountsByName = Maps.newConcurrentMap();
     private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();

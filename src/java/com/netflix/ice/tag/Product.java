@@ -71,7 +71,12 @@ public class Product extends Tag {
     public static final String rdsInstance   = "RDS Instance";
 
     private final static Set<String> productsWithoutResourceTags;
-    
+	/*
+	 * Maps for holding overridden product names. One map for each lookup direction.
+	 */
+    private static ConcurrentMap<String, String> overrideNames = Maps.newConcurrentMap();
+    private static ConcurrentMap<String, String> canonicalNames = Maps.newConcurrentMap();
+   
     static {
     	productsWithoutResourceTags = Sets.newHashSet();
     	// Canonical names for products that do not their own resource tagging.
@@ -86,14 +91,12 @@ public class Product extends Tag {
     	};
     	for (String name: names) {
     		productsWithoutResourceTags.add(name);
-    	}   	
+    	}
+    	
+    	addOverride(ec2, "EC2");
+    	addOverride(rdsFull, "RDS");
+    	addOverride(s3, "S3");
     }
-
-	/*
-	 * Maps for holding overridden product names. One map for each lookup direction.
-	 */
-    private static ConcurrentMap<String, String> overrideNames = Maps.newConcurrentMap();
-    private static ConcurrentMap<String, String> canonicalNames = Maps.newConcurrentMap();
 
     /*
      * Product constructor should only be called by the ProductService.

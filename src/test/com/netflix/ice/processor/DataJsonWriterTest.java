@@ -92,7 +92,7 @@ public class DataJsonWriterTest {
 		djw.write();
 		djw.writer.flush();
 		
-		String expect =
+		String expectGet =
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
 					"\"accountId\":\"123456789012\","+
@@ -105,7 +105,8 @@ public class DataJsonWriterTest {
 					"\"tags\":{\"Tag1\":\"foo\",\"Tag2\":\"bar\"},"+
 					"\"cost\":2.22,"+
 					"\"usage\":2.0"+
-				"}\n"+
+				"}";
+		String expectCopy =
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
 					"\"accountId\":\"123456789012\","+
@@ -117,10 +118,24 @@ public class DataJsonWriterTest {
 					"\"usageType\":\"Requests-Tier1\","+
 					"\"cost\":1.11,"+
 					"\"usage\":1.0"+
-				"}\n";
-		String got = new String(out.toByteArray());
-		logger.info(got);
-		assertEquals("Incorrect JSON serialization", expect, got);
+				"}";
+		
+		String outString = new String(out.toByteArray());
+		//logger.info(outString);
+		String[] got = outString.split("\n");
+		boolean foundCopy = false;
+		boolean foundGet = false;
+		for (int i = 0; i < 2; i++) {
+			if (got[i].contains("Get")) {
+				assertEquals("Incorrect JSON serialization", expectGet, got[i]);
+				foundGet = true;
+			}
+			else if (got[i].contains("Copy")) {
+				assertEquals("Incorrect JSON serialization", expectCopy, got[i]);
+				foundCopy = true;
+			}
+		}
+		assertTrue("Did not find both records", foundCopy && foundGet);
 	}
 
 }
