@@ -22,14 +22,20 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.Report;
+import com.netflix.ice.processor.config.KubernetesConfig;
+import com.netflix.ice.tag.UserTag;
 
 public class KubernetesReport extends Report {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     
     private final DateTime month;
     private final long startMillis;
-    private final List<String> userTags;
+    private final KubernetesConfig config;
+    private final int computeIndex;
+    private final int namespaceIndex;
+    private final ClusterNameBuilder clusterNameBuilder;
 
     public enum KubernetesColumn {
     	Cluster,
@@ -58,12 +64,18 @@ public class KubernetesReport extends Report {
     private Map<String, List<List<String[]>>> data = null;
     private final Tagger tagger;
 
-	public KubernetesReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix, DateTime month, String[] userTags, Tagger tagger) {
+	public KubernetesReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix,
+			DateTime month, KubernetesConfig config, ResourceService resourceService) {
     	super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix);
     	this.month = month;
     	this.startMillis = month.getMillis();
-    	this.userTags = Lists.newArrayList(userTags);    	
-		this.tagger = tagger;
+		this.config = config;
+		this.computeIndex = StringUtils.isEmpty(config.getComputeTag()) ? -1 : resourceService.getUserTagIndex(config.getComputeTag());
+		this.namespaceIndex = StringUtils.isEmpty(config.getNamespaceTag()) ? -1 : resourceService.getUserTagIndex(config.getNamespaceTag());
+		
+		List<String> clusterNameFormulae = config.getClusterNameFormulae();
+		this.clusterNameBuilder = clusterNameFormulae == null || clusterNameFormulae.isEmpty() ? null : new ClusterNameBuilder(config.getClusterNameFormulae(), resourceService.getCustomTags());		
+    	this.tagger = new Tagger(config.getTags(), config.getNamespaceMappings(), resourceService);
 	}
 
 	public long loadReport(String localDir)
@@ -172,7 +184,7 @@ public class KubernetesReport extends Report {
 		userTagIndecies = Maps.newHashMap();
 		
 		for (int i = 0; i < header.length; i++) {
-			if (userTags.contains(header[i])) {
+			if (config.getTags().contains(header[i])) {
 				userTagIndecies.put(header[i], i);
 			}
 			else {
@@ -253,5 +265,16 @@ public class KubernetesReport extends Report {
 		return tagger;
 	}
 	
+	public boolean isCompute(UserTag[] userTags) {
+		return userTags[computeIndex] != null && userTags[computeIndex].name.equals(config.getComputeValue());
+	}
+	
+	public ClusterNameBuilder getClusterNameBuilder() {
+		return clusterNameBuilder;
+	}
+	
+	public int getNamespaceIndex() {
+		return namespaceIndex;
+	}
 }
 

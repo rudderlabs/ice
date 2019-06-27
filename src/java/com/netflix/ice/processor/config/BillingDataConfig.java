@@ -1,7 +1,8 @@
-package com.netflix.ice.processor;
+package com.netflix.ice.processor.config;
 
 import java.io.IOException;
 import java.util.List;
+
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,24 +52,40 @@ accounts:
 	 riProducts: [ec2, rds]
 	 role: ice
 	 externalId:
+	 
 tags:
   - name: Environment
     aliases: [env]
     values:
       Prod: [production, prd]
+      
+kubernetes:
+  - bucket: k8s-report-bucket
+    prefix: hourly/kubernetes
+    clusterNameFormulae: [ 'Cluster.toLower()', 'Cluster.regex("k8s-(.*)")' ]
+    computeTag: Role
+    computeValue: compute
+    namespaceTag: K8sNamespace
+    namespaceMappings:
+      - tag: Environment
+        value: Prod
+        patterns: [ ".*prod.*", ".*production.*", ".*prd.*" ]
+    tags: [ userTag1, userTag2 ]
             
  *  
  */
 public class BillingDataConfig {
-    public List<AccountConfig> accounts;
+	public List<AccountConfig> accounts;
     public List<TagConfig> tags;
+    public List<KubernetesConfig> kubernetes;
 
     public BillingDataConfig() {    	
     }
     
-	public BillingDataConfig(List<AccountConfig> accounts, List<TagConfig> tags) {
+	public BillingDataConfig(List<AccountConfig> accounts, List<TagConfig> tags, List<KubernetesConfig> kubernetes) {
 		this.accounts = accounts;
 		this.tags = tags;
+		this.kubernetes = kubernetes;
 	}
 
 	public BillingDataConfig(String in) throws JsonParseException, JsonMappingException, IOException {
@@ -84,6 +101,7 @@ public class BillingDataConfig {
 		}
 		this.accounts = config.accounts;
 		this.tags = config.tags;
+		this.kubernetes = config.kubernetes;
 	}
 	
 	public String toJSON() {
@@ -105,6 +123,14 @@ public class BillingDataConfig {
 
 	public void setTags(List<TagConfig> tags) {
 		this.tags = tags;
+	}
+
+	public List<KubernetesConfig> getKubernetes() {
+		return kubernetes;
+	}
+
+	public void setKubernetes(List<KubernetesConfig> kubernetes) {
+		this.kubernetes = kubernetes;
 	}
 	
 }

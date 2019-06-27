@@ -8,13 +8,12 @@ import com.google.common.collect.Lists;
 import com.netflix.ice.tag.UserTag;
 
 public class ClusterNameBuilder {
-	final private static String formulaSeparator = ",";
 	final private static String rulesSeparator = "\\+";
 	final private List<List<Rule>> formulae;
 	
-	ClusterNameBuilder(String formulae, String[] tagNames) {
+	ClusterNameBuilder(List<String> formulae, String[] tagNames) {
 		this.formulae = Lists.newArrayList();
-		for (String formula: formulae.split(formulaSeparator)) {
+		for (String formula: formulae) {
 			List<Rule> rules = Lists.newArrayList();
 			
 			String[] rulesStrs = formula.split(rulesSeparator);

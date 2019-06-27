@@ -18,7 +18,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.processor.CostAndUsageReport;
 import com.netflix.ice.processor.CostAndUsageReportLineItem;
-import com.netflix.ice.processor.TagConfig;
+import com.netflix.ice.processor.config.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ResourceGroup;

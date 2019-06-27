@@ -3,19 +3,19 @@ package com.netflix.ice.processor.kubernetes;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.util.Map;
-
+import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.Lists;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.kubernetes.Tagger.TaggerConfig;
+import com.netflix.ice.processor.config.KubernetesConfig;
+import com.netflix.ice.processor.config.KubernetesNamespaceMapping;
 import com.netflix.ice.tag.UserTag;
 
 public class TaggerTest {
@@ -25,8 +25,8 @@ public class TaggerTest {
 	
 	class TestKubernetesReport extends KubernetesReport {
 
-		public TestKubernetesReport(DateTime month, String[] userTags) {
-			super(null, null, null, null, null, null, month, userTags, null);
+		public TestKubernetesReport(DateTime month, KubernetesConfig config) {
+			super(null, null, null, null, null, null, month, config, rs);
 		}
 		
 		@Override
@@ -53,14 +53,17 @@ public class TaggerTest {
 
 	@Test
 	public void testTagger() throws IOException {
-		TestKubernetesReport tkr = new TestKubernetesReport(new DateTime("2019-01", DateTimeZone.UTC), customTags);
+		KubernetesConfig config = new KubernetesConfig();
+		config.setTags(Lists.newArrayList(customTags));
+		config.setComputeTag("Tag1");
+		TestKubernetesReport tkr = new TestKubernetesReport(new DateTime("2019-01", DateTimeZone.UTC), config);
 		String[] item = new String[]{ "dev-usw2a", "bar", "foobar" };
 		
-		String[] tagsToCopy = new String[]{ "Tag3" };
-		Map<String, String> rules = Maps.newHashMap();
-		rules.put("Tag2.Foo", "bar");
-		rules.put("Tag1.Bar", ".*bar.*");
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null, null, null, null, null);
+		List<String> tagsToCopy = Lists.newArrayList("Tag3");
+		List<KubernetesNamespaceMapping> rules = Lists.newArrayList();
+		rules.add(new KubernetesNamespaceMapping("Tag2", "Foo", Lists.newArrayList("bar")));
+		rules.add(new KubernetesNamespaceMapping("Tag1", "Bar", Lists.newArrayList(".*bar.*")));
+		Tagger t = new Tagger(tagsToCopy, rules, rs);
 		UserTag[] userTags = new UserTag[customTags.length];
 		t.tag(tkr, item, userTags);
 		assertEquals("Incorrect tagged value", "Bar", userTags[0].name);
@@ -82,25 +85,4 @@ public class TaggerTest {
 		assertEquals("Tag3 was not overwritten", "useMe", userTags[2].name);
 	}
 	
-	@Test
-	public void testTaggerConfig() throws IOException {
-		String[] tagsToCopy = new String[]{ "Tag3" };
-		Map<String, String> rules = Maps.newHashMap();
-		rules.put("Tag2.Foo", "bar");
-		rules.put("Tag1.Bar", ".*bar.*");
-		
-		Tagger t = new Tagger(tagsToCopy, rules, rs, null, null, null, null, null, null, null, null, null);
-		
-		String json = t.config.toJSON();		
-		TaggerConfig testConfig = t.new TaggerConfig(json);
-		assertEquals("tagsToCopy doesn't match", String.join(",", t.config.getTagsToCopy()), String.join(",", testConfig.getTagsToCopy()));
-		for (int i = 0; i < t.config.getRules().size(); i++) {
-			Tagger.Rule orig = t.config.getRules().get(i);
-			Tagger.Rule test = testConfig.getRules().get(i);
-			assertEquals("tagName doesn't match", orig.getTagName(), test.getTagName());
-			assertEquals("tagIndex doesn't match", orig.getTagIndex(), test.getTagIndex());
-			assertEquals("value doesn't match", orig.getValue(), test.getValue());
-			assertEquals("patterns doesn't match", orig.getPatterns(), test.getPatterns());			
-		}
-	}
 }

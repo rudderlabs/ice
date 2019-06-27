@@ -160,12 +160,6 @@ class BootStrap {
                 ReservationService.ReservationUtilization reservationUtilization =
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
 
-				// Copy any kubernetes properties
-				for (String name: prop.stringPropertyNames()) {
-					if (name.startsWith("ice.kubernetes.")) {
-						properties.setProperty(name, prop.getProperty(name));
-					}
-				}
 				// Resource Tagging stuff
 				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
 				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");

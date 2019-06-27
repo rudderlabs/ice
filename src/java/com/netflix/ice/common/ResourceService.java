@@ -18,7 +18,7 @@
 package com.netflix.ice.common;
 
 import com.amazonaws.services.ec2.model.Tag;
-import com.netflix.ice.processor.TagConfig;
+import com.netflix.ice.processor.config.TagConfig;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;

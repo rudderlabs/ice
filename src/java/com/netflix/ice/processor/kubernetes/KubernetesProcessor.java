@@ -17,6 +17,7 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReadWriteData;
+import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.kubernetes.KubernetesReport.KubernetesColumn;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ResourceGroup;
@@ -30,25 +31,12 @@ public class KubernetesProcessor {
     
     protected final ProcessorConfig config;
     private final List<KubernetesReport> reports;
-    private final int computeIndex;
-    private final int namespaceIndex;
-    private final String computeValue;
-    protected final String[] tagsToCopy;
-    private final ClusterNameBuilder clusterNameBuilder;
 
 	public KubernetesProcessor(ProcessorConfig config, DateTime start) throws IOException {
 		this.config = config;
 		
-		this.clusterNameBuilder = config.kubernetesClusterNameFormula.isEmpty() ? null : new ClusterNameBuilder(config.kubernetesClusterNameFormula, config.resourceService.getCustomTags());		
-		String[] computeTag = config.kubernetesComputeTag.split(":");
-		this.computeIndex = config.resourceService.getUserTagIndex(computeTag[0]);
-		this.computeValue = computeTag[1];
-		this.namespaceIndex = config.kubernetesNamespaceTag.isEmpty() ? -1 : config.resourceService.getUserTagIndex(config.kubernetesNamespaceTag);
-		this.tagsToCopy = config.kubernetesUserTags;
-		
 		List<KubernetesReport> reports = null;
-		if (this.clusterNameBuilder != null)
-			reports = getReportsToProcess(start);
+		reports = getReportsToProcess(start);
 		this.reports = reports;
 		
 	}	
@@ -65,10 +53,11 @@ public class KubernetesProcessor {
             String kubernetesAccessRoleName = config.kubernetesAccessRoleNames.length > i ? config.kubernetesAccessRoleNames[i] : "";
             String kubernetesAccessExternalId = config.kubernetesAccessExternalIds.length > i ? config.kubernetesAccessExternalIds[i] : "";
             
-            if (!kubernetesS3BucketPrefix.isEmpty() && !kubernetesS3BucketPrefix.endsWith("/"))
-            	kubernetesS3BucketPrefix += "/";
+            String prefix = kubernetesS3BucketPrefix;
+            if (!prefix.isEmpty() && !prefix.endsWith("/"))
+            	prefix += "/";
 
-            String fileKey = kubernetesS3BucketPrefix + reportPrefix + AwsUtils.monthDateFormat.print(start);
+            String fileKey = prefix + reportPrefix + AwsUtils.monthDateFormat.print(start);
 
             logger.info("trying to list objects in kubernetes bucket " + kubernetesS3BucketName +
             		" using assume role \"" + accountId + ":" + kubernetesAccessRoleName + "\", and external id \"" + kubernetesAccessExternalId + "\" with key " + fileKey);
@@ -78,11 +67,19 @@ public class KubernetesProcessor {
             logger.info("found " + objectSummaries.size() + " in billing bucket " + kubernetesS3BucketName);
             
             if (objectSummaries.size() > 0) {
-            	Tagger tagger = new Tagger(this.tagsToCopy, config.kubernetesNamespaceMappingRules, config.resourceService,
-            			kubernetesS3BucketName, kubernetesS3BucketRegion, kubernetesS3BucketPrefix, config.localDir, accountId, kubernetesAccessRoleName, kubernetesAccessExternalId,
-            			config.workS3BucketName, config.workS3BucketPrefix);
-            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId,
-            			kubernetesAccessRoleName, kubernetesAccessExternalId, kubernetesS3BucketPrefix, start, tagsToCopy, tagger));
+            	// Find the matching configuration data for this Kubernetes report
+            	KubernetesConfig kubernetesConfig = null;
+            	for (KubernetesConfig kc: config.kubernetesConfigs) {
+            		logger.info("Bucket " + kubernetesS3BucketName + ", " + kc.getBucket() + ", Prefix " + kubernetesS3BucketPrefix + ", " + kc.getPrefix());
+            		if (kubernetesS3BucketName.equals(kc.getBucket()) && kubernetesS3BucketPrefix.equals(kc.getPrefix())) {
+            			kubernetesConfig = kc;
+            			break;
+            		}
+            	}
+            	if (kubernetesConfig != null) {
+	            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId,
+	            			kubernetesAccessRoleName, kubernetesAccessExternalId, prefix, start, kubernetesConfig, config.resourceService));
+            	}
             }
         }
 
@@ -91,8 +88,10 @@ public class KubernetesProcessor {
 
 	
 	public void downloadAndProcessReports(CostAndUsageData data) throws Exception {
-		if (clusterNameBuilder == null || reports == null || reports.isEmpty())
+		if (reports == null || reports.isEmpty()) {
+			logger.info("No kubernetes reports to process");
 			return;
+		}
 		
 		for (KubernetesReport report: reports) {
 			report.loadReport(config.localDir);
@@ -123,22 +122,20 @@ public class KubernetesProcessor {
 					continue;
 				
 				UserTag[] ut = tg.resourceGroup.getUserTags();
-				
-				if (ut[computeIndex] == null || !ut[computeIndex].name.equals(computeValue)) {
-					continue;
-				}
-				
-				List<String> clusterNames = clusterNameBuilder.getClusterNames(ut);
-				if (clusterNames.size() > 0) {
-					for (KubernetesReport report: reports) {
-						for (String clusterName: clusterNames) {
-							List<String[]> hourClusterData = report.getData(clusterName, i);
-							if (hourClusterData != null) {
-								processHourClusterData(hourCostData, tg, clusterName, report, hourClusterData);
+								
+				for (KubernetesReport report: reports) {
+					if (report.isCompute(ut)) {
+						List<String> clusterNames = report.getClusterNameBuilder().getClusterNames(ut);
+						if (clusterNames.size() > 0) {
+							for (String clusterName: clusterNames) {
+								List<String[]> hourClusterData = report.getData(clusterName, i);
+								if (hourClusterData != null) {
+									processHourClusterData(hourCostData, tg, clusterName, report, hourClusterData);
+								}
 							}
 						}
-					}					
-				}
+					}
+				}					
 			}
 		}
 	}
@@ -148,6 +145,7 @@ public class KubernetesProcessor {
 		if (totalCost == null)
 			return;
 		
+		int namespaceIndex = report.getNamespaceIndex();
 		double unusedCost = totalCost;
 		Tagger tagger = report.getTagger();
 		for (String[] item: hourClusterData) {

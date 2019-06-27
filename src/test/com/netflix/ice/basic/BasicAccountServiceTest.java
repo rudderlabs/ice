@@ -9,7 +9,7 @@ import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.netflix.ice.processor.AccountConfig;
+import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.tag.Account;
 
 public class BasicAccountServiceTest {

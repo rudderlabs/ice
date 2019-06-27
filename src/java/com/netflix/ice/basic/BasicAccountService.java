@@ -19,7 +19,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
-import com.netflix.ice.processor.AccountConfig;
+import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.tag.Account;
 
 import org.slf4j.Logger;

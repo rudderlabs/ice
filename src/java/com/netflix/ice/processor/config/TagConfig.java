@@ -1,4 +1,4 @@
-package com.netflix.ice.processor;
+package com.netflix.ice.processor.config;
 
 import java.util.List;
 import java.util.Map;

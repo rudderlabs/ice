@@ -118,31 +118,6 @@ public class IceOptions {
     public static final String KUBERNETES_ACCESS_EXTERNALID = "ice.kubernetes_accessExternalId";
     
     /**
-     * Formula for generating kubernetes cluster names based on user tags
-     */
-    public static final String KUBERNETES_CLUSTER_NAME_FORMULA = "ice.kubernetes.clusterNameFormula";
-        
-    /**
-     * User tag and value used to indicate a compute instance 
-     */
-    public static final String KUBERNETES_COMPUTE_TAG = "ice.kubernetes.computeTag";
-    
-    /**
-     * User tag where kubernetes namespace values are to be stored
-     */
-    public static final String KUBERNETES_NAMESPACE_TAG = "ice.kubernetes.namespaceTag";
-    
-    /**
-     * User tags included in the kubernetes reports
-     */
-    public static final String KUBERNETES_USER_TAGS = "ice.kubernetes.userTags";
-    
-    /**
-     * User tags included in the kubernetes reports
-     */
-    public static final String KUBERNETES_NAMESPACE_TAGGING_RULE = "ice.kubernetes.namespace.";
-    
-    /**
      * Start date for transition to Cost and Usage Reports in YYYY-MM format.
      */
     public static final String COST_AND_USAGE_START_DATE = "ice.costAndUsageStartDate";

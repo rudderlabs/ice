@@ -9,6 +9,11 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
+import com.netflix.ice.basic.BasicProductService;
+import com.netflix.ice.basic.BasicResourceService;
+import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.kubernetes.KubernetesReport.KubernetesColumn;
 
 public class KubernetesReportTest {
@@ -16,15 +21,18 @@ public class KubernetesReportTest {
 
 	class TestKubernetesReport extends KubernetesReport {
 
-		public TestKubernetesReport(DateTime month, String[] userTags) {
-			super(null, null, null, null, null, null, month, userTags, null);
+		public TestKubernetesReport(DateTime month, KubernetesConfig config, ResourceService rs) {
+			super(null, null, null, null, null, null, month, config, rs);
 		}
 	}
 
 	@Test
 	public void testReadFile() {
-        String[] customTags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		TestKubernetesReport tkr = new TestKubernetesReport(new DateTime("2019-01", DateTimeZone.UTC), customTags);
+        String[] customTags = new String[]{"Tag1", "Tag2", "Tag3"};
+        KubernetesConfig kc = new KubernetesConfig();
+        kc.setTags(Lists.newArrayList(customTags));
+        ResourceService rs = new BasicResourceService(new BasicProductService(null), customTags, new String[]{});
+		TestKubernetesReport tkr = new TestKubernetesReport(new DateTime("2019-01", DateTimeZone.UTC), kc, rs);
 		
 		File file = new File(resourceDir, "kubernetes-2019-01.csv");
 		tkr.readFile(file);

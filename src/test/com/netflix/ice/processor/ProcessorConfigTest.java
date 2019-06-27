@@ -16,6 +16,7 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 
 public class ProcessorConfigTest {

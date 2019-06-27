@@ -30,6 +30,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
+import com.netflix.ice.processor.config.AccountConfig;
+import com.netflix.ice.processor.config.BillingDataConfig;
+import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
@@ -95,11 +98,8 @@ public class ProcessorConfig extends Config {
     	bulk   	
     }
     
-    public final String kubernetesComputeTag;
-    public final String kubernetesNamespaceTag;
-    public final String[] kubernetesUserTags;
-    public final String kubernetesClusterNameFormula;
-    public final Map<String, String> kubernetesNamespaceMappingRules;
+    // Kubernetes configuration data keyed by payer account ID
+    public List<KubernetesConfig> kubernetesConfigs;
     
     private static final String billingDataConfigBasename = "ice_config.";
 
@@ -136,19 +136,7 @@ public class ProcessorConfig extends Config {
         kubernetesAccountIds = properties.getProperty(IceOptions.KUBERNETES_ACCOUNT_ID, "").split(",");
         kubernetesAccessRoleNames = properties.getProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, "").split(",");
         kubernetesAccessExternalIds = properties.getProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, "").split(",");
-        
-        kubernetesClusterNameFormula = properties.getProperty(IceOptions.KUBERNETES_CLUSTER_NAME_FORMULA, "");
-        kubernetesComputeTag = properties.getProperty(IceOptions.KUBERNETES_COMPUTE_TAG, "");
-        kubernetesNamespaceTag = properties.getProperty(IceOptions.KUBERNETES_NAMESPACE_TAG, "");
-        
-        String k8sUserTags = properties.getProperty(IceOptions.KUBERNETES_USER_TAGS, "");
-        kubernetesUserTags = k8sUserTags.isEmpty() ? null : properties.getProperty(IceOptions.KUBERNETES_USER_TAGS, "").split(",");
-        kubernetesNamespaceMappingRules = Maps.newHashMap();
-        for (String name: properties.stringPropertyNames()) {
-        	if (name.startsWith(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE))
-        		kubernetesNamespaceMappingRules.put(name.substring(IceOptions.KUBERNETES_NAMESPACE_TAGGING_RULE.length()), properties.getProperty(name));
-        }
-        
+                
         if (reservationService == null)
         	throw new IllegalArgumentException("reservationService must be specified");
 
@@ -393,6 +381,8 @@ public class ProcessorConfig extends Config {
      * get the billing data configurations specified along side the billing reports and override any account names and default tagging
      */
     protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+    	kubernetesConfigs = Lists.newArrayList();
+    	
         for (int i = 0; i < billingS3BucketNames.length; i++) {
         	String bucket = billingS3BucketNames[i];
         	String region = billingS3BucketRegions[i];
@@ -415,7 +405,10 @@ public class ProcessorConfig extends Config {
         	}
         	
         	resourceService.setTagConfigs(accountId, billingDataConfig.tags);
-        }    	
+        	List<KubernetesConfig> k = billingDataConfig.getKubernetes();
+        	if (k != null)
+        		kubernetesConfigs.addAll(k);
+        }
     }
     
     private BillingDataConfig readBillingDataConfig(String bucket, String region, String prefix, String accountId, String roleName, String externalId) {

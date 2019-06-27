@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -23,10 +24,12 @@ import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.AccountConfig;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.processor.ReservationService;
+import com.netflix.ice.processor.config.AccountConfig;
+import com.netflix.ice.processor.config.BillingDataConfig;
+import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
@@ -42,7 +45,8 @@ public class KubernetesProcessorTest {
 
 	private String[] customTagNames = new String[]{ "Cluster", "Role", "Namespace", "Environment" };
     private ProductService productService = new BasicProductService(null);
-
+    private ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
+    
 	class TestConfig extends ProcessorConfig {
 
 		public TestConfig(Properties properties,
@@ -50,11 +54,45 @@ public class KubernetesProcessorTest {
 				ProductService productService,
 				ReservationService reservationService,
 				ResourceService resourceService,
-				PriceListService priceListService, boolean compress)
+				PriceListService priceListService, boolean compress, String[] formulae)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
 					reservationService, resourceService,
 					priceListService, compress);
+			
+			initKubernetesConfigs(formulae);
+		}
+		
+		private void initKubernetesConfigs(String[] formulae) {
+	        StringBuilder formulaeYaml = new StringBuilder(100);
+	        for (String f: formulae) {
+	        	if (formulaeYaml.length() > 0)
+	        		formulaeYaml.append(",");
+	        	
+	        	formulaeYaml.append("'" + f + "'");	        	
+	        }
+			String yaml = 
+					"accounts:\n" + 
+					"  - id: 123456789012\n" + 
+					"    name: Account1\n" + 
+					"kubernetes:\n" + 
+					"  - bucket: k8s-report-bucket\n" + 
+					"    prefix: hourly/kubernetes\n" + 
+					"    clusterNameFormulae: [ " + formulaeYaml.toString() + " ]\n" + 
+					"    computeTag: Role\n" + 
+					"    computeValue: compute\n" + 
+					"    namespaceTag: Namespace\n" + 
+					"    tags: [ UserTag1, UserTag2 ]\n" + 
+					"";
+			try {
+				BillingDataConfig b = new BillingDataConfig(yaml);
+		    	kubernetesConfigs = Lists.newArrayList();
+	        	List<KubernetesConfig> k = b.getKubernetes();
+	        	if (k != null)
+	        		kubernetesConfigs.addAll(k);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}			
 		}
 		
 		@Override
@@ -67,7 +105,7 @@ public class KubernetesProcessorTest {
 		}
 		
 		@Override
-	    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
 		}
 	}
 	
@@ -80,22 +118,22 @@ public class KubernetesProcessorTest {
 		@Override
 		protected List<KubernetesReport> getReportsToProcess(DateTime start) throws IOException {
 	        List<KubernetesReport> filesToProcess = Lists.newArrayList();
-        	filesToProcess.add(new TestKubernetesReport(tagsToCopy, null));
+        	filesToProcess.add(new TestKubernetesReport(config.kubernetesConfigs.get(0)));
 			return filesToProcess;
 		}
 	}
 	
 	class TestKubernetesReport extends KubernetesReport {
 
-		public TestKubernetesReport(String[] userTags, Tagger tagger) {
-			super(null, null, null, null, null, null, new DateTime("2019-01", DateTimeZone.UTC), userTags, tagger);
+		public TestKubernetesReport(KubernetesConfig config) {
+			super(null, null, null, null, null, null, new DateTime("2019-01", DateTimeZone.UTC), config, resourceService);
 
 			File file = new File(resourceDir, "kubernetes-2019-01.csv");
 			readFile(file);			
 		}
 	}
 	
-	private KubernetesProcessor newKubernetesProcessor(String formulae) throws Exception {
+	private KubernetesProcessor newKubernetesProcessor(String[] formulae) throws Exception {
 		Properties props = new Properties();
 		
         @SuppressWarnings("deprecation")
@@ -103,18 +141,11 @@ public class KubernetesProcessorTest {
         
         ReservationService reservationService = new BasicReservationService(null, null, false);
         
-        ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
-        String kubernetesUserTags = "UserTag1,UserTag2";
-        
         props.setProperty(IceOptions.START_MONTH, "2019-01");
         props.setProperty(IceOptions.WORK_S3_BUCKET_NAME, "foo");
         props.setProperty(IceOptions.WORK_S3_BUCKET_REGION, "us-east-1");
         props.setProperty(IceOptions.BILLING_S3_BUCKET_NAME, "bar");
         props.setProperty(IceOptions.BILLING_S3_BUCKET_REGION, "us-east-1");
-        props.setProperty(IceOptions.KUBERNETES_CLUSTER_NAME_FORMULA, formulae);
-        props.setProperty(IceOptions.KUBERNETES_COMPUTE_TAG, "Role:compute");
-        props.setProperty(IceOptions.KUBERNETES_NAMESPACE_TAG, "Namespace");
-        props.setProperty(IceOptions.KUBERNETES_USER_TAGS, kubernetesUserTags);
         
 		ProcessorConfig config = new TestConfig(
 				props,
@@ -123,7 +154,7 @@ public class KubernetesProcessorTest {
 	            reservationService,
 	            resourceService,
 	            null,
-	            true);
+	            true, formulae);
 		
 		return new TestKubernetesProcessor(config, null);
 	}
@@ -144,8 +175,11 @@ public class KubernetesProcessorTest {
 	
 	@Test
 	public void testProcessHourClusterData() throws Exception {
-		KubernetesProcessor kp = newKubernetesProcessor("Cluster");		
-		TestKubernetesReport tkr = new TestKubernetesReport(new String[]{}, null);
+		KubernetesProcessor kp = newKubernetesProcessor(new String[]{"Cluster"});
+		KubernetesConfig kc = new KubernetesConfig();
+		kc.setTags(new ArrayList<String>());
+		kc.setNamespaceTag("Namespace");
+		TestKubernetesReport tkr = new TestKubernetesReport(kc);
 		
 		// Test the data for cluster "dev-usw2a"
 		String clusterName = "dev-usw2a";
@@ -191,7 +225,7 @@ public class KubernetesProcessorTest {
 			"Environment.toLower()+Cluster.regex(\"k8s(-.*)\")", // 3. Get the environment string and join with suffix of cluster
 			"Cluster", 											// 4. repeat of formula 1 to verify we don't process cluster twice
 		};
-		KubernetesProcessor kp = newKubernetesProcessor(String.join(",", formulae));
+		KubernetesProcessor kp = newKubernetesProcessor(formulae);
 		TagGroup[] tgs = new TagGroup[clusterTags.length];
 		ReadWriteData costData = new ReadWriteData();
 		Map<TagGroup, Double> hourCostData = costData.getData(testDataHour);

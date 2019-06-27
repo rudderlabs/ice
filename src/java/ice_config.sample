@@ -1,0 +1,58 @@
+#
+# Example YAML config file for account, tag, and kubernetes settings
+#
+accounts:
+  - name: account1
+    id: 123456789011
+    riProducts: [ec2, rds]
+    role: ice
+    externalId:
+    # Default tags to apply to resources used by the account if not already set
+    tags:
+        TagKey: DefaultTagValue
+
+#
+# tag key/value consolidation
+# case differences are merged automatically, so no need to include aliases that differ only by case.
+#
+tags:
+  - name: Environment
+    aliases: [env]
+    values:
+      Prod: [production, prd]
+
+#
+#
+# Kubernetes - list of reports
+#
+# enable break out of compute costs by tag.
+#
+kubernetes:
+  - bucket: k8s-report-bucket
+    prefix: hourly/kubernetes
+    
+	# Kubernetes reports contain line items identified first by cluster name.
+	# Cost entries in the billing data can be associated to a cluster by applying a
+	# set of rules to the tag values on the billing entry in order to generate a cluster name.
+	# A set of rules is combined into a formula. Each rule is separated by '+'
+	# A rule can be one of:
+	#   literal string enclosed by double quotes
+	#   tagname with zero or more function calls. e.g. TagName.func().func()...
+	#       functions can be one of toLower(), toUpper(), regex()
+    clusterNameFormulae: [ 'Cluster.toLower()', 'Cluster.regex("k8s-(.*)")' ]
+    
+    # user tag and value assigned to indicate cluster compute instance
+    computeTag: Role
+    computeValue: compute
+    
+    # user tag to assign namespace name
+    namespaceTag: K8sNamespace
+    
+    namespaceMappings:
+      - tag: Environment
+        value: Prod
+        patterns: [ ".*prod.*", ".*production.*", ".*prd.*" ]
+        
+    # assign the following kubernetes labels to the matching user tags
+    tags: [ userTag1, userTag2 ]
+
