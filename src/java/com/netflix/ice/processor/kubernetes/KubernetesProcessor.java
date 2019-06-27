@@ -47,6 +47,9 @@ public class KubernetesProcessor {
         // list the kubernetes report files in the kubernetes buckets
         for (int i = 0; i < config.kubernetesS3BucketNames.length; i++) {
             String kubernetesS3BucketName = config.kubernetesS3BucketNames[i];
+            if (kubernetesS3BucketName.isEmpty())
+            	continue;
+            
             String kubernetesS3BucketRegion = config.kubernetesS3BucketRegions.length > i ? config.kubernetesS3BucketRegions[i] : "";
             String kubernetesS3BucketPrefix = config.kubernetesS3BucketPrefixes.length > i ? config.kubernetesS3BucketPrefixes[i] : "";
             String accountId = config.kubernetesAccountIds.length > i ? config.kubernetesAccountIds[i] : "";
