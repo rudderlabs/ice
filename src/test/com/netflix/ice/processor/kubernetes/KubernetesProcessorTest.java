@@ -72,9 +72,6 @@ public class KubernetesProcessorTest {
 	        	formulaeYaml.append("'" + f + "'");	        	
 	        }
 			String yaml = 
-					"accounts:\n" + 
-					"  - id: 123456789012\n" + 
-					"    name: Account1\n" + 
 					"kubernetes:\n" + 
 					"  - bucket: k8s-report-bucket\n" + 
 					"    prefix: hourly/kubernetes\n" + 
@@ -100,12 +97,14 @@ public class KubernetesProcessorTest {
 		}
 		
 		@Override
-	    protected Map<String, String> getDefaultAccountNames() {
-			return null;
+	    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
+			Map<String, AccountConfig> accounts = Maps.newHashMap();
+			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null));
+			return accounts;
 		}
 		
 		@Override
-		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
 		}
 	}
 	

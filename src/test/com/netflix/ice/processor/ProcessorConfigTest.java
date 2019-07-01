@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
+import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.IceOptions;
@@ -40,12 +41,13 @@ public class ProcessorConfigTest {
 		}
 		
 		@Override
-	    protected Map<String, String> getDefaultAccountNames() {
-			return null;
+	    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
+			Map<String, AccountConfig> accounts = Maps.newHashMap();
+			return accounts;
 		}
 		
 		@Override
-		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
 		}
 		
 	}

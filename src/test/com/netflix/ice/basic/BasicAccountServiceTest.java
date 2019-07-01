@@ -18,8 +18,8 @@ public class BasicAccountServiceTest {
 	public void testAccountConfigMapConstructor() {
 		Map<String, AccountConfig> configs = Maps.newHashMap();
 		
-		configs.put("123456789012", new AccountConfig("123456789012", "account1", "account 1", null, Lists.newArrayList("ec2"), "role", "12345"));
-		configs.put("234567890123", new AccountConfig("234567890123", "account2", "account 2", null, null, null, null));
+		configs.put("123456789012", new AccountConfig("123456789012", "account1", "account 1", Lists.newArrayList("ec2"), "role", "12345"));
+		configs.put("234567890123", new AccountConfig("234567890123", "account2", "account 2", null, null, null));
 		BasicAccountService bas = new BasicAccountService(configs);
 		
 		assertEquals("Wrong number of accounts", 2, bas.getAccounts().size());

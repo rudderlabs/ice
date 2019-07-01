@@ -176,12 +176,12 @@ public class BillingFileProcessorTest {
 				
 			}
 			@Override
-		    protected Map<String, String> getDefaultAccountNames() {
+		    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
 				return Maps.newHashMap();
 			}
 			
 			@Override
-		    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+		    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
 			
 			}
 		}

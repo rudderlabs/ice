@@ -50,7 +50,6 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
@@ -144,11 +143,14 @@ public class ProcessorConfig extends Config {
         this.priceListService = priceListService;
         this.resourceService = resourceService;
 
-    	Map<String, String> defaultNames = getDefaultAccountNames();
-        Map<String, AccountConfig> accountConfigs = getAccountConfigs(properties, defaultNames);
-        processBillingDataConfig(accountConfigs, defaultNames);
+    	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
+        Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);
+        processBillingDataConfig(accountConfigs);
+        for (AccountConfig ac: accountConfigs.values())
+        	logger.info("  Account " + ac.toString());
+        	
         this.accountService = new BasicAccountService(accountConfigs);
-        
+
         if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
         this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
@@ -284,9 +286,11 @@ public class ProcessorConfig extends Config {
     /**
      * get all the accounts from the organizations service so we can add the names if they're not specified in the ice.properties file.
      */
-    protected Map<String, String> getDefaultAccountNames() {
-    	Map<String, String> result = Maps.newHashMap();
+    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
+    	Map<String, AccountConfig> result = Maps.newHashMap();
     	Set<String> done = Sets.newHashSet();
+    	
+    	List<String> customTags = Lists.newArrayList(resourceService.getCustomTags());
     	
         for (int i = 0; i < billingS3BucketNames.length; i++) {
             String accountId = billingAccountIds[i];
@@ -298,11 +302,16 @@ public class ProcessorConfig extends Config {
             	continue;            
             done.add(accountId);
             
-            logger.info("Get default account names for organization " + accountId +
+            logger.info("Get accounts for organization " + accountId +
             		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
             List<Account> accounts = AwsUtils.listAccounts(accountId, assumeRole, externalId);
-            for (Account a: accounts)
-            	result.put(a.getId(), a.getName());
+            for (Account a: accounts) {
+            	// Get tags for the account
+            	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), accountId, assumeRole, externalId);
+            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), tags, customTags);
+            	result.put(ac.getId(), ac);
+            	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
+            }
         }
     	return result;
     }
@@ -310,15 +319,9 @@ public class ProcessorConfig extends Config {
     /*
      * Pull account configs from the properties
      */
-    private Map<String, AccountConfig> getAccountConfigs(Properties properties, Map<String, String> defaultNames) {
-    	Map<String, AccountConfig> accountConfigs = Maps.newHashMap();
-    	
-        if (defaultNames != null) {
-	        // Start with all the default names in the map
-	        for (Entry<String, String> entry: defaultNames.entrySet()) {
-	            accountConfigs.put(entry.getKey(), new AccountConfig(entry.getKey(), entry.getValue(), entry.getValue(), null, null, null, null));
-	        }
-        }
+    private Map<String, AccountConfig> overlayAccountConfigsFromProperties(Properties properties, Map<String, AccountConfig> orgAccounts) {
+    	Map<String, AccountConfig> accountConfigs = Maps.newHashMap();    	
+        accountConfigs.putAll(orgAccounts);
     	
         /* 
          * Overwrite with any definitions in the properties. The following property key values are used:
@@ -369,7 +372,9 @@ public class ProcessorConfig extends Config {
                 	externalId = properties.getProperty(ownerAccount + ".externalId");
                     riProducts = Lists.newArrayList(products);
                 }
-                accountConfigs.put(id, new AccountConfig(id, accountName, defaultNames.get(id), null, riProducts, role, externalId));
+                String awsName = orgAccounts.containsKey(id) ? orgAccounts.get(id).getAwsName() : null;
+                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, riProducts, role, externalId));
+    			logger.warn("Using ice.properties config for account " + id + ": " + accountName);
             }
         }
         return accountConfigs;
@@ -380,7 +385,7 @@ public class ProcessorConfig extends Config {
     /**
      * get the billing data configurations specified along side the billing reports and override any account names and default tagging
      */
-    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs, Map<String, String> defaultNames) {
+    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
     	kubernetesConfigs = Lists.newArrayList();
     	
         for (int i = 0; i < billingS3BucketNames.length; i++) {
@@ -394,13 +399,16 @@ public class ProcessorConfig extends Config {
         	BillingDataConfig billingDataConfig = readBillingDataConfig(bucket, region, prefix, accountId, roleName, externalId);
         	if (billingDataConfig == null)
         		continue;
-        	
+           	
         	for (AccountConfig account: billingDataConfig.accounts) {
         		if (account.id == null || account.id.isEmpty())
         			continue;
-        		account.awsName = defaultNames.get(account.id);
-        		accountConfigs.put(account.id, account);
-    			
+        		
+        		if (accountConfigs.containsKey(account.id)) {
+        			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
+        			continue;
+        		}
+        		accountConfigs.put(account.id, account);    			
             	resourceService.putDefaultTags(account.id, account.tags);        			
         	}
         	

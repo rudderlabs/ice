@@ -25,6 +25,8 @@ import com.amazonaws.services.organizations.AWSOrganizationsClientBuilder;
 import com.amazonaws.services.organizations.model.Account;
 import com.amazonaws.services.organizations.model.ListAccountsRequest;
 import com.amazonaws.services.organizations.model.ListAccountsResult;
+import com.amazonaws.services.organizations.model.ListTagsForResourceRequest;
+import com.amazonaws.services.organizations.model.ListTagsForResourceResult;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
@@ -140,9 +142,10 @@ public class AwsUtils {
     }
     
     /**
-     * List all object summary with given prefix in the s3 bucket.
-     * @param bucket
-     * @param prefix
+     * List all accounts in the organization.
+     * @param accountId
+     * @param assumeRole
+     * @param externalId
      * @return
      */
     public static List<Account> listAccounts(String accountId, String assumeRole, String externalId) {
@@ -168,6 +171,42 @@ public class AwsUtils {
             } while (page.getNextToken() != null);
             
         	return results;
+        }
+        finally {
+        	if (organizations != null)
+        		organizations.shutdown();
+        }
+    }
+    
+
+    /**
+     * List all tags for the account.
+     * @param accountId
+     * @param assumeRole
+     * @param externalId
+     * @return
+     */
+    public static List<com.amazonaws.services.organizations.model.Tag> listAccountTags(String accountId, String payerAccountId, String assumeRole, String externalId) {
+    	AWSOrganizations organizations = null;
+
+        try {
+            if (!StringUtils.isEmpty(payerAccountId) && !StringUtils.isEmpty(assumeRole)) {
+            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            }
+            else {
+            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            }
+            ListTagsForResourceRequest request = new ListTagsForResourceRequest().withResourceId(accountId);
+            List<com.amazonaws.services.organizations.model.Tag> results = Lists.newLinkedList();
+            ListTagsForResourceResult page = null;
+            do {
+                if (page != null)
+                    request.setNextToken(page.getNextToken());
+                page = organizations.listTagsForResource(request);
+                results.addAll(page.getTags());
+
+            } while (page.getNextToken() != null);
+        	return results;           
         }
         finally {
         	if (organizations != null)
