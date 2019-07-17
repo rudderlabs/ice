@@ -82,6 +82,7 @@ public class BasicResourceServiceTest {
 		
 		Map<String, List<String>> tagValues = Maps.newHashMap();
 		tagValues.put("Prod", Lists.newArrayList("production", "prd"));
+		tagValues.put("QA", Lists.newArrayList("test", "quality assurance"));
 		TagConfig tc = new TagConfig("Environment", null, tagValues);
 		
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
@@ -128,6 +129,16 @@ public class BasicResourceServiceTest {
 		item[item.length - 1] = "prod";
 		tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
 		assertEquals("Incorrect tag value alias", "Prod", tagValue);
+		
+		// Check for tag with leading/trailing white space
+		item[item.length - 1] = " pr od ";
+		tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
+		assertEquals("Incorrect tag value alias when leading/trailing white space", "Prod", tagValue);
+		
+		// Check for tag with embedded white space in alias config
+		item[item.length - 1] = "qualityassurance";
+		tagValue = rs.getUserTagValue(li, rs.getUserTags().get(0));
+		assertEquals("Incorrect tag value alias when config had a space in the value", "QA", tagValue);
 	}
 	
 	@Test

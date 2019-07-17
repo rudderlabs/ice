@@ -102,7 +102,7 @@ public class BasicResourceService extends ResourceService {
     	}
     	this.tagConfigs.put(payerAccountId, configs);
     	
-    	// Created inverted indexes for each of the tag value alias sets
+    	// Create inverted indexes for each of the tag value alias sets
 		Map<String, Map<String, String>> indecies = Maps.newHashMap();
 		for (TagConfig config: tagConfigs) {
 			if (config.values == null || config.values.isEmpty())
@@ -111,10 +111,11 @@ public class BasicResourceService extends ResourceService {
 			Map<String, String> invertedIndex = Maps.newConcurrentMap();
 			for (Entry<String, List<String>> entry: config.values.entrySet()) {			
 				for (String val: entry.getValue()) {
-					invertedIndex.put(val.toLowerCase(), entry.getKey());
+			    	// key is all lower case and strip out all whitespace
+					invertedIndex.put(val.toLowerCase().replace(" ", ""), entry.getKey());
 				}
-				// Handle upper/lower case differences of key
-				invertedIndex.put(entry.getKey().toLowerCase(), entry.getKey());
+				// Handle upper/lower case differences of key and remove any whitespace
+				invertedIndex.put(entry.getKey().toLowerCase().replace(" ", ""), entry.getKey());
 			}
 			indecies.put(config.name, invertedIndex);
 		}
@@ -199,7 +200,9 @@ public class BasicResourceService extends ResourceService {
     	// Grab the first non-empty value
     	for (int index: tagLineItemIndecies.get(tag)) {
     		if (lineItem.getResourceTagsSize() > index) {
-    			String val = lineItem.getResourceTag(index);
+    	    	// cut all white space from tag value
+    			String val = lineItem.getResourceTag(index).replace(" ", "");
+    			
     			if (!StringUtils.isEmpty(val)) {
     				if (invertedIndex != null && invertedIndex.containsKey(val.toLowerCase())) {
 	    				val = invertedIndex.get(val.toLowerCase());
