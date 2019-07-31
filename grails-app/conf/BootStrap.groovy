@@ -1,3 +1,9 @@
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.StopInstancesRequest;
+import com.netflix.ice.common.AwsUtils;
+
 /*
  * Copyright 2013 Netflix, Inc.
  *
@@ -62,6 +68,9 @@ class BootStrap {
         }
 
         InputStream is = null;
+		boolean processOnce = false;
+        AWSCredentialsProvider credentialsProvider = null;
+		
         try {
 
             logger.info('Starting ice...');
@@ -71,8 +80,6 @@ class BootStrap {
             logger.info('Reading tag.properties...');
 			Properties tagProp = getProperties("tag.propertiesfile", "tag.properties");
 			
-            AWSCredentialsProvider credentialsProvider;
-
             if (StringUtils.isEmpty(System.getProperty("ice.s3AccessKeyId")) || StringUtils.isEmpty(System.getProperty("ice.s3SecretKey")))
                 credentialsProvider = new InstanceProfileCredentialsProvider();
             else
@@ -128,6 +135,7 @@ class BootStrap {
 					if ("true".equals(prop.getProperty(IceOptions.PROCESS_ONCE))) {
 						properties.setProperty(IceOptions.PROCESSOR_REGION, getInstanceRegion());
 						properties.setProperty(IceOptions.PROCESSOR_INSTANCE_ID, getInstanceId());
+						processOnce = true;
 					}
                 }
 
@@ -221,6 +229,10 @@ class BootStrap {
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("Startup failed", e);
+			if (processOnce && credentialsProvider != null) {
+				// Stop this EC2 instance
+				stopInstance(credentialsProvider);
+			}
             System.exit(0);
         }
     }
@@ -267,6 +279,33 @@ class BootStrap {
 		return resp;
 	}
 	
+	private void stopInstance(AWSCredentialsProvider credentialsProvider) {
+		ClientConfiguration clientConfig = new ClientConfiguration();
+		String proxyHost = System.getProperty("https.proxyHost");
+		String proxyPort = System.getProperty("https.proxyPort");
+		if (proxyHost != null && proxyPort != null) {
+			clientConfig.setProxyHost(proxyHost);
+			clientConfig.setProxyPort(Integer.parseInt(proxyPort));
+		}
+
+		AmazonEC2 ec2 = AmazonEC2ClientBuilder.standard()
+						.withRegion(getInstanceRegion())
+						.withCredentials(credentialsProvider)
+						.withClientConfiguration(clientConfig)
+						.build();
+		
+		try {
+			String[] instanceIds = new String[1];
+			instanceIds[0] = getInstanceId();
+			StopInstancesRequest request = new StopInstancesRequest().withInstanceIds(instanceIds);
+			ec2.stopInstances(request);
+		}
+		catch (Exception e) {
+			logger.error("error in stopInstances", e);
+		}
+		ec2.shutdown();
+	}
+	
 	private Properties getProperties(String key, String defaultValue) {
 		Properties prop = new Properties();
         InputStream is = null;
@@ -278,10 +317,6 @@ class BootStrap {
 				is = new FileInputStream(new File(System.getenv().get("ICE_HOME"), System.getProperty(key, defaultValue)));
 			}
 			prop.load(is);
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("Startup failed", e);
-            System.exit(0);
         }
         finally {
             if (is != null)

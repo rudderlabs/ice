@@ -20,6 +20,9 @@ package com.netflix.ice.common;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition;
+import com.amazonaws.retry.PredefinedRetryPolicies;
+import com.amazonaws.retry.RetryPolicy;
 import com.amazonaws.services.organizations.AWSOrganizations;
 import com.amazonaws.services.organizations.AWSOrganizationsClientBuilder;
 import com.amazonaws.services.organizations.model.Account;
@@ -39,6 +42,8 @@ import com.amazonaws.services.simpledb.AmazonSimpleDBClient;
 import com.amazonaws.services.simpledb.AmazonSimpleDBClientBuilder;
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClient;
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder;
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ClientConfiguration;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -77,6 +82,7 @@ public class AwsUtils {
     private static AWSSecurityTokenService securityClient;
     public static AWSCredentialsProvider awsCredentialsProvider;
     public static ClientConfiguration clientConfig;
+    public static ClientConfiguration clientConfigOrganizationsTags;
 
     /**
      * Get assumes IAM credentials.
@@ -113,15 +119,39 @@ public class AwsUtils {
     public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion) {
         awsCredentialsProvider = credentialsProvider;
         clientConfig = new ClientConfiguration();
+        clientConfigOrganizationsTags = new ClientConfiguration();
         String proxyHost = System.getProperty("https.proxyHost");
         String proxyPort = System.getProperty("https.proxyPort");
         if(proxyHost != null && proxyPort != null) {
             clientConfig.setProxyHost(proxyHost);
             clientConfig.setProxyPort(Integer.parseInt(proxyPort));
+            clientConfigOrganizationsTags.setProxyHost(proxyHost);
+            clientConfigOrganizationsTags.setProxyPort(Integer.parseInt(proxyPort));
         }
         AwsUtils.workS3BucketRegion = workS3BucketRegion;
         s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
         securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+
+    	class OrgRetryCondition extends SDKDefaultRetryCondition {
+    		@Override
+    		public boolean shouldRetry(AmazonWebServiceRequest originalRequest,
+                    					AmazonClientException exception,
+                    					int retriesAttempted) {
+    			boolean ret = super.shouldRetry(originalRequest, exception, retriesAttempted);
+    			//logger.info("retry: " + retriesAttempted + ", " + ret + ", " + exception.getMessage());
+    			return ret;
+    		}
+    	}
+    	
+    	// The Organizations API listTagsForResource() returns a lot of the following error when called from an EC2 instance:
+    	//   AWS Organizations can't complete your request because another request is already in progress. Try again later.
+    	//    (Service: AWSOrganizations; Status Code: 400; Error Code: TooManyRequestsException
+    	// The DynamoDB retry policy with 10 retries seems to ride through the worst delays. Max retries I saw were 6 or 7
+    	clientConfigOrganizationsTags.setMaxErrorRetry(PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY);
+    	clientConfigOrganizationsTags.setRetryPolicy(
+    			new RetryPolicy(new OrgRetryCondition(),
+    				PredefinedRetryPolicies.DYNAMODB_DEFAULT_BACKOFF_STRATEGY,
+    				PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY, false));
     }
 
     public static AmazonS3Client getAmazonS3Client() {
@@ -153,10 +183,18 @@ public class AwsUtils {
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+            						.withClientConfiguration(clientConfig)
+            						.build();
             }
             else {
-            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(awsCredentialsProvider)
+            						.withClientConfiguration(clientConfig)
+            						.build();
             }
             
             ListAccountsRequest request = new ListAccountsRequest();
@@ -188,14 +226,23 @@ public class AwsUtils {
      */
     public static List<com.amazonaws.services.organizations.model.Tag> listAccountTags(String accountId, String payerAccountId, String assumeRole, String externalId) {
     	AWSOrganizations organizations = null;
-
+    	
         try {
             if (!StringUtils.isEmpty(payerAccountId) && !StringUtils.isEmpty(assumeRole)) {
-            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId))
+            						.withClientConfiguration(clientConfigOrganizationsTags)
+            						.build();
             }
             else {
-            	organizations = AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(awsCredentialsProvider)
+            						.withClientConfiguration(clientConfigOrganizationsTags)
+            						.build();
             }
+                        
             ListTagsForResourceRequest request = new ListTagsForResourceRequest().withResourceId(accountId);
             List<com.amazonaws.services.organizations.model.Tag> results = Lists.newLinkedList();
             ListTagsForResourceResult page = null;
