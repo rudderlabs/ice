@@ -44,6 +44,7 @@ public class Region extends Tag {
     public static final Region AP_SOUTHEAST_2 = new Region("ap-southeast-2", "APS2", "AU", "Asia Pacific (Sydney)");
     public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3", "IN", "Asia Pacific (Mumbai)");
     public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1", "SA", "South America (Sao Paulo)");
+    public static final Region ME_SOUTH_1 = new Region("me-south-1", "MES1", "ME", "Middle East (Bahrain)");
 
     private static ConcurrentMap<String, Region> regionsByName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Region> regionsByShortName = Maps.newConcurrentMap();
@@ -67,6 +68,7 @@ public class Region extends Tag {
         regionsByShortName.put(AP_SOUTHEAST_2.shortName, AP_SOUTHEAST_2);
         regionsByShortName.put(AP_SOUTH_1.shortName, AP_SOUTH_1);
         regionsByShortName.put(SA_EAST_1.shortName, SA_EAST_1);
+        regionsByShortName.put(ME_SOUTH_1.shortName, ME_SOUTH_1);
 
         // Only populate unique values
         regionsByShortName.put(US_EAST_1.cloudFrontName, US_EAST_1);			/* US */
@@ -77,6 +79,7 @@ public class Region extends Tag {
         regionsByShortName.put(AP_SOUTHEAST_2.cloudFrontName, AP_SOUTHEAST_2);	/* AU */
         regionsByShortName.put(AP_SOUTH_1.cloudFrontName, AP_SOUTH_1);			/* IN */
         regionsByShortName.put(SA_EAST_1.cloudFrontName, SA_EAST_1);			/* SA */
+        regionsByShortName.put(ME_SOUTH_1.cloudFrontName, ME_SOUTH_1);			/* ME */
 
         regionsByName.put(US_EAST_1.name, US_EAST_1);
         regionsByName.put(US_EAST_2.name, US_EAST_2);
@@ -96,6 +99,7 @@ public class Region extends Tag {
         regionsByName.put(AP_SOUTHEAST_2.name, AP_SOUTHEAST_2);
         regionsByName.put(AP_SOUTH_1.name, AP_SOUTH_1);
         regionsByName.put(SA_EAST_1.name, SA_EAST_1);
+        regionsByName.put(ME_SOUTH_1.name, ME_SOUTH_1);
     }
 
     public final String shortName;

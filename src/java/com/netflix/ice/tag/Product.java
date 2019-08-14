@@ -56,7 +56,10 @@ public class Product extends Tag {
 	public static final String cloudhsm     = "CloudHSM";
     public static final String cloudWatch   = "CloudWatch";
 	public static final String dataTransfer = "Data Transfer";
+	public static final String dynamoDB	    = "DynamoDB";
 	public static final String ec2          = "Elastic Compute Cloud";
+	public static final String elastiCache  = "ElastiCache";
+	public static final String elasticsearch  = "Elasticsearch Service";
 	public static final String rds          = "RDS Service";
 	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
 	public static final String redshift     = "Redshift";
@@ -225,6 +228,18 @@ public class Product extends Tag {
     
     public boolean isRdsInstance() {
     	return name.equals(getOverride(rdsInstance));
+    }
+    
+    public boolean isDynamoDB() {
+    	return name.equals(getOverride(dynamoDB));
+    }
+    
+    public boolean isElastiCache() {
+    	return name.equals(getOverride(elastiCache));
+    }
+    
+    public boolean isElasticsearch() {
+    	return name.equals(getOverride(elasticsearch));
     }
     
     public boolean hasResourceTags() {

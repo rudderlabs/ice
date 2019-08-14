@@ -176,7 +176,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             addValue(costs, tagGroup, costValue);
             
             // Additional entries for reservations
-            if (reservationUsage) {
+            if (reservationUsage && !(tagGroup.product.isDynamoDB() || tagGroup.product.isElastiCache() || tagGroup.product.isElasticsearch())) {
                 // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
             	String amort = lineItem.getAmortizedUpfrontCostForUsage();
             	double amortCost = 0.0;
@@ -213,7 +213,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	                addValue(costsOfResource, resourceTagGroup, costValue);
 	                
 	                // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
-	                if (reservationUsage) {
+	                if (reservationUsage && !(tagGroup.product.isDynamoDB() || tagGroup.product.isElastiCache() || tagGroup.product.isElasticsearch())) {
 	                	String amort = lineItem.getAmortizedUpfrontCostForUsage();
 	                	if (!amort.isEmpty()) {
 	                		double amortCost = Double.parseDouble(amort);

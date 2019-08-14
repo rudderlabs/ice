@@ -21,6 +21,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.AmazonEC2Exception;
+import com.amazonaws.services.ec2.model.DescribeRegionsResult;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsRequest;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesModificationsResult;
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
@@ -329,11 +330,15 @@ public class BasicReservationService extends Poller implements ReservationServic
                     credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
                 }
                 
-                for (Region region: Region.getAllRegions()) {
 
+          	    AmazonEC2 ec2Client = ec2Builder.withRegion(Region.US_EAST_1.name).withCredentials(credentialsProvider).build();
+          	    DescribeRegionsResult regionResult = ec2Client.describeRegions();
+          	    ec2Client.shutdown();
             	   
-                   if (products.contains(ec2)) {
-                	   AmazonEC2 ec2 = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                if (products.contains(ec2)) {
+                   for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+                	   Region region = Region.getRegionByName(r.getRegionName());
+                	   ec2Client = ec2Builder.withRegion(region.name).withCredentials(credentialsProvider).build();
                 	   Map<ReservationKey, CanonicalReservedInstances> ec2Reservations = Maps.newTreeMap();
                 	   
                 	   // Start by getting any reservation modifications so that we can later use them to track down
@@ -341,11 +346,11 @@ public class BasicReservationService extends Poller implements ReservationServic
                 	   // the fixed price to the modified reservation, but we need that to compute amortization.
                 	   List<ReservedInstancesModification> modifications = Lists.newArrayList();
                 	   try {
-                		   DescribeReservedInstancesModificationsResult modResult = ec2.describeReservedInstancesModifications();
+                		   DescribeReservedInstancesModificationsResult modResult = ec2Client.describeReservedInstancesModifications();
                 		   
                 		   modifications.addAll(modResult.getReservedInstancesModifications());
                 		   while (modResult.getNextToken() != null) {
-                			   modResult = ec2.describeReservedInstancesModifications(new DescribeReservedInstancesModificationsRequest().withNextToken(modResult.getNextToken()));
+                			   modResult = ec2Client.describeReservedInstancesModifications(new DescribeReservedInstancesModificationsRequest().withNextToken(modResult.getNextToken()));
                     		   modifications.addAll(modResult.getReservedInstancesModifications());
                 		   }
                 	   }
@@ -358,7 +363,7 @@ public class BasicReservationService extends Poller implements ReservationServic
                 	   Ec2Mods mods = new Ec2Mods(modifications);
                        try {
                     	   
-                           DescribeReservedInstancesResult result = ec2.describeReservedInstances();
+                           DescribeReservedInstancesResult result = ec2Client.describeReservedInstances();
                            for (ReservedInstances reservation: result.getReservedInstances()) {
                         	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
                                ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedInstancesId());
@@ -375,16 +380,19 @@ public class BasicReservationService extends Poller implements ReservationServic
                        catch (Exception e) {
                            logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
                        }
-                       ec2.shutdown();
+                       ec2Client.shutdown();
                        handleEC2Modifications(ec2Reservations, mods, region, config.priceListService);
                        reservations.putAll(ec2Reservations);
                    }
+               }
                	
    
-                   if (products.contains(rds)) {
-                       AmazonRDS rds = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+               if (products.contains(rds)) {
+                   for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+                	   Region region = Region.getRegionByName(r.getRegionName());
+                       AmazonRDS rdsClient = rdsBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
                        try {
-                           DescribeReservedDBInstancesResult result = rds.describeReservedDBInstances();
+                           DescribeReservedDBInstancesResult result = rdsClient.describeReservedDBInstances();
                            for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
                         	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedDBInstanceId());
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
@@ -397,14 +405,17 @@ public class BasicReservationService extends Poller implements ReservationServic
                        catch (Exception e) {
                            logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
                        }
-                       rds.shutdown();
+                       rdsClient.shutdown();
                    }
+               }
             	   
-                   if (products.contains(redshift)) {
-                       AmazonRedshift redshift = redshiftBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+               if (products.contains(redshift)) {
+                   for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+                	   Region region = Region.getRegionByName(r.getRegionName());
+                       AmazonRedshift redshiftClient = redshiftBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
                        	
 	                   try {
-	                        DescribeReservedNodesResult result = redshift.describeReservedNodes();
+	                        DescribeReservedNodesResult result = redshiftClient.describeReservedNodes();
 	                        for (ReservedNode reservation: result.getReservedNodes()) {
 	                            ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedNodeId());
 	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
@@ -417,7 +428,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	                   catch (Exception e) {
 	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
 	                   }
-	                   redshift.shutdown();
+	                   redshiftClient.shutdown();
                    }
 	           }
 

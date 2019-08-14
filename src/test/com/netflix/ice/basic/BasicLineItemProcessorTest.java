@@ -705,6 +705,38 @@ public class BasicLineItemProcessorTest {
 		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
 		test.run();
 	}
+	
+	@Test
+	public void testReservedDynamoDB() throws Exception {
+		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon DynamoDB", "WriteCapacityUnit-Hrs", "CommittedThroughput", "DynamoDB, Reserved Write Capacity used this month", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization", "arn", "0.00028082", "0.00020992", "0.0013");
+		String[] tag = new String[] { "234567890123", "us-east-1", null, "DynamoDB", "CommittedThroughput", "WriteCapacityUnit-Hrs", null };
+		// TODO: support DynamoDB amortization
+		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+	}
+		
+	@Test
+	public void testReservedElastiCache() throws Exception {
+		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon ElastiCache", "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization", "arn", "0.01", "0.0", "0.0");
+		String[] tag = new String[] { "234567890123", "us-east-1", null, "ElastiCache", "CreateCacheCluster:0002", "NodeUsage:cache.m3.medium", null };
+		// TODO: support ElastiCache amortization
+		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+	}
+		
+	@Test
+	public void testReservedElasticsearch() throws Exception {
+		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon Elasticsearch Service", "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront", "arn", "0.25", "0.0", "0.0");
+		String[] tag = new String[] { "234567890123", "us-east-1", null, "Elasticsearch Service", "ESDomain", "ESInstance:r4.xlarge", null };
+		// TODO: support Elasticsearch amortization
+		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+	}
+		
+	
 // TODO: add support for credits
 //	@Test
 //	public void testLambdaCredit() throws Exception {

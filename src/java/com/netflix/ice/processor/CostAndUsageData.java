@@ -147,10 +147,16 @@ public class CostAndUsageData {
         if (writeJsonFiles != JsonFiles.no)
         	futures.add(archiveHourlyJson(startMilli, writeJsonFiles, instanceMetrics, priceListService, pool));
     	
+        int totalResourceTagGroups = 0;
         for (Product product: costDataByProduct.keySet()) {
             TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName(), true);
-            writer.archive(startMilli, costDataByProduct.get(product).getTagGroups());
+            Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
+            logger.info("Write " + tagGroups.size() + " tagGroups for " + (product == null ? "all" : product.name));
+            if (product != null)
+            	totalResourceTagGroups += tagGroups.size();
+            writer.archive(startMilli, tagGroups);
         }
+        logger.info("Total of " + totalResourceTagGroups + " resource tagGroups");
 
         archiveSummary(startMilli, startDate, usageDataByProduct, "usage_", compress, pool, futures);
         archiveSummary(startMilli, startDate, costDataByProduct, "cost_", compress, pool, futures);

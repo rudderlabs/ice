@@ -18,11 +18,13 @@
 package com.netflix.ice.processor;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.AmazonEC2Exception;
 import com.amazonaws.services.ec2.model.AvailabilityZone;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
+import com.amazonaws.services.ec2.model.DescribeRegionsResult;
 import com.amazonaws.services.organizations.model.Account;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
@@ -242,11 +244,20 @@ public class ProcessorConfig extends Config {
     public static ProcessorConfig getInstance() {
         return instance;
     }
-
+    
     protected void initZones() {
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
-    	for (Region region: Region.getAllRegions()) {
-            AmazonEC2 ec2 = ec2Builder.withRegion(region.name).build();
+    	AmazonEC2 ec2 = ec2Builder.withRegion(Regions.US_EAST_1).build();
+		DescribeRegionsResult regionResult = ec2.describeRegions();
+		
+    	for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+    		Region region = Region.getRegionByName(r.getRegionName());
+    		if (region == null) {
+    			logger.error("Unknown region: " + r.getRegionName());
+    			continue;
+    		}
+    		
+            ec2 = ec2Builder.withRegion(region.name).build();
             try {
 	            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
 	            for (AvailabilityZone az: result.getAvailabilityZones()) {
@@ -254,7 +265,7 @@ public class ProcessorConfig extends Config {
 	            }
             }
             catch(AmazonEC2Exception e) {
-            	logger.info("failed to get zones for region " + region + ", " + e.getErrorMessage());
+            	logger.error("failed to get zones for region " + region + ", " + e.getErrorMessage());
             }
     	}
     }
