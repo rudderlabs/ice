@@ -92,6 +92,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
         if (lineItem.getLineItemType() != LineItemType.RIFee)
         	return;
+        
+        // TODO: Handle reservations for DynamoDB, ElastiCache, and Elaticsearch
+        if (tg.product.isDynamoDB() || tg.product.isElastiCache() || tg.product.isElasticsearch()) {
+        	return;
+        }
 
         // Only add rate for hours that the RI is in effect
         long millisStart = lineItem.getStartMillis();
