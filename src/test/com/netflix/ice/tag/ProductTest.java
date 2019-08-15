@@ -19,7 +19,7 @@ public class ProductTest {
 
 		product = new Product("AWS Elastic Beanstalk");
 		assertEquals("Wrong product name", "Elastic Beanstalk",  product.name);		
-}
+	}
 	
 	@Test
 	public void testOverrideFromCanonicalName() {
@@ -46,10 +46,16 @@ public class ProductTest {
 	}
 	
 	@Test
-	public void testShortName() {
+	public void testFileName() {
 		Product.addOverride("Foo Bar", "Foo Bar (FB)");
 		Product product = new Product("Amazon Foo Bar");
-		assertEquals("Wrong short name from getShortName()", "Foo_Bar", product.getFileName());
+		assertEquals("Wrong filename from getFileName()", "Foo" + Product.spaceReplacement + "Bar", product.getFileName());
+		
+		String testProductName = "Import/Export Snowball";
+		product = new Product("Amazon " + testProductName);
+		String expectFileName = "Import" + Product.slashReplacement + "Export" + Product.spaceReplacement + "Snowball";
+		assertEquals("Wrong filename for product name with space and slash", expectFileName, product.getFileName());
+		assertEquals("Wrong name from filename", testProductName, Product.getNameFromFileName(expectFileName));		
 	}
 	
 	@Test

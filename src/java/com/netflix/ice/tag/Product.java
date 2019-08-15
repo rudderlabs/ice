@@ -49,6 +49,12 @@ public class Product extends Tag {
 	private final String fileName;
 	
 	/*
+	 * fileName character substitutions for illegal characters
+	 */
+	public static final String spaceReplacement = "_";
+	public static final String slashReplacement = "-slash-";
+	
+	/*
 	 * Standard product name strings needed to test identity in the "is" methods.
 	 */
 	public static final String apiGateway   = "API Gateway";
@@ -118,7 +124,7 @@ public class Product extends Tag {
     	// substitute "_" for spaces and make lower case
     	// This operation must be invertible, so we assume product
     	// names don't use underscore!
-    	fileName = getCanonicalName(this.name).replace(" ", "_");
+    	fileName = getCanonicalName(this.name).replace(" ", spaceReplacement).replace("/", slashReplacement);
     }
 
     private static String canonicalName(String name) {
@@ -133,7 +139,7 @@ public class Product extends Tag {
     
     public static String getNameFromFileName(String fileName) {
     	// Invert the operation we did to create the short name
-    	return fileName.replace("_", " ");
+    	return fileName.replace(spaceReplacement, " ").replace(slashReplacement, "/");
     }
     
     public static void addOverride(String canonical, String override) {
