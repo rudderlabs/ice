@@ -16,6 +16,8 @@
 
 --%>
 
+<%@ page import="com.netflix.ice.reader.ReaderConfig" %>
+
 <%@ page contentType="text/html;charset=UTF-8" %>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
@@ -55,7 +57,9 @@
         </div>
         <div style="padding-top: 5px">Aggregate
           <select ng-model="consolidate">
-            <option>hourly</option>
+          	<g:if test="${ReaderConfig.getInstance().hourlyData}">
+            	<option>hourly</option>
+            </g:if>
             <option>daily</option>
             <option>weekly</option>
             <option>monthly</option>

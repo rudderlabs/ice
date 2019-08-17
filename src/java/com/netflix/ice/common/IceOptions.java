@@ -234,6 +234,11 @@ public class IceOptions {
     public static final String TAG_COVERAGE = "ice.tagCoverage";
     
     /**
+     * enable hourly data (default is true)
+     */
+    public static final String HOURLY_DATA = "ice.hourlyData";
+    
+    /**
      * debug flags
      */
     public static final String DEBUG = "ice.debug";

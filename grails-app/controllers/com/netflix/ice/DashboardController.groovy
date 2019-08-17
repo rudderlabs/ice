@@ -552,6 +552,9 @@ class DashboardController {
 			// tagCoverage not aggregated hourly
 			consolidateType = consolidateType == ConsolidateType.hourly ? ConsolidateType.daily : consolidateType;
 		}
+		
+		if (consolidateType == ConsolidateType.hourly && !getConfig().hourlyData)
+			consolidateType = ConsolidateType.daily;
 
         DateTime start;
         if (query.has("spans")) {
@@ -571,13 +574,7 @@ class DashboardController {
         if (overlap_interval != null) {
             interval = overlap_interval
         }
-        if (interval.getEnd().getMonthOfYear() == new DateTime(DateTimeZone.UTC).getMonthOfYear()) {
-            DateTime curMonth = new DateTime(DateTimeZone.UTC).withDayOfMonth(1).withMillisOfDay(0);
-            int hoursWithData = getManagers().getUsageManager(null, ConsolidateType.hourly).getDataLength(curMonth);
-            if (interval.getEnd().getHourOfDay() + (interval.getEnd().getDayOfMonth()-1) * 24 > hoursWithData) {
-                interval = new Interval(interval.getStart(), curMonth.plusHours(hoursWithData));
-            }
-        }
+		interval = truncateInterval(interval, consolidateType);
         interval = roundInterval(interval, consolidateType);
 		
         Map<Tag, double[]> data;
@@ -741,7 +738,14 @@ class DashboardController {
 	                    DateTime period = new DateTime(result.time.get(result.time.size() - 1), DateTimeZone.UTC);
 	                    DateTime periodEnd = consolidateType == ConsolidateType.daily ? period.plusDays(1) : (consolidateType == ConsolidateType.weekly ? period.plusWeeks(1) : period.plusMonths(1));
 	                    DateTime month = period.withMillisOfDay(0).withDayOfMonth(1);
-	                    int dataHours = getManagers().getCostManager(null, ConsolidateType.hourly).getDataLength(month);
+	                    int dataHours;
+						if (getConfig().hourlyData) {
+							dataHours = getManagers().getCostManager(null, ConsolidateType.hourly).getDataLength(month);
+						}
+						else {
+							int daysInYear = getManagers().getCostManager(null, ConsolidateType.daily).getDataLength(month.withDayOfYear(1));
+							dataHours = (daysInYear - month.getDayOfYear()-1) * 24;
+						}
 	                    DateTime dataEnd = month.plusHours(dataHours);
 	
 	                    if (dataEnd.isBefore(periodEnd)) {
@@ -990,6 +994,30 @@ class DashboardController {
             return Lists.newArrayList();
         }
     }
+	
+	private Interval truncateInterval(Interval interval, ConsolidateType consolidateType) {
+		// if end is in current month don't go beyond the time of last data we have.
+		DateTime curMonth = new DateTime(DateTimeZone.UTC).withDayOfMonth(1).withMillisOfDay(0);
+		
+		if (!interval.getEnd().isAfter(curMonth))
+			return interval;
+		
+		// Reader may not have hourly data enabled so handle hourly separate from others
+        if (consolidateType == ConsolidateType.hourly) {
+			int hoursOfData = getManagers().getUsageManager(null, ConsolidateType.hourly).getDataLength(curMonth);
+			if (interval.getEnd().getHourOfDay() + (interval.getEnd().getDayOfMonth()-1) * 24 > hoursOfData) {
+				interval = new Interval(interval.getStart(), curMonth.plusHours(hoursOfData));
+			}
+        }
+		else {
+			DateTime curYear = curMonth.withDayOfYear(1);
+			int daysOfData = getManagers().getUsageManager(null, ConsolidateType.daily).getDataLength(curYear);
+			if (interval.getEnd().getDayOfYear() > daysOfData) {
+				interval = new Interval(interval.getStart(), curMonth.withDayOfYear(1).plusDays(daysOfData));
+			}
+		}
+		return interval;	
+	}
 
     private Interval roundInterval(Interval interval, ConsolidateType consolidateType) {
         DateTime start = interval.getStart();

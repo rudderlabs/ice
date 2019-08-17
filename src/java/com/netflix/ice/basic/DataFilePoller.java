@@ -67,7 +67,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
      	       .maximumSize(monthlyCacheSize)
      	       .removalListener(new RemovalListener<DateTime, T>() {
      	           public void onRemoval(RemovalNotification<DateTime, T> objectRemovalNotification) {
-     	               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey());
+     	               logger.info(dbName + " removing from file cache " + objectRemovalNotification.getKey() + ", " + objectRemovalNotification.getCause().name());
      	               fileCache.remove(objectRemovalNotification.getKey());
      	           }
      	       })
@@ -194,6 +194,20 @@ abstract public class DataFilePoller<T> extends StalePoller {
     }
 
     protected T getReadOnlyData(DateTime key) throws ExecutionException {
+    	switch (consolidateType) {
+    	case hourly:
+    		if (key.getDayOfMonth() != 1)
+            	logger.error("Bad key requested for " + dbName + ", " + key);    			
+    		break;
+    	case daily:
+    		if (key.getDayOfYear() != 1)
+            	logger.error("Bad key requested for " + dbName + ", " + key);    			
+    		break;
+    	default:
+    		if (!key.isEqual(config.startDate))
+            	logger.error("Bad key requested for " + dbName + ", " + key);    			
+    		break;
+    	}
 
         T result = this.data.get(key);
 

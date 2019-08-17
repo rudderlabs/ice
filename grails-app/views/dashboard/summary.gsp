@@ -99,7 +99,7 @@
       <thead>
       <tr>
         <th rowspan="2" ng-click="order('name')">{{legendName}}</th>
-        <th colspan="2" ng-repeat="month in monthes" style="text-align: center;">{{monthFormat(month)}}</th>
+        <th colspan="2" ng-repeat="month in months" style="text-align: center;">{{monthFormat(month)}}</th>
       </tr>
       <tr>
         <th ng-repeat="header in headers" ng-click="order(header.index)">{{header.name}}</th>

@@ -1133,7 +1133,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.factorsps = false;
     $scope.consolidateGroups = false;
     $scope.plotType = 'area';
-    $scope.consolidate = "hourly";
+    $scope.consolidate = "daily";
     $scope.legends = [];
     $scope.showZones = false;
     $scope.end = new Date();
@@ -1982,7 +1982,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
     $scope.loading = true;
     usage_db.getData($scope, function (result) {
       $scope.data = {};
-      $scope.monthes = usage_db.reverse(result.time);
+      $scope.months = usage_db.reverse(result.time);
       $scope.hours = usage_db.reverse(result.hours);
 
       var keys = [];
@@ -1994,8 +1994,8 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
         for (var i in totals) {
           values[2 * i] = totals[i];
           values[2 * i + 1] = (totals[i] / $scope.hours[i]);
-          $scope.headers.push({ index: 2 * i, name: "total", start: highchart.dateFormat($scope.monthes[i]), end: highchart.dateFormat(i == 0 ? new Date().getTime() : $scope.monthes[i - 1]) });
-          $scope.headers.push({ index: 2 * i + 1, name: "hourly", start: highchart.dateFormat($scope.monthes[i]), end: highchart.dateFormat(i == 0 ? new Date().getTime() : $scope.monthes[i - 1]) });
+          $scope.headers.push({ index: 2 * i, name: "total", start: highchart.dateFormat($scope.months[i]), end: highchart.dateFormat(i == 0 ? new Date().getTime() : $scope.months[i - 1]) });
+          $scope.headers.push({ index: 2 * i + 1, name: "hourly", start: highchart.dateFormat($scope.months[i]), end: highchart.dateFormat(i == 0 ? new Date().getTime() : $scope.months[i - 1]) });
         }
         values.name = key;
         $scope.data[key] = (values);
@@ -2012,7 +2012,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
         result.data = hourlydata;
         $scope.legends = [];
         highchart.drawGraph(result, $scope, true);
-      }, { consolidate: "hourly", aggregate: "none", breakdown: false });
+      }, { consolidate: "daily", aggregate: "none", breakdown: false });
     }, { consolidate: "monthly", aggregate: "data", breakdown: true });
     $scope.legendName = $scope.groupBy.name;
   }

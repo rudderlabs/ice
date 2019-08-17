@@ -67,6 +67,7 @@ public class ReaderConfig extends Config {
     public final List<String> userTags;
     public final boolean familyRiBreakout;
     public final String dashboardNotice;
+    public final boolean hourlyData;
 
     /**
      *
@@ -86,8 +87,7 @@ public class ReaderConfig extends Config {
             ProductService productService,
             ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException {
         super(properties, credentialsProvider, productService);
-        
-        
+                
         WorkBucketDataConfig dataConfig = readWorkBucketDataConfig();
         this.startDate = new DateTime(dataConfig.getStartMonth(), DateTimeZone.UTC);
         this.userTags = dataConfig.getUserTags();
@@ -111,6 +111,7 @@ public class ReaderConfig extends Config {
         
         updateZones(dataConfig.getZones());
 
+        hourlyData = Boolean.parseBoolean(properties.getProperty(IceOptions.HOURLY_DATA, "true"));
         companyName = properties.getProperty(IceOptions.COMPANY_NAME, "");
         dashboardNotice = properties.getProperty(IceOptions.DASHBOARD_NOTICE, "");
         currencySign = properties.getProperty(IceOptions.CURRENCY_SIGN, "$");
@@ -168,6 +169,9 @@ public class ReaderConfig extends Config {
                     return null;
                 boolean loadTagCoverage = (product == null && getTagCoverage() != TagCoverage.none) || (product != null && getTagCoverage() == TagCoverage.withUserTags);
                 for (ConsolidateType consolidateType: ConsolidateType.values()) {
+                	if (consolidateType == ConsolidateType.hourly && !hourlyData)
+                		continue;
+                	
                     readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
                     readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
                     // Prime the tag coverage cache

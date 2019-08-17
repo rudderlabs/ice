@@ -176,6 +176,9 @@ public class BasicManagers extends Poller implements Managers {
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
                 Key key = new Key(product, consolidateType);
                 
+            	if (consolidateType == ConsolidateType.hourly && !config.hourlyData)
+            		continue;
+                
             	String partialDbName = consolidateType + "_" + (product == null ? "all" : product.getFileName());
                
                 costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress,
