@@ -55,6 +55,10 @@ public abstract class DataFile {
     	write();
     	close();
     }
+    
+    void delete() {
+    	file.delete();
+    }
 
     abstract protected void write() throws IOException;
 }
