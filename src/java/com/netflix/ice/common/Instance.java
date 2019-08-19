@@ -3,7 +3,6 @@ package com.netflix.ice.common;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,50 +36,13 @@ public class Instance {
 		this.startMillis = startMillis;
 	}
 	
-	public static String header() {
-		return "InstanceID,InstanceType,AccountId,AccountName,Region,Zone,Product,Tags\n";
-	}
-	
-	public String serialize() {
-		String[] cols = new String[]{
-			id,
-			type,
-			account.id,
-			account.name,
-			region.toString(),
-			zone == null ? "" : zone.toString(),
-			product.name,
-			resourceTagsToString(tags),
-		};
-		return StringUtils.join(cols, ",") + "\n";
-	}
-	
-	private String resourceTagsToString(Map<String, String> tags) {
-    	StringBuilder sb = new StringBuilder();
-    	boolean first = true;
-    	for (Entry<String, String> entry: tags.entrySet()) {
-    		String tag = entry.getKey();
-    		if (tag.startsWith("user:"))
-    			tag = tag.substring("user:".length());
-    		sb.append((first ? "" : "|") + tag + "=" + entry.getValue());
-    		first = false;
-    	}
-    	String ret = sb.toString();
-    	if (ret.contains(","))
-    		ret = "\"" + ret + "\"";
-    	return ret;
-	}
-	
-	public static Instance deserialize(String in, AccountService accountService, ProductService productService) {
-		// remove the newline before splitting
-        String[] values = in.trim().split(",");
-        
-        String id = values[0];
-        String type = values[1];
-        Account account = accountService.getAccountById(values[2]);
-        Region region = Region.getRegionByName(values[4]);
-        Zone zone = (values.length > 5 && !values[5].isEmpty()) ? Zone.getZone(values[5]) : null;
-        Product product = productService.getProductByName(values[6]);
+	public Instance(String[] values, AccountService accountService, ProductService productService) {
+        this.id = values[0];
+        this.type = values[1];
+        this.account = accountService.getAccountById(values[2]);
+        this.region = Region.getRegionByName(values[4]);
+        this.zone = (values.length > 5 && !values[5].isEmpty()) ? Zone.getZone(values[5]) : null;
+        this.product = productService.getProductByName(values[6]);
 
         final int TAGS_INDEX = 7;
         Map<String, String> tags = Maps.newHashMap();
@@ -99,11 +61,41 @@ public class Instance {
 	        
 	        tags = parseResourceTags(values[TAGS_INDEX]);
         }
-        
-    	return new Instance(id, type, account, region, zone, product, tags, 0);
+        this.tags = tags;
+        this.startMillis = 0;
 	}
 	
-
+	public static String[] header() {
+		return new String[] {"InstanceID", "InstanceType", "AccountId", "AccountName", "Region", "Zone", "Product", "Tags"};
+	}
+	
+	public String[] values() {
+		return new String[]{
+			id,
+			type,
+			account.id,
+			account.name,
+			region.toString(),
+			zone == null ? "" : zone.toString(),
+			product.name,
+			resourceTagsToString(tags),
+		};
+	}
+	
+	private String resourceTagsToString(Map<String, String> tags) {
+    	StringBuilder sb = new StringBuilder();
+    	boolean first = true;
+    	for (Entry<String, String> entry: tags.entrySet()) {
+    		String tag = entry.getKey();
+    		if (tag.startsWith("user:"))
+    			tag = tag.substring("user:".length());
+    		sb.append((first ? "" : "|") + tag + "=" + entry.getValue());
+    		first = false;
+    	}
+    	String ret = sb.toString();
+    	return ret;
+	}
+	
 	private static Map<String, String> parseResourceTags(String in) {
 		Map<String, String> tags = Maps.newHashMap();
 		String[] pairs = in.split("\\|");

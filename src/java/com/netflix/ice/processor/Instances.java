@@ -9,12 +9,16 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.Writer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -73,12 +77,7 @@ public class Instances {
 		Writer out = new OutputStreamWriter(os);
         
         try {
-        	// Write the header
-        	out.write(Instance.header());
-            for (Instance instance: data.values()) {
-                out.write(instance.serialize());
-            }
-        	out.flush();
+        	writeCsv(out);
         }
         finally {
             out.close();
@@ -88,6 +87,15 @@ public class Instances {
         logger.info("uploading " + file + "...");
         AwsUtils.upload(workS3BucketName, workS3BucketPrefix, localDir, file.getName());
         logger.info("uploaded " + file);
+    }
+    
+    protected void writeCsv(Writer out) throws IOException {
+    	CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT.withHeader(Instance.header()));
+    	for (Instance instance: data.values()) {
+    		printer.printRecord((Object[]) instance.values());
+    	}
+  	
+    	printer.close(true);
     }
     
     public void retrieve(long timeMillis, AccountService accountService, ProductService productService) {
@@ -109,18 +117,7 @@ public class Instances {
             	InputStream is = new FileInputStream(file);
             	is = new GZIPInputStream(is);
                 reader = new BufferedReader(new InputStreamReader(is));
-                String line;
-                
-                // skip the header
-                reader.readLine();
-
-            	ConcurrentMap<String, Instance> dataMap = Maps.newConcurrentMap();
-            	
-                while ((line = reader.readLine()) != null) {
-                	Instance instance = Instance.deserialize(line, accountService, productService);
-                	dataMap.put(instance.id, instance);
-                }
-                data = dataMap;
+                readCsv(reader, accountService, productService);
             }
             catch (Exception e) {
             	Logger logger = LoggerFactory.getLogger(ReservationService.class);
@@ -131,5 +128,26 @@ public class Instances {
                     try {reader.close();} catch (Exception e) {}
             }
         }        
+    }
+    
+    protected void readCsv(Reader reader, AccountService accountService, ProductService productService) throws IOException {
+    	int numCols = Instance.header().length;
+    	
+    	Iterable<CSVRecord> records = CSVFormat.DEFAULT
+    		      .withHeader(Instance.header())
+    		      .withFirstRecordAsHeader()
+    		      .parse(reader);
+    	
+    	ConcurrentMap<String, Instance> dataMap = Maps.newConcurrentMap();
+        String[] values = new String[numCols];
+	    for (CSVRecord record : records) {
+	    	for (int i = 0; i < numCols; i++)
+	    		values[i] = record.get(i);
+	    	
+        	Instance instance = new Instance(values, accountService, productService);
+        	dataMap.put(instance.id, instance);
+
+	    }
+	    data = dataMap;
     }
 }

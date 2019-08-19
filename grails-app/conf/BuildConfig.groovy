@@ -86,6 +86,9 @@ grails.project.dependency.resolution = {
 				
 				// Better IO Support
 				'commons-io:commons-io:2.6',
+				
+				// CSV Reader and Writer
+				'org.apache.commons:commons-csv:1.6',
 
                 // Easier Java from Joshua Bloch and Google
                 'com.google.guava:guava:14.0',

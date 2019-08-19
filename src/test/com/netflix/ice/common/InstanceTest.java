@@ -32,11 +32,11 @@ public class InstanceTest {
 		
 		Account account = as.getAccountById("123456789012");
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012," + account.name + ",us-east-1,us-east-1a,EC2,Environment=prod\n";
-		assertEquals("serialized form wrong", expected, asString);
+		String[] values = i.values();
+		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.name,"us-east-1","us-east-1a","EC2","Environment=prod"};
+		assertArrayEquals("serialized form wrong", expected, values);
 		
-		Instance got = Instance.deserialize(asString, as, ps);
+		Instance got = new Instance(values, as, ps);
 		
 		assertEquals("IDs don't match", i.id, got.id);
 		assertEquals("types don't match", i.type, got.type);
@@ -59,11 +59,11 @@ public class InstanceTest {
 				
 		Account account = as.getAccountById("123456789012");
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		String expected = "i-17f85eef87efb7a53,c4.2xlarge,123456789012," + account.name + ",us-east-1,us-east-1a,EC2,\"Name=" + tagValue + "\"\n";
-		assertEquals("serialized form wrong", expected, asString);
+		String[] values = i.values();
+		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.name,"us-east-1","us-east-1a","EC2","Name=" + tagValue};
+		assertArrayEquals("serialized form wrong", expected, values);
 		
-		Instance got = Instance.deserialize(asString, as, ps);
+		Instance got = new Instance(values, as, ps);
 		assertEquals("IDs don't match", i.id, got.id);
 		assertEquals("types don't match", i.type, got.type);
 		assertEquals("accounts don't match", i.account, got.account);
@@ -84,8 +84,8 @@ public class InstanceTest {
 		ProductService ps = new BasicProductService(new Properties());		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		Instance got = Instance.deserialize(asString, as, ps);
+		String[] values = i.values();
+		Instance got = new Instance(values, as, ps);
 		
 		assertEquals("IDs don't match", i.id, got.id);
 		assertEquals("types don't match", i.type, got.type);
@@ -106,8 +106,8 @@ public class InstanceTest {
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		Instance got = Instance.deserialize(asString, as, ps);
+		String[] values = i.values();
+		Instance got = new Instance(values, as, ps);
 		assertEquals("tags size is wrong", i.tags.size(), got.tags.size());
 	}
 	
@@ -120,8 +120,8 @@ public class InstanceTest {
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, null, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		Instance got = Instance.deserialize(asString, as, ps);
+		String[] values = i.values();
+		Instance got = new Instance(values, as, ps);
 		assertEquals("tags size is wrong", i.tags.size(), got.tags.size());
 	}
 
@@ -133,8 +133,8 @@ public class InstanceTest {
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, null, ps.getProductByName(Product.ec2), tags, 0);
-		String asString = i.serialize();
-		Instance got = Instance.deserialize(asString, as, ps);
+		String[] values = i.values();
+		Instance got = new Instance(values, as, ps);
 		assertEquals("tags size is wrong", i.tags.size(), got.tags.size());
 	}
 }
