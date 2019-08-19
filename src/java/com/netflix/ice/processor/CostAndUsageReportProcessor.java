@@ -208,6 +208,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 					data.endMilli = processReportGzip(file, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
 				
 		        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(data.endMilli)));
+		        file.delete();
 		        
 		        return data;
 			}
