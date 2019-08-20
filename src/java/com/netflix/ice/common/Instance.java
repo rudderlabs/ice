@@ -14,6 +14,8 @@ import com.netflix.ice.tag.Zone;
 
 public class Instance {
     protected static Logger logger = LoggerFactory.getLogger(Instance.class);
+    
+    public static final String tagSeparator = "<|>";
 
     public final String id;
 	public final String type;
@@ -89,7 +91,7 @@ public class Instance {
     		String tag = entry.getKey();
     		if (tag.startsWith("user:"))
     			tag = tag.substring("user:".length());
-    		sb.append((first ? "" : "|") + tag + "=" + entry.getValue());
+    		sb.append((first ? "" : tagSeparator) + tag + "=" + entry.getValue());
     		first = false;
     	}
     	String ret = sb.toString();
@@ -98,7 +100,7 @@ public class Instance {
 	
 	private static Map<String, String> parseResourceTags(String in) {
 		Map<String, String> tags = Maps.newHashMap();
-		String[] pairs = in.split("\\|");
+		String[] pairs = in.split("tagSeparator");
 		if (pairs[0].isEmpty())
 			return tags;
 		
@@ -107,6 +109,7 @@ public class Instance {
 			int i = tag.indexOf("=");
 			if (i <= 0) {
 				logger.error("Bad tag: " + tag);
+				continue;
 			}
 			String key = tag.substring(0, i);
 			tags.put(key, tag.substring(i + 1));

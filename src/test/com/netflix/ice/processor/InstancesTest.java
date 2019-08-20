@@ -25,7 +25,7 @@ public class InstancesTest {
 	@Test
 	public void testReadWriteCsv() throws IOException {
 		Map<String, String> tags = Maps.newHashMap();
-		String tagValue = "= I have equal signs, and a comma =";
+		String tagValue = "= I have equal signs, a pipe(|), and a comma =";
 		tags.put("Name", tagValue);
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService(new Properties());
@@ -49,5 +49,4 @@ public class InstancesTest {
 		instances.readCsv(reader, as, ps);
 		assertArrayEquals("wrong instance values", originalValues, instances.get(id).values());
 	}
-
 }

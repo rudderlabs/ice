@@ -63,6 +63,10 @@ public class Instances {
 		return data.get(id);
 	}
 	
+	public int size() {
+		return data.size();
+	}
+	
 	private String getFilename(long timeMillis) {
         DateTime monthDateTime = new DateTime(timeMillis, DateTimeZone.UTC);
 		return "instances_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".csv.gz";
