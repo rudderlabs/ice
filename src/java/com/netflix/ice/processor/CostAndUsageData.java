@@ -203,7 +203,6 @@ public class CostAndUsageData {
     		public Void call() throws Exception {
                 DataWriter writer = new DataWriter(name, data, compress, false);
                 writer.archive();
-                writer.delete();
                 return null;
     		}
     	});
@@ -283,6 +282,9 @@ public class CostAndUsageData {
 	                    }
 	                }
 	            }
+	            
+	            // delete the local hourly data from last month, we no longer need it
+	            writer.delete();
 	            
 	            // archive daily
 	            int year = monthDateTime.getYear();
