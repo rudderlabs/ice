@@ -97,6 +97,20 @@ public class InstanceTest {
 		assertEquals("Environment tag is wrong", "prod", got.tags.get("Environment"));
 		assertEquals("Email tag is wrong", "foo@bar.com", got.tags.get("Email"));
 	}
+	
+	@Test
+	public void testTagWithSeparator() {
+		Map<String, String> tags = Maps.newHashMap();
+		String tagValue = "I have a separator: " + Instance.tagSeparator;
+		tags.put("Name", tagValue);
+		AccountService as = new BasicAccountService();
+		ProductService ps = new BasicProductService(new Properties());		
+				
+		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
+		String[] values = i.values();
+		Instance got = new Instance(values, as, ps);
+		assertEquals("Name tag is wrong", tagValue.replace(Instance.tagSeparator, Instance.tagSeparatorReplacement), got.tags.get("Name"));
+	}
 
 	@Test
 	public void testNoTags() {

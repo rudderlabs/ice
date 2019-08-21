@@ -16,6 +16,8 @@ public class Instance {
     protected static Logger logger = LoggerFactory.getLogger(Instance.class);
     
     public static final String tagSeparator = "<|>";
+    public static final String tagSeparatorRegex = "<\\|>";
+    public static final String tagSeparatorReplacement = "<~>";
 
     public final String id;
 	public final String type;
@@ -34,7 +36,15 @@ public class Instance {
 		this.region = region;
 		this.zone = zone;
 		this.product = product;
-		this.tags = tags;
+		this.tags = Maps.newHashMap();
+		for (String k: tags.keySet()) {
+			String v = tags.get(k);
+			if (v.contains(tagSeparator)) {
+				logger.warn("Tag " + k + "=" + v + " has a value with the tagSeparator " + tagSeparator + ". Replacing with " + tagSeparatorReplacement);
+				v = v.replace(tagSeparator, tagSeparatorReplacement);
+			}
+			this.tags.put(k, v);
+		}
 		this.startMillis = startMillis;
 	}
 	
@@ -100,7 +110,7 @@ public class Instance {
 	
 	private static Map<String, String> parseResourceTags(String in) {
 		Map<String, String> tags = Maps.newHashMap();
-		String[] pairs = in.split("tagSeparator");
+		String[] pairs = in.split(tagSeparatorRegex);
 		if (pairs[0].isEmpty())
 			return tags;
 		
