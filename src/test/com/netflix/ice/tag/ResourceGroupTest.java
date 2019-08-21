@@ -21,7 +21,10 @@ public class ResourceGroupTest {
 		assertEquals("single name incorrect", "foo", rg.name);		
 	
 		rg = ResourceGroup.getResourceGroup(new String[]{"", "foo"});
-		assertEquals("group with only second tag name incorrect", "|foo", rg.name);		
+		assertEquals("group with empty first tag incorrect", "|foo", rg.name);
+		
+		rg = ResourceGroup.getResourceGroup(new String[]{null, "foo"});
+		assertEquals("group with null first tag incorrect", "|foo", rg.name);		
 	}
 	
 	@Test

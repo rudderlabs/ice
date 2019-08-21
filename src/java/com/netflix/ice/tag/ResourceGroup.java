@@ -47,7 +47,7 @@ public class ResourceGroup extends Tag {
 	private static String joinTags(String[] tags) {
 		String[] values = new String[tags.length];
 		for (int i = 0; i < tags.length; i++) {
-			if (tags[i].contains(separator)) {
+			if (tags[i] != null && tags[i].contains(separator)) {
 				logger.warn("Tag " + i + " value " + tags[i] + " contains " + separator + ", replace with " + separatorReplacement);
 				values[i] = tags[i].replace(separator, separatorReplacement);
 			}
