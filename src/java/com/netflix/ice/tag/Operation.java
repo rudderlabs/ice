@@ -70,11 +70,33 @@ public class Operation extends Tag {
     public static final ReservationOperation upfrontAmortizedAll = new ReservationOperation("Amortized RIs - All Upfront", 25, ReservationUtilization.ALL);
     public static final ReservationOperation unusedInstancesAll = new ReservationOperation("Unused RIs - All Upfront", 26, ReservationUtilization.ALL);
 
+    // Legacy Heavy/Medium/Light Utilization types used only by ElastiCache. No family sharing or account borrowing
+    public static final ReservationOperation savingsHeavy = new ReservationOperation("Savings - Heavy Utilization", 27, ReservationUtilization.HEAVY);
+    public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation("Used RIs - Heavy Utilization", 28, ReservationUtilization.HEAVY);
+    public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation("Bonus RIs - Heavy Utilization", 29, ReservationUtilization.HEAVY);
+    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - Heavy Utilization", 30, ReservationUtilization.HEAVY);
+    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - Heavy Utilization", 31, ReservationUtilization.HEAVY);
+
+    public static final ReservationOperation savingsMedium = new ReservationOperation("Savings - Medium Utilization", 32, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation("Used RIs - Medium Utilization", 33, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation("Bonus RIs - Medium Utilization", 34, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation("Amortized RIs - Medium Utilization", 35, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation("Unused RIs - Medium Utilization", 36, ReservationUtilization.MEDIUM);
+
+    public static final ReservationOperation savingsLight = new ReservationOperation("Savings - Light Utilization", 37, ReservationUtilization.LIGHT);
+    public static final ReservationOperation reservedInstancesLight = new ReservationOperation("Used RIs - Light Utilization", 38, ReservationUtilization.LIGHT);
+    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("Bonus RIs - Light Utilization", 39, ReservationUtilization.LIGHT);
+    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("Amortized RIs - Light Utilization", 40, ReservationUtilization.LIGHT);
+    public static final ReservationOperation unusedInstancesLight = new ReservationOperation("Unused RIs - Light Utilization", 41, ReservationUtilization.LIGHT);
+
     public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case ALL: return reservedInstancesAll;
             case NO: return reservedInstancesNo;
             case PARTIAL: return reservedInstancesPartial;
+            case HEAVY: return reservedInstancesHeavy;
+            case MEDIUM: return reservedInstancesMedium;
+            case LIGHT: return reservedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -93,6 +115,9 @@ public class Operation extends Tag {
             case ALL: return bonusReservedInstancesAll;
             case NO: return bonusReservedInstancesNo;
             case PARTIAL: return bonusReservedInstancesPartial;
+            case HEAVY: return bonusReservedInstancesHeavy;
+            case MEDIUM: return bonusReservedInstancesMedium;
+            case LIGHT: return bonusReservedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -124,24 +149,30 @@ public class Operation extends Tag {
             case ALL: return unusedInstancesAll;
             case NO: return unusedInstancesNo;
             case PARTIAL: return unusedInstancesPartial;
+            case HEAVY: return unusedInstancesHeavy;
+            case MEDIUM: return unusedInstancesMedium;
+            case LIGHT: return unusedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
 
     public static List<ReservationOperation> getAmortizationOperations() {
-        return Lists.newArrayList(upfrontAmortizedPartial, upfrontAmortizedAll);
+        return Lists.newArrayList(upfrontAmortizedPartial, upfrontAmortizedAll, upfrontAmortizedHeavy, upfrontAmortizedMedium, upfrontAmortizedLight);
     }
 
     public static ReservationOperation getUpfrontAmortized(ReservationUtilization utilization) {
         switch (utilization) {
             case ALL: return upfrontAmortizedAll;
             case PARTIAL: return upfrontAmortizedPartial;
+            case HEAVY: return upfrontAmortizedHeavy;
+            case MEDIUM: return upfrontAmortizedMedium;
+            case LIGHT: return upfrontAmortizedLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
 
     public static List<ReservationOperation> getSavingsOperations() {
-        return Lists.newArrayList(spotInstanceSavings, savingsAll, savingsNo, savingsPartial);
+        return Lists.newArrayList(spotInstanceSavings, savingsAll, savingsNo, savingsPartial, savingsHeavy, savingsMedium, savingsLight);
     }
 
     public static ReservationOperation getSavings(ReservationUtilization utilization) {
@@ -149,6 +180,9 @@ public class Operation extends Tag {
             case ALL: return savingsAll;
             case NO: return savingsNo;
             case PARTIAL: return savingsPartial;
+            case HEAVY: return savingsHeavy;
+            case MEDIUM: return savingsMedium;
+            case LIGHT: return savingsLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }

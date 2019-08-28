@@ -159,7 +159,10 @@ public interface ReservationService {
     public static enum ReservationUtilization {
         NO, 		// The new "No Upfront" Reservations
         PARTIAL,	// The new "Partial Upfront" Reservations
-        ALL;		// The new "Full Upfront" Reservations
+        ALL,		// The new "Full Upfront" Reservations
+        HEAVY,		// Heavy utilization still used by ElastiCache
+        MEDIUM,		// Medium utilization still used by ElastiCache
+        LIGHT;		// Light utilization still used by ElastiCache
 
         public static ReservationUtilization get(String offeringType) {
             int idx = offeringType.indexOf(" ");
@@ -185,9 +188,15 @@ public interface ReservationService {
             case PARTIAL:
             	return PurchaseOption.partialUpfront;
             case ALL:
-            default:
             	return PurchaseOption.allUpfront;
+            case HEAVY:
+            	return PurchaseOption.heavy;
+            case MEDIUM:
+            	return PurchaseOption.medium;
+            case LIGHT:
+            	return PurchaseOption.light;
             }
+            return null;
         }
     }
 

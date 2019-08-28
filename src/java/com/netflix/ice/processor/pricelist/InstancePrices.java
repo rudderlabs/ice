@@ -569,7 +569,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	none("none"),
     	noUpfront("No Upfront"),
     	partialUpfront("Partial Upfront"),
-    	allUpfront("All Upfront");
+    	allUpfront("All Upfront"),
+    	heavy("Heavy Utilization"),
+    	medium("Medium Utilization"),
+    	light("Light Utilization");
     	
     	public final String name;
     	

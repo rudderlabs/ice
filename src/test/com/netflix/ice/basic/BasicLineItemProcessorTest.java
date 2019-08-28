@@ -864,6 +864,25 @@ public class BasicLineItemProcessorTest {
 		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - No Upfront", "cache.m3.medium.redis", null };
 		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.34, Result.hourly, 31, 0.0, 0.32);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+
+		// Heavy Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization", "arn", "0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Heavy Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Medium Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Medium Utilization", "arn", "0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Medium Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Light Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Light Utilization", "arn", "0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Light Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
 	}
 	
 	
