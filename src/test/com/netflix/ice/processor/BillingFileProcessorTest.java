@@ -20,8 +20,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -156,19 +154,15 @@ public class BillingFileProcessorTest {
         ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
 		BasicReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
 		
-		@SuppressWarnings("deprecation")
-		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
-				
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
 		            Properties properties,
-		            AWSCredentialsProvider credentialsProvider,
 		            ProductService productService,
 		            ReservationService reservationService,
 		            ResourceService resourceService,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, credentialsProvider, productService, reservationService, resourceService, priceListService, compress);
+				super(properties, null, productService, reservationService, resourceService, priceListService, compress);
 			}
 			
 			@Override
@@ -190,7 +184,6 @@ public class BillingFileProcessorTest {
 		
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,
-										credentialsProvider,
 										productService,
 										reservationService,
 										resourceService,
@@ -219,9 +212,9 @@ public class BillingFileProcessorTest {
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
     	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
-    	if (reservationService.hasRdsReservations())
+    	if (reservationService.hasReservations(Product.rdsInstance))
     		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
-    	if (reservationService.hasRedshiftReservations())
+    	if (reservationService.hasReservations(Product.redshift))
     		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
 
         reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate, prices);
@@ -335,7 +328,7 @@ public class BillingFileProcessorTest {
 			}
 			int numPrinted = 0;
 			for (TagGroup tg: notFound) {
-				//logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
+				logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
 				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
 					logger.info("Tag not found:   " + tg + ", value: " + expected.get(tg));
 					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
@@ -357,7 +350,7 @@ public class BillingFileProcessorTest {
 			}
 			numPrinted = 0;
 			for (TagGroup tg: extras) {
-				//logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
+				logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
 				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
 					logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
 					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));

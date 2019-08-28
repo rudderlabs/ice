@@ -58,7 +58,6 @@ public abstract class Config {
             AWSCredentialsProvider credentialsProvider,
             ProductService productService) {
         if (properties == null) throw new IllegalArgumentException("properties must be specified");
-        if (credentialsProvider == null) throw new IllegalArgumentException("credentialsProvider must be specified");
         if (productService == null) throw new IllegalArgumentException("productService must be specified");
 
         workS3BucketName = properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME);
@@ -73,7 +72,8 @@ public abstract class Config {
         this.productService = productService;
         this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
 
-        AwsUtils.init(credentialsProvider, workS3BucketRegion);
+        if (credentialsProvider != null)
+        	AwsUtils.init(credentialsProvider, workS3BucketRegion);
         
         // Stash the arbitrary list of debug flags - names that start with "ice.debug."
         debugProperties = Maps.newHashMap();

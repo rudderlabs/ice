@@ -132,9 +132,9 @@ public class BillingFileProcessor extends Poller {
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
         	prices.put(config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
-        	if (config.reservationService.hasRdsReservations())
+        	if (config.reservationService.hasReservations(Product.rdsInstance))
         		prices.put(config.productService.getProductByName(Product.rdsInstance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRDS));
-        	if (config.reservationService.hasRedshiftReservations())
+        	if (config.reservationService.hasReservations(Product.redshift))
         		prices.put(config.productService.getProductByName(Product.redshift), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRedshift));
 
         	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime, prices);

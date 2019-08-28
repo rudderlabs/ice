@@ -93,8 +93,13 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         if (lineItem.getLineItemType() != LineItemType.RIFee)
         	return;
         
-        // TODO: Handle reservations for DynamoDB, ElastiCache, and Elaticsearch
-        if (tg.product.isDynamoDB() || tg.product.isElastiCache() || tg.product.isElasticsearch()) {
+        // TODO: Handle reservations for DynamoDB
+        if (tg.product.isDynamoDB()) {
+        	return;
+        }
+        
+        if (!(tg.operation instanceof ReservationOperation)) {
+        	logger.error("operation is not a reservation operation, tag: " + tg + "\n" + lineItem);
         	return;
         }
 
@@ -174,14 +179,14 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             // 	so unlike EC2, we have to process the monthly line item to capture the cost,
             // 	but we don't want to add the monthly line items to the usage.
             // The reservation processor handles determination on what's unused.
-            if (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance())) {
+            if (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch())) {
             	addValue(usages, tagGroup, usageValue);                	
             }
 
             addValue(costs, tagGroup, costValue);
             
             // Additional entries for reservations
-            if (reservationUsage && !(tagGroup.product.isDynamoDB() || tagGroup.product.isElastiCache() || tagGroup.product.isElasticsearch())) {
+            if (reservationUsage && !tagGroup.product.isDynamoDB()) {
                 // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
             	String amort = lineItem.getAmortizedUpfrontCostForUsage();
             	double amortCost = 0.0;
@@ -192,16 +197,17 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
                 		TagGroupRI tg = TagGroupRI.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, null, reservationId);
                 		addValue(costs, tg, amortCost);
             		}
-            	}
-            	// Compute and store savings if Public OnDemand Cost is available
-            	// Don't include the EDP discount in the savings - we track that separately
-            	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
-            	if (!publicOnDemandCost.isEmpty()) {
-            		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getUtilization());
-            		TagGroupRI tg = TagGroupRI.getTagGroup(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, null, reservationId);
-            		double publicCost = Double.parseDouble(publicOnDemandCost);
-            		double edpCost = publicCost * (1 - edpDiscount);
-            		addValue(costs, tg, edpCost - costValue - amortCost);
+
+	            	// Compute and store savings if Public OnDemand Cost and Amortization is available
+	            	// Don't include the EDP discount in the savings - we track that separately
+	            	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
+	            	if (!publicOnDemandCost.isEmpty()) {
+	            		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getUtilization());
+	            		TagGroupRI tg = TagGroupRI.getTagGroup(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, null, reservationId);
+	            		double publicCost = Double.parseDouble(publicOnDemandCost);
+	            		double edpCost = publicCost * (1 - edpDiscount);
+	            		addValue(costs, tg, edpCost - costValue - amortCost);
+	            	}
             	}
             }
 
@@ -218,7 +224,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	                addValue(costsOfResource, resourceTagGroup, costValue);
 	                
 	                // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
-	                if (reservationUsage && !(tagGroup.product.isDynamoDB() || tagGroup.product.isElastiCache() || tagGroup.product.isElasticsearch())) {
+	                if (reservationUsage && !tagGroup.product.isDynamoDB()) {
 	                	String amort = lineItem.getAmortizedUpfrontCostForUsage();
 	                	if (!amort.isEmpty()) {
 	                		double amortCost = Double.parseDouble(amort);

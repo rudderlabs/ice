@@ -94,9 +94,7 @@ public interface ReservationService {
     /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
-    boolean hasEc2Reservations();
-    boolean hasRdsReservations();
-    boolean hasRedshiftReservations();
+    boolean hasReservations(String product);
 
     public static class ReservationInfo {
     	public final TagGroup tagGroup;

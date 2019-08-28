@@ -30,7 +30,8 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int productRegionIndex;
 	
 	// First appeared in 2018-01 (Net versions added in 2019-01)
-	private int reservationAmortizedUpfrontCostForUsageIndex; 
+	private int reservationAmortizedUpfrontCostForUsageIndex;
+	private int reservationAmortizedUpfrontFeeForBillingPeriodIndex;
 	private int reservationRecurringFeeForUsageIndex;
 	private int reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex;
 	private int reservationUnusedQuantityIndex;
@@ -65,6 +66,7 @@ public class CostAndUsageReportLineItem extends LineItem {
             rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
             costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontCostForUsage");
+	        reservationAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontFeeForBillingPeriod");
 	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "NetRecurringFeeForUsage");
 	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "NetUnusedAmortizedUpfrontFeeForBillingPeriod");
 	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "NetUnusedRecurringFee");
@@ -73,6 +75,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	        rateIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedRate" : "UnblendedRate");
 	        costIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedCost" : "UnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "AmortizedUpfrontCostForUsage");
+	        reservationAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "AmortizedUpfrontFeeForBillingPeriod");
 	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "RecurringFeeForUsage");
 	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "UnusedAmortizedUpfrontFeeForBillingPeriod");
 	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "UnusedRecurringFee");
@@ -362,6 +365,22 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return "";
 	}
 	
+	public int getAmortizedUpfrontFeeForBillingPeriodIndex() {
+		return reservationAmortizedUpfrontFeeForBillingPeriodIndex;
+	};
+
+	@Override
+	public String getAmortizedUpfrontFeeForBillingPeriod() {
+		if (reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0)
+			return items[reservationAmortizedUpfrontFeeForBillingPeriodIndex];
+		return "";
+	}
+
+	@Override
+	public boolean hasAmortizedUpfrontFeeForBillingPeriod() {
+		return reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0;
+	}
+	
 	public int getRecurringFeeForUsageIndex() {
 		return reservationRecurringFeeForUsageIndex;
 	}
@@ -387,7 +406,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public Double getUnusedAmortizedUpfrontRate() {
-		// Return the recurring rate for an unused RI
+		// Return the amortization rate for an unused RI
 		if (reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex >= 0 &&
 				reservationUnusedQuantityIndex >= 0) {
 			Double amort = Double.parseDouble(items[reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex]);

@@ -250,12 +250,25 @@ public abstract class LineItem {
 	}
 	
 	/**
-	 * reservation/AmortizedUpfrontCostForUsage() appeared 2018-01 in CUR files
-	 * reservation/NetAmortizedUpfrontCostForUsage() appeared 2019-01 in CUR files
+	 * reservation/AmortizedUpfrontCostForUsage appeared 2018-01 in CUR files
+	 * reservation/NetAmortizedUpfrontCostForUsage appeared 2019-01 in CUR files
 	 * @return
 	 */
 	public String getAmortizedUpfrontCostForUsage() {
 		return "";
+	}
+	
+	/**
+	 * reservation/AmortizedUpfrontFeeForBillingPeriod appeared 2018-01 in CUR files
+	 * reservation/NetAmortizedUpfrontFeeForBillingPeriod appeared 2019-01 in CUR files
+	 * @return
+	 */
+	public String getAmortizedUpfrontFeeForBillingPeriod() {
+		return "";
+	}
+	
+	public boolean hasAmortizedUpfrontFeeForBillingPeriod() {
+		return false;
 	}
 	
 	/**

@@ -37,6 +37,9 @@ public class BasicProductServiceTest {
 		
 		// Should automatically match AWS and Amazon prefixes
 		assertEquals("Both product strings should refer to the same object", product1, product2);
+		
+		Product ec2 = ps.getProductByAwsName("Amazon Elastic Compute Cloud");
+		assertTrue("isEC2 returned wrong state", ec2.isEc2());
 	}
 
 	@Test

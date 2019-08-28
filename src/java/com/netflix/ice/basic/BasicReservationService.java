@@ -28,6 +28,17 @@ import com.amazonaws.services.ec2.model.DescribeReservedInstancesResult;
 import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.ec2.model.ReservedInstancesModification;
 import com.amazonaws.services.ec2.model.ReservedInstancesModificationResult;
+import com.amazonaws.services.elasticache.AmazonElastiCache;
+import com.amazonaws.services.elasticache.AmazonElastiCacheClientBuilder;
+import com.amazonaws.services.elasticache.model.AmazonElastiCacheException;
+import com.amazonaws.services.elasticache.model.DescribeReservedCacheNodesResult;
+import com.amazonaws.services.elasticache.model.ReservedCacheNode;
+import com.amazonaws.services.elasticsearch.AWSElasticsearch;
+import com.amazonaws.services.elasticsearch.AWSElasticsearchClientBuilder;
+import com.amazonaws.services.elasticsearch.model.AWSElasticsearchException;
+import com.amazonaws.services.elasticsearch.model.DescribeReservedElasticsearchInstancesRequest;
+import com.amazonaws.services.elasticsearch.model.DescribeReservedElasticsearchInstancesResult;
+import com.amazonaws.services.elasticsearch.model.ReservedElasticsearchInstance;
 import com.amazonaws.services.rds.AmazonRDS;
 import com.amazonaws.services.rds.AmazonRDSClientBuilder;
 import com.amazonaws.services.rds.model.AmazonRDSException;
@@ -79,13 +90,13 @@ public class BasicReservationService extends Poller implements ReservationServic
     protected ReservationPeriod term;
     protected ReservationUtilization defaultUtilization;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
-    private boolean hasEc2Reservations;
-    private boolean hasRdsReservations;
-    private boolean hasRedshiftReservations;
+    private Set<String> hasReservations;
 
     private static final String ec2 		= "ec2";
     private static final String rds 		= "rds";
     private static final String redshift 	= "redshift";
+    private static final String ec			= "ec";
+    private static final String es			= "es";
     
     private static final String archiveFilename = "reservation_capacity.csv";
     private long archiveLastModified = 0;
@@ -115,6 +126,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             reservations.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
         reservationsById = Maps.newHashMap();
+        hasReservations = Sets.newHashSet();
     }
 
     public void init() throws Exception {
@@ -133,14 +145,8 @@ public class BasicReservationService extends Poller implements ReservationServic
     /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
-    public boolean hasEc2Reservations() {
-    	return this.hasEc2Reservations;
-    }
-    public boolean hasRdsReservations() {
-    	return this.hasRdsReservations;
-    }
-    public boolean hasRedshiftReservations() {
-    	return this.hasRedshiftReservations;
+    public boolean hasReservations(String product) {
+    	return this.hasReservations.contains(product);
     }
 
     public static class Reservation {
@@ -312,21 +318,24 @@ public class BasicReservationService extends Poller implements ReservationServic
         
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
         AmazonRDSClientBuilder rdsBuilder = AmazonRDSClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
-        AmazonRedshiftClientBuilder redshiftBuilder = AmazonRedshiftClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);       
+        AmazonRedshiftClientBuilder redshiftBuilder = AmazonRedshiftClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+        AWSElasticsearchClientBuilder esBuilder = AWSElasticsearchClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
+        AmazonElastiCacheClientBuilder ecBuilder = AmazonElastiCacheClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig);
         
         for (Entry<Account, Set<String>> entry: config.accountService.getReservationAccounts().entrySet()) {
             Account account = entry.getKey();
             Set<String> products = entry.getValue();
-            logger.info("Get reservations for account: " + account.name);
             
         	try {
                 String assumeRole = config.accountService.getReservationAccessRoles().get(account);
+                String externalId = config.accountService.getReservationAccessExternalIds().get(account);
                 if (assumeRole != null && assumeRole.isEmpty())
                 	assumeRole = null;
-                
+
+                logger.info("Get reservations for account: " + account.name + ", role: " + assumeRole + ", externalId: " + externalId);
+
                 AWSCredentialsProvider credentialsProvider = AwsUtils.awsCredentialsProvider;
                 if (assumeRole != null) {
-                    String externalId = config.accountService.getReservationAccessExternalIds().get(account);
                     credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
                 }
                 
@@ -432,6 +441,60 @@ public class BasicReservationService extends Poller implements ReservationServic
                    }
 	           }
 
+               if (products.contains(es)) {
+                   for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+                	   Region region = Region.getRegionByName(r.getRegionName());
+                	   AWSElasticsearch elasticsearch = esBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                	   
+                	   try {
+                		   DescribeReservedElasticsearchInstancesRequest request = new DescribeReservedElasticsearchInstancesRequest();
+                		   DescribeReservedElasticsearchInstancesResult page = null;                		   
+                		   
+                           do {
+                               if (page != null)
+                                   request.setNextToken(page.getNextToken());
+                               
+                               page = elasticsearch.describeReservedElasticsearchInstances(request);
+                               for (ReservedElasticsearchInstance reservation: page.getReservedElasticsearchInstances()) {
+                            	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedElasticsearchInstanceId());
+                            	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+                            	   reservations.put(key, cri);
+                               }
+                           } while (page.getNextToken() != null);
+                	   }
+                       catch(AWSElasticsearchException e) {
+                    	   logger.info("could not get Elasticsearch reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                       }
+                       catch (Exception e) {
+                            logger.error("error in describeReservedElasticsearchInstances for " + region.name + " " + account.name, e);
+                       }
+                       elasticsearch.shutdown();
+                   }
+               }
+               
+               if (products.contains(ec)) {
+                   for (com.amazonaws.services.ec2.model.Region r: regionResult.getRegions()) {
+                	   Region region = Region.getRegionByName(r.getRegionName());
+                	   AmazonElastiCache elastiCache = ecBuilder.withRegion(region.name).withCredentials(credentialsProvider).build();
+                	   
+                	   try {
+                		   DescribeReservedCacheNodesResult result = elastiCache.describeReservedCacheNodes();                		   
+                           for (ReservedCacheNode reservation: result.getReservedCacheNodes()) {
+                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedCacheNodeId());
+                        	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+                        	   reservations.put(key, cri);
+                           }
+                	   }
+                       catch(AmazonElastiCacheException e) {
+                    	   logger.info("could not get ElastiCache reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                       }
+                       catch (Exception e) {
+                            logger.error("error in describeReservedCacheNodes for " + region.name + " " + account.name, e);
+                       }
+                	   elastiCache.shutdown();
+                   }
+               }
+               
             }
             catch (Exception e) {
                 logger.error("Error in describeReservedInstances for " + account.name, e);
@@ -604,9 +667,7 @@ public class BasicReservationService extends Poller implements ReservationServic
         }
         Map<String, Reservation> reservationsByIdMap = Maps.newHashMap();
 
-        hasEc2Reservations = false;
-        hasRdsReservations = false;
-        hasRedshiftReservations = false;
+        hasReservations = Sets.newHashSet();
 
         for (ReservationKey key: reservationsFromApi.keySet()) {
             CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
@@ -647,7 +708,7 @@ public class BasicReservationService extends Poller implements ReservationServic
             Zone zone = null;
             Region region = Region.getRegionByName(reservedInstances.getRegion());
             
-            if (reservedInstances.isEC2()) {
+            if (reservedInstances.isProduct(Product.ec2Instance)) {
             	if (reservedInstances.getScope().equals("Availability Zone")) {
 	                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
 	                if (zone == null)
@@ -660,19 +721,30 @@ public class BasicReservationService extends Poller implements ReservationServic
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
                 product = productService.getProductByName(Product.ec2Instance);
-                hasEc2Reservations = true;
+                hasReservations.add(Product.ec2Instance);
             }
-            else if (reservedInstances.isRDS()) {
+            else if (reservedInstances.isProduct(Product.rdsInstance)) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? ".multiaz" : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
             	product = productService.getProductByName(Product.rdsInstance);
-            	hasRdsReservations = true;
+            	hasReservations.add(Product.rdsInstance);
             }
-            else if (reservedInstances.isRedshift()){
+            else if (reservedInstances.isProduct(Product.redshift)){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
             	product = productService.getProductByName(Product.redshift);
-            	hasRedshiftReservations = true;
+            	hasReservations.add(Product.redshift);
+            }
+            else if (reservedInstances.isProduct(Product.elasticsearch)){
+            	usageType = UsageType.getUsageType("es." + reservedInstances.getInstanceType(), "hours");
+            	product = productService.getProductByName(Product.elasticsearch);
+            	hasReservations.add(Product.elasticsearch);
+            }
+            else if (reservedInstances.isProduct(Product.elastiCache)){
+            	InstanceCache cache = InstanceCache.withDescription(reservedInstances.getProductDescription());
+            	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + cache.usageType, "hours");
+            	product = productService.getProductByName(Product.elastiCache);
+            	hasReservations.add(Product.elastiCache);
             }
             else {
             	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());

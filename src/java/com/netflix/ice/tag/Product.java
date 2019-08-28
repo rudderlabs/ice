@@ -66,6 +66,7 @@ public class Product extends Tag {
 	public static final String ec2          = "Elastic Compute Cloud";
 	public static final String elastiCache  = "ElastiCache";
 	public static final String elasticsearch  = "Elasticsearch Service";
+	public static final String emr          = "Elastic MapReduce";
 	public static final String rds          = "RDS Service";
 	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
 	public static final String redshift     = "Redshift";
@@ -198,6 +199,10 @@ public class Product extends Tag {
     
     public boolean isEc2() {
     	return name.equals(getOverride(ec2));
+    }
+    
+    public boolean isEmr() {
+    	return name.equals(getOverride(emr));
     }
     
     public boolean isRds() {

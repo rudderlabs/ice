@@ -31,7 +31,9 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	public enum ServiceCode {
 		AmazonEC2,
 		AmazonRDS,
-		AmazonRedshift;
+		AmazonRedshift,
+		AmazonElastiCache,
+		AmazonES;
 	}
 
 	private final ServiceCode serviceCode;
