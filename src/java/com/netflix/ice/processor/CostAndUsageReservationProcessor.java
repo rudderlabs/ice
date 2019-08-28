@@ -95,7 +95,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    
 				    
 				    Double amort = null;
-				    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
+				    if (utilization == ReservationUtilization.ALL || utilization == ReservationUtilization.PARTIAL) {
 					    // See if we have amortization in the map already
 					    TagGroupRI atg = TagGroupRI.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(utilization), tg.usageType, tg.resourceGroup, tg.reservationId);
 					    amort = costMap.remove(atg);					    
@@ -147,7 +147,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    
 			    // Grab the unused and amortization rates for this RI if CUR on/after 2018-01 and remove the rates from the cost map
 			    Double unusedRate = 0.0;
-			    if (utilization == ReservationUtilization.PARTIAL || utilization == ReservationUtilization.HEAVY) {
+			    if (utilization == ReservationUtilization.PARTIAL || utilization == ReservationUtilization.NO) {
 				    TagGroupRI unusedRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(utilization), rtg.usageType, null, reservationId);
 				    unusedRate = costMap.remove(unusedRateTag);
 				    if (haveUnused && unusedRate == null) {
@@ -158,7 +158,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    }
 			    
 			    Double amortizationRate = 0.0;
-			    if (utilization == ReservationUtilization.FIXED || utilization == ReservationUtilization.PARTIAL) {
+			    if (utilization == ReservationUtilization.ALL || utilization == ReservationUtilization.PARTIAL) {
 				    TagGroupRI amortizationRateTag = TagGroupRI.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontAmortized(utilization), rtg.usageType, null, reservationId);
 				    amortizationRate = costMap.remove(amortizationRateTag);
 				    if (haveUnused && amortizationRate == null) {

@@ -26,8 +26,6 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -159,25 +157,15 @@ public interface ReservationService {
     }
 
     public static enum ReservationUtilization {
-        HEAVY, 		// The new "No Upfront" Reservations
+        NO, 		// The new "No Upfront" Reservations
         PARTIAL,	// The new "Partial Upfront" Reservations
-        FIXED;		// The new "Full Upfront" Reservations
-
-        static final Map<String, String> reservationTypeMap = new HashMap<String, String>();
-        static {
-            reservationTypeMap.put("ALL", "FIXED");
-            reservationTypeMap.put("PARTIAL", "PARTIAL");
-            reservationTypeMap.put("NO", "HEAVY");
-        }
+        ALL;		// The new "Full Upfront" Reservations
 
         public static ReservationUtilization get(String offeringType) {
             int idx = offeringType.indexOf(" ");
             if (idx > 0) {
             	// We've been called with a reservationInstance record offering type field
                 offeringType = offeringType.substring(0, idx).toUpperCase();
-                String mappedValue = reservationTypeMap.get(offeringType);
-                if (mappedValue != null)
-                    offeringType = mappedValue;
                 return valueOf(offeringType);
             }
             else {
@@ -192,11 +180,11 @@ public interface ReservationService {
         
         public PurchaseOption getPurchaseOption() {
             switch (this) {
-            case HEAVY:
+            case NO:
             	return PurchaseOption.noUpfront;
             case PARTIAL:
             	return PurchaseOption.partialUpfront;
-            case FIXED:
+            case ALL:
             default:
             	return PurchaseOption.allUpfront;
             }

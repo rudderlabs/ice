@@ -513,7 +513,7 @@ public class BasicReservationService extends Poller implements ReservationServic
 	        logger.debug("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
 	        
 	        if (fixedPrice == 0.0 && 
-	        		(utilization == ReservationUtilization.FIXED ||
+	        		(utilization == ReservationUtilization.ALL ||
 	        		 utilization == ReservationUtilization.PARTIAL))  {
 	        	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
 	        	// Get the reservation modification for this RI

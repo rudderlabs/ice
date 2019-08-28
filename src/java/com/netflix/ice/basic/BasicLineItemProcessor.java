@@ -410,11 +410,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		// RIFee line items have amortization and recurring fee info as of 2018-01-01
 			// determine purchase option from amort and recurring
 			Double amortization = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod());
-			return amortization > 0.0 ? (cost > 0.0 ? Operation.bonusReservedInstancesPartial : Operation.bonusReservedInstancesFixed) : Operation.bonusReservedInstancesHeavy;
+			return amortization > 0.0 ? (cost > 0.0 ? Operation.bonusReservedInstancesPartial : Operation.bonusReservedInstancesAll) : Operation.bonusReservedInstancesNo;
     	}
     	
 		if (cost == 0 && lineItem.getDescription().contains(" 0.0 ")) {
-        	return Operation.bonusReservedInstancesFixed;
+        	return Operation.bonusReservedInstancesAll;
         }
         return Operation.getBonusReservedInstances(defaultReservationUtilization);
     }

@@ -291,7 +291,7 @@ public class ReservationProcessorTest {
 			reservations.put(new ReservationKey(fields[0], fields[2], fields[3]), new CanonicalReservedInstances(res));
 		}
 				
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.FIXED, false);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.ALL, false);
 		reservationService.updateReservations(reservations, accountService, startMillis, productService, resourceService);
 		
 		rp.setDebugHour(0);
@@ -319,7 +319,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservation that's used by the owner.
 	 */
 	@Test
-	public void testUsedFixedAZ() throws Exception {
+	public void testUsedAllAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -327,37 +327,37 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 0.0),
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -366,7 +366,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservation that isn't used.
 	 */
 	@Test
-	public void testUnusedFixedAZ() throws Exception {
+	public void testUnusedAllAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -377,15 +377,15 @@ public class ReservationProcessorTest {
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesFixed, "m1.large", 14.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAll, "m1.large", 14.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 1.3345),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", -1.3345),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 1.3345),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", -1.3345),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
@@ -395,10 +395,10 @@ public class ReservationProcessorTest {
 	}
 
 	/*
-	 * Test two AZ scoped reservations - one HEAVY and one FIXED that are both used by the owner account.
+	 * Test two AZ scoped reservations - one NO and one ALL that are both used by the owner account.
 	 */
 	@Test
-	public void testTwoUsedHeavyFixedAZ() throws Exception {
+	public void testTwoUsedNoAllAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -407,38 +407,38 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesHeavy, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesNo, "m1.large", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesNo, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.large", 0.112),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsHeavy, "m1.large", 0.175 - 0.112),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesNo, "m1.large", 0.112),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsNo, "m1.large", 0.175 - 0.112),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNo, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.112),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNo, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.112),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -448,7 +448,7 @@ public class ReservationProcessorTest {
 	 * Test two equivalent AZ scoped full-upfront reservation that are both used by the owner account.
 	 */
 	@Test
-	public void testTwoUsedSameFixedAZ() throws Exception {
+	public void testTwoUsedSameAllAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -457,34 +457,34 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.190),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 * 2.0 - 0.190),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.190),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 * 2.0 - 0.190),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{				
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -493,7 +493,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservations where one instance is used by the owner account and one borrowed by a second account. Three instances are unused.
 	 */
 	@Test
-	public void testFixedAZ() throws Exception {
+	public void testAllAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -501,51 +501,51 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesFixed, "m1.small", 3.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAll, "m1.small", 3.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 * 2.0 - 0.1176),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 * 2.0 - 0.1176),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 0.0),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.09406),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 * 1.0 - 0.09406), // penalty for unused all goes to owner
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 * 1.0 - 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.09406),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 * 1.0 - 0.09406), // penalty for unused all goes to owner
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 * 1.0 - 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 0.0),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{				
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -554,7 +554,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where one instance is used by the owner account in each of several AZs.
 	 */
 	@Test
-	public void testFixedRegionalMultiAZ() throws Exception {
+	public void testAllRegionalMultiAZ() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -562,58 +562,58 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 3.0 - 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 0.044 * 3.0 - 0.1176),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 2.0 * 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.savingsFixed, "m1.small", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.savingsFixed, "m1.small", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 2.0 * -0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.reservedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.reservedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 2.0 * 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.savingsAll, "m1.small", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.savingsAll, "m1.small", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 2.0 * -0.02352),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -631,41 +631,41 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.large", 0.175 - 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 2.0 * (0.175 - 0.095)),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 2.0 * 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 2.0 * (0.175 - 0.095)),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -683,34 +683,34 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 2.0 * 0.175 - 2.0 * 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 2.0 * 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 2.0 * 0.175 - 2.0 * 0.095),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -728,39 +728,39 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 2.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 2.0 * (0.175 - 0.095)),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.large", 2.0 * 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.large", 2.0 * (0.175 - 0.095)),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 2.0 * 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 2.0 * (0.175 - 0.095)),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 2.0 * 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 2.0 * (0.175 - 0.095)),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -778,53 +778,53 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.large", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.large", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.large", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesFixed, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.large", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.large", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesAll, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesFixed, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesAll, "m1.large", 0.0),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesFixed, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.savingsAll, "m1.large", 0.175 - 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, Operation.borrowedInstancesAll, "m1.large", 0.0),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -833,7 +833,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where four small instance reservations are used by one large instance in the owner account.
 	 */
 	@Test
-	public void testFixedRegionalFamily() throws Exception {
+	public void testAllRegionalFamily() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -841,37 +841,37 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesFixed, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAll, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesFixed, "m1.large", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4.0 - 0.094),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAll, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 0.094),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 0.044 * 4.0 - 0.094),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.094),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.044 * 4.0 - 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.044 * 4.0 - 0.094),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.094),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -928,7 +928,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront reservation where one instance is used by the owner account and one borrowed by a second account - 3 instances unused.
 	 */
 	@Test
-	public void testFixedRegional() throws Exception {
+	public void testAllRegional() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -936,53 +936,53 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.small", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 3.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 1.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 3.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 1.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.1176),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 2 - 0.1176),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 0.044 * 2 - 0.1176),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 0.0),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 3.0 * 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 - 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.small", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 3.0 * -0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.small", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 3.0 * 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 - 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.small", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 3.0 * -0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.small", 0.0),
 			};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -991,7 +991,7 @@ public class ReservationProcessorTest {
 	 * Test two Region scoped full-upfront reservations where one instance from each is family borrowed by a third account.
 	 */
 	@Test
-	public void testFixedTwoRegionalFamilyBorrowed() throws Exception {
+	public void testAllTwoRegionalFamilyBorrowed() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -1000,47 +1000,47 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.xlarge", 1.0),
+			new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.xlarge", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 4.0),
-			new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 4.0),
-			new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.xlarge", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 4.0),
+			new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 4.0),
+			new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.xlarge", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4 - 0.094),
-				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.upfrontAmortizedFixed, "m1.small", 0.094),
-				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.savingsFixed, "m1.small", 0.044 * 4 - 0.094),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.xlarge", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 0.044 * 4 - 0.094),
+				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.upfrontAmortizedAll, "m1.small", 0.094),
+				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.savingsAll, "m1.small", 0.044 * 4 - 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.xlarge", 0.0),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");		
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesFixed, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAll, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.xlarge", 8.0 * (0.044 - 0.02352)),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.xlarge", 8.0 * 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesFixed, "m1.small", 0.0),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.xlarge", 0.0),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.xlarge", 8.0 * (0.044 - 0.02352)),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.xlarge", 8.0 * 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, null, Operation.lentInstancesAll, "m1.small", 0.0),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.xlarge", 0.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedFixed, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAll, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1049,7 +1049,7 @@ public class ReservationProcessorTest {
 	 * Test one Region scoped full-upfront RDS reservation where the instance is used.
 	 */
 	@Test
-	public void testFixedRDS() throws Exception {
+	public void testAllRDS() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -1057,32 +1057,32 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesAll, "db.t2.small.mysql", 1.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesAll, "db.t2.small.mysql", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesFixed, "db.t2.small.mysql", 0.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", 0.0223),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.savingsFixed, "db.t2.small.mysql", 0.034 - 0.0223),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.reservedInstancesAll, "db.t2.small.mysql", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedAll, "db.t2.small.mysql", 0.0223),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.savingsAll, "db.t2.small.mysql", 0.034 - 0.0223),
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesFixed, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesAll, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
 		/* Cost and Usage with recurring and amortization data in the DiscountedUsage lineitem */
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedFixed, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 0.0223),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedAll, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 0.0223),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1467,7 +1467,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservation that's used by the owner and has an additional bonus.
 	 */
 	@Test
-	public void testBonusFixed() throws Exception {
+	public void testBonusAll() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -1475,21 +1475,21 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
 		};
 		
 		Set<Account> owners = Sets.newHashSet(accounts.get(0));
@@ -1501,7 +1501,7 @@ public class ReservationProcessorTest {
 	 * Test one AZ scoped full-upfront reservation that's borrowed by another account and has an additional bonus reservation.
 	 */
 	@Test
-	public void testBonusBorrowedFixed() throws Exception {
+	public void testBonusBorrowedAll() throws Exception {
 		long startMillis = 1491004800000L;
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
@@ -1509,23 +1509,23 @@ public class ReservationProcessorTest {
 		};
 		
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 2.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 2.0),
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.large", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.large", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.lentInstancesFixed, "m1.large", 0.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedFixed, "m1.large", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsFixed, "m1.large", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.borrowedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAll, "m1.large", 0.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAll, "m1.large", 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAll, "m1.large", 0.175 - 0.095),
 		};
 
 		Set<Account> owners = Sets.newHashSet(accounts.get(1));
@@ -1665,24 +1665,24 @@ public class ReservationProcessorTest {
 		
 		/* One instance used, one unused */
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNo, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
 		};
 		Datum[] costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.028),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.016),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesHeavy, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.022),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNo, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.028),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsNo, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.016),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesNo, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.022),
 		};
 		
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.small", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesHeavy, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesNo, "m1.small", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesNo, "m1.small", 1.0),
 		};
 		
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesHeavy, "m1.small", 0.028),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesHeavy, "m1.small", 0.022),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsHeavy, "m1.small", 0.016),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsHeavy, "m1.small", -0.022),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesNo, "m1.small", 0.028),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesNo, "m1.small", 0.022),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsNo, "m1.small", 0.016),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsNo, "m1.small", -0.022),
 		};
 		
 		runOneHourTestCostAndUsageWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1", reservationOwners.keySet(), null);		

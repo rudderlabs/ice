@@ -114,7 +114,7 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testReformEC2Spot() throws IOException {
 		Line line = new Line(ec2, "RunInstances:SV001", "USW2-SpotUsage:c4.large", "c4.large Linux/UNIX Spot Instance-hour in US West (Oregon) in VPC Zone #1", null, "0.02410000", null);
-	    ReformedMetaData rmd = testReform(line, ReservationUtilization.HEAVY);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
 	    assertTrue("Operation should be spot instance but got " + rmd.operation, rmd.operation == Operation.spotInstances);
 	}
 
@@ -128,22 +128,22 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testReformEC2ReservedPartialUpfrontWithPurchaseOption() throws IOException {
 		Line line = new Line(ec2, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "0.34", "Partial Upfront");
-	    ReformedMetaData rmd = testReform(line, ReservationUtilization.HEAVY);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	}
 
 	@Test
 	public void testReformRDSReservedAllUpfront() throws IOException {
 		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.0", null);
-	    ReformedMetaData rmd = testReform(line, ReservationUtilization.FIXED);
-	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.ALL);
+	    assertTrue("Operation should be All instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesAll);
 	}
 
 	@Test
 	public void testReformRDSReservedAllUpfrontWithPurchaseOption() throws IOException {
 		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.0", "All Upfront");
-	    ReformedMetaData rmd = testReform(line, ReservationUtilization.HEAVY);
-	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
+	    assertTrue("Operation should be All instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesAll);
 	}
 
 	@Test
@@ -162,12 +162,12 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testReformRDSReservedPartialUpfrontWithPurchaseOption() throws IOException {
 		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", PricingTerm.reserved, "0.021", "Partial Upfront");
-	    ReformedMetaData rmd = testReform(line, ReservationUtilization.HEAVY);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 
 	    line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.012", "Partial Upfront");	    
-	    rmd = testReform(line, ReservationUtilization.HEAVY);
+	    rmd = testReform(line, ReservationUtilization.NO);
 	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 	}
@@ -703,7 +703,7 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "eu-west-1", null, "EC2 Instance", "Unused RIs - No Upfront", "t2.small", null };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 0.0, Result.ignore, 31, 0.0, true, 0, 1, 0.0146);
 		TagGroup tg = TagGroup.getTagGroup("234567890123", tag[0], tag[1], tag[2], tag[3], tag[4], "hours", null, accountService, productService);
-		Reservation r = new Reservation("arn", tg, 25, 0, 0, ReservationUtilization.HEAVY, 0.0, 0.028);
+		Reservation r = new Reservation("arn", tg, 25, 0, 0, ReservationUtilization.NO, 0.0, 0.028);
 		test.addReservation(r);
 		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	}
