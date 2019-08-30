@@ -3,8 +3,6 @@ package com.netflix.ice.common;
 import static org.junit.Assert.*;
 
 import java.util.Map;
-import java.util.Properties;
-
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -28,7 +26,7 @@ public class InstanceTest {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 		Account account = as.getAccountById("123456789012");
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
@@ -54,7 +52,7 @@ public class InstanceTest {
 		String tagValue = "= I have equal signs, and a comma =";
 		tags.put("Name", tagValue);
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 				
 		Account account = as.getAccountById("123456789012");
@@ -81,7 +79,7 @@ public class InstanceTest {
 		tags.put("Email", "foo@bar.com");
 		tags.put("Name", "= I have equal signs, and a comma =");
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());		
+		ProductService ps = new BasicProductService();		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
 		String[] values = i.values();
@@ -104,7 +102,7 @@ public class InstanceTest {
 		String tagValue = "I have a separator: " + Instance.tagSeparator;
 		tags.put("Name", tagValue);
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());		
+		ProductService ps = new BasicProductService();		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
 		String[] values = i.values();
@@ -116,7 +114,7 @@ public class InstanceTest {
 	public void testNoTags() {
 		Map<String, String> tags = Maps.newHashMap();
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
@@ -130,7 +128,7 @@ public class InstanceTest {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, null, ps.getProductByName(Product.ec2), tags, 0);
@@ -143,7 +141,7 @@ public class InstanceTest {
 	public void testNoTagsNoZone() {
 		Map<String, String> tags = Maps.newHashMap();
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 				
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", as.getAccountById("123456789012"), Region.US_EAST_1, null, ps.getProductByName(Product.ec2), tags, 0);

@@ -199,11 +199,10 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.account.toString());
             out.writeUTF(tagGroup.region.toString());
             out.writeUTF(tagGroup.zone == null ? "" : tagGroup.zone.toString());
-            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.writeUTF(tagGroup.product.getCanonicalName());
+            out.writeUTF(tagGroup.product.getServiceCode());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
-            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getCanonicalName() : tagGroup.resourceGroup.toString());
+            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getServiceCode() : tagGroup.resourceGroup.toString());
         }
         
         public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
@@ -216,8 +215,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.write(tagGroup.account.toString() + ",");
             out.write(tagGroup.region.toString() + ",");
             out.write(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
-            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.write(tagGroup.product.getCanonicalName() + ",");
+            out.write(tagGroup.product.getServiceCode() + ",");
             out.write(tagGroup.operation.toString() + ",");
             UsageType.serializeCsv(out, tagGroup.usageType);
             out.write(",");
@@ -246,7 +244,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             String zoneStr = in.readUTF();
             Zone zone = StringUtils.isEmpty(zoneStr) ? null : Zone.getZone(zoneStr, region);
             String prodStr = in.readUTF();
-            Product product = productService.getProductByName(prodStr);
+            Product product = productService.getProductByServiceCode(prodStr);
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
@@ -272,7 +270,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 	sb.append(",");
                 	sb.append(tagGroup.zone == null ? "" : tagGroup.zone.toString());
                 	sb.append(",");
-                	sb.append(tagGroup.product.getCanonicalName());
+                	sb.append(tagGroup.product.getServiceCode());
                 	sb.append(",");
                 	sb.append(tagGroup.operation.toString());
                 	sb.append(",");

@@ -27,7 +27,7 @@ import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
 
 public class BasicTagGroupManagerTest {
-	private static ProductService productService = new BasicProductService(null);
+	private static ProductService productService = new BasicProductService();
 	private static AccountService accountService = new BasicAccountService();
 	public final static DateTime testMonth = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
 

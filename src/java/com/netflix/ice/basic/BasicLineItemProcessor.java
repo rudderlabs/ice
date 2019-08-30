@@ -57,6 +57,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	this.resourceService = resourceService;
     }
     
+    protected Product getProduct(LineItem lineItem) {
+    	// DBR version
+    	return productService.getProductByServiceName(lineItem.getProduct());
+    }
+    
     protected boolean ignore(long startMilli, LineItem lineItem) {    	
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
@@ -67,7 +72,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (account == null)
             return true;
 
-        Product product = productService.getProductByAwsName(lineItem.getProduct());
+        Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
         
         if (product.isSupport()) {
         	// Don't try and deal with support. Line items have lots of craziness
@@ -144,7 +149,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();
         
-        if (productService.getProductByAwsName(lineItem.getProduct()).isRegistrar()) {
+        if (productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode()).isRegistrar()) {
         	// Put all out-of-month registrar fees at the start of the month
 	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
         	if (millisStart > nextMonthStartMillis) {
@@ -421,7 +426,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     
     protected ReformedMetaData reform(long millisStart, LineItem lineItem, ReservationUtilization defaultReservationUtilization) {
 
-    	Product product = productService.getProductByAwsName(lineItem.getProduct());
+    	Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
     	
         Operation operation = null;
         UsageType usageType = null;

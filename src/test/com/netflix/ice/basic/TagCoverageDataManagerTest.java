@@ -5,7 +5,6 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -115,7 +114,7 @@ public class TagCoverageDataManagerTest {
 	@Test
 	public void loadFile() throws Exception {
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 		TagCoverageDataManager data = new TestDataFilePoller(DateTime.now(), null, null, true, 0, as, ps, 12);
 	    

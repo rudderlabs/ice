@@ -60,7 +60,7 @@ public class BillingFileProcessorTest {
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
         properties = getProperties(propertiesFilename);        
-		productService = new BasicProductService(null);
+		productService = new BasicProductService();
 		
 		// Add all the zones we need for our test data		
 		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
@@ -211,11 +211,14 @@ public class BillingFileProcessorTest {
         		
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
-    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
-    	if (reservationService.hasReservations(Product.rdsInstance))
-    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
-    	if (reservationService.hasReservations(Product.redshift))
-    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
+    	Product p = productService.getProductByName(Product.ec2Instance);
+    	prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
+    	p = productService.getProductByName(Product.rdsInstance);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
+    	p = productService.getProductByName(Product.redshift);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
 
         reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate, prices);
         

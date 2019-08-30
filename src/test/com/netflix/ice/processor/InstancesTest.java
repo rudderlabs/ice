@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Map;
-import java.util.Properties;
-
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -28,7 +26,7 @@ public class InstancesTest {
 		String tagValue = "= I have equal signs, a pipe(|), and a comma =";
 		tags.put("Name", tagValue);
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		Account account = as.getAccountById("123456789012");
 		
 		String id = "i-17f85eef87efb7a53";

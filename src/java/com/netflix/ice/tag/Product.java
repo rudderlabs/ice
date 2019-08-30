@@ -44,15 +44,18 @@ public class Product extends Tag {
 	 */
 	
 	/*
-	 * fileName is used for naming product-specific files
+	 * serviceCode is used for naming product-specific files
 	 */
-	private final String fileName;
+	private final String serviceName;
+	private final String serviceCode;
+	private final Source source;
 	
-	/*
-	 * fileName character substitutions for illegal characters
-	 */
-	public static final String spaceReplacement = "_";
-	public static final String slashReplacement = "-slash-";
+	public enum Source {
+		pricing,
+		dbr,
+		cur,
+		code;
+	}
 	
 	/*
 	 * Standard product name strings needed to test identity in the "is" methods.
@@ -119,13 +122,11 @@ public class Product extends Tag {
      * The Canonical name is always used by the TagGroup serializer so that changing
      * the override name won't corrupt the data files.
      */
-    public Product(String name) {  
-    	super(getOverride(canonicalName(name)));
-   	
-    	// substitute "_" for spaces and make lower case
-    	// This operation must be invertible, so we assume product
-    	// names don't use underscore!
-    	fileName = getCanonicalName(this.name).replace(" ", spaceReplacement).replace("/", slashReplacement);
+    public Product(String serviceName, String serviceCode, Source source) {  
+    	super(getOverride(canonicalName(serviceName)));
+    	this.serviceName = serviceName;
+    	this.serviceCode = serviceCode;
+    	this.source = source;
     }
 
     private static String canonicalName(String name) {
@@ -136,11 +137,6 @@ public class Product extends Tag {
     	else if (s.startsWith("AWS"))
     		s = s.substring("AWS".length()).trim();
     	return s;
-    }
-    
-    public static String getNameFromFileName(String fileName) {
-    	// Invert the operation we did to create the short name
-    	return fileName.replace(spaceReplacement, " ").replace(slashReplacement, "/");
     }
     
     public static void addOverride(String canonical, String override) {
@@ -173,8 +169,16 @@ public class Product extends Tag {
     	return (n = canonicalNames.get(name)) != null ? n : name;
     }
 
-    public String getFileName() {
-    	return fileName;
+    public String getServiceCode() {
+    	return serviceCode;
+    }
+    
+    public String getServiceName() {
+    	return serviceName;
+    }
+    
+    public Source getSource() {
+    	return source;
     }
     
     public boolean isSupport() {
@@ -255,5 +259,9 @@ public class Product extends Tag {
     
     public boolean hasResourceTags() {
     	return !productsWithoutResourceTags.contains(getCanonicalName(name));
+    }
+    
+    public boolean hasReservations() {
+    	return isEc2Instance() || isRdsInstance() || isRedshift() || isElastiCache() || isElasticsearch();
     }
 }

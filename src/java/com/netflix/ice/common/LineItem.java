@@ -291,5 +291,9 @@ public abstract class LineItem {
 	public Region getProductRegion() {
 		return null;
 	}
+	
+	public String getProductServiceCode() {
+		return null;
+	}
 
 }

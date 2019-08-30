@@ -198,6 +198,8 @@ public class ProcessorConfig extends Config {
     public void start () throws Exception {
         logger.info("starting up...");
 
+        productService.initProcessor(localDir, workS3BucketName, workS3BucketPrefix);
+        
         reservationService.init();
         if (resourceService != null)
             resourceService.init();

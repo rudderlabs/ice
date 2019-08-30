@@ -11,7 +11,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Properties;
 
 import org.junit.Test;
 import com.netflix.ice.basic.BasicAccountService;
@@ -30,7 +29,7 @@ public class ReadOnlyTagCoverageDataTest {
 	@Test
 	public void testDeserialize() throws IOException {
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         DataOutput out = new DataOutputStream(output);

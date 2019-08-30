@@ -4,8 +4,6 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.BeforeClass;
@@ -71,10 +69,7 @@ public class BasicLineItemProcessorTest {
     public static void init(AccountService as) throws Exception {
     	accountService = as;
     	
-		Properties props = new Properties();
-		props.setProperty("RDS", "Relational Database Service");
-		//props.setProperty("EC2", "Elastic Compute Cloud");
-		productService = new BasicProductService(props);
+		productService = new BasicProductService();
 
 		cauLineItem = newCurLineItem(manifest2017, null);
         

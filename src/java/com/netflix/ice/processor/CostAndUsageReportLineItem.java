@@ -21,6 +21,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int purchaseOptionIndex;
 	private int lineItemTypeIndex;
 	private int lineItemNormalizationFactorIndex;
+	private int lineItemProductCodeIndex;
 	private int productNormalizationSizeFactorIndex; // First appeared in 2017-07
 	private int productUsageTypeIndex;
 	private int publicOnDemandCostIndex;
@@ -28,6 +29,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int pricingUnitIndex;
 	private int reservationArnIndex;
 	private int productRegionIndex;
+	private int productServicecodeIndex;
 	
 	// First appeared in 2018-01 (Net versions added in 2019-01)
 	private int reservationAmortizedUpfrontCostForUsageIndex;
@@ -91,6 +93,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         purchaseOptionIndex = report.getColumnIndex("pricing", "PurchaseOption");
         lineItemTypeIndex = report.getColumnIndex("lineItem", "LineItemType");
         lineItemNormalizationFactorIndex = report.getColumnIndex("lineItem", "NormalizationFactor");
+        lineItemProductCodeIndex = report.getColumnIndex("lineItem", "ProductCode");
         productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor");
         productUsageTypeIndex = report.getColumnIndex("product",  "usagetype"); 
         
@@ -98,6 +101,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         pricingUnitIndex = report.getColumnIndex("pricing", "unit");
         reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
         productRegionIndex = report.getColumnIndex("product", "region");
+        productServicecodeIndex = report.getColumnIndex("product", "servicecode");
     }
     
     public String toString() {
@@ -430,5 +434,16 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return null;
 	}
 	
+	@Override
+	public String getProductServiceCode() {
+		// Favor the lineItem/ProductCode over product/ServiceCode because Lambda for example has AWSDataTransfer as the serviceCode
+		if (lineItemProductCodeIndex >= 0 && !items[lineItemProductCodeIndex].isEmpty())
+			return items[lineItemProductCodeIndex];
+		
+		if (productServicecodeIndex >= 0 && !items[productServicecodeIndex].isEmpty())
+			return items[productServicecodeIndex];
+		
+		return "";
+	}
 }
 

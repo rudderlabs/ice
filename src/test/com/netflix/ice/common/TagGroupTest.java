@@ -2,8 +2,6 @@ package com.netflix.ice.common;
 
 import static org.junit.Assert.*;
 
-import java.util.Properties;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -22,17 +20,15 @@ public class TagGroupTest {
 	
 	@BeforeClass
 	public static void init() {
-		Properties props = new Properties();
-		props.setProperty("RDS", "Relational Database Service");
-		ps = new BasicProductService(props);
+		ps = new BasicProductService();
 	}
 
 	@Test
 	public void testRdsTags() {		
 		AccountService as = new BasicAccountService();
 		
-		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProductByAwsName("AWS Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
-		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProductByAwsName("AWS Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProduct("AWS Relational Database Service", "AmazonRDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProduct("AWS Relational Database Service", "AmazonRDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertEquals("TagGroups should be equivalent", tg1, tg2);
 
 		tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234"), Region.US_EAST_1, null, ps.getProductByName("RDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
@@ -48,8 +44,8 @@ public class TagGroupTest {
 	@Test
 	public void testEquals() {
 		AccountService as = new BasicAccountService();
-		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByAwsName("Amazon Relational Food Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
-		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProductByAwsName("Amazon Relational Food Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProduct("Amazon Relational Food Service", "AmazonRFS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111345"), Region.US_EAST_1, null, ps.getProduct("Amazon Relational Food Service", "AmazonRFS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertTrue("Should be equal", tg1 == tg2);
 		assertEquals("Should be equal", tg1, tg1);
 		assertEquals("Should be equal", tg1, tg2);

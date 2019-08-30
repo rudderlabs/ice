@@ -28,7 +28,7 @@ public class TagListsWithUserTagsTest {
 	List<UserTag> tags1 = UserTag.getUserTags(Lists.newArrayList(new String[]{"", "t1v0", "t1v1", "t1v2", "t1v3"}));
 	List<UserTag> tags2 = UserTag.getUserTags(Lists.newArrayList(new String[]{"t2v0"}));
 	List<UserTag> tags3 = Lists.newArrayList();
-	ProductService ps = new BasicProductService(null);
+	ProductService ps = new BasicProductService();
 
 	@Test
 	public void testContainsTagGroup() {

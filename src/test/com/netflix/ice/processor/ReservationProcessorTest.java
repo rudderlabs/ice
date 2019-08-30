@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 import org.apache.ivy.util.StringUtils;
@@ -117,10 +116,7 @@ public class ReservationProcessorTest {
 		priceListService = new PriceListService(resourceDir, null, null);
 		priceListService.init();
 
-		Properties props = new Properties();
-		props.setProperty("RDS", "Relational Database Service");
-		props.setProperty("EC2", "Elastic Compute Cloud");
-		productService = new BasicProductService(props);
+		productService = new BasicProductService();
 
 		resourceService = new BasicResourceService(productService, new String[]{}, new String[]{});
 	}
@@ -187,7 +183,7 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		DetailedBillingReservationProcessor rp = new DetailedBillingReservationProcessor(rsvOwners, new BasicProductService(null), priceListService, true);
+		DetailedBillingReservationProcessor rp = new DetailedBillingReservationProcessor(rsvOwners, new BasicProductService(), priceListService, true);
 		// Populate the accounts list in the reservation processor for borrowing
 		for (Account a: accounts)
 			rp.addBorrower(a);
@@ -206,7 +202,7 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(null), priceListService, true);
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(), priceListService, true);
 		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, product);
 	}
 	
@@ -302,15 +298,20 @@ public class ReservationProcessorTest {
 		
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
-    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(start, ServiceCode.AmazonEC2));
-    	if (reservationService.hasReservations(Product.rdsInstance))
-    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(start, ServiceCode.AmazonRDS));
-    	if (reservationService.hasReservations(Product.redshift))
-    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(start, ServiceCode.AmazonRedshift));
-    	if (reservationService.hasReservations(Product.elasticsearch))
-    		prices.put(productService.getProductByName(Product.elasticsearch), priceListService.getPrices(start, ServiceCode.AmazonES));
-    	if (reservationService.hasReservations(Product.elastiCache))
-    		prices.put(productService.getProductByName(Product.elastiCache), priceListService.getPrices(start, ServiceCode.AmazonElastiCache));
+    	Product p = productService.getProductByName(Product.ec2Instance);
+    	prices.put(p, priceListService.getPrices(start, ServiceCode.AmazonEC2));
+    	p = productService.getProductByName(Product.rdsInstance);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(start, ServiceCode.AmazonRDS));
+    	p = productService.getProductByName(Product.redshift);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(start, ServiceCode.AmazonRedshift));
+    	p = productService.getProductByName(Product.elasticsearch);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(start, ServiceCode.AmazonES));
+    	p = productService.getProductByName(Product.elastiCache);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(start, ServiceCode.AmazonElastiCache));
 
 		rp.process(reservationService, data, product, start, prices);
 	}

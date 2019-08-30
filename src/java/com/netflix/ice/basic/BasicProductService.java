@@ -17,77 +17,243 @@
  */
 package com.netflix.ice.basic;
 
+import com.amazonaws.services.pricing.AWSPricing;
+import com.amazonaws.services.pricing.AWSPricingClientBuilder;
+import com.amazonaws.services.pricing.model.DescribeServicesRequest;
+import com.amazonaws.services.pricing.model.DescribeServicesResult;
+import com.amazonaws.services.pricing.model.GetAttributeValuesRequest;
+import com.amazonaws.services.pricing.model.GetAttributeValuesResult;
+import com.amazonaws.services.pricing.model.Service;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Product.Source;
+import com.netflix.ice.tag.Region;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.Collection;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 public class BasicProductService implements ProductService {
-    //Logger logger = LoggerFactory.getLogger(getClass());
+    Logger logger = LoggerFactory.getLogger(getClass());
+    
+    final private String productsFileName = "products.csv.gz";
+	final private String[] header = new String[]{ "Name", "ServiceName", "ServiceCode", "Source" };
+
+	private static Map<String, String> missingServiceNames = Maps.newHashMap();
+
+	static {
+		// Missing service names from pricing service as of Aug2019
+		missingServiceNames.put("AmazonETS", "Amazon Elastic Transcoder");
+		missingServiceNames.put("AWSCodeCommit", "AWS CodeCommit");
+		missingServiceNames.put("AWSDeveloperSupport", "AWS Support (Developer)");
+		missingServiceNames.put("AWSSupportBusiness", "AWS Support (Business)");
+		missingServiceNames.put("AWSSupportEnterprise", "AWS Support (Enterprise)");
+		missingServiceNames.put("datapipeline", "AWS Data Pipeline");
+	}
+	
 	/*
 	 * Product lookup maps built dynamically as we encounter the product names while
 	 * processing billing reports or reading tagdb files.
 	 * 
 	 * Map of products keyed by the full Amazon name including the AWS and Amazon prefix
 	 */
-    private ConcurrentMap<String, Product> productsByAwsName = Maps.newConcurrentMap();
+    private ConcurrentMap<String, Product> productsByServiceName = Maps.newConcurrentMap();
     /*
      * Map of products keyed by the name without the AWS or Amazon prefix. Also has entries for override names
      */
     private ConcurrentMap<String, Product> productsByName = Maps.newConcurrentMap();
     /*
-     * Map of products keyed by the filename used for saving the data
+     * Map of products keyed by the AWS service code used for saving the data
      */
-    private ConcurrentMap<String, Product> productsByFileName = Maps.newConcurrentMap();
+    private ConcurrentMap<String, Product> productsByServiceCode = Maps.newConcurrentMap();
+    
+    /*
+     * Mutex for locking on the addProduct operation. We want the same product object to be
+     * used across all the separate maps.
+     */
+    private final Lock lock = new ReentrantLock(true);
        
-    public BasicProductService(Properties overrideProductNames) {
+    public BasicProductService() {
 		super();
-		if (overrideProductNames != null) {
-			for (String overrideName: overrideProductNames.stringPropertyNames())
-				Product.addOverride(overrideProductNames.getProperty(overrideName), overrideName);
-		}
 	}
+    
+    public void initReader(String localDir, String bucket, String prefix) {
+    	retrieve(localDir, bucket, prefix);
+    }
+    
+    public void initProcessor(String localDir, String bucket, String prefix) {
+    	retrieve(localDir, bucket, prefix);
+    	
+    	// Build/Amend the product list using the AWS Pricing Service
+    	AWSPricing pricing = AWSPricingClientBuilder.standard()
+    			.withClientConfiguration(AwsUtils.clientConfig)
+    			.withRegion(Region.US_EAST_1.name)
+    			.withCredentials(AwsUtils.awsCredentialsProvider).build();
+    	
+    	DescribeServicesRequest request = new DescribeServicesRequest();
+    	List<Service> services = Lists.newLinkedList();
+    	DescribeServicesResult page = null;
+    	do {
+            if (page != null)
+                request.setNextToken(page.getNextToken());
+    		page = pricing.describeServices(request);
+    		services.addAll(page.getServices());
+    	} while (page.getNextToken() != null);
+    	
+    	final String servicename = "servicename";
+		GetAttributeValuesRequest req = new GetAttributeValuesRequest();
+    	for (Service s: services) {
+    		String name = null;
+    		if (s.getAttributeNames().contains(servicename)) {
+	    		req.setServiceCode(s.getServiceCode());
+	    		req.setAttributeName(servicename);
+	    		GetAttributeValuesResult result = pricing.getAttributeValues(req);
+	    		if (!result.getAttributeValues().isEmpty())
+	    			name = result.getAttributeValues().get(0).getValue();
+    		}
+    		// See if we already have this service in the map
+    		Product existing = productsByServiceCode.get(s.getServiceCode());
+    		if (existing != null) {
+    			if (name != null && !existing.getServiceName().equals(name))
+    				logger.warn("Found service with different name than one used in CUR for code: " + s.getServiceCode() + ", Pricing Name: " + name + ", CUR Name: " + existing.getServiceName());
+    			continue;
+    		}
+    		
+    		if (name == null) {
+    			// Not all services return a service name even though they have one.
+    			// Handle the one we know about and just use the Code for those we don't.
+    			if (missingServiceNames.containsKey(s.getServiceCode()))
+    				name = missingServiceNames.get(s.getServiceCode());
+    			else
+    				name = s.getServiceCode();
+    			
+    			logger.warn("Service " + s.getServiceCode() + " doesn't have a service name, use: " + name);
+    		}
+    		addProduct(new Product(name, s.getServiceCode(), Source.pricing));
+    	}
+    	
+    	// Add products that aren't included in the pricing service list (as of Aug2019)
+    	if (!productsByServiceCode.containsKey("AmazonRegistrar"))
+    		addProduct(new Product("Amazon Registrar", "AmazonRegistrar", Source.code));
+    	if (!productsByServiceCode.containsKey("AWSSecurityHub"))
+    		addProduct(new Product("AWS Security Hub", "AWSSecurityHub", Source.code));
+    	
+    	// Add products for the ICE breakouts
+    	addProduct(new Product(Product.ec2Instance, "EC2Instance", Source.code));
+    	addProduct(new Product(Product.rdsInstance, "RDSInstance", Source.code));
+    	addProduct(new Product(Product.ebs, "EBS", Source.code));
+    	addProduct(new Product(Product.eip, "EIP", Source.code));
+    }
 
-	public Product getProductByAwsName(String awsName) {
-        Product product = productsByAwsName.get(awsName);
+	public Product getProduct(String serviceName, String serviceCode) {
+		if (serviceCode == null || serviceCode.isEmpty())
+			return getProductByServiceName(serviceName);
+		
+        Product product = productsByServiceCode.get(serviceCode);
         if (product == null) {
-            product = new Product(awsName);
-            addProduct(product);
-            //logger.info("getProductByAwsName() created product: " + product.name + " for: " + awsName);
+            Product newProduct = new Product(serviceName, StringUtils.isEmpty(serviceCode) ? serviceName.replace(" ", "_") : serviceCode, serviceCode == null ? Source.dbr : Source.cur);
+            product = addProduct(newProduct);
+            if (newProduct == product)
+            	logger.info("created product: " + product.name + " for: " + serviceName + " with code: " + product.getServiceCode());
+            else if (!product.getServiceCode().equals(serviceCode)) {
+            	logger.error("new service code " + serviceCode + " for product: " + product.name + " for: " + serviceName + " with code: " + product.getServiceCode());
+            }
+        }
+        if (!product.getServiceName().equals(serviceName) && product.getSource() == Source.pricing) {
+        	// Service name doesn't match, update the product with the proper service name
+        	// assuming that billing reports always have more accurate names than the pricing service
+        	product = addProduct(new Product(serviceName, product.getServiceCode(), serviceCode == null ? Source.dbr : Source.cur));
         }
         return product;
     }
     
-    public Product getProductByFileName(String fileName) {
-    	// Look up the product by the name used for the tagdb file
-    	Product product = productsByFileName.get(fileName);
+	/*
+	 * Called by BasicManagers to manage product list for resource-based cost and usage data files.
+	 */
+    public Product getProductByServiceCode(String serviceCode) {
+    	// Look up the product by the AWS service code
+    	Product product = productsByServiceCode.get(serviceCode);
     	if (product == null) {
-    		String name = Product.getNameFromFileName(fileName);
-    		product = new Product(name);
-    		addProduct(product);
-            //logger.info("getProductByFileName() created product: " + product.name + " for filename: " + fileName);
+    		product = new Product(serviceCode, serviceCode, null);
+    		product = addProduct(product);
+            logger.warn("created product by service code: " + serviceCode + ", name: "+ product.name + ", code: " + product.getServiceCode());
     	}
     	return product;
     }
 
-    public Product getProductByName(String name) {
-        Product product = productsByName.get(name);
+    public Product getProductByServiceName(String serviceName) {
+        Product product = productsByServiceName.get(serviceName);
         if (product == null) {
-            product = new Product(name);
-            addProduct(product);
-            //logger.info("getProductByName() created product: " + product.name);
+            product = new Product(serviceName, serviceName.replace(" ", "_"), Source.dbr);
+            product = addProduct(product);
+            logger.info("created product by service name: " + product.name + " for code: " + product.getServiceCode());
         }
         return product;
     }
     
-    private void addProduct(Product product) {
+    /*
+     * Called by TagGroup deserializer and test code
+     */
+    public Product getProductByName(String name) {
+        Product product = productsByName.get(name);
+        if (product == null) {
+            product = new Product(name, name.replace(" ", "_"), null);
+            product = addProduct(product);
+            logger.warn("created product by name: " + product.name + " for code: " + product.getServiceCode());
+        }
+        return product;
+    }
+    
+    protected Product addProduct(Product product) {
+    	lock.lock();
+    	try {    	
+	    	// Check again now that we hold the lock
+    		Product existingProduct = productsByServiceCode.get(product.getServiceCode());
+	    	if (existingProduct != null) {
+	            if (product.getServiceName().equals(existingProduct.getServiceName()))
+	            	return existingProduct;
+	            
+	            logger.warn("service name does not match for " + product.getServiceCode() + ", existing: " + existingProduct.getServiceName() + ", replace with: " + product.getServiceName());
+	    	}
+			
+	    	setProduct(product);
+	        return product;
+    	}
+    	finally {
+    		lock.unlock();
+    	}
+    }
+    
+    private void setProduct(Product product) {
         productsByName.put(product.name, product);
-        productsByFileName.put(product.getFileName(), product);
+        productsByServiceCode.put(product.getServiceCode(), product);
 
         String canonicalName = product.getCanonicalName();
         if (!canonicalName.equals(product.name)) {
@@ -95,10 +261,7 @@ public class BasicProductService implements ProductService {
         	productsByName.put(canonicalName, product);
         }
         
-        productsByAwsName.put("AWS " + canonicalName, product);
-        productsByAwsName.put("Amazon " + canonicalName, product);
-        // AmazonCloudWatch is at least one of the product names that doesn't use a space. There may be others...
-        productsByAwsName.put("Amazon" + canonicalName, product);
+        productsByServiceName.put(product.getServiceName(), product);
     }
 
     public Collection<Product> getProducts() {
@@ -111,4 +274,76 @@ public class BasicProductService implements ProductService {
     	    result.add(productsByName.get(name));
     	return result;
     }
+
+    public void archive(String localDir, String bucket, String prefix) throws IOException {
+        
+        File file = new File(localDir, productsFileName);
+        
+    	OutputStream os = new FileOutputStream(file);
+		os = new GZIPOutputStream(os);        
+		Writer out = new OutputStreamWriter(os);
+        
+        try {
+        	writeCsv(out);
+        }
+        finally {
+            out.close();
+        }
+
+        // archive to s3
+        logger.info("uploading " + file + "...");
+        AwsUtils.upload(bucket, prefix, localDir, file.getName());
+        logger.info("uploaded " + file);
+    }
+
+    protected void writeCsv(Writer out) throws IOException {
+    	
+    	CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT.withHeader(header));
+    	for (Product p: productsByServiceCode.values()) {
+    		printer.printRecord(p.name, p.getServiceName(), p.getServiceCode(), p.getSource());
+    	}
+  	
+    	printer.close(true);
+    }
+    
+    private void retrieve(String localDir, String bucket, String prefix) {
+        File file = new File(localDir, productsFileName);
+    	
+        // read from s3 if not exists
+        if (!file.exists()) {
+            logger.info("downloading " + file + "...");
+            AwsUtils.downloadFileIfNotExist(bucket, prefix, file);
+            logger.info("downloaded " + file);
+        }
+        
+        if (file.exists()) {
+            BufferedReader reader = null;
+            try {
+            	InputStream is = new FileInputStream(file);
+            	is = new GZIPInputStream(is);
+                reader = new BufferedReader(new InputStreamReader(is));
+                readCsv(reader);
+            }
+            catch (Exception e) {
+            	Logger logger = LoggerFactory.getLogger(ReservationService.class);
+            	logger.error("error in reading " + file, e);
+            }
+            finally {
+                if (reader != null)
+                    try {reader.close();} catch (Exception e) {}
+            }
+        }        
+    }
+    
+    protected void readCsv(Reader reader) throws IOException {
+    	Iterable<CSVRecord> records = CSVFormat.DEFAULT
+    		      .withHeader(header)
+    		      .withFirstRecordAsHeader()
+    		      .parse(reader);
+    	
+	    for (CSVRecord record : records) {
+	    	setProduct(new Product(record.get(1), record.get(2), Source.valueOf(record.get(3))));
+	    }
+    }
+
 }

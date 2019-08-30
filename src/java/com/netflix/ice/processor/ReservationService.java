@@ -92,7 +92,7 @@ public interface ReservationService {
     /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
-    boolean hasReservations(String product);
+    boolean hasReservations(Product product);
 
     public static class ReservationInfo {
     	public final TagGroup tagGroup;

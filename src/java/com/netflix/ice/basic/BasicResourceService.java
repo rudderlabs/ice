@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
@@ -21,20 +21,11 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 
 public class BasicResourceService extends ResourceService {
-    private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
+    //private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
     protected final String[] customTags;
     private final List<String> userTags;
     
-    @SuppressWarnings("unchecked")
-	private List<List<String>> productNamesWithResources = Lists.<List<String>>newArrayList(
-            Lists.newArrayList(Product.ec2, Product.ec2Instance, Product.ebs),
-            Lists.newArrayList(Product.rds, Product.rdsInstance),
-            Lists.newArrayList(Product.redshift),
-            Lists.newArrayList(Product.s3));
-    
-	private List<List<Product>> productsWithResources = Lists.<List<Product>>newArrayList();
-
     // Map of tags where each tag has a list of aliases. Outer key is the payerAccountId.
     private Map<String, Map<String, TagConfig>> tagConfigs;
     
@@ -62,16 +53,7 @@ public class BasicResourceService extends ResourceService {
 		this.tagResourceGroupIndecies = Maps.newHashMap();
 		for (int i = 0; i < customTags.length; i++)
 			tagResourceGroupIndecies.put(customTags[i], i);
-		
-        for (List<String> l: productNamesWithResources) {
-        	List<Product> lp = Lists.newArrayList();
-        	for (String name: l) {
-        		lp.add(productService.getProductByName(name));
-        	}
-        	productsWithResources.add(lp);
-        }
-		logger.info("Initialized BasicResourceService with " + productsWithResources.size() + " products");
-		
+				
 		userTags = Lists.newArrayList();
 		for (String tag: customTags) {
 			if (!tag.isEmpty())
@@ -222,17 +204,6 @@ public class BasicResourceService extends ResourceService {
         	userTagCoverage[i] = !StringUtils.isEmpty(v);
         }    	
     	return userTagCoverage;
-    }
-
-    @Override
-    public List<List<Product>> getProductsWithResources() {
-        return productsWithResources;
-        
-//        List<List<Product>> result = Lists.newArrayList();
-//        for (Product product: ReaderConfig.getInstance().productService.getProducts()) {
-//            result.add(Lists.<Product>newArrayList(product));
-//        }
-//        return result;
     }
 
     @Override

@@ -149,7 +149,7 @@ public class CostAndUsageData {
     	
         int totalResourceTagGroups = 0;
         for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getFileName(), true);
+            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true);
             Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
             logger.info("Write " + tagGroups.size() + " tagGroups for " + (product == null ? "all" : product.name));
             if (product != null)
@@ -191,7 +191,7 @@ public class CostAndUsageData {
     private void archiveHourly(long startMilli, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.getFileName();
+            String prodName = product == null ? "all" : product.getServiceCode();
             String name = prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime);
             futures.add(archiveHourlyFile(name, dataMap.get(product), compress, pool));
         }
@@ -230,7 +230,7 @@ public class CostAndUsageData {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 
         for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.getFileName();
+            String prodName = product == null ? "all" : product.getServiceCode();
             ReadWriteData data = dataMap.get(product);
             
             futures.add(archiveSummaryProduct(monthDateTime, startDate, prodName, data, prefix, compress, pool));
@@ -338,7 +338,7 @@ public class CostAndUsageData {
 
         for (Product product: tagCoverage.keySet()) {
 
-            String prodName = product == null ? "all" : product.getFileName();
+            String prodName = product == null ? "all" : product.getServiceCode();
             ReadWriteTagCoverageData data = tagCoverage.get(product);
             
             futures.add(archiveSummaryTagCoverageProduct(monthDateTime, startDate, prodName, data, compress, pool));

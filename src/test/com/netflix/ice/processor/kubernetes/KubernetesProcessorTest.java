@@ -44,7 +44,7 @@ public class KubernetesProcessorTest {
 	private static final int testDataHour = 395;
 
 	private String[] customTagNames = new String[]{ "Cluster", "Role", "Namespace", "Environment" };
-    private ProductService productService = new BasicProductService(null);
+    private ProductService productService = new BasicProductService();
     private ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
     
 	class TestConfig extends ProcessorConfig {

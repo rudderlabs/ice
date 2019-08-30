@@ -22,7 +22,7 @@ public class TagListsTest {
 			new Account("123456789012", "Account1")
 	};
 	List<String> regions = Lists.newArrayList(new String[]{"us-east-1"});
-	ProductService ps = new BasicProductService(null);
+	ProductService ps = new BasicProductService();
 
 
 	@Test

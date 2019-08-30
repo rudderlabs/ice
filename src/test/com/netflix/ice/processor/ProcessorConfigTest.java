@@ -59,7 +59,7 @@ public class ProcessorConfigTest {
         @SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
         
-        ProductService productService = new BasicProductService(null);
+        ProductService productService = new BasicProductService();
         ReservationService reservationService = new BasicReservationService(null, null, false);
         ResourceService resourceService = null;
         PriceListService priceListService = null;

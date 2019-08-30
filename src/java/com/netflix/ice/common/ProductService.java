@@ -19,17 +19,25 @@ package com.netflix.ice.common;
 
 import com.netflix.ice.tag.Product;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
 public interface ProductService {
 
     /**
-     * Get product by aws name, e.g. "Amazon Elastic Compute Cloud", "AWS Elastic MapReduce"
+     * Get product by service name, e.g. "Amazon Elastic Compute Cloud", "AWS Elastic MapReduce"
      * @param name
      * @return product
      */
-    Product getProductByAwsName(String name);
+    Product getProduct(String serviceName, String serviceCode);
+
+    /**
+     * Get product by service name, e.g. "AWS CloudFront", "Amazon Elastic Compute Cloud (EC2)"
+     * @param name
+     * @return product
+     */
+    Product getProductByServiceName(String serviceName);
 
     /**
      * Get product by name, e.g. CloudFront, "Elastic Compute Cloud (EC2)"
@@ -39,11 +47,11 @@ public interface ProductService {
     Product getProductByName(String name);
 
     /**
-     * Get product by file name, e.g. Elastic_Compute_Cloud_(EC2)
+     * Get product by AWS service code, e.g. AmazonEC2
      * @param fileName
      * @return product
      */
-    Product getProductByFileName(String fileName);
+    Product getProductByServiceCode(String serviceCode);
 
     /**
      * Get list of products from given names
@@ -57,4 +65,10 @@ public interface ProductService {
      * @return list of products
      */
     public Collection<Product> getProducts();
+    
+    public void initReader(String localDir, String bucket, String prefix);
+    
+    public void initProcessor(String localDir, String bucket, String prefix);
+    
+    public void archive(String localDir, String bucket, String prefix) throws IOException;
 }

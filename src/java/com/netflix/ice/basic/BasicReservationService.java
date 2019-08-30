@@ -90,7 +90,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     protected ReservationPeriod term;
     protected ReservationUtilization defaultUtilization;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
-    private Set<String> hasReservations;
+    private Set<Product> hasReservations;
 
     private static final String ec2 		= "ec2";
     private static final String rds 		= "rds";
@@ -145,7 +145,7 @@ public class BasicReservationService extends Poller implements ReservationServic
     /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
-    public boolean hasReservations(String product) {
+    public boolean hasReservations(Product product) {
     	return this.hasReservations.contains(product);
     }
 
@@ -721,35 +721,32 @@ public class BasicReservationService extends Poller implements ReservationServic
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
                 product = productService.getProductByName(Product.ec2Instance);
-                hasReservations.add(Product.ec2Instance);
             }
             else if (reservedInstances.isProduct(Product.rdsInstance)) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? ".multiaz" : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
             	product = productService.getProductByName(Product.rdsInstance);
-            	hasReservations.add(Product.rdsInstance);
             }
             else if (reservedInstances.isProduct(Product.redshift)){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
             	product = productService.getProductByName(Product.redshift);
-            	hasReservations.add(Product.redshift);
             }
             else if (reservedInstances.isProduct(Product.elasticsearch)){
             	usageType = UsageType.getUsageType("es." + reservedInstances.getInstanceType(), "hours");
             	product = productService.getProductByName(Product.elasticsearch);
-            	hasReservations.add(Product.elasticsearch);
             }
             else if (reservedInstances.isProduct(Product.elastiCache)){
             	InstanceCache cache = InstanceCache.withDescription(reservedInstances.getProductDescription());
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + cache.usageType, "hours");
             	product = productService.getProductByName(Product.elastiCache);
-            	hasReservations.add(Product.elastiCache);
             }
             else {
             	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());
             	continue;
             }
+            
+            hasReservations.add(product);
 
             ResourceGroup resourceGroup = null;
             if (resourceService != null)

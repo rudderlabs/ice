@@ -46,7 +46,7 @@ public class TaggerTest {
 	
 	@Before
 	public void init() {
-		ps = new BasicProductService(null);
+		ps = new BasicProductService();
 		rs = new BasicResourceService(ps, customTags, new String[]{});
 	}
 

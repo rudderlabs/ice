@@ -55,7 +55,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     BasicTagGroupManager(Product product, boolean compress) {
     	this.compress = compress;
     	config = ReaderConfig.getInstance();
-        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getFileName());
+        this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getServiceCode());
         file = new File(config.localDir, dbName + (compress ? compressExtension : ""));
         try {
             poll();

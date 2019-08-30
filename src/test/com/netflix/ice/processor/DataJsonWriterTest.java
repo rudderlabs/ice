@@ -28,7 +28,7 @@ import com.netflix.ice.tag.Zone;
 public class DataJsonWriterTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
-	private ProductService productService = new BasicProductService(null);
+	private ProductService productService = new BasicProductService();
 
 	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) {
 		Product prod = productService.getProductByName(product);

@@ -235,7 +235,7 @@ public abstract class ReservationProcessor {
 		for (TagGroup tagGroup: usageTags) {
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+			if ((tagGroup.product.hasReservations())
 					&& usageMap.get(tagGroup) != null 
 					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
@@ -249,7 +249,7 @@ public abstract class ReservationProcessor {
 		for (TagGroup tagGroup: costTags) {
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+			if ((tagGroup.product.hasReservations())
 					&& costMap.get(tagGroup) != null 
 					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);

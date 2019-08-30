@@ -77,8 +77,6 @@ class BootStrap {
 			
             logger.info('Read ice.properties ...');
 			Properties prop = getProperties("ice.propertiesfile", "ice.properties");			
-            logger.info('Reading tag.properties...');
-			Properties tagProp = getProperties("tag.propertiesfile", "tag.properties");
 			
             if (StringUtils.isEmpty(System.getProperty("ice.s3AccessKeyId")) || StringUtils.isEmpty(System.getProperty("ice.s3SecretKey")))
                 credentialsProvider = new InstanceProfileCredentialsProvider();
@@ -119,7 +117,7 @@ class BootStrap {
 				}
 			}
 			
-			ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
+			ProductService productService = new BasicProductService();
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 				if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
@@ -325,17 +323,6 @@ class BootStrap {
                 is.close();
         }
 		return prop;
-	}
-	
-	private Properties getSubProperties(Properties tagProps, String prefix) {
-		Properties subProperties = new Properties();
-		for (String name: tagProps.stringPropertyNames()) {
-			if (name.startsWith(prefix)) {
-				String subName = name.substring(prefix.length());
-				subProperties.setProperty(subName, tagProps.getProperty(name));
-			}
-		}
-		return subProperties;
 	}
 }
 	

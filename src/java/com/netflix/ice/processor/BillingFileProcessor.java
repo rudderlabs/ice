@@ -131,17 +131,28 @@ public class BillingFileProcessor extends Poller {
 
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
-        	prices.put(config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
-        	if (config.reservationService.hasReservations(Product.rdsInstance))
-        		prices.put(config.productService.getProductByName(Product.rdsInstance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRDS));
-        	if (config.reservationService.hasReservations(Product.redshift))
-        		prices.put(config.productService.getProductByName(Product.redshift), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRedshift));
-
+        	for (ServiceCode sc: ServiceCode.values()) {
+        		// EC2 and RDS Instances are broken out into separate products, so need to grab those
+        		Product prod = null;
+        		switch (sc) {
+        		case AmazonEC2:
+            		prod = config.productService.getProductByName(Product.ec2Instance);
+            		break;
+        		case AmazonRDS:
+        			prod = config.productService.getProductByName(Product.rdsInstance);
+        		default:
+        			prod = config.productService.getProductByServiceCode(sc.name());
+        			break;
+        		}
+        		
+            	if (config.reservationService.hasReservations(prod)) {
+            		prices.put(prod, config.priceListService.getPrices(dataTime, sc));
+            	}
+            	reservationProcessor.process(config.reservationService, costAndUsageData, prod, dataTime, prices);
+        	}
+        	
         	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.rdsInstance), dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime, prices);
-            
+        	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
@@ -149,12 +160,11 @@ public class BillingFileProcessor extends Poller {
             KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
 
-            /***** Debugging */
-//            used = costMap.get(redshiftHeavyTagGroup);
-//            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " after reservation processing");
-
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
+            
+            logger.info("archive product list...");
+            config.productService.archive(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
             costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);

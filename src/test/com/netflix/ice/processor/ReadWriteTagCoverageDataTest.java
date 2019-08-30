@@ -4,7 +4,6 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.zip.GZIPInputStream;
@@ -28,7 +27,7 @@ public class ReadWriteTagCoverageDataTest {
 	@Test
 	public void loadFile() throws Exception {
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		
 		ReadWriteTagCoverageData data = new ReadWriteTagCoverageData(12);
 	    

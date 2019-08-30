@@ -65,7 +65,7 @@ public class ReadWriteDataTest {
             }
         }
 		as = new BasicAccountService(accounts);
-        ps = new BasicProductService(null);
+        ps = new BasicProductService();
 	}
 	
 	@Test

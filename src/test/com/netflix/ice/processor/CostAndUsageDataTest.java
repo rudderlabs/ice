@@ -2,8 +2,6 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
 
-import java.util.Properties;
-
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -22,7 +20,7 @@ public class CostAndUsageDataTest {
 	@Test
 	public void testAddTagCoverage() {
 		AccountService as = new BasicAccountService();
-		ProductService ps = new BasicProductService(new Properties());
+		ProductService ps = new BasicProductService();
 		String[] userTags = new String[]{ "Email, Environment" };
 		CostAndUsageData cau = new CostAndUsageData(Lists.newArrayList(userTags), TagCoverage.withUserTags);
 		

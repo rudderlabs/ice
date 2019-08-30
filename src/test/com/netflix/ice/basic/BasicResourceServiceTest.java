@@ -41,7 +41,7 @@ public class BasicResourceServiceTest {
 		};
 
 		li.setItems(item);
-		ProductService ps = new BasicProductService(null);
+		ProductService ps = new BasicProductService();
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
@@ -54,7 +54,7 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testUserTags() {
-		ProductService ps = new BasicProductService(null);
+		ProductService ps = new BasicProductService();
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
@@ -74,7 +74,7 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testGetUserTagValue() {
-		ProductService ps = new BasicProductService(null);
+		ProductService ps = new BasicProductService();
 		String[] customTags = new String[]{
 				"Environment"
 			};
@@ -154,7 +154,7 @@ public class BasicResourceServiceTest {
 				"serviceAPI", // resourceTags/user:Product
 		};
 		li.setItems(item);
-		ProductService ps = new BasicProductService(null);
+		ProductService ps = new BasicProductService();
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
@@ -172,7 +172,7 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testGetUserTagCoverage() {
-		ProductService ps = new BasicProductService(null);
+		ProductService ps = new BasicProductService();
 		String[] customTags = new String[]{
 				"Environment", "Department", "Email"
 			};
