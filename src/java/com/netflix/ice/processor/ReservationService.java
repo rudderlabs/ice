@@ -17,24 +17,21 @@
  */
 package com.netflix.ice.processor;
 
+import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
-import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Product;
-import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.UsageType;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Interface for reservations.
  */
 public interface ReservationService {
-
-    void init() throws Exception;
-    public void shutdown();
 
     /**
      * Get all tag groups with reservations
@@ -60,7 +57,7 @@ public interface ReservationService {
     Set<String> getReservations(long time, Product product);
 
     /**
-     * Get reservation info.
+     * Get reservation info. (Used for Detailed Billing Report Processing)
      * @param time
      * @param tagGroup
      * @param utilization
@@ -73,26 +70,11 @@ public interface ReservationService {
             InstancePrices instancePrices);
 
     /**
-     * Some companies may get different price tiers at different times depending on reservation cost.
-     * This method is to get the latest hourly price including amortized upfront for given, time, region and usage type.
-     * @param time
-     * @param region
-     * @param usageType
-     * @param utilization
-     * @return
-     */
-    double getLatestHourlyTotalPrice(
-            long time,
-            Region region,
-            UsageType usageType,
-            PurchaseOption purchaseOption,
-            ServiceCode serviceCode,
-            InstancePrices prices);
-
-    /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
     boolean hasReservations(Product product);
+    
+    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<String, Reservation> reservationsById);
 
     public static class ReservationInfo {
     	public final TagGroup tagGroup;

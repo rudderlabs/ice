@@ -31,9 +31,10 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
 		private static final long serialVersionUID = 1L;
 
 		@Override
-        public int compareTo(Tag t) {
-            return this == t ? 0 : -1;
-        }
+	    public String compareKey() {
+			// return just the name which starts with "a"
+	    	return this.name;
+	    }
     };
 
     public final String name;
@@ -60,9 +61,13 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
     }
 
     public int compareTo(Tag t) {
-        if (t == aggregated)
-            return -t.compareTo(this);
-        int result = ("a" + this.name).compareTo("a" + t.name);
-        return result;
+    	if (this == t)
+    		return 0;
+        return compareKey().compareTo(t.compareKey());
+    }
+    
+    public String compareKey() {
+    	// Return name with "b" prefix so "aggregated" always sorts first
+    	return "b" + this.name;
     }
 }

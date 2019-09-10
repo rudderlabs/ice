@@ -171,4 +171,37 @@ public class PriceListServiceTest {
 		
 		priceListService.fetch(ServiceCode.AmazonRDS, versionId, version);			
 	}
+	
+	@Test
+	public void testImportSep2019ElasticsearchPriceList() throws Exception {
+		
+		InstancePrices ip = priceListService.getPrices(DateTime.parse("2019-09-01T00:00:00Z"), ServiceCode.AmazonES);
+		//logger.info(ip.toString());
+		
+		// Spot check some reservation rates
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("m5.large.elasticsearch", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 417.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.048, rate.hourly, 0.0001);
+		
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c5.4xlarge.elasticsearch", "hours"), LeaseContractLength.threeyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 6590.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.251, rate.hourly, 0.0001);
+	}
+	
+	@Test
+	public void testImportSep2019ElastiCachePriceList() throws Exception {
+		
+		InstancePrices ip = priceListService.getPrices(DateTime.parse("2019-09-01T00:00:00Z"), ServiceCode.AmazonElastiCache);
+		//logger.info(ip.toString());
+		
+		// Spot check some reservation rates
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.m5.large.redis", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 444.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.051, rate.hourly, 0.0001);
+		
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.r5.4xlarge.memcached", "hours"), LeaseContractLength.threeyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		assertEquals("Fixed rate should be ", 10899.0, rate.fixed, 0.0001);
+		assertEquals("Hourly rate should be ", 0.415, rate.hourly, 0.0001);
+	}
+	
 }

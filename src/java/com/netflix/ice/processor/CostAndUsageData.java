@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config;
 import com.netflix.ice.common.TagGroup;
@@ -35,6 +36,7 @@ public class CostAndUsageData {
     private Map<Product, ReadWriteTagCoverageData> tagCoverage;
     private List<String> userTags;
     private boolean collectTagCoverageWithUserTags;
+    private Map<String, Reservation> reservations;
     
 	public CostAndUsageData(List<String> userTags, Config.TagCoverage tagCoverage) {
 		this.usageDataByProduct = Maps.newHashMap();
@@ -48,6 +50,7 @@ public class CostAndUsageData {
     		this.tagCoverage = Maps.newHashMap();
         	this.tagCoverage.put(null, new ReadWriteTagCoverageData(userTags.size()));
         }
+        this.reservations = Maps.newHashMap();
 	}
 	
 	public ReadWriteData getUsage(Product product) {
@@ -116,6 +119,18 @@ public class CostAndUsageData {
         for (ReadWriteData data: costDataByProduct.values()) {
             data.cutData(hours);
         }
+    }
+    
+    public void addReservation(Reservation reservation) {
+    	reservations.put(reservation.id, reservation);
+    }
+    
+    public Map<String, Reservation> getReservations() {
+    	return reservations;
+    }
+    
+    public boolean hasReservations() {
+    	return reservations != null && reservations.size() > 0;
     }
     
     /**

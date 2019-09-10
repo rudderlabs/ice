@@ -60,7 +60,7 @@ public class ProcessorConfigTest {
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
         
         ProductService productService = new BasicProductService();
-        ReservationService reservationService = new BasicReservationService(null, null, false);
+        ReservationService reservationService = new BasicReservationService(null, null);
         ResourceService resourceService = null;
         PriceListService priceListService = null;
         

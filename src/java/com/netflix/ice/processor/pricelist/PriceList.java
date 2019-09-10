@@ -42,7 +42,7 @@ public class PriceList {
 	static public class Product {
 		String sku;
 		String productFamily;
-		protected Map<String, String> attributes;
+		private Map<String, String> attributes;
 		
 		public enum Attributes {
 	        servicecode,
@@ -55,6 +55,7 @@ public class PriceList {
 	        physicalProcessor,
 	        clockSpeed,
 	        memory,
+	        memoryGib,
 	        storage,
 	        io,
 	        networkPerformance,
@@ -75,8 +76,12 @@ public class PriceList {
 		}
 
 		public String getAttribute(Attributes a) {
-			String v = attributes.get(a.toString());
+			String v = attributes.get(a.name());
 			return v == null ? "" : v;
+		}
+		
+		public boolean hasAttribute(Attributes a) {
+			return attributes.containsKey(a.name());
 		}
 
 	}

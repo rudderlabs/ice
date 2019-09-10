@@ -38,6 +38,9 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex;
 	private int reservationUnusedQuantityIndex;
 	private int reservationUnusedRecurringFeeIndex;
+	private int reservationNumberOfReservationsIndex;
+	private int reservationStartTimeIndex;
+	private int reservationEndTimeIndex;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -83,6 +86,9 @@ public class CostAndUsageReportLineItem extends LineItem {
 	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "UnusedRecurringFee");
         }
     	reservationUnusedQuantityIndex = report.getColumnIndex("reservation", "UnusedQuantity");
+    	reservationNumberOfReservationsIndex = report.getColumnIndex("reservation", "NumberOfReservations");
+    	reservationStartTimeIndex = report.getColumnIndex("reservation", "StartTime");
+    	reservationEndTimeIndex = report.getColumnIndex("reservation", "EndTime");
     	
         resourceIndex = report.getColumnIndex("lineItem", "ResourceId");
         reservedIndex = report.getColumnIndex("pricing", "term");
@@ -241,7 +247,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return lineItemType;
 	}
 	
-	private double computeProductNormalizedSizeFactor(String usageType) {
+	public static double computeProductNormalizedSizeFactor(String usageType) {
 		String ut = usageType;
 		if (ut.contains(":"))
 			ut = ut.split(":")[1];
@@ -301,6 +307,13 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	public int getLineItemNormalizationFactorIndex() {
 		return lineItemNormalizationFactorIndex;
+	}
+
+	@Override
+	public String getLineItemNormalizationFactor() {
+		if (lineItemNormalizationFactorIndex >= 0)
+			return items[lineItemNormalizationFactorIndex];
+		return "";
 	}
 
 	public int getProductNormalizationSizeFactorIndex() {
@@ -445,5 +458,39 @@ public class CostAndUsageReportLineItem extends LineItem {
 		
 		return "";
 	}
+	
+	public int getReservationStartTimeIndex() {
+		return reservationStartTimeIndex;
+	}
+
+	@Override
+	public String getReservationStartTime() {
+		if (reservationStartTimeIndex >= 0)
+			return items[reservationStartTimeIndex];
+		return null;
+	}
+	
+	public int getReservationEndTimeIndex() {
+		return reservationEndTimeIndex;
+	}
+
+	@Override
+	public String getReservationEndTime() {
+		if (reservationEndTimeIndex >= 0)
+			return items[reservationEndTimeIndex];
+		return null;
+	}
+	
+	public int getReservationNumberOfReservationsIndex() {
+		return reservationNumberOfReservationsIndex;
+	}
+
+	@Override
+	public String getReservationNumberOfReservations() {
+		if (reservationNumberOfReservationsIndex >= 0)
+			return items[reservationNumberOfReservationsIndex];
+		return null;
+	}
+
 }
 

@@ -24,6 +24,7 @@ import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.common.collect.Maps;
+import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -128,6 +129,7 @@ public class BillingFileProcessor extends Poller {
             
             // Get the reservation processor from the first report
             ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
+            ReservationService reservationService = costAndUsageData.hasReservations() ? new BasicReservationService(costAndUsageData.getReservations()) : config.reservationService;
 
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
@@ -140,18 +142,22 @@ public class BillingFileProcessor extends Poller {
             		break;
         		case AmazonRDS:
         			prod = config.productService.getProductByName(Product.rdsInstance);
+        			break;
         		default:
         			prod = config.productService.getProductByServiceCode(sc.name());
         			break;
         		}
         		
-            	if (config.reservationService.hasReservations(prod)) {
-            		prices.put(prod, config.priceListService.getPrices(dataTime, sc));
+            	if (reservationService.hasReservations(prod)) {
+            		if (!costAndUsageData.hasReservations()) {
+            			// Using reservation data pulled from accounts. Need to also have pricing data
+            			prices.put(prod, config.priceListService.getPrices(dataTime, sc));
+            		}
+                	reservationProcessor.process(reservationService, costAndUsageData, prod, dataTime, prices);
             	}
-            	reservationProcessor.process(config.reservationService, costAndUsageData, prod, dataTime, prices);
         	}
         	
-        	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime, prices);
+        	reservationProcessor.process(reservationService, costAndUsageData, null, dataTime, prices);
         	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));

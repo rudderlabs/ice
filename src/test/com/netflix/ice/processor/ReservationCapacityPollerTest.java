@@ -1,4 +1,4 @@
-package com.netflix.ice.basic;
+package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
 
@@ -16,13 +16,14 @@ import com.amazonaws.services.ec2.model.ReservedInstancesModification;
 import com.amazonaws.services.ec2.model.ReservedInstancesModificationResult;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.netflix.ice.basic.BasicReservationService.Ec2Mods;
 import com.netflix.ice.processor.CanonicalReservedInstances;
+import com.netflix.ice.processor.ReservationCapacityPoller;
+import com.netflix.ice.processor.ReservationCapacityPoller.Ec2Mods;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 
-public class ReservationServiceTest {
+public class ReservationCapacityPollerTest {
 	static Ec2Mods ec2mods;
 	private static final String resourceDir = "src/test/resources/";
 
@@ -41,7 +42,7 @@ public class ReservationServiceTest {
 			.withModificationResults(modificationResults);
 		
 		mods.add(mod);
-		ec2mods = new BasicReservationService(null, null, false).new Ec2Mods(mods);
+		ec2mods = new ReservationCapacityPoller(null).new Ec2Mods(mods);
 	}
 	
 	@Test
@@ -65,9 +66,9 @@ public class ReservationServiceTest {
 
 		CanonicalReservedInstances cri = new CanonicalReservedInstances("1", "ap-northeast-2", ri, "");		
 		PriceListService pls = new PriceListService(resourceDir, null, null);
-		BasicReservationService rs = new BasicReservationService(null, null, false);
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(null);
 
-		double fixedPrice = rs.getFixedPrice(cri, Region.AP_NORTHEAST_2, pls);
+		double fixedPrice = rcp.getFixedPrice(cri, Region.AP_NORTHEAST_2, pls);
 		assertEquals("Wrong fixed Price", 2429.0, fixedPrice, 0.01);
 	}
 	
@@ -96,11 +97,11 @@ public class ReservationServiceTest {
 		ReservationKey childKey = new ReservationKey("1", "us-east-1", "0bd43db3-dd52-4d5f-8770-642d2198ceb9");
 		reservations.put(parentKey, new CanonicalReservedInstances("1", "us-east-1", parentRI, ""));
 		reservations.put(childKey, new CanonicalReservedInstances("1", "us-east-1", childRI, ""));
-		BasicReservationService rs = new BasicReservationService(null, null, false);
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(null);
 		
 		PriceListService pls = new PriceListService(resourceDir, null, null);
 		
-		rs.handleEC2Modifications(reservations, ec2mods, Region.US_EAST_1, pls);
+		rcp.handleEC2Modifications(reservations, ec2mods, Region.US_EAST_1, pls);
 		
 		CanonicalReservedInstances child = reservations.get(childKey);
 		assertEquals("Wrong fixed price", 50.0, child.getFixedPrice(), 0.001);		
@@ -143,10 +144,10 @@ public class ReservationServiceTest {
 		ReservationKey childKey = new ReservationKey("1", "us-east-1", "0bd43db3-dd52-4d5f-8770-642d2198ceb9");
 		reservations.put(parentKey, new CanonicalReservedInstances("1", "us-east-1", parentRI, ""));
 		reservations.put(childKey, new CanonicalReservedInstances("1", "us-east-1", childRI, ""));
-		BasicReservationService rs = new BasicReservationService(null, null, false);
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(null);
 		PriceListService pls = new PriceListService(resourceDir, null, null);
 		
-		rs.handleEC2Modifications(reservations, ec2mods, Region.US_WEST_2, pls);
+		rcp.handleEC2Modifications(reservations, ec2mods, Region.US_WEST_2, pls);
 		
 		CanonicalReservedInstances child = reservations.get(childKey);
 		assertEquals("Wrong fixed price", 1760.0, child.getFixedPrice(), 0.001);
@@ -156,14 +157,14 @@ public class ReservationServiceTest {
 		reservations = Maps.newHashMap();
 		reservations.put(parentKey, new CanonicalReservedInstances("1", "us-east-1", parentRI, ""));
 		reservations.put(childKey, new CanonicalReservedInstances("1", "us-east-1", childRI, ""));
-		rs.handleEC2Modifications(reservations, ec2mods, Region.US_WEST_2, pls);
+		rcp.handleEC2Modifications(reservations, ec2mods, Region.US_WEST_2, pls);
 		child = reservations.get(childKey);
 		assertEquals("Wrong fixed price", 1016.0, child.getFixedPrice(), 0.001);
 	}
 	
 	@Test
 	public void testMultiplier() {
-		BasicReservationService rcp = new BasicReservationService(null, null, false);
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(null);
 		assertEquals("Wrong multipliers converting micro to xlarge", rcp.multiplier("xlarge") / rcp.multiplier("micro"), 16.0, 0.001);
 		assertEquals("Wrong multipliers converting small to 4xlarge", rcp.multiplier("4xlarge") / rcp.multiplier("small"), 32.0, 0.001);
 	}

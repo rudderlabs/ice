@@ -296,4 +296,19 @@ public abstract class LineItem {
 		return null;
 	}
 
+	public String getReservationStartTime() {
+		return null;
+	}
+	
+	public String getReservationEndTime() {
+		return null;
+	}
+	
+	public String getReservationNumberOfReservations() {
+		return null;
+	}
+	
+	public String getLineItemNormalizationFactor() {
+		return null;
+	}
 }

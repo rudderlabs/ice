@@ -140,19 +140,9 @@ public class BillingFileProcessorTest {
 	}
 	
 	public void testFileData(ReportTest reportTest, String prefix) throws Exception {
-		class BasicTestReservationService extends BasicReservationService {
-			BasicTestReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
-				super(term, defaultUtilization, false);
-			}
-			
-			@Override
-			public void init() {
-				// Overridden so that reservation services don't start up
-			}
-		}
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
         ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
-		BasicReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
+		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
 		
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
@@ -200,8 +190,9 @@ public class BillingFileProcessorTest {
         Instances instances = new Instances(null, null, null);
         
 		Long startMilli = config.startDate.getMillis();
-		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
-		reservationService.updateReservations(reservations, config.accountService, startMilli, productService, resourceService);
+		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(config);
+		rcp.updateReservations(reservations, config.accountService, startMilli, productService, resourceService, reservationService);
 				
 		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    

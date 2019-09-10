@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.basic;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
@@ -31,6 +32,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -188,8 +190,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
         if (processDelayed && lineItem.getLineItemType() == LineItemType.RIFee) {
-        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, operation, usageType, null, reservationId);
-        	addUnusedReservationRate(lineItem, costAndUsageData, tgri, startMilli);
+        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, null, reservationId);
+        	addReservation(lineItem, costAndUsageData, tgri, startMilli);
         }
 
         if (result == Result.ignore || result == Result.delay)
@@ -307,7 +309,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         map.put(tagGroup, value);
     }
     
-    protected void addUnusedReservationRate(LineItem lineItem,
+    protected void addReservation(LineItem lineItem,
     		CostAndUsageData costAndUsageData,
     		TagGroupRI tg, long startMilli) {    	
         return;        
@@ -336,6 +338,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 //            if (startIndex == 0 && reservationUsage) {
 //            	logger.info(" ----- RDS usage=" + usageType + ", delayed=" + processDelayed + ", operation=" + operation + ", cost=" + costValue + ", result=" + result);
 //            }
+        }
+        else if (tg.product.isElastiCache()) {
+        	result = processElastiCache(processDelayed, reservationUsage, tg.operation, costValue);
         }
         
         if (tg.usageType.name.startsWith("TimedStorage-ByteHrs"))
@@ -401,8 +406,20 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else
             return Result.hourly;
     }
+    
+    private Result processElastiCache(boolean processDelayed, boolean reservationUsage, Operation operation, double costValue) {
+    	if (!processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
+            return Result.delay; // Must be a monthly charge for all the hourly usage
+        else if (!processDelayed && costValue == 0 && operation.isBonus() && reservationUsage)
+            return Result.hourly; // Must be the hourly usage
+        else if (processDelayed && costValue != 0 && operation.isBonus() && reservationUsage)
+            return Result.monthly; // This is the post processing of the monthly charge for all the hourly usage
+        else
+            return Result.hourly;
+    }
 
-    private Operation getReservationOperation(LineItem lineItem, ReservationUtilization defaultReservationUtilization) {    	
+
+    private Operation getReservationOperation(LineItem lineItem, Product product, ReservationUtilization defaultReservationUtilization) {    	
     	String purchaseOption = lineItem.getPurchaseOption();
     	
     	if (StringUtils.isNotEmpty(purchaseOption)) {
@@ -410,16 +427,34 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	}
     	
         double cost = Double.parseDouble(lineItem.getCost());
-        
-    	if (lineItem.getLineItemType() == LineItemType.RIFee && lineItem.hasAmortizedUpfrontFeeForBillingPeriod()) {
-    		// RIFee line items have amortization and recurring fee info as of 2018-01-01
-			// determine purchase option from amort and recurring
-			Double amortization = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod());
-			return amortization > 0.0 ? (cost > 0.0 ? Operation.bonusReservedInstancesPartial : Operation.bonusReservedInstancesAll) : Operation.bonusReservedInstancesNo;
+
+        if (lineItem.getLineItemType() == LineItemType.RIFee) {
+        	if (product.isElastiCache()) {
+	    		// ElastiCache still uses the Legacy Heavy/Medium/Light reservation model for older instance families and
+	    		// RIFee line items don't have PurchaseOption set.
+        		String[] usage = lineItem.getUsageType().split(":");
+        		String family = usage.length > 1 ? usage[1].substring("cache.".length()).split("\\.")[0] : "m1";
+        		List<String> legacyInstanceFamilies = Lists.newArrayList("m1", "m2", "m3", "m4", "t1", "t2", "r1", "r2", "r3", "r4");
+        		if (legacyInstanceFamilies.contains(family)) {
+        			if (usage[0].contains("HeavyUsage"))
+        				return Operation.getBonusReservedInstances(ReservationUtilization.HEAVY);
+        			if (usage[0].contains("MediumUsage"))
+        				return Operation.getBonusReservedInstances(ReservationUtilization.MEDIUM);
+        			if (usage[0].contains("LightUsage"))
+        				return Operation.getBonusReservedInstances(ReservationUtilization.LIGHT);
+        		}
+        	}
+        	
+        	if (lineItem.hasAmortizedUpfrontFeeForBillingPeriod()) {
+        		// RIFee line items have amortization and recurring fee info as of 2018-01-01
+    			// determine purchase option from amort and recurring
+    			Double amortization = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod());
+    			return amortization > 0.0 ? (cost > 0.0 ? Operation.bonusReservedInstancesPartialUpfront : Operation.bonusReservedInstancesAllUpfront) : Operation.bonusReservedInstancesNoUpfront;
+        	}
     	}
     	
 		if (cost == 0 && lineItem.getDescription().contains(" 0.0 ")) {
-        	return Operation.bonusReservedInstancesAll;
+        	return Operation.bonusReservedInstancesAllUpfront;
         }
         return Operation.getBonusReservedInstances(defaultReservationUtilization);
     }
@@ -437,19 +472,20 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         final String operationStr = lineItem.getOperation();
         boolean reservationUsage = lineItem.isReserved();
 
-        if (operationStr.equals("EBS Snapshot Copy")) {
-            product = productService.getProductByName(Product.ebs);
+        if (product.isRds() && usageTypeStr.endsWith("xl")) {
+            // Many of the "m" and "r" families end with "xl" rather than "xlarge" (e.g. db.m4.10xl", so need to fix it.
+        	usageTypeStr = usageTypeStr + "arge";
         }
-
+        
         if (usageTypeStr.startsWith("ElasticIP:")) {
             product = productService.getProductByName(Product.eip);
         }
-        else if (usageTypeStr.startsWith("EBS:"))
+        else if (usageTypeStr.startsWith("EBS:") || operationStr.equals("EBS Snapshot Copy") || usageTypeStr.startsWith("EBSOptimized:")) {
             product = productService.getProductByName(Product.ebs);
-        else if (usageTypeStr.startsWith("EBSOptimized:"))
-            product = productService.getProductByName(Product.ebs);
-        else if (usageTypeStr.startsWith("CW:"))
+        }
+        else if (usageTypeStr.startsWith("CW:")) {
             product = productService.getProductByName(Product.cloudWatch);
+        }
         else if ((product.isEc2() || product.isEmr()) && (usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
         	boolean spot = usageTypeStr.startsWith("SpotUsage");
@@ -457,7 +493,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
             }
             else if (spot)
             	operation = Operation.spotInstances;
@@ -470,7 +506,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = currentRedshiftUsageType(usageTypeStr.split(":")[1]);
             
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
             }
             else {
 	            operation = Operation.ondemandInstances;
@@ -479,21 +515,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (product.isRds() && (usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
         	// Line item for hourly RDS instance usage - both On-Demand and Reserved
-        	boolean multiaz = usageTypeStr.startsWith("Multi");
             usageTypeStr = usageTypeStr.split(":")[1];
             
-            // db.m4.10xlarge usage in eu-west-1 is in the reports as "db.m4.10xl", so need to fix it.
-            // There may be others, so just look to see if the usage type string ends with "xl" and add "arge"
-            if (usageTypeStr.endsWith("xl")) {
-            	usageTypeStr = usageTypeStr + "arge";
-            }
-            
-            if (multiaz) {
-            	usageTypeStr += ".multiaz";
+            if (usageTypeStr.startsWith("Multi")) {
+            	usageTypeStr += UsageType.multiAZ;
             }
             
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
             }
             else {
             	operation = Operation.ondemandInstances;
@@ -503,7 +532,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (product.isElasticsearch() && usageTypeStr.startsWith("ESInstance") && operationStr.startsWith("ESDomain")) {
         	// Line item for hourly Elasticsearch instance usage both On-Demand and Reserved.
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
             }
             else {
             	operation = Operation.ondemandInstances;
@@ -512,13 +541,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (product.isElastiCache() && usageTypeStr.startsWith("NodeUsage") && operationStr.startsWith("CreateCacheCluster")) {
         	// Line item for hourly ElastiCache node usage both On-Demand and Reserved.
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
 	        }
 	        else {
 	        	operation = Operation.ondemandInstances;
 	        }
         }
-        else if (usageTypeStr.startsWith("HeavyUsage")) {
+        else if (usageTypeStr.startsWith("HeavyUsage") || usageTypeStr.startsWith("MediumUsage") || usageTypeStr.startsWith("LightUsage")) {
         	// If DBR report: Line item for hourly "No Upfront" or "Partial Upfront" EC2 or monthly "No Upfront" or "Partial Upfront" for Redshift and RDS
         	// If Cost and Usage report: monthly "No Upfront" or "Partial Upfront" for EC2, RDS, Redshift, and ES
             int index = usageTypeStr.indexOf(":");
@@ -531,10 +560,19 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 	usageTypeStr = currentRedshiftUsageType(usageTypeStr);
                 }
             }
-            if (product.isRds()){
+            if (product.isRds()) {
                 db = getInstanceDb(operationStr);
+                if (lineItem.getLineItemType() == LineItemType.RIFee) {
+                	// Determine if we have a multi-AZ reservation by looking at the normalization factor, numberOfReservations, and instance family size
+                	Double normalizationFactor = Double.parseDouble(lineItem.getLineItemNormalizationFactor());
+                	double usageTypeTypicalNormalizationFactor = CostAndUsageReportLineItem.computeProductNormalizedSizeFactor(usageTypeStr);
+                	// rough math -- actually would be a factor of two
+                	if (normalizationFactor / usageTypeTypicalNormalizationFactor > 1.5) {
+                        usageTypeStr += UsageType.multiAZ;
+                	}
+                }
             }
-        	operation = getReservationOperation(lineItem, defaultReservationUtilization);
+        	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
             os = getInstanceOs(operationStr);
         }
         

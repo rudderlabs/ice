@@ -138,7 +138,7 @@ public class KubernetesProcessorTest {
         @SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
         
-        ReservationService reservationService = new BasicReservationService(null, null, false);
+        ReservationService reservationService = new BasicReservationService(null, null);
         
         props.setProperty(IceOptions.START_MONTH, "2019-01");
         props.setProperty(IceOptions.WORK_S3_BUCKET_NAME, "foo");

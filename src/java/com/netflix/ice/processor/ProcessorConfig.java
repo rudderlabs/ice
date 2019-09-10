@@ -83,6 +83,7 @@ public class ProcessorConfig extends Config {
     public final SortedMap<DateTime,Double> edpDiscounts;
 
     public final ReservationService reservationService;
+    public final ReservationCapacityPoller reservationCapacityPoller;
     public final PriceListService priceListService;
     public final boolean useBlended;
     public final boolean processOnce;
@@ -193,6 +194,8 @@ public class ProcessorConfig extends Config {
         ProcessorConfig.instance = this;
 
         billingFileProcessor = new BillingFileProcessor(this, compress);
+        
+        reservationCapacityPoller = Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)) ? new ReservationCapacityPoller(this) : null;
     }
 
     public void start () throws Exception {
@@ -200,7 +203,8 @@ public class ProcessorConfig extends Config {
 
         productService.initProcessor(localDir, workS3BucketName, workS3BucketPrefix);
         
-        reservationService.init();
+        if (reservationCapacityPoller != null)
+        	reservationCapacityPoller.init();
         if (resourceService != null)
             resourceService.init();
 
@@ -212,7 +216,8 @@ public class ProcessorConfig extends Config {
         logger.info("Shutting down...");
 
         billingFileProcessor.shutdown();
-        reservationService.shutdown();
+        if (reservationCapacityPoller != null)
+        	reservationCapacityPoller.shutdown();
     }
     
     /**

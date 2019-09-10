@@ -89,8 +89,8 @@ public class BasicTagGroupManagerTest {
 		groupByLists = manager.getTagListsMap(interval, tagLists, TagType.Operation, true);
 		assertEquals("wrong number of groupBy tags for operation", 4, groupByLists.size());
 		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.spotInstanceSavings).operations.size());
-		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.savingsAll).operations.size());
-		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.lentInstancesAll).operations.size());
+		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.savingsAllUpfront).operations.size());
+		assertEquals("wrong number of operations in tagLists for groupBy operation", 1, groupByLists.get(ReservationOperation.lentInstancesAllUpfront).operations.size());
 		
 		//
 		// Test non-resource tags with tagLists filtering

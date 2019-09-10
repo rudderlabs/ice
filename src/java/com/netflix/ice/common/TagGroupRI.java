@@ -25,6 +25,7 @@ public class TagGroupRI extends TagGroup {
 	private static final long serialVersionUID = 1L;
 	
 	public final String reservationId;
+	private final String key;
 
 	private TagGroupRI(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
@@ -32,6 +33,7 @@ public class TagGroupRI extends TagGroup {
 		super(account, region, zone, product, operation, usageType,
 				resourceGroup);
 		this.reservationId = reservationId;
+		this.key = super.compareKey() + reservationId;
 	}
 
     @Override
@@ -39,14 +41,11 @@ public class TagGroupRI extends TagGroup {
         return super.toString() + ",\"" + reservationId + "\"";
     }
 
-    public int compareTo(TagGroupRI t) {
-        int result = super.compareTo(t);
-        if (result != 0)
-            return result;
-        result = this.reservationId.compareTo(t.reservationId);
-        return result;
+    @Override
+    public String compareKey() {
+    	return key;
     }
-
+    
     @Override
     public boolean equals(Object o) {
     	if (this == o)

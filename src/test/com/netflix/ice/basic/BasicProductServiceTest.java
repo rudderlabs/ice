@@ -47,6 +47,9 @@ public class BasicProductServiceTest {
 		
 		Product product2 = ps.getProduct("Amazon Product1", "AmazonProduct1");		
 		assertEquals("Both product strings should refer to the same object", product1, product2);
+		
+		Product rdsInstance = ps.getProductByName(Product.rdsInstance);		
+		assertTrue("getProductByName() returned wrong RDS product", rdsInstance.isRdsInstance());
 	}
 	
 	@Test

@@ -410,10 +410,12 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	@Override
 	protected void processReservations(
 			ReservationService reservationService,
-			ReadWriteData usageData,
-			ReadWriteData costData,
+			CostAndUsageData data,
 			Long startMilli) {		
 
+		ReadWriteData usageData = data.getUsage(product);
+		ReadWriteData costData = data.getCost(product);
+		
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
 			if (reservationService.getTagGroups(utilization, startMilli).size() == 0)
 				continue;

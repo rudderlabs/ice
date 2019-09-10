@@ -147,7 +147,13 @@ public abstract class ReservationProcessor {
 	}
    
 	protected double convertFamilyUnits(double units, UsageType from, UsageType to) {
-		return units * instanceMetrics.getNormalizationFactor(from) / instanceMetrics.getNormalizationFactor(to);
+		double fromNorm = instanceMetrics.getNormalizationFactor(from);
+		if (from.isMultiAZ())
+			fromNorm *= 2.0;
+		double toNorm = instanceMetrics.getNormalizationFactor(to);
+		if (to.isMultiAZ())
+			toNorm *= 2.0;
+		return units *  fromNorm / toNorm;
 	}
 
 	
@@ -214,7 +220,7 @@ public abstract class ReservationProcessor {
 		
 		long startMilli = start.getMillis();
 		
-		processReservations(reservationService, usageData, costData, startMilli);
+		processReservations(reservationService, data, startMilli);
 				
 		if (debugHour >= 0)
 			printUsage("after", usageData, costData);		
@@ -222,8 +228,7 @@ public abstract class ReservationProcessor {
 	
 	abstract protected void processReservations(
 			ReservationService reservationService,
-			ReadWriteData usageData,
-			ReadWriteData costData,
+			CostAndUsageData data,
 			Long startMilli);	
 		
 	protected void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
