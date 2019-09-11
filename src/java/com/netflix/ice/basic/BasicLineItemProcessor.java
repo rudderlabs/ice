@@ -515,9 +515,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         else if (product.isRds() && (usageTypeStr.startsWith("InstanceUsage") || usageTypeStr.startsWith("Multi-AZUsage")) && operationStr.startsWith("CreateDBInstance")) {
         	// Line item for hourly RDS instance usage - both On-Demand and Reserved
+        	boolean multiAZ = usageTypeStr.startsWith("Multi");
             usageTypeStr = usageTypeStr.split(":")[1];
             
-            if (usageTypeStr.startsWith("Multi")) {
+            if (multiAZ) {
             	usageTypeStr += UsageType.multiAZ;
             }
             
@@ -563,12 +564,15 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             if (product.isRds()) {
                 db = getInstanceDb(operationStr);
                 if (lineItem.getLineItemType() == LineItemType.RIFee) {
-                	// Determine if we have a multi-AZ reservation by looking at the normalization factor, numberOfReservations, and instance family size
-                	Double normalizationFactor = Double.parseDouble(lineItem.getLineItemNormalizationFactor());
-                	double usageTypeTypicalNormalizationFactor = CostAndUsageReportLineItem.computeProductNormalizedSizeFactor(usageTypeStr);
-                	// rough math -- actually would be a factor of two
-                	if (normalizationFactor / usageTypeTypicalNormalizationFactor > 1.5) {
-                        usageTypeStr += UsageType.multiAZ;
+                	String normFactorStr = lineItem.getLineItemNormalizationFactor();
+                	if (!normFactorStr.isEmpty()) {
+	                	// Determine if we have a multi-AZ reservation by looking at the normalization factor, numberOfReservations, and instance family size
+	                	Double normalizationFactor = Double.parseDouble(lineItem.getLineItemNormalizationFactor());
+	                	double usageTypeTypicalNormalizationFactor = CostAndUsageReportLineItem.computeProductNormalizedSizeFactor(usageTypeStr);
+	                	// rough math -- actually would be a factor of two
+	                	if (normalizationFactor / usageTypeTypicalNormalizationFactor > 1.5) {
+	                        usageTypeStr += UsageType.multiAZ;
+	                	}
                 	}
                 }
             }
