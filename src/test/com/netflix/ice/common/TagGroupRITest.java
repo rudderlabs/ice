@@ -25,6 +25,7 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.UsageType;
 
 public class TagGroupRITest {
@@ -43,7 +44,7 @@ public class TagGroupRITest {
 				UsageType.getUsageType("RDS:GP2-Storage", "GB"), 
 				null);
 
-		TagGroup tg2 = TagGroupRI.getTagGroup(
+		TagGroup tg2 = TagGroupRI.get(
 				as.getAccountById("111111111234"), 
 				Region.US_EAST_1, 
 				null, 
@@ -51,7 +52,7 @@ public class TagGroupRITest {
 				Operation.getOperation("CreateDBInstance"), 
 				UsageType.getUsageType("RDS:GP2-Storage", "GB"), 
 				null,
-				"arn");
+				ReservationArn.get("arn"));
 
 		assertTrue("TagGroupRI should be greater than TagGroup", tg1.compareTo(tg2) < 0);
 	}

@@ -21,6 +21,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
@@ -39,10 +40,11 @@ public class BasicReservationService implements ReservationService {
     
     final protected ReservationPeriod term;
     final protected ReservationUtilization defaultUtilization;
-    protected Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations;
-    protected Map<String, Reservation> reservationsById;
+    protected Map<ReservationArn, Reservation> reservationsByArn;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
     private Set<Product> hasReservations;
+    // Following map used only for DBR processing
+    protected Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations;
 
     public BasicReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
         this.term = term;
@@ -52,31 +54,31 @@ public class BasicReservationService implements ReservationService {
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservations.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
-        reservationsById = Maps.newHashMap();
+        reservationsByArn = Maps.newHashMap();
         hasReservations = Sets.newHashSet();
     }
     
-    public BasicReservationService(Map<String, Reservation> reservations) {
+    public BasicReservationService(Map<ReservationArn, Reservation> reservations) {
     	this.term = null;
     	this.defaultUtilization = null;
-    	this.reservationsById = reservations;
+    	this.reservationsByArn = reservations;
     	updateHasSet();
     }
 
     // For testing
     public void injectReservation(Reservation res) {
-    	reservationsById.put(res.id, res);
+    	reservationsByArn.put(res.tagGroup.reservationArn, res);
     }
     
-    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<String, Reservation> reservationsById) {
+    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsByArn) {
     	this.reservations = reservations;
-    	this.reservationsById = reservationsById;
+    	this.reservationsByArn = reservationsByArn;
     	updateHasSet();    	
     }
     
     private void updateHasSet() {
     	this.hasReservations = Sets.newHashSet();
-    	for (Reservation r: reservationsById.values()) {
+    	for (Reservation r: reservationsByArn.values()) {
     		hasReservations.add(r.tagGroup.product);
     	}
     }
@@ -89,8 +91,7 @@ public class BasicReservationService implements ReservationService {
     }
 
     public static class Reservation {
-    	final public String id;
-    	final public TagGroup tagGroup;
+    	final public TagGroupRI tagGroup;
     	final public int count;
     	final public long start; // Reservation start time rounded down to starting hour mark where it takes effect
     	final public long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
@@ -99,15 +100,13 @@ public class BasicReservationService implements ReservationService {
     	final public double usagePrice; // Per-hour cost for each reserved instance
 
         public Reservation(
-        		String id,
-        		TagGroup tagGroup,
+        		TagGroupRI tagGroup,
                 int count,
                 long start,
                 long end,
                 ReservationUtilization utilization,
                 double hourlyFixedPrice,
                 double usagePrice) {
-        	this.id = id;
         	this.tagGroup = tagGroup;
             this.count = count;
             this.start = start;
@@ -122,6 +121,39 @@ public class BasicReservationService implements ReservationService {
         return 0;
     }
 
+    public ReservationUtilization getDefaultReservationUtilization(long time) {
+        return defaultUtilization;
+    }
+    
+    /*
+     * Get ReservationInfo for the given reservation ARN
+     */
+    public ReservationInfo getReservation(ReservationArn arn) {
+    	Reservation reservation = reservationsByArn.get(arn);
+    	if (reservation == null)
+    		return null;
+	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.hourlyFixedPrice, reservation.usagePrice);
+    }
+    
+    /*
+     * Get the set of reservation IDs that are active for the given time.
+     */
+    public Set<ReservationArn> getReservations(long time, Product product) {
+    	Set<ReservationArn> arns = Sets.newHashSet();
+    	for (Reservation r: reservationsByArn.values()) {
+    		if (time >= r.start && time < r.end && (product == null || r.tagGroup.product == product))
+    			arns.add(r.tagGroup.reservationArn);
+    	}
+    	return arns;
+    }
+    
+    public Map<ReservationArn, Reservation> getReservations() {
+    	return reservationsByArn;
+    }
+    
+    /*
+     * The following methods are used exclusively by Detailed Billing Report Reservation Processor
+     */
     public Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli) {
     	// Only return tagGroups with active reservations for the requested start time
     	Set<TagGroup> tagGroups = Sets.newHashSet();
@@ -137,36 +169,6 @@ public class BasicReservationService implements ReservationService {
         return tagGroups;
     }
 
-    public ReservationUtilization getDefaultReservationUtilization(long time) {
-        return defaultUtilization;
-    }
-    
-    /*
-     * Get ReservationInfo for the given reservation id
-     */
-    public ReservationInfo getReservation(String id) {
-    	Reservation reservation = reservationsById.get(id);
-    	if (reservation == null)
-    		return null;
-	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.hourlyFixedPrice, reservation.usagePrice);
-    }
-    
-    /*
-     * Get the set of reservation IDs that are active for the given time.
-     */
-    public Set<String> getReservations(long time, Product product) {
-    	Set<String> ids = Sets.newHashSet();
-    	for (Reservation r: reservationsById.values()) {
-    		if (time >= r.start && time < r.end && (product == null || r.tagGroup.product == product))
-    			ids.add(r.id);
-    	}
-    	return ids;
-    }
-    
-    public Map<String, Reservation> getReservations() {
-    	return reservationsById;
-    }
-    
     public ReservationInfo getReservation(
         long time,
         TagGroup tagGroup,
@@ -211,7 +213,7 @@ public class BasicReservationService implements ReservationService {
 	        hourlyCost = hourlyCost / count;
 	    }
 	    
-	    return new ReservationInfo(tagGroup, count, upfrontAmortized, hourlyCost);
+	    return new ReservationInfo(TagGroupRI.get(tagGroup), count, upfrontAmortized, hourlyCost);
 	}
 
 }

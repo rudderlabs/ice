@@ -371,9 +371,9 @@ public class BillingFileProcessorTest {
 			}
 			if (numNotFound > 0 || numExtra > 0) {
 				logger.info("Hour "+i+" Tags not found: " + numNotFound + ", found " + numFound + ", extra " + numExtra);
-				for (Product a: productService.getProducts()) {
-					logger.info(a.name + ": " + a.hashCode() + ", " + System.identityHashCode(a) + ", " + System.identityHashCode(a.name));
-				}
+//				for (Product a: productService.getProducts()) {
+//					logger.info(a.name + ": " + a.hashCode() + ", " + System.identityHashCode(a) + ", " + System.identityHashCode(a.name));
+//				}
 			}
 			
 			// Compare the values on found tags
@@ -396,7 +396,8 @@ public class BillingFileProcessorTest {
 						}
 					}
 				}
-				logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
+				if (numMismatches > 0)
+					logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
 				assertEquals("Hour "+i+" has " + numMismatches + " incorrect data values", 0, numMismatches);
 			}
 			assertEquals("Hour "+i+" has " + numNotFound + " tags that were not found", 0, numNotFound);

@@ -46,9 +46,6 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     public final Region region;
     public final Zone zone;
     public final ResourceGroup resourceGroup;
-    // Need to be able to sort TagGroups and subclasses of TagGroups, so use keys which
-    // we cache to perform well.
-    private final String key;
     
     protected TagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
         this.account = account;
@@ -58,13 +55,6 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         this.operation = operation;
         this.usageType = usageType;
         this.resourceGroup = resourceGroup;
-    	this.key = account.compareKey() +
-    			region.compareKey() +
-    			(zone == null ? "" : zone.compareKey()) +
-    			product.compareKey() +
-    			operation.compareKey() +
-    			usageType.compareKey() +
-    			(resourceGroup == null ? "" : resourceGroup.compareKey());
     }
 
     @Override
@@ -75,11 +65,33 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     public int compareTo(TagGroup t) {
     	if (this == t)
     		return 0;
+        int result = this.account.compareTo(t.account);
+        if (result != 0)
+            return result;
+        result = this.region.compareTo(t.region);
+        if (result != 0)
+            return result;
+        result = this.zone == t.zone ? 0 : (this.zone == null ? 1 : (t.zone == null ? -1 : t.zone.compareTo(this.zone)));
+        if (result != 0)
+            return result;
+        result = this.product.compareTo(t.product);
+        if (result != 0)
+            return result;
+        result = this.operation.compareTo(t.operation);
+        if (result != 0)
+            return result;
+        result = this.usageType.compareTo(t.usageType);
+        if (result != 0)
+            return result;
+        result = this.resourceGroup == t.resourceGroup ? 0 : (this.resourceGroup == null ? 1 : (t.resourceGroup == null ? -1 : t.resourceGroup.compareTo(this.resourceGroup)));
+        if (result != 0)
+            return result;
+        // Handle any subclass extensions
         return compareKey().compareTo(t.compareKey());
     }
     
     public String compareKey() {
-    	return key;
+    	return "";
     }
 
     @Override
@@ -160,7 +172,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     		accountService.getAccountByName(account),
         	Region.getRegionByName(region),
         	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
-        	productService.getProductByName(product),
+        	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
             StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)));   	

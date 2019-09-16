@@ -262,7 +262,7 @@ public abstract class LineItem {
 
 	abstract public String getLineItemId();
 
-	public String getReservationId() {
+	public String getReservationArn() {
 		return "";
 	}
 	

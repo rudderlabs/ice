@@ -163,9 +163,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         ReservationUtilization defaultReservationUtilization = reservationService.getDefaultReservationUtilization(millisStart);
         String purchaseOption = lineItem.getPurchaseOption();
-        String reservationId = lineItem.getReservationId();
-        if (StringUtils.isEmpty(purchaseOption) && StringUtils.isNotEmpty(reservationId)) {
-        	ReservationInfo resInfo = reservationService.getReservation(reservationId);
+        ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
+        if (StringUtils.isEmpty(purchaseOption) && !reservationArn.name.isEmpty()) {
+        	ReservationInfo resInfo = reservationService.getReservation(reservationArn);
         	if (resInfo != null)
         		defaultReservationUtilization = ((Operation.ReservationOperation) resInfo.tagGroup.operation).getUtilization();
         }
@@ -190,7 +190,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
         if (processDelayed && lineItem.getLineItemType() == LineItemType.RIFee) {
-        	TagGroupRI tgri = TagGroupRI.getTagGroup(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, null, reservationId);
+        	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, null, reservationArn);
         	addReservation(lineItem, costAndUsageData, tgri, startMilli);
         }
 
@@ -237,12 +237,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
         
-        addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount);
+        addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
     }
 
     protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
-    		CostAndUsageData costAndUsageData, double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount) {
+    		CostAndUsageData costAndUsageData, double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount, long startMilli) {
         final ReadWriteData usageData = costAndUsageData.getUsage(null);
         final ReadWriteData costData = costAndUsageData.getCost(null);
         ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(tagGroup.product);

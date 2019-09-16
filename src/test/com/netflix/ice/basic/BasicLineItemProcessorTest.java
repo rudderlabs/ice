@@ -647,19 +647,19 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge.windows", null };
 		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 1.0, 0.0, Result.hourly, 30);
 		test.run();
-		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
 		test.run();
 		
 		// Test 2017 manifest which doesn't support amortization. Savings will come back as full price
 		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
 		line.setDiscountedUsageFields("1.5", "0.0", "3.0");
-		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
 		test.run();
 		
 		// Test 2018 which does support amortization
 		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2018-06-01T00:00:00Z", "2018-06-01T01:00:00Z", "1", "0", "All Upfront");
 		line.setDiscountedUsageFields("1.5", "0.0", "3.0");
-		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30, 1.5, 1.5);
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30, 1.5, 1.5);
 		test.run("2018-06-01T00:00:00Z", null);
 	}
 	
@@ -743,9 +743,9 @@ public class BasicLineItemProcessorTest {
 		Line line = new Line(LineItemType.RIFee, "eu-west-1", "", ec2, "EU-HeavyUsage:t2.small", "RunInstances", "USD 0.0146 hourly fee per Linux/UNIX (Amazon VPC), t2.small instance", PricingTerm.none, "2017-11-01T00:00:00Z", "2017-12-01T00:00:00Z", "18600", "271.56", "");
 		line.setRIFeeFields("", "", "", "", "25", "", "");
 		String[] tag = new String[] { "eu-west-1", null, "EC2 Instance", "Bonus RIs - No Upfront", "t2.small", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 31, 0.0, true, 0, 1, 0.377, null);
-		TagGroup tg = TagGroup.getTagGroup("234567890123", tag[0], tag[1], tag[2], tag[3], tag[4], "hours", null, accountService, productService);
-		Reservation r = new Reservation("arn", tg, 25, 0, 0, ReservationUtilization.NO, 0.0, 0.028);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 31, 0.0, true, 0, 0, 0.377, null);
+		TagGroupRI tg = TagGroupRI.get("234567890123", tag[0], tag[1], tag[2], tag[3], tag[4], "hours", null, "arn", accountService, productService);
+		Reservation r = new Reservation(tg, 25, 0, 0, ReservationUtilization.NO, 0.0, 0.028);
 		test.addReservation(r);
 		test.run("2017-11-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
@@ -765,7 +765,7 @@ public class BasicLineItemProcessorTest {
 		Line line = new Line(LineItemType.RIFee, "ap-southeast-2", "", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "720.0", "");
 		line.setRIFeeFields("1440", "", "", "", "1", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
 		String[] tag = new String[] { "ap-southeast-2", null, "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 30, 2.0, true, 0, 1, 1.0, null);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 30, 2.0, true, 0, 0, 1.0, null);
 		test.run();
 
 		// Test reservation/unused rates
@@ -816,7 +816,7 @@ public class BasicLineItemProcessorTest {
 	public void testReservedPartialUpfrontHourlyUsageRDS() throws Exception {
 		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "", rds, "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0014", "PostgreSQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "Partial Upfront");
 		String[] tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgres", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
 		test.run();
 	}
 	
@@ -882,7 +882,7 @@ public class BasicLineItemProcessorTest {
 		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", es, "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront");
 		line.setDiscountedUsageFields("0.30", "0", "0.66");
 		tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Bonus RIs - All Upfront", "r4.xlarge.elasticsearch", null };
-		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.30, 0.36);
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 31, 0.30, 0.36);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
 		// No Upfront
@@ -970,7 +970,7 @@ public class BasicLineItemProcessorTest {
 		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront");
 		line.setDiscountedUsageFields("0.30", "0", "0.66");
 		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - All Upfront", "cache.m3.medium.redis", null };
-		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.30, 0.36);
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 31, 0.30, 0.36);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
 		// No Upfront

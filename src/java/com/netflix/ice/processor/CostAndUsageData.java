@@ -44,6 +44,7 @@ import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.ReservationArn;
 
 public class CostAndUsageData {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -53,7 +54,7 @@ public class CostAndUsageData {
     private Map<Product, ReadWriteTagCoverageData> tagCoverage;
     private List<String> userTags;
     private boolean collectTagCoverageWithUserTags;
-    private Map<String, Reservation> reservations;
+    private Map<ReservationArn, Reservation> reservations;
     
 	public CostAndUsageData(List<String> userTags, Config.TagCoverage tagCoverage) {
 		this.usageDataByProduct = Maps.newHashMap();
@@ -139,10 +140,10 @@ public class CostAndUsageData {
     }
     
     public void addReservation(Reservation reservation) {
-    	reservations.put(reservation.id, reservation);
+    	reservations.put(reservation.tagGroup.reservationArn, reservation);
     }
     
-    public Map<String, Reservation> getReservations() {
+    public Map<ReservationArn, Reservation> getReservations() {
     	return reservations;
     }
     

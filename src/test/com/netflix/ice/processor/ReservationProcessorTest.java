@@ -58,12 +58,13 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
 public class ReservationProcessorTest {
-    protected Logger logger = LoggerFactory.getLogger(getClass());
+    protected static Logger logger = LoggerFactory.getLogger(ReservationProcessorTest.class);
 	private static final String resourceDir = "src/test/resources/";
 
 	private final Product ec2Instance = productService.getProductByName(Product.ec2Instance);
@@ -174,9 +175,9 @@ public class ReservationProcessorTest {
 			this.tagGroup = TagGroup.getTagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource);
 			this.value = value;
 		}
-		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, String rsvArn, double value)
+		public Datum(Account account, Region region, Zone zone, Product product, Operation operation, String usageType, ResourceGroup resource, ReservationArn rsvArn, double value)
 		{
-			this.tagGroup = TagGroupRI.getTagGroup(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource, rsvArn);
+			this.tagGroup = TagGroupRI.get(account, region, zone, product, operation, UsageType.getUsageType(usageType, "hours"), resource, rsvArn);
 			this.value = value;
 		}
 	}
@@ -294,7 +295,8 @@ public class ReservationProcessorTest {
 			String debugFamily, 
 			Region debugRegion, 
 			ReservationProcessor rp) throws Exception {
-		
+
+		logger.info("Test:");
 		Map<ReservationKey, CanonicalReservedInstances> reservations = Maps.newHashMap();
 		for (String res: reservationsCSV) {
 			String[] fields = res.split(",");
@@ -345,8 +347,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 1.0),
@@ -369,10 +372,9 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn, 1.0),
 		};
 		costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
@@ -380,12 +382,12 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn, 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -398,7 +400,7 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,14,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,14,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -430,9 +432,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,0.0,1,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.112",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,0.0,1,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.112",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 1.0),
@@ -458,8 +462,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.large", null, arn2, 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
@@ -467,14 +471,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,0.0,1,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.112",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,0.0,1,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.112",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.112),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsNoUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.112),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.large", null, arn2, 0.112),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsNoUpfront, "m1.large", null, arn2, 0.175 - 0.112),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -488,9 +492,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 2.0),
@@ -512,8 +518,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn2, 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 
@@ -521,14 +527,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{				
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn2, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn2, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -541,8 +547,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Availability Zone,us-east-1a,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Availability Zone,us-east-1a,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.small", 1.0),
@@ -571,8 +578,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.small", 0.0),
@@ -590,13 +597,13 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Availability Zone,us-east-1a,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Availability Zone,us-east-1a,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{				
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 * 1.0 - 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 * 1.0 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 * 1.0 - 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 * 1.0 - 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -609,8 +616,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.small", 1.0),
@@ -640,9 +648,9 @@ public class ReservationProcessorTest {
 
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.small", 0.0),
@@ -664,15 +672,15 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 - 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 - 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -685,9 +693,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 2.0),
@@ -711,8 +721,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.large", 0.0),
@@ -725,14 +735,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn2, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn2, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -745,9 +755,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 2.0),
@@ -769,8 +781,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn2, 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 		
@@ -778,29 +790,31 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn2, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn2, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
 
 	/*
-	 * Test two full-upfront reservations - both Region that are both used by the owner account.
+	 * Test two All Upfront reservations - both Region that are both used by the owner account.
 	 */
 	@Test
 	public void testTwoUsedRegion() throws Exception {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 2.0),
@@ -822,8 +836,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.large", 0.0),
@@ -836,14 +850,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn2, 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn2, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -856,9 +870,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 1.0),
@@ -889,8 +905,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAllUpfront, "m1.large", 0.0),
@@ -908,14 +924,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Region,,false,2017-05-31 13:43:29,2018-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.175 - 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn2, 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.175 - 0.095),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1b, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn2, 0.175 - 0.095),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -928,8 +944,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.large", 1.0),
@@ -951,7 +968,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAllUpfront, "m1.large", 0.0),
@@ -964,11 +981,11 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.094),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 * 4.0 - 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.large", null, arn1, 0.094),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.large", null, arn1, 0.044 * 4.0 - 0.094),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -981,8 +998,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,123.0,4,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,123.0,4,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesPartialUpfront, "m1.large", 1.0),
@@ -1004,7 +1022,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.large", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesPartialUpfront, "m1.large", 4.0 * 0.01),
@@ -1017,12 +1035,12 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,123.0,4,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,123.0,4,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.01),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.014),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "m1.large", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * (0.044 - 0.014 - 0.01)),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.large", null, arn1, 4.0 * 0.01),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "m1.large", null, arn1, 4.0 * 0.014),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "m1.large", null, arn1, 4.0 * (0.044 - 0.014 - 0.01)),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1035,8 +1053,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.small", 1.0),
@@ -1065,8 +1084,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.small", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.small", 0.0),
@@ -1086,13 +1105,13 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,5,Linux/UNIX (Amazon VPC),active,USD,All Upfront",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 - 0.02352),
-				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.044 - 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.small", null, arn1, 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 - 0.02352),
+				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.small", null, arn1, 0.044 - 0.02352),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1105,9 +1124,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-				"222222222222,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+				"222222222222,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2016-05-31 13:06:38,2017-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
+		ReservationArn arn2 = ReservationArn.get(accounts.get(1), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesAllUpfront, "m1.xlarge", 1.0),
@@ -1135,8 +1156,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.5),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.xlarge", null, arn1, 0.5),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.xlarge", null, arn2, 0.5),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.xlarge", 8.0 * (0.044 - 0.02352)),
@@ -1151,14 +1172,14 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-					"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
-					"222222222222,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+					"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+					"222222222222,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2017-05-31 13:06:38,2018-05-31 13:06:37,31536000,0.0,206.0,4,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * 0.02352),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.xlarge", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * (0.044 - 0.02352)),
-				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 4.0 * (0.044 - 0.02352)),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.xlarge", null, arn1, 4.0 * 0.02352),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedAllUpfront, "m1.xlarge", null, arn2, 4.0 * 0.02352),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.xlarge", null, arn1, 4.0 * (0.044 - 0.02352)),
+				new Datum(accounts.get(2), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsAllUpfront, "m1.xlarge", null, arn2, 4.0 * (0.044 - 0.02352)),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1171,8 +1192,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,RDS Instance,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,2016-05-20 16:50:23,2017-05-20 16:50:23,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
+			"111111111111,RDS Service,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,2016-05-20 16:50:23,2017-05-20 16:50:23,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, rdsInstance, "ri-2016-05-20-16-50-03-197");
 		
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesAllUpfront, "db.t2.small.mysql", 1.0),
@@ -1194,7 +1216,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesAllUpfront, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.bonusReservedInstancesAllUpfront, "db.t2.small.mysql", null, arn1, 1.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
@@ -1202,11 +1224,11 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,RDS Instance,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,2017-05-20 16:50:23,2018-05-20 16:50:23,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
+				"111111111111,RDS Service,us-east-1,ri-2016-05-20-16-50-03-197,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,db.t2.small,,,false,2017-05-20 16:50:23,2018-05-20 16:50:23,31536000,0.0,195.0,1,mysql,active,USD,All Upfront,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedAllUpfront, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 0.0223),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.savingsAllUpfront, "db.t2.small.mysql", null, "ri-2016-05-20-16-50-03-197", 0.034 - 0.0223),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.upfrontAmortizedAllUpfront, "db.t2.small.mysql", null, arn1, 0.0223),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, rdsInstance, Operation.savingsAllUpfront, "db.t2.small.mysql", null, arn1, 0.034 - 0.0223),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1219,8 +1241,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,RDS Instance,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,2017-02-01 06:08:27,2018-02-01 06:08:27,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
+			"111111111111,RDS Service,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,2017-02-01 06:08:27,2018-02-01 06:08:27,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.AP_SOUTHEAST_2, rdsInstance, "ri-2017-02-01-06-08-23-918");
 		
 		Datum[] usageData = new Datum[]{
 				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartialUpfront, "db.t2.micro.postgres", 2.0),
@@ -1242,7 +1265,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartialUpfront, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 2.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartialUpfront, "db.t2.micro.postgres", null, arn1, 2.0),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "db");
 		
@@ -1250,12 +1273,12 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-04-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,RDS Instance,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,2018-02-01 06:08:27,2019-02-01 06:08:27,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
+				"111111111111,RDS Service,ap-southeast-2,ri-2017-02-01-06-08-23-918,573d345b-7d5d-42eb-a340-5c19bf82b338,db.t2.micro,,,false,2018-02-01 06:08:27,2019-02-01 06:08:27,31536000,0.0,79.0,2,postgresql,active,USD,Partial Upfront,Hourly:0.012",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartialUpfront, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 0.024),
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartialUpfront, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 0.018),
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.savingsPartialUpfront, "db.t2.micro.postgres", null, "ri-2017-02-01-06-08-23-918", 2.0 * 0.028 - 0.018 - 2.0 * 0.012),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.bonusReservedInstancesPartialUpfront, "db.t2.micro.postgres", null, arn1, 0.024),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.upfrontAmortizedPartialUpfront, "db.t2.micro.postgres", null, arn1, 0.018),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, null, rdsInstance, Operation.savingsPartialUpfront, "db.t2.micro.postgres", null, arn1, 2.0 * 0.028 - 0.018 - 2.0 * 0.012),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1268,8 +1291,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
 		};
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", 1.0),
@@ -1291,7 +1315,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartialUpfront, "c4.2xlarge", 0.121),
@@ -1304,12 +1328,12 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-05-05T17:20:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2018-04-27 09:01:29,2019-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2018-04-27 09:01:29,2019-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.121),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.121),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.398 - 0.121 - 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, arn2, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", null, arn2, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", null, arn2, 0.398 - 0.121 - 0.121),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1323,7 +1347,7 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-08-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2016-08-01 00:05:35,2017-08-01 00:05:34,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2016-08-01 00:05:35,2017-08-01 00:05:34,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -1350,8 +1374,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,t2.medium,Region,,false,2017-02-01 06:00:35,2018-02-01 06:00:34,31536000,0.0,289.0,1,Windows,active,USD,Partial Upfront,Hourly:0.033,",
+			"111111111111,Elastic Compute Cloud,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,t2.medium,Region,,false,2017-02-01 06:00:35,2018-02-01 06:00:34,31536000,0.0,289.0,1,Windows,active,USD,Partial Upfront,Hourly:0.033,",
 		};
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.AP_SOUTHEAST_2, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.bonusReservedInstancesPartialUpfront, "t2.medium.windows", 1.0),
@@ -1373,7 +1398,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "t2.medium.windows", null, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, Operation.reservedInstancesPartialUpfront, "t2.medium.windows", 0.033),
@@ -1386,12 +1411,12 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-05-05T17:20:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,t2.medium,Region,,false,2018-02-01 06:00:35,2019-02-01 06:00:34,31536000,0.0,289.0,1,Windows,active,USD,Partial Upfront,Hourly:0.033,",
+				"111111111111,Elastic Compute Cloud,ap-southeast-2,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,t2.medium,Region,,false,2018-02-01 06:00:35,2019-02-01 06:00:34,31536000,0.0,289.0,1,Windows,active,USD,Partial Upfront,Hourly:0.033,",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.033),
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.033),
-				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.savingsPartialUpfront, "t2.medium.windows", null, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.082 - 0.033 - 0.033),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "t2.medium.windows", null, arn2, 0.033),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "t2.medium.windows", null, arn2, 0.033),
+				new Datum(accounts.get(0), Region.AP_SOUTHEAST_2, ap_southeast_2a, ec2Instance, Operation.savingsPartialUpfront, "t2.medium.windows", null, arn2, 0.082 - 0.033 - 0.033),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1401,9 +1426,10 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-08-01").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-west-2,aaaaaaaa-382f-40b9-b2d3-8641b05313f9,,c4.large,Region,,false,2017-04-12 21:29:39,2018-04-12 21:29:38,31536000,0.0,249.85000610351562,20,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.0285",
-			"222222222222,EC2 Instance,eu-west-1,bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd,,c4.xlarge,Region,,false,2017-03-08 09:00:00,2017-08-18 06:07:40,31536000,0.0,340.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.039",
+			"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-382f-40b9-b2d3-8641b05313f9,,c4.large,Region,,false,2017-04-12 21:29:39,2018-04-12 21:29:38,31536000,0.0,249.85000610351562,20,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.0285",
+			"222222222222,Elastic Compute Cloud,eu-west-1,bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd,,c4.xlarge,Region,,false,2017-03-08 09:00:00,2017-08-18 06:07:40,31536000,0.0,340.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.039",
 		};
+		ReservationArn arnB = ReservationArn.get(accounts.get(1), Region.EU_WEST_1, ec2Instance, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", 0.25),
@@ -1434,8 +1460,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.25),
-				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5),
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, arnB, 0.25),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnB, 1.5),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, Operation.borrowedInstancesPartialUpfront, "c4.2xlarge", 0.039 * 0.50),
@@ -1455,16 +1481,16 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-08-01T00:00:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-west-2,aaaaaaaa-382f-40b9-b2d3-8641b05313f9,,c4.large,Region,,false,2018-04-12 21:29:39,2019-04-12 21:29:38,31536000,0.0,249.85000610351562,20,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.0285",
-				"222222222222,EC2 Instance,eu-west-1,bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd,,c4.xlarge,Region,,false,2018-03-08 09:00:00,2018-08-18 06:07:40,31536000,0.0,340.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.039",
+				"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-382f-40b9-b2d3-8641b05313f9,,c4.large,Region,,false,2018-04-12 21:29:39,2019-04-12 21:29:38,31536000,0.0,249.85000610351562,20,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.0285",
+				"222222222222,Elastic Compute Cloud,eu-west-1,bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd,,c4.xlarge,Region,,false,2018-03-08 09:00:00,2018-08-18 06:07:40,31536000,0.0,340.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.039",
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.5 * 0.039),
-				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.5 * 0.039),
-				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 0.5 * (0.226 - 0.039 - 0.039)),
-				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5 * 0.039),
-				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5 * 0.039),
-				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "bbbbbbbb-0ce3-4ab0-8d0e-36deac008bdd", 1.5 * (0.226 - 0.039 - 0.039)),
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", null, arnB, 0.5 * 0.039),
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", null, arnB, 0.5 * 0.039),
+				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", null, arnB, 0.5 * (0.226 - 0.039 - 0.039)),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnB, 1.5 * 0.039),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnB, 1.5 * 0.039),
+				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnB, 1.5 * (0.226 - 0.039 - 0.039)),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}	
@@ -1474,9 +1500,11 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-west-2,aaaaaaaa-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,2017-04-12 23:53:41,2018-04-12 23:53:40,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
-			"222222222222,EC2 Instance,us-west-2,bbbbbbbb-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,2016-10-03 15:48:28,2017-10-03 15:48:27,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
+			"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,2017-04-12 23:53:41,2018-04-12 23:53:40,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
+			"222222222222,Elastic Compute Cloud,us-west-2,bbbbbbbb-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,2016-10-03 15:48:28,2017-10-03 15:48:27,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
 		};
+		ReservationArn arnA = ReservationArn.get(accounts.get(0), Region.US_WEST_2, ec2Instance, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d");
+		ReservationArn arnB = ReservationArn.get(accounts.get(1), Region.US_WEST_2, ec2Instance, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", 2.0),
@@ -1504,8 +1532,8 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 1.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 1.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, arnA, 1.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, arnB, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, Operation.reservedInstancesPartialUpfront, "c3.4xlarge", 0.199),
@@ -1520,16 +1548,16 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-05-05T17:20:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-west-2,aaaaaaaa-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,2018-04-12 23:53:41,2019-04-12 23:53:40,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
-				"222222222222,EC2 Instance,us-west-2,bbbbbbbb-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,2017-10-03 15:48:28,2018-10-03 15:48:27,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
+				"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-588b-46a2-8c05-cbcf87aed53d,,c3.4xlarge,Region,,false,2018-04-12 23:53:41,2019-04-12 23:53:40,31536000,0.0,2477.60009765625,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.19855",
+				"222222222222,Elastic Compute Cloud,us-west-2,bbbbbbbb-1942-4e5e-892b-cec03ddb7816,,c3.4xlarge,Region,,false,2017-10-03 15:48:28,2018-10-03 15:48:27,31536000,0.0,2608.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.209"
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 0.199),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 0.283),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c3.4xlarge", null, "aaaaaaaa-588b-46a2-8c05-cbcf87aed53d", 0.84 - 0.283 - 0.199),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 0.209),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 0.298),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c3.4xlarge", null, "bbbbbbbb-1942-4e5e-892b-cec03ddb7816", 0.84 - 0.298 - 0.209),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, arnA, 0.199),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c3.4xlarge", null, arnA, 0.283),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c3.4xlarge", null, arnA, 0.84 - 0.283 - 0.199),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c3.4xlarge", null, arnB, 0.209),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c3.4xlarge", null, arnB, 0.298),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c3.4xlarge", null, arnB, 0.84 - 0.298 - 0.209),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1539,10 +1567,13 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-west-2,aaaaaaaa-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,2017-04-12 21:44:42,2018-04-12 21:44:41,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
-			"222222222222,EC2 Instance,us-west-2,bbbbbbbb-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,2016-09-22 23:44:27,2017-09-22 23:44:26,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
-			"222222222222,EC2 Instance,us-west-2,cccccccc-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,2016-09-22 23:44:27,2017-09-22 23:44:26,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,2017-04-12 21:44:42,2018-04-12 21:44:41,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
+			"222222222222,Elastic Compute Cloud,us-west-2,bbbbbbbb-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,2016-09-22 23:44:27,2017-09-22 23:44:26,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+			"222222222222,Elastic Compute Cloud,us-west-2,cccccccc-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,2016-09-22 23:44:27,2017-09-22 23:44:26,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
 		};
+		ReservationArn arnA = ReservationArn.get(accounts.get(0), Region.US_WEST_2, ec2Instance, "aaaaaaaa-08c5-4d02-99f3-d23e51968565");
+		ReservationArn arnB = ReservationArn.get(accounts.get(1), Region.US_WEST_2, ec2Instance, "bbbbbbbb-3452-4486-804a-a3d184474ab6");
+		ReservationArn arnC = ReservationArn.get(accounts.get(1), Region.US_WEST_2, ec2Instance, "cccccccc-31f5-463a-bc72-b6e53956184f");
 		
 		Datum[] usageData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", 9.0), // 1 az + 8 regional
@@ -1582,11 +1613,11 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 1.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnC, 1.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 8.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnB, 2.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 3.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 4.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, Operation.reservedInstancesPartialUpfront, "c4.xlarge", 0.228),
@@ -1609,26 +1640,30 @@ public class ReservationProcessorTest {
 		startMillis = DateTime.parse("2018-05-05T17:20:00Z").getMillis();
 		resCSV = new String[]{
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-west-2,aaaaaaaa-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,2018-04-12 21:44:42,2019-04-12 21:44:41,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
-				"222222222222,EC2 Instance,us-west-2,bbbbbbbb-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,2017-09-22 23:44:27,2018-09-22 23:44:26,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
-				"222222222222,EC2 Instance,us-west-2,cccccccc-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,2017-09-22 23:44:27,2018-09-22 23:44:26,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+				"111111111111,Elastic Compute Cloud,us-west-2,aaaaaaaa-08c5-4d02-99f3-d23e51968565,,c4.xlarge,Region,,false,2018-04-12 21:44:42,2019-04-12 21:44:41,31536000,0.0,503.5,15,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.057",
+				"222222222222,Elastic Compute Cloud,us-west-2,bbbbbbbb-3452-4486-804a-a3d184474ab6,,c4.xlarge,Availability Zone,us-west-2b,false,2017-09-22 23:44:27,2018-09-22 23:44:26,31536000,0.0,590.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
+				"222222222222,Elastic Compute Cloud,us-west-2,cccccccc-31f5-463a-bc72-b6e53956184f,,c4.xlarge,Availability Zone,us-west-2a,false,2017-09-22 23:44:27,2018-09-22 23:44:26,31536000,0.0,590.0,1,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.067",
 			};
+		arnA = ReservationArn.get(accounts.get(0), Region.US_WEST_2, ec2Instance, "aaaaaaaa-08c5-4d02-99f3-d23e51968565");
+		arnB = ReservationArn.get(accounts.get(1), Region.US_WEST_2, ec2Instance, "bbbbbbbb-3452-4486-804a-a3d184474ab6");
+		arnC = ReservationArn.get(accounts.get(1), Region.US_WEST_2, ec2Instance, "cccccccc-31f5-463a-bc72-b6e53956184f");
+		
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 0.067),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", 0.0674),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "cccccccc-31f5-463a-bc72-b6e53956184f", (0.199 - 0.0674 - 0.067)),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0 * 0.057),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0 * 0.0575),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 8.0 * (0.199 - 0.0575 - 0.057)),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0 * 0.0674),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0 * 0.067),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "bbbbbbbb-3452-4486-804a-a3d184474ab6", 2.0 * (0.199 - 0.0674 - 0.067)),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0 * 0.057),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0 * 0.0575),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 3.0 * (0.199 - 0.0575 - 0.057)),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0 * 0.057),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0 * 0.0575),
-				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, "aaaaaaaa-08c5-4d02-99f3-d23e51968565", 4.0 * (0.199 - 0.0575 - 0.057)),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnC, 0.067),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnC, 0.0674),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnC, (0.199 - 0.0674 - 0.067)),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 8.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnA, 8.0 * 0.0575),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2a, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnA, 8.0 * (0.199 - 0.0575 - 0.057)),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnB, 2.0 * 0.0674),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnB, 2.0 * 0.067),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnB, 2.0 * (0.199 - 0.0674 - 0.067)),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 3.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnA, 3.0 * 0.0575),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2b, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnA, 3.0 * (0.199 - 0.0575 - 0.057)),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.xlarge", null, arnA, 4.0 * 0.057),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", null, arnA, 4.0 * 0.0575),
+				new Datum(accounts.get(0), Region.US_WEST_2, us_west_2c, ec2Instance, Operation.savingsPartialUpfront, "c4.xlarge", null, arnA, 4.0 * (0.199 - 0.0575 - 0.057)),
 		};
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -1641,7 +1676,7 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -1675,7 +1710,7 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-04-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"222222222222,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
+			"222222222222,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.large,Availability Zone,us-east-1a,false,2016-05-31 13:43:29,2017-05-31 13:43:28,31536000,0.0,835.0,1,Linux/UNIX (Amazon VPC),active,USD,All Upfront,",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -1711,8 +1746,9 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,2,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121,,,Foo:Bar",
+			"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,2,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121,,,Foo:Bar",
 		};
+		ReservationArn arn2 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		ResourceGroup rg = ResourceGroup.getResourceGroup("Prod_MyAPI", false);
 		Datum[] usageData = new Datum[]{
@@ -1738,7 +1774,7 @@ public class ReservationProcessorTest {
 		
 		/* Cost and Usage version */
 		usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", rg, "2aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "c4.2xlarge", rg, arn2, 1.0),
 		};
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.reservedInstancesPartialUpfront, "c4.2xlarge", rg, 0.121),
@@ -1759,8 +1795,8 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2017-05-05T17:20:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-				"111111111111,EC2 Instance,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
-				"111111111111,EC2 Instance,us-east-1,3aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c5.2xlarge,Region,,false,2018-04-27 09:01:29,2019-04-27 09:01:28,31536000,0.0,0.0,1,Linux/UNIX,active,USD,No Upfront,Hourly:0.24",
+				"111111111111,Elastic Compute Cloud,us-east-1,2aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c4.2xlarge,Region,,false,2017-04-27 09:01:29,2018-04-27 09:01:28,31536000,0.0,1060.0,1,Linux/UNIX,active,USD,Partial Upfront,Hourly:0.121",
+				"111111111111,Elastic Compute Cloud,us-east-1,3aaaaaaa-bbbb-cccc-ddddddddddddddddd,,c5.2xlarge,Region,,false,2018-04-27 09:01:29,2019-04-27 09:01:28,31536000,0.0,0.0,1,Linux/UNIX,active,USD,No Upfront,Hourly:0.24",
 		};
 		
 		Datum[] usageData = new Datum[]{
@@ -1790,17 +1826,18 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2019-01-01").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,123.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,123.0,2,Linux/UNIX (Amazon VPC),active,USD,Partial Upfront,Hourly:0.01",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		/* One instance used, one unused */
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.small", null, arn1, 1.0),
 		};
 		Datum[] costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.024),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.014),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.020),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.small", null, arn1, 0.024),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "m1.small", null, arn1, 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "m1.small", null, arn1, 0.020),
 		};
 		
 		Datum[] expectedUsageData = new Datum[]{
@@ -1828,16 +1865,17 @@ public class ReservationProcessorTest {
 		long startMillis = DateTime.parse("2019-01-01T00:00:00Z").getMillis();
 		String[] resCSV = new String[]{
 			// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
-			"111111111111,EC2 Instance,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,0.0,2,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.028",
+			"111111111111,Elastic Compute Cloud,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,m1.small,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,0.0,2,Linux/UNIX (Amazon VPC),active,USD,No Upfront,Hourly:0.028",
 		};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, ec2Instance, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		
 		/* One instance used, one unused */
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.small", null, arn1, 1.0),
 		};
 		Datum[] costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.028),
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsNoUpfront, "m1.small", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.016),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesNoUpfront, "m1.small", null, arn1, 0.028),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsNoUpfront, "m1.small", null, arn1, 0.016),
 		};
 		
 		Datum[] expectedUsageData = new Datum[]{
@@ -1862,13 +1900,14 @@ public class ReservationProcessorTest {
 				// account, product, region, reservationID, reservationOfferingId, instanceType, scope, availabilityZone, multiAZ, start, end, duration, usagePrice, fixedPrice, instanceCount, productDescription, state, currencyCode, offeringType, recurringCharge
 				"111111111111,ElastiCache,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,cache.m3.medium,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,0.0,2,Running Redis,active,USD,No Upfront,Hourly:0.10",
 			};
+		ReservationArn arn1 = ReservationArn.get(accounts.get(0), Region.US_EAST_1, elastiCache, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd");
 		/* One instance used, one unused */
 		Datum[] usageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesNoUpfront, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesNoUpfront, "cache.m3.medium.redis", null, arn1, 1.0),
 		};
 		Datum[] costData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesNoUpfront, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.10),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.savingsNoUpfront, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.05),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesNoUpfront, "cache.m3.medium.redis", null, arn1, 0.10),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.savingsNoUpfront, "cache.m3.medium.redis", null, arn1, 0.05),
 		};
 		
 		Datum[] expectedUsageData = new Datum[]{
@@ -1890,11 +1929,11 @@ public class ReservationProcessorTest {
 				"111111111111,ElastiCache,us-east-1,1aaaaaaa-bbbb-cccc-ddddddddddddddddd,,cache.m3.medium,Region,,false,2018-07-01 00:00:01,2019-07-01 00:00:00,31536000,0.0,0.0,1,Running Redis,active,USD,Heavy Utilization,Hourly:0.10",
 			};
 		usageData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesHeavy, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 1.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesHeavy, "cache.m3.medium.redis", null, arn1, 1.0),
 			};
 		costData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesHeavy, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.10),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.savingsHeavy, "cache.m3.medium.redis", null, "1aaaaaaa-bbbb-cccc-ddddddddddddddddd", 0.05),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.bonusReservedInstancesHeavy, "cache.m3.medium.redis", null, arn1, 0.10),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.savingsHeavy, "cache.m3.medium.redis", null, arn1, 0.05),
 			};
 		expectedUsageData = new Datum[]{
 				new Datum(accounts.get(0), Region.US_EAST_1, null, elastiCache, Operation.reservedInstancesHeavy, "cache.m3.medium.redis", 1.0),

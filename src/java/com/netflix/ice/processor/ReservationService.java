@@ -19,9 +19,11 @@ package com.netflix.ice.processor;
 
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.ReservationArn;
 
 import java.util.Collection;
 import java.util.List;
@@ -34,7 +36,7 @@ import java.util.Set;
 public interface ReservationService {
 
     /**
-     * Get all tag groups with reservations
+     * Get all tag groups with reservations (Used only for Detailed Billing Report Processing)
      * @param utilization
      * @return
      */
@@ -47,17 +49,17 @@ public interface ReservationService {
     ReservationUtilization getDefaultReservationUtilization(long time);
     
     /*
-     * Get ReservationInfo for the given reservation id
+     * Get ReservationInfo for the given reservation ARN
      */
-    ReservationInfo getReservation(String id);
+    ReservationInfo getReservation(ReservationArn arn);
     
     /*
      * Get the set of reservation IDs that are active for the given time.
      */
-    Set<String> getReservations(long time, Product product);
+    Set<ReservationArn> getReservations(long time, Product product);
 
     /**
-     * Get reservation info. (Used for Detailed Billing Report Processing)
+     * Get reservation info. (Used only for Detailed Billing Report Processing)
      * @param time
      * @param tagGroup
      * @param utilization
@@ -74,15 +76,15 @@ public interface ReservationService {
      */
     boolean hasReservations(Product product);
     
-    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<String, Reservation> reservationsById);
+    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsById);
 
     public static class ReservationInfo {
-    	public final TagGroup tagGroup;
+    	public final TagGroupRI tagGroup;
         public final int capacity;
         public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
         public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
-        public ReservationInfo(TagGroup tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        public ReservationInfo(TagGroupRI tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
         	this.tagGroup = tagGroup;
             this.capacity = capacity;
             this.upfrontAmortized = upfrontAmortized;
@@ -93,12 +95,12 @@ public interface ReservationService {
     public class ReservationKey implements Comparable<ReservationKey> {
     	public String account;
     	public String region;
-    	public String reservationId;
+    	public String reservationArn;
     	
-    	public ReservationKey(String account, String region, String reservationId) {
+    	public ReservationKey(String account, String region, String reservationArn) {
     		this.account = account;
     		this.region = region;
-    		this.reservationId = reservationId;
+    		this.reservationArn = reservationArn;
     	}
 
 		@Override
@@ -109,7 +111,7 @@ public interface ReservationService {
 	        result = region.compareTo(o.region);
 	        if (result != 0)
 	            return result;
-			return reservationId.compareTo(o.reservationId);
+			return reservationArn.compareTo(o.reservationArn);
 		}
 		
 		@Override
@@ -120,7 +122,7 @@ public interface ReservationService {
 		
 		@Override
 		public int hashCode() {
-			return account.hashCode() * region.hashCode() * reservationId.hashCode();
+			return account.hashCode() * region.hashCode() * reservationArn.hashCode();
 		}
     }
 

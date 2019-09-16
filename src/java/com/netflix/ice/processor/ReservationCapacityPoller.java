@@ -75,6 +75,7 @@ import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -91,6 +92,7 @@ import com.netflix.ice.tag.InstanceOs;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
@@ -494,12 +496,12 @@ public class ReservationCapacityPoller extends Poller {
         logger.info("uploaded " + file);
     }
 
-    protected void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService, ResourceService resourceService, ReservationService reservationService) {
+    protected void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService, ResourceService resourceService, ReservationService reservationService) throws Exception {
         Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
             reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
-        Map<String, Reservation> reservationsByIdMap = Maps.newHashMap();
+        Map<ReservationArn, Reservation> reservationsByArn = Maps.newHashMap();
 
         for (ReservationKey key: reservationsFromApi.keySet()) {
             CanonicalReservedInstances reservedInstances = reservationsFromApi.get(key);
@@ -540,7 +542,7 @@ public class ReservationCapacityPoller extends Poller {
             Zone zone = null;
             Region region = Region.getRegionByName(reservedInstances.getRegion());
             
-            if (reservedInstances.isProduct(Product.ec2Instance)) {
+            if (reservedInstances.isProduct(Product.ec2)) {
             	if (reservedInstances.getScope().equals("Availability Zone")) {
 	                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
 	                if (zone == null)
@@ -554,7 +556,7 @@ public class ReservationCapacityPoller extends Poller {
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
                 product = productService.getProductByName(Product.ec2Instance);
             }
-            else if (reservedInstances.isProduct(Product.rdsInstance)) {
+            else if (reservedInstances.isProduct(Product.rds)) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? UsageType.multiAZ : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
@@ -581,8 +583,9 @@ public class ReservationCapacityPoller extends Poller {
             ResourceGroup resourceGroup = null;
             if (resourceService != null)
             	resourceGroup = resourceService.getResourceGroup(account, product, reservedInstances.getTags());
-            TagGroup reservationKey = TagGroup.getTagGroup(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, resourceGroup);
-            Reservation reservation = new Reservation(reservedInstances.getReservationId(), reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
+            ReservationArn arn = ReservationArn.get(account, region, product, reservedInstances.getReservationId());
+            TagGroupRI reservationKey = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, resourceGroup, arn);
+            Reservation reservation = new Reservation( reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);
 
             List<Reservation> reservations = reservationMap.get(utilization).get(reservationKey);
             if (reservations == null) {
@@ -591,13 +594,13 @@ public class ReservationCapacityPoller extends Poller {
             else {
                 reservations.add(reservation);
             }
-            reservationsByIdMap.put(reservation.id, reservation);
+            reservationsByArn.put(arn, reservation);
 
             //logger.info("Add reservation " + utilization.name() + " for key " + reservationKey.toString());
 
         }
 
-        reservationService.setReservations(reservationMap, reservationsByIdMap);
+        reservationService.setReservations(reservationMap, reservationsByArn);
    }
     
 	public class Ec2Mods {

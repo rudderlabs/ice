@@ -129,10 +129,9 @@ public class CostAndUsageReportLineItem extends LineItem {
     
     public String toString() {
     	String[] values = new String[]{
-    			items[lineItemIdIndex],
     			items[billTypeIndex],
     			items[accountIdIndex],
-    			items[zoneIndex],
+    			items[lineItemTypeIndex],
     			items[productIndex],
     			items[operationIndex],
     			items[usageTypeIndex],
@@ -142,6 +141,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     			items[endTimeIndex],
     			items[rateIndex],
     			items[costIndex],
+    			items[zoneIndex],
     			items[resourceIndex],
     			items[reservedIndex],
     			items[purchaseOptionIndex],
@@ -376,8 +376,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 	}
 	
 	@Override
-	public String getReservationId() {
+	public String getReservationArn() {
 		String arn = items[reservationArnIndex];
+		return arn;
+		/*
 		// First try the form for ec2 reservations
 		// Note: Prior to October 2017 RDS reservation IDs used the EC2 form and did not match the RDS RI ID.
 		int i = arn.indexOf("/");
@@ -386,6 +388,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 			i = arn.lastIndexOf(":");
 		}
 		return i > 0 ? arn.substring(i + 1) : arn;
+		*/
 	}
 
 	public int getAmortizedUpfrontCostForUsageIndex() {

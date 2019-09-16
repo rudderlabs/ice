@@ -44,13 +44,13 @@ public abstract class ReservationProcessor {
 
     // hour of data to print debug statements. Set to -1 to turn off all debug logging.
     protected int debugHour = -1;
-    protected String debugFamily = "db";
+    protected String debugFamily = "c4";
     // debugAccounts - will print all accounts if null
     protected String[] debugAccounts = null; // { "AccountName" };
     // debugUtilization - will print all utilization if null
     protected ReservationUtilization debugUtilization = null; // ReservationUtilization.PARTIAL;
     // debugRegion - will print all regions if null
-    protected Region[] debugRegions = { Region.AP_SOUTHEAST_2 };
+    protected Region[] debugRegions = null;
     
     protected ProductService productService;
     protected PriceListService priceListService;
@@ -238,6 +238,8 @@ public abstract class ReservationProcessor {
 		SortedSet<TagGroup> usageTags = Sets.newTreeSet();
 		usageTags.addAll(usageData.getTagGroups());
 		for (TagGroup tagGroup: usageTags) {
+			if (!(tagGroup.operation instanceof Operation.ReservationOperation))
+				continue;
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
 			if ((tagGroup.product.hasReservations())
@@ -252,6 +254,8 @@ public abstract class ReservationProcessor {
 		SortedSet<TagGroup> costTags = Sets.newTreeSet();
 		costTags.addAll(costData.getTagGroups());
 		for (TagGroup tagGroup: costTags) {
+			if (!(tagGroup.operation instanceof Operation.ReservationOperation))
+				continue;
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
 			if ((tagGroup.product.hasReservations())

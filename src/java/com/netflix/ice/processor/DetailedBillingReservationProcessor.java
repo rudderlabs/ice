@@ -487,8 +487,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    bonusReserved -= reservedUsed;
 
 			    if (reservedUsed > 0) {
-			        usageMap.put(tagGroup, reservedUsed);
-			        costMap.put(tagGroup, reservedUsed * reservation.reservationHourlyCost);
+			    	addToExisting(usageMap, tagGroup, reservedUsed);
+			    	addToExisting(costMap, tagGroup, reservedUsed * reservation.reservationHourlyCost);
 			    }
 			    
 			    if (debug) {
@@ -496,8 +496,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    }
 			    
 			    if (reservedUnused > 0) {
-			        usageMap.put(unusedTagGroup, reservedUnused);
-			        costMap.put(unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
+			        addToExisting(usageMap, unusedTagGroup, reservedUnused);
+			        addToExisting(costMap, unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
 			        if (debug) {
 			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + reservedUsed + ", unused: " + reservedUnused + ", tag: " + unusedTagGroup);
 			        }
@@ -512,16 +512,22 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (reservation.capacity > 0) {
 			    	if (reservation.upfrontAmortized > 0) {
 				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
-			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			    		addToExisting(costMap, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
-				    costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
+				    addToExisting(costMap, savingsTagGroup, reservation.capacity * savingsRate);
 			    }
 			}
 			
 			reservationTagGroups.add(TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, tagGroup.resourceGroup));
 		}
 		processFamilySharingAndBorrowing(utilization, reservationService, usageData, costData, startMilli, reservationTagGroups, false);
+	}
+	
+	private void addToExisting(Map<TagGroup, Double> map, TagGroup tagGroup, double amount) {
+    	Double existing = map.get(tagGroup);
+    	double total = (existing == null ? 0.0 : existing) + amount;
+        map.put(tagGroup, total);
 	}
 	
 	private void processFamilySharingAndBorrowing(ReservationUtilization utilization,
@@ -645,10 +651,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (reservation.capacity > 0) {
 			    	if (reservation.upfrontAmortized > 0) {
 				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUpfrontAmortized(utilization), tagGroup.usageType, null);
-			    		costMap.put(upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+				        addToExisting(costMap, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
-			        costMap.put(savingsTagGroup, reservation.capacity * savingsRate);
+			        addToExisting(costMap, savingsTagGroup, reservation.capacity * savingsRate);
 			    }			
 			}
 			reservationTagGroups.add(TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(utilization), tagGroup.usageType, tagGroup.resourceGroup));

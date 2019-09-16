@@ -37,6 +37,7 @@ import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
@@ -47,7 +48,7 @@ import com.netflix.ice.tag.Zone;
 */
 public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor {
 	public final static long jan1_2018 = new DateTime("2018-01", DateTimeZone.UTC).getMillis();
-
+	
 	public CostAndUsageReportLineItemProcessor(AccountService accountService,
 			ProductService productService,
 			ReservationService reservationService,
@@ -75,9 +76,9 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 
 	@Override
     protected TagGroup getTagGroup(LineItem lineItem, Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup rg) {
-        String reservationId = lineItem.getReservationId();
-        if (operation instanceof Operation.ReservationOperation && !reservationId.isEmpty()) {
-        	return TagGroupRI.getTagGroup(account, region, zone, product, operation, usageType, rg, reservationId);
+        ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
+        if (operation instanceof Operation.ReservationOperation && !reservationArn.name.isEmpty()) {
+        	return TagGroupRI.get(account, region, zone, product, operation, usageType, rg, reservationArn);
         }
         return super.getTagGroup(lineItem, account, region, zone, product, operation, usageType, rg);
     }
@@ -89,7 +90,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		TagGroupRI tg,
     		long startMilli) {
     	
-        // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
+        // If processing an RIFee from a CUR, create a reservation for the reservation processor.
         if (lineItem.getLineItemType() != LineItemType.RIFee || startMilli < jan1_2018)
         	return;
         
@@ -116,22 +117,22 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         double hourlyUnusedFixedPrice = lineItem.getUnusedAmortizedUpfrontRate();
         double unusedUsagePrice = lineItem.getUnusedRecurringRate();
         
-        if (Math.abs(hourlyUnusedFixedPrice - hourlyFixedPrice) > 0.0001)
-        	logger.info(" used and unused fixed prices are different, used: " + hourlyFixedPrice + ", unused: " + hourlyUnusedFixedPrice);
-        if (Math.abs(unusedUsagePrice - usagePrice) > 0.0001)
-        	logger.info(" used and unused usage prices are different, used: " + usagePrice + ", unused: " + unusedUsagePrice);
+        if (hourlyUnusedFixedPrice > 0.0 && Math.abs(hourlyUnusedFixedPrice - hourlyFixedPrice) > 0.0001)
+        	logger.info(" used and unused fixed prices are different, used: " + hourlyFixedPrice + ", unused: " + hourlyUnusedFixedPrice + ", tg: " + tg);
+        if (unusedUsagePrice > 0.0 && Math.abs(unusedUsagePrice - usagePrice) > 0.0001)
+        	logger.info(" used and unused usage prices are different, used: " + usagePrice + ", unused: " + unusedUsagePrice + ", tg: " + tg);
 		
-        Reservation r = new Reservation(tg.reservationId, tg, count, start, end, utilization, hourlyFixedPrice, usagePrice);
+        Reservation r = new Reservation(tg, count, start, end, utilization, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
-//        if (tg.product.isRdsInstance() && tg.reservationId.equals("foobar")) {
-//        	logger.info("RDS RI: count=" + r.count + ", tg=" + tg);
-//        }
+        if (ReservationArn.debugReservationArn != null && tg.reservationArn == ReservationArn.debugReservationArn) {
+        	logger.info("RI: count=" + r.count + ", tg=" + tg);
+        }
     }
 
 	@Override
     protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup, CostAndUsageData costAndUsageData, 
-    		double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount) {
+    		double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount, long startMilli) {
 		
         final ReadWriteData usageData = costAndUsageData.getUsage(null);
         final ReadWriteData costData = costAndUsageData.getCost(null);
@@ -139,7 +140,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         ReadWriteData costDataOfProduct = costAndUsageData.getCost(tagGroup.product);
         boolean reservationUsage = lineItem.isReserved();
         final Product product = tagGroup.product;
-        String reservationId = lineItem.getReservationId();
+        ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
 
         if (resourceService != null) {
             if (usageDataOfProduct == null) {
@@ -158,18 +159,24 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             // 	so unlike EC2, we have to process the monthly line item to capture the cost,
             // 	but we don't want to add the monthly line items to the usage.
             // The reservation processor handles determination on what's unused.
-            if (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch())) {
+            if (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch() || product.isElastiCache())) {
             	addValue(usages, tagGroup, usageValue);                	
-//                if (i == 0 && tagGroup.product.isRdsInstance() && lineItem.getReservationId().equals("foobar")) {
-//                	logger.info("RDS RI: usage=" + usageValue + ", tg=" + tagGroup);
-//                }
+                if (ReservationArn.debugReservationArn != null && i == 0 && reservationArn == ReservationArn.debugReservationArn) {
+                	logger.info(lineItem.getLineItemType() + " usage=" + usageValue + ", tg=" + tagGroup);
+                }
             }
-
-            addValue(costs, tagGroup, costValue);
             
             // Additional entries for reservations
             if (reservationUsage && !tagGroup.product.isDynamoDB()) {
-            	addAmortizationAndSavings(lineItem, tagGroup, reservationId, costs, product, costValue, edpDiscount);
+            	addAmortizationAndSavings(lineItem, tagGroup, reservationArn, costs, product, costValue, edpDiscount);
+            	// Reservation costs are handled through the ReservationService (see addReservation() above) except
+            	// after Jan 1, 2019 when they added net costs to DiscountedUsage records.
+            	if (costValue > 0 && lineItem.getLineItemType() == LineItemType.DiscountedUsage) {
+                    addValue(costs, tagGroup, costValue);           		
+            	}
+            }
+            else {
+                addValue(costs, tagGroup, costValue);
             }
 
             if (resourceService != null) {
@@ -186,7 +193,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	                
 	                // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
 	                if (reservationUsage && !tagGroup.product.isDynamoDB()) {
-	                	addAmortizationAndSavings(lineItem, resourceTagGroup, reservationId, costsOfResource, product, costValue, edpDiscount);
+	                	addAmortizationAndSavings(lineItem, resourceTagGroup, reservationArn, costsOfResource, product, costValue, edpDiscount);
 	                }
 	                
 	                // Collect statistics on tag coverage
@@ -204,7 +211,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
     }
 	
-	private void addAmortizationAndSavings(LineItem lineItem, TagGroup tagGroup, String reservationId, Map<TagGroup, Double> costs, Product product, double costValue, double edpDiscount) {
+	private void addAmortizationAndSavings(LineItem lineItem, TagGroup tagGroup, ReservationArn reservationArn, Map<TagGroup, Double> costs, Product product, double costValue, double edpDiscount) {
         // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
     	String amort = lineItem.getAmortizedUpfrontCostForUsage();
     	double amortCost = 0.0;
@@ -212,7 +219,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		amortCost = Double.parseDouble(amort);
     		if (amortCost > 0.0) {
         		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getUtilization());
-        		TagGroupRI tg = TagGroupRI.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, tagGroup.resourceGroup, reservationId);
+        		TagGroupRI tg = TagGroupRI.get(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
         		addValue(costs, tg, amortCost);
     		}
 
@@ -221,7 +228,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
         	if (!publicOnDemandCost.isEmpty()) {
         		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getUtilization());
-        		TagGroupRI tg = TagGroupRI.getTagGroup(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, tagGroup.resourceGroup, reservationId);
+        		TagGroupRI tg = TagGroupRI.get(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
         		double publicCost = Double.parseDouble(publicOnDemandCost);
         		double edpCost = publicCost * (1 - edpDiscount);
         		addValue(costs, tg, edpCost - costValue - amortCost);

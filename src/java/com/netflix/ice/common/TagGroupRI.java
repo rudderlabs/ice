@@ -19,48 +19,49 @@ package com.netflix.ice.common;
 
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.google.common.collect.Maps;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
 /*
- * TagGroupRI adds the reservationId for usage of a reserved instance to a TagGroup.
- * The reservationId is used by the ReservationProcessor to properly associate usage
+ * TagGroupRI adds the reservationArn for usage of a reserved instance to a TagGroup.
+ * The reservationArn is used by the ReservationProcessor to properly associate usage
  * of an RI to the reservation so that lending/borrowing, amortization, reassignment of usage
  * and calculation of unused RIs can be done correctly.
  * 
- * reservationIds are only available when processing the new Cost and Usage Reports, not the old
+ * reservationArns are only available when processing the new Cost and Usage Reports, not the old
  * Detailed Billing Reports. TagGroupRIs are converted to TagGroups by the ReservationProcessor
  * once RI usage calculations are done, so only TagGroups are serialized to external data files.
  */
 public class TagGroupRI extends TagGroup {
 	private static final long serialVersionUID = 1L;
 	
-	public final String reservationId;
-	private final String key;
+	public final ReservationArn reservationArn;
 
 	private TagGroupRI(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
-			ResourceGroup resourceGroup, String reservationId) {
+			ResourceGroup resourceGroup, ReservationArn reservationArn) {
 		super(account, region, zone, product, operation, usageType,
 				resourceGroup);
-		this.reservationId = reservationId;
-		this.key = super.compareKey() + reservationId;
+		this.reservationArn = reservationArn;
 	}
 
     @Override
     public String toString() {
-        return super.toString() + ",\"" + reservationId + "\"";
+        return super.toString() + ",\"" + reservationArn + "\"";
     }
 
     @Override
     public String compareKey() {
-    	return key;
+    	return reservationArn.name;
     }
     
     @Override
@@ -72,22 +73,39 @@ public class TagGroupRI extends TagGroup {
         if (!super.equals(o))
         	return false;
         TagGroupRI other = (TagGroupRI)o;
-        return this.reservationId.equals(other.reservationId);
+        return this.reservationArn == other.reservationArn;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = super.hashCode();
-        result = prime * result + this.reservationId.hashCode();
-
+        result = prime * result + ((this.reservationArn != null) ? this.reservationArn.hashCode() : 0);
         return result;
     }
     
     private static Map<TagGroupRI, TagGroupRI> tagGroups = Maps.newConcurrentMap();
 
-    public static TagGroupRI getTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup, String reservationId) {
-        TagGroupRI newOne = new TagGroupRI(account, region, zone, product, operation, usageType, resourceGroup, reservationId);
+    public static TagGroupRI get(TagGroup tg) {
+    	if (tg instanceof TagGroupRI)
+    		return (TagGroupRI) tg;
+    	return get(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup, null);
+    }
+    
+    public static TagGroupRI get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String reservationArn, AccountService accountService, ProductService productService) {
+        return get(
+    		accountService.getAccountByName(account),
+        	Region.getRegionByName(region),
+        	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
+        	productService.getProductByName(product),
+        	Operation.getOperation(operation),
+            UsageType.getUsageType(usageTypeName, usageTypeUnit),
+            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)),
+            ReservationArn.get(reservationArn));   	
+    }
+    
+    public static TagGroupRI get(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup, ReservationArn reservationArn) {
+        TagGroupRI newOne = new TagGroupRI(account, region, zone, product, operation, usageType, resourceGroup, reservationArn);
         TagGroupRI oldOne = tagGroups.get(newOne);
         if (oldOne != null) {
             return oldOne;
