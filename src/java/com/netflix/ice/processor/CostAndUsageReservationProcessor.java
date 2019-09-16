@@ -143,7 +143,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				     */
 				    cost = costMap.remove(tg);
 				    if ((cost == null || cost == 0) && utilization != ReservationUtilization.ALL)
-				    	logger.error("No cost in map for tagGroup: " + tg);			    
+				    	logger.warn("No cost in map for tagGroup: " + tg);			    
 				    
 				    amort = null;
 				    if (utilization != ReservationUtilization.NO) {
@@ -151,13 +151,13 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 					    TagGroupRI atg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(utilization), tg.usageType, tg.resourceGroup, tg.reservationArn);
 					    amort = costMap.remove(atg);
 					    if (hour == 0 && amort == null)
-					    	logger.error("No amortization in map for tagGroup: " + atg);
+					    	logger.warn("No amortization in map for tagGroup: " + atg);
 				    }
 				    
 				    TagGroupRI stg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getSavings(utilization), tg.usageType, tg.resourceGroup, tg.reservationArn);
 				    savings = costMap.remove(stg);
 				    if (hour == 0 && savings == null)
-				    	logger.error("No savings in map for tagGroup: " + stg);
+				    	logger.warn("No savings in map for tagGroup: " + stg);
 			    }
 			    
 			    if (used != null && used > 0.0) {
