@@ -95,9 +95,10 @@ public class ProcessorConfig extends Config {
     public final JsonFiles writeJsonFiles;
     
     public enum JsonFiles {
-    	no,
-    	ndjson,
-    	bulk   	
+    	no,		// do not write JSON files
+    	hourly, // generate hourly newline delimited JSON records - one record per line
+    	hourlyWithRates, // generate hourly newline delimited JSON records with RI rates for EC2 and RDS - one record per line
+    	daily;  // generate daily newline delimited JSON records - one record per line
     }
     
     // Kubernetes configuration data keyed by payer account ID

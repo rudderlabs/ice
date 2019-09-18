@@ -178,7 +178,7 @@ public class CostAndUsageData {
     	List<Future<Void>> futures = Lists.newArrayList();
     	
         if (writeJsonFiles != JsonFiles.no)
-        	futures.add(archiveHourlyJson(startMilli, writeJsonFiles, instanceMetrics, priceListService, pool));
+        	futures.add(archiveJson(startMilli, writeJsonFiles, instanceMetrics, priceListService, pool));
     	
         int totalResourceTagGroups = 0;
         for (Product product: costDataByProduct.keySet()) {
@@ -206,14 +206,15 @@ public class CostAndUsageData {
 		}
     }
     
-    public Future<Void> archiveHourlyJson(final long startMilli, final JsonFiles writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
+    public Future<Void> archiveJson(final long startMilli, final JsonFiles writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
     	return pool.submit(new Callable<Void>() {
     		@Override
     		public Void call() throws Exception {
-    	        logger.info("archiving JSON data...");
+    			String aggregation = writeJsonFiles == JsonFiles.hourlyWithRates ? JsonFiles.hourly.name() : writeJsonFiles.name();
+    	        logger.info("archiving " + aggregation + " JSON data...");
     	        
     	        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-    	        DataJsonWriter writer = new DataJsonWriter("hourly_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
+    	        DataJsonWriter writer = new DataJsonWriter(aggregation + "_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
     	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService);
     	        writer.archive();
     	        return null;

@@ -74,20 +74,26 @@ public class Operation extends Tag {
     public static final ReservationOperation savingsHeavy = new ReservationOperation("Savings - Heavy Utilization", 27, ReservationUtilization.HEAVY);
     public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation("Used RIs - Heavy Utilization", 28, ReservationUtilization.HEAVY);
     public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation("Bonus RIs - Heavy Utilization", 29, ReservationUtilization.HEAVY);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - Heavy Utilization", 30, ReservationUtilization.HEAVY);
-    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - Heavy Utilization", 31, ReservationUtilization.HEAVY);
+    public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation("Borrowed RIs - Heavy Utilization", 30, ReservationUtilization.HEAVY);
+    public static final ReservationOperation lentInstancesHeavy = new ReservationOperation("Lent RIs - Heavy Utilization", 31, ReservationUtilization.HEAVY);
+    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - Heavy Utilization", 32, ReservationUtilization.HEAVY);
+    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - Heavy Utilization", 33, ReservationUtilization.HEAVY);
 
-    public static final ReservationOperation savingsMedium = new ReservationOperation("Savings - Medium Utilization", 32, ReservationUtilization.MEDIUM);
-    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation("Used RIs - Medium Utilization", 33, ReservationUtilization.MEDIUM);
-    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation("Bonus RIs - Medium Utilization", 34, ReservationUtilization.MEDIUM);
-    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation("Amortized RIs - Medium Utilization", 35, ReservationUtilization.MEDIUM);
-    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation("Unused RIs - Medium Utilization", 36, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation savingsMedium = new ReservationOperation("Savings - Medium Utilization", 34, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation("Used RIs - Medium Utilization", 35, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation("Bonus RIs - Medium Utilization", 36, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation borrowedInstancesMedium = new ReservationOperation("Borrowed RIs - Medium Utilization", 37, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation lentInstancesMedium = new ReservationOperation("Lent RIs - Medium Utilization", 38, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation("Amortized RIs - Medium Utilization", 39, ReservationUtilization.MEDIUM);
+    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation("Unused RIs - Medium Utilization", 40, ReservationUtilization.MEDIUM);
 
-    public static final ReservationOperation savingsLight = new ReservationOperation("Savings - Light Utilization", 37, ReservationUtilization.LIGHT);
-    public static final ReservationOperation reservedInstancesLight = new ReservationOperation("Used RIs - Light Utilization", 38, ReservationUtilization.LIGHT);
-    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("Bonus RIs - Light Utilization", 39, ReservationUtilization.LIGHT);
-    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("Amortized RIs - Light Utilization", 40, ReservationUtilization.LIGHT);
-    public static final ReservationOperation unusedInstancesLight = new ReservationOperation("Unused RIs - Light Utilization", 41, ReservationUtilization.LIGHT);
+    public static final ReservationOperation savingsLight = new ReservationOperation("Savings - Light Utilization", 41, ReservationUtilization.LIGHT);
+    public static final ReservationOperation reservedInstancesLight = new ReservationOperation("Used RIs - Light Utilization", 42, ReservationUtilization.LIGHT);
+    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("Bonus RIs - Light Utilization", 43, ReservationUtilization.LIGHT);
+    public static final ReservationOperation borrowedInstancesLight = new ReservationOperation("Borrowed RIs - Light Utilization", 44, ReservationUtilization.LIGHT);
+    public static final ReservationOperation lentInstancesLight = new ReservationOperation("Lent RIs - Light Utilization", 45, ReservationUtilization.LIGHT);
+    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("Amortized RIs - Light Utilization", 46, ReservationUtilization.LIGHT);
+    public static final ReservationOperation unusedInstancesLight = new ReservationOperation("Unused RIs - Light Utilization", 47, ReservationUtilization.LIGHT);
 
     public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
@@ -127,6 +133,9 @@ public class Operation extends Tag {
             case ALL: return borrowedInstancesAllUpfront;
             case NO: return borrowedInstancesNoUpfront;
             case PARTIAL: return borrowedInstancesPartialUpfront;
+            case HEAVY: return borrowedInstancesHeavy;
+            case MEDIUM: return borrowedInstancesMedium;
+            case LIGHT: return borrowedInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
@@ -140,6 +149,9 @@ public class Operation extends Tag {
             case ALL: return lentInstancesAllUpfront;
             case NO: return lentInstancesNoUpfront;
             case PARTIAL: return lentInstancesPartialUpfront;
+            case HEAVY: return lentInstancesHeavy;
+            case MEDIUM: return lentInstancesMedium;
+            case LIGHT: return lentInstancesLight;
             default: throw new RuntimeException("Unknown ReservationUtilization " + utilization);
         }
     }
