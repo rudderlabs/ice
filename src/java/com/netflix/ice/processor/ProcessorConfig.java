@@ -196,7 +196,11 @@ public class ProcessorConfig extends Config {
 
         billingFileProcessor = new BillingFileProcessor(this, compress);
         
-        reservationCapacityPoller = Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)) ? new ReservationCapacityPoller(this) : null;
+        boolean needPoller = Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)) &&
+        		(startDate.isBefore(CostAndUsageReportLineItemProcessor.jan1_2018) ||
+        		new DateTime(CostAndUsageReportLineItemProcessor.jan1_2018).isBefore(costAndUsageStartDate));
+        
+        reservationCapacityPoller = needPoller ? new ReservationCapacityPoller(this) : null;
     }
 
     public void start () throws Exception {
