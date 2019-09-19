@@ -33,8 +33,7 @@ public class ReservationArn extends Tag {
     private static Map<String, String> prefixes = Maps.newHashMap();
     private static Map<String, String> products = Maps.newHashMap();
     
-	//final public static ReservationArn debugReservationArn = ReservationArn.get("arn:aws:ec2:us-east-1:111111111111:reserved-instances/2aaaaaaa-bbbb-cccc-ddddddddddddddddd");
-	final public static ReservationArn debugReservationArn = null; // Set to a valid reservation ARN for debugging
+	public static ReservationArn debugReservationArn = null; // Set to a valid reservation ARN for debugging
     
     static {
     	products.put(Product.dynamoDB, "dynamodb");

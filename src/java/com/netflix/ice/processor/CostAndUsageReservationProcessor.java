@@ -18,12 +18,15 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Seconds;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
@@ -64,7 +67,8 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			CostAndUsageData data,
 			Long startMilli) {
 		
-
+		DateTime start = DateTime.now();
+		
 		ReadWriteData usageData = data.getUsage(product);
 		ReadWriteData costData = data.getCost(product);
 
@@ -88,6 +92,8 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 
 			processHour(i, reservationService, usageMap, costMap, startMilli);
 		}
+		
+		logger.info("process time in seconds: " + Seconds.secondsBetween(start, DateTime.now()).getSeconds());
 	}
 	
 	private void processHour(
@@ -102,6 +108,14 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	
 	    Set<TagGroup> toBeRemoved = Sets.newHashSet();
 	    Map<TagGroup, Double> toBeAdded = Maps.newHashMap();
+	    
+	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
+	    for (TagGroup tagGroup: usageMap.keySet()) {
+	    	if (!(tagGroup instanceof TagGroupRI))
+	    		continue;
+	    	
+	    	riTagGroups.add((TagGroupRI) tagGroup);
+	    }
 	    
 	    for (ReservationArn reservationArn: reservationArns) {		    	
 		    // Get the reservation info for the utilization and tagGroup in the current hour
@@ -122,11 +136,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
             	logger.info("RI hour 0: capacity/initial reservedUnused=" + reservedUnused + ", reservationArn=" + reservationArn);
             }
             
-		    for (TagGroup tagGroup: usageMap.keySet()) {
-		    	if (!(tagGroup instanceof TagGroupRI)) {
-		    		continue;
-		    	}
-		    	TagGroupRI tg = (TagGroupRI) tagGroup;
+		    for (TagGroupRI tg: riTagGroups) {
 		    	if (tg.reservationArn != reservationArn)
 		    		continue;
 		    	
@@ -168,7 +178,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    	double adjustedSavings = (savings != null && savings > 0) ? savings : adjustedUsed * savingsRate;
 				    reservedUnused -= adjustedUsed;
 	                if (ReservationArn.debugReservationArn != null && hour == 0 && reservationArn == ReservationArn.debugReservationArn) {
-	                	logger.info("RI hour 0: cost=" + adjustedCost + ", used=" + used + ", adjustedUsage=" + adjustedUsed + ", reservedUnused=" + reservedUnused + ", tg=" + tagGroup);
+	                	logger.info("RI hour 0: cost=" + adjustedCost + ", used=" + used + ", adjustedUsage=" + adjustedUsed + ", reservedUnused=" + reservedUnused + ", tg=" + tg);
 	                }
 				    if (rtg.account == tg.account) {
 					    // Used by owner account, mark as used
