@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.BeforeClass;
@@ -1001,6 +1002,14 @@ public class BasicLineItemProcessorTest {
 		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
+	}
+	
+	@Test
+	public void testEC2Credit() throws Exception {
+		Line line = new Line(LineItemType.Credit, "us-east-1", "", ec2, "HeavyUsage:m4.large", "RunInstances", "MB - Pricing Adjustment", PricingTerm.reserved, "2019-08-01T00:00:00Z", "2019-09-01T00:00:00Z", "0.0000000000", "-38.3100000000", "");
+		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "RI Credits", "m4.large", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
+		test.run("2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 	
 	

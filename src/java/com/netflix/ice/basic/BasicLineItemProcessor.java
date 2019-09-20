@@ -422,6 +422,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     private Operation getReservationOperation(LineItem lineItem, Product product, ReservationUtilization defaultReservationUtilization) {    	
     	String purchaseOption = lineItem.getPurchaseOption();
     	
+    	if (lineItem.getLineItemType() == LineItemType.Credit) {
+    		return Operation.reservedInstancesCredits;
+    	}
     	if (StringUtils.isNotEmpty(purchaseOption)) {
     		return Operation.getBonusReservedInstances(ReservationUtilization.get(purchaseOption));
     	}
@@ -682,7 +685,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         public String toString() {
             return "\"" + product + "\",\"" + operation + "\",\"" + usageType + "\"";
-
         }
     }
     

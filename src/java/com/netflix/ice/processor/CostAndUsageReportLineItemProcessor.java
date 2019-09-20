@@ -129,6 +129,48 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	logger.info("RI: count=" + r.count + ", tg=" + tg);
         }
     }
+	
+	private boolean applyMonthlyUsage(LineItemType lineItemType, boolean monthly, Product product) {
+        // For CAU reports, EC2, Redshift, and RDS have cost as a monthly charge, but usage appears hourly.
+        // 	so unlike EC2, we have to process the monthly line item to capture the cost,
+        // 	but we don't want to add the monthly line items to the usage.
+        // The reservation processor handles determination on what's unused.
+		return lineItemType != LineItemType.Credit && !monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch() || product.isElastiCache());
+	}
+	
+	private void addHourData(
+			LineItemType lineItemType, boolean monthly, TagGroup tagGroup,
+			boolean isReservationUsage, ReservationArn reservationArn,
+			double usage, double cost, double edpDiscount,
+			Map<TagGroup, Double> usages, Map<TagGroup, Double> costs,
+			String amort, String publicOnDemandCost, boolean isFirstHour) {
+		
+		boolean debug = isReservationUsage && ReservationArn.debugReservationArn != null && isFirstHour && reservationArn == ReservationArn.debugReservationArn;
+		
+        if (applyMonthlyUsage(lineItemType, monthly, tagGroup.product)) {
+        	addValue(usages, tagGroup, usage);                	
+            if (debug) {
+            	logger.info(lineItemType + " usage=" + usage + ", tg=" + tagGroup);
+            }
+        }
+        
+        // Additional entries for reservations
+        if (isReservationUsage && !tagGroup.product.isDynamoDB()) {
+        	if (lineItemType != LineItemType.Credit)
+        		addAmortizationAndSavings(tagGroup, reservationArn, costs, tagGroup.product, cost, edpDiscount, amort, publicOnDemandCost, debug, lineItemType);
+        	// Reservation costs are handled through the ReservationService (see addReservation() above) except
+        	// after Jan 1, 2019 when they added net costs to DiscountedUsage records.
+        	if (cost != 0 && (lineItemType == LineItemType.Credit || lineItemType == LineItemType.DiscountedUsage)) {
+                addValue(costs, tagGroup, cost);           		
+                if (debug) {
+                	logger.info(lineItemType + " cost=" + cost + ", tg=" + tagGroup);
+                }
+        	}
+        }
+        else {
+            addValue(costs, tagGroup, cost);
+        }
+	}
 
 	@Override
     protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup, CostAndUsageData costAndUsageData, 
@@ -141,6 +183,9 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         boolean reservationUsage = lineItem.isReserved();
         final Product product = tagGroup.product;
         ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
+        LineItemType lineItemType = lineItem.getLineItemType();
+    	String amort = lineItem.getAmortizedUpfrontCostForUsage();
+    	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
 
         if (resourceService != null) {
             if (usageDataOfProduct == null) {
@@ -151,50 +196,20 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             }
         }
         
+        if (lineItemType == LineItemType.Credit && reservationArn == ReservationArn.debugReservationArn)
+        	logger.info("Credit: " + lineItem);
+        
         for (int i : indexes) {
             Map<TagGroup, Double> usages = usageData.getData(i);
             Map<TagGroup, Double> costs = costData.getData(i);
-            //
-            // For CAU reports, EC2, Redshift, and RDS have cost as a monthly charge, but usage appears hourly.
-            // 	so unlike EC2, we have to process the monthly line item to capture the cost,
-            // 	but we don't want to add the monthly line items to the usage.
-            // The reservation processor handles determination on what's unused.
-            if (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch() || product.isElastiCache())) {
-            	addValue(usages, tagGroup, usageValue);                	
-                if (ReservationArn.debugReservationArn != null && i == 0 && reservationArn == ReservationArn.debugReservationArn) {
-                	logger.info(lineItem.getLineItemType() + " usage=" + usageValue + ", tg=" + tagGroup);
-                }
-            }
-            
-            // Additional entries for reservations
-            if (reservationUsage && !tagGroup.product.isDynamoDB()) {
-            	addAmortizationAndSavings(lineItem, tagGroup, reservationArn, costs, product, costValue, edpDiscount);
-            	// Reservation costs are handled through the ReservationService (see addReservation() above) except
-            	// after Jan 1, 2019 when they added net costs to DiscountedUsage records.
-            	if (costValue > 0 && lineItem.getLineItemType() == LineItemType.DiscountedUsage) {
-                    addValue(costs, tagGroup, costValue);           		
-            	}
-            }
-            else {
-                addValue(costs, tagGroup, costValue);
-            }
+            addHourData(lineItemType, monthly, tagGroup, reservationUsage, reservationArn, usageValue, costValue, edpDiscount, usages, costs, amort, publicOnDemandCost, i == 0);
 
             if (resourceService != null) {
                 Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
                 Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
                 
 	            if (resourceTagGroup != null) {
-	
-	                if (!((product.isRedshift() || product.isRds()) && monthly)) {
-	                	addValue(usagesOfResource, resourceTagGroup, usageValue);
-	                }
-	                
-	                addValue(costsOfResource, resourceTagGroup, costValue);
-	                
-	                // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
-	                if (reservationUsage && !tagGroup.product.isDynamoDB()) {
-	                	addAmortizationAndSavings(lineItem, resourceTagGroup, reservationArn, costsOfResource, product, costValue, edpDiscount);
-	                }
+	                addHourData(lineItemType, monthly, resourceTagGroup, reservationUsage, reservationArn, usageValue, costValue, edpDiscount, usagesOfResource, costsOfResource, amort, publicOnDemandCost, i == 0);
 	                
 	                // Collect statistics on tag coverage
 	            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
@@ -211,9 +226,9 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
     }
 	
-	private void addAmortizationAndSavings(LineItem lineItem, TagGroup tagGroup, ReservationArn reservationArn, Map<TagGroup, Double> costs, Product product, double costValue, double edpDiscount) {
+	private void addAmortizationAndSavings(TagGroup tagGroup, ReservationArn reservationArn, Map<TagGroup, Double> costs, Product product,
+			double costValue, double edpDiscount, String amort, String publicOnDemandCost, boolean debug, LineItemType lineItemType) {
         // If we have an amortization cost from a DiscountedUsage line item, save it as amortization
-    	String amort = lineItem.getAmortizedUpfrontCostForUsage();
     	double amortCost = 0.0;
     	if (!amort.isEmpty()) {
     		amortCost = Double.parseDouble(amort);
@@ -221,17 +236,23 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getUtilization());
         		TagGroupRI tg = TagGroupRI.get(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
         		addValue(costs, tg, amortCost);
+                if (debug) {
+                	logger.info(lineItemType + " amort=" + amortCost + ", tg=" + tg);
+                }
     		}
 
         	// Compute and store savings if Public OnDemand Cost and Amortization is available
         	// Don't include the EDP discount in the savings - we track that separately
-        	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
         	if (!publicOnDemandCost.isEmpty()) {
         		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getUtilization());
         		TagGroupRI tg = TagGroupRI.get(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
         		double publicCost = Double.parseDouble(publicOnDemandCost);
         		double edpCost = publicCost * (1 - edpDiscount);
-        		addValue(costs, tg, edpCost - costValue - amortCost);
+        		double savings = edpCost - costValue - amortCost;
+        		addValue(costs, tg, savings);
+                if (debug) {
+                	logger.info(lineItemType + " savings=" + savings + ", tg=" + tg);
+                }
         	}
     	}		
 	}
@@ -246,7 +267,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	// Prior to Jan 1, 2018 we have to get cost from the RIFee record, so process as Monthly cost.
         	// As of Jan 1, 2018, we use the recurring fee and amortization values from DiscountedUsage line items.
         	if (startMilli >= jan1_2018) {
-	            // We only use the RIFee line items to extract unused rates
+	            // We use the RIFee line items to extract the reservation info
 		        return processDelayed ? Result.ignore : Result.delay;
         	}
         	else {
@@ -255,6 +276,8 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	        
         case DiscountedUsage:
         	return Result.hourly;
+        case Credit:
+        	return processDelayed ? Result.monthly : Result.delay;
         default:
         	break;
         		

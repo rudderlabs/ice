@@ -95,6 +95,8 @@ public class Operation extends Tag {
     public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("Amortized RIs - Light Utilization", 46, ReservationUtilization.LIGHT);
     public static final ReservationOperation unusedInstancesLight = new ReservationOperation("Unused RIs - Light Utilization", 47, ReservationUtilization.LIGHT);
 
+    public static final ReservationOperation reservedInstancesCredits = new ReservationOperation("RI Credits", 48, null);
+
     public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
             case ALL: return reservedInstancesAllUpfront;
