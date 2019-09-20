@@ -251,7 +251,11 @@ public class CostAndUsageReportLineItem extends LineItem {
     		logger.error("Line item record too short. Reserved index = " + reservedIndex + ", record length = " + items.length);
     		return false;
     	}
-    	return items[reservedIndex].equals("Reserved") || items[usageTypeIndex].contains("HeavyUsage");
+    	return items[reservedIndex].toLowerCase().equals("reserved")
+    			|| lineItemType == LineItemType.DiscountedUsage
+    			|| lineItemType == LineItemType.RIFee
+    			|| items[usageTypeIndex].contains("HeavyUsage")
+    			|| !items[reservationArnIndex].isEmpty();
     }
 
 	@Override
