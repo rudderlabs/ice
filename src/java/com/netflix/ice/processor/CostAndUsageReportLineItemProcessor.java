@@ -198,8 +198,6 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         
         if (lineItemType == LineItemType.Credit && ReservationArn.debugReservationArn != null && reservationArn == ReservationArn.debugReservationArn)
         	logger.info("Credit: " + lineItem);
-        if (reservationArn != null && !reservationArn.name.isEmpty() && !reservationUsage)
-        	logger.warn("ReservationArn is present, but isReserved is false: " + lineItem);
         
         for (int i : indexes) {
             Map<TagGroup, Double> usages = usageData.getData(i);
