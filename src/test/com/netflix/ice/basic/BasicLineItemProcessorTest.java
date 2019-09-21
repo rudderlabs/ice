@@ -243,13 +243,13 @@ public class BasicLineItemProcessorTest {
 		public Line(LineItemType lineItemType, String region, String zone, String product, String type, String operation, 
 				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption) {
 			init(lineItemType, "234567890123", region, zone, product, type, operation, 
-				description, term, start, end, quantity, cost, purchaseOption, "arn");
+				description, term, start, end, quantity, cost, purchaseOption, term == PricingTerm.reserved ? "arn" : "");
 		}
 		
 		// For testing reform method in BasicLineItemProcessor
 		public Line(String product, String operation, String type, String description, PricingTerm term, String cost, String purchaseOption) {
 			init(null, null, null, null, product, type, operation, 
-					description, term, null, null, null, cost, purchaseOption, null);
+					description, term, null, null, null, cost, purchaseOption, term == PricingTerm.reserved ? "arn" : "");
 			lineItemType = LineItemType.Usage;
 		}
 						
@@ -612,7 +612,7 @@ public class BasicLineItemProcessorTest {
 					assertEquals(reportName + " Cost is incorrect", this.cost, cost, 0.001);				
 				}
 				if (product != null && product.isEc2Instance() && isCostAndUsageReport) {
-					assertTrue("Tag group is wrong type", tg instanceof TagGroupRI);
+					assertTrue("Tag group is wrong type", tg instanceof TagGroupRI || tg.operation.isSpot() || tg.operation.isOnDemand());
 				}
 			}
 		}
