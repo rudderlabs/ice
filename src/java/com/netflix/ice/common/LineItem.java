@@ -275,6 +275,10 @@ public abstract class LineItem {
 		return "";
 	}
 	
+	public boolean hasAmortizedUpfrontCostForUsage() {
+		return false;
+	}
+	
 	/**
 	 * reservation/AmortizedUpfrontFeeForBillingPeriod appeared 2018-01 in CUR files
 	 * reservation/NetAmortizedUpfrontFeeForBillingPeriod appeared 2019-01 in CUR files

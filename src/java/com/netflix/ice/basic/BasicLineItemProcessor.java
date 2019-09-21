@@ -455,6 +455,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     			return amortization > 0.0 ? (cost > 0.0 ? Operation.bonusReservedInstancesPartialUpfront : Operation.bonusReservedInstancesAllUpfront) : Operation.bonusReservedInstancesNoUpfront;
         	}
     	}
+        else if (lineItem.getLineItemType() == LineItemType.DiscountedUsage) {
+        	if (lineItem.hasAmortizedUpfrontCostForUsage()) {
+        		// DiscountedUsage line items have amortization and recurring fee info as of 2018-01-01
+        		Double amortization = Double.parseDouble(lineItem.getAmortizedUpfrontCostForUsage());
+        		Double recurringCost = Double.parseDouble(lineItem.getRecurringFeeForUsage());
+        		return amortization > 0.0 ? (recurringCost > 0.0 ? Operation.bonusReservedInstancesPartialUpfront : Operation.bonusReservedInstancesAllUpfront) : Operation.bonusReservedInstancesNoUpfront;
+        	}
+        }
     	
 		if (cost == 0 && lineItem.getDescription().contains(" 0.0 ")) {
         	return Operation.bonusReservedInstancesAllUpfront;

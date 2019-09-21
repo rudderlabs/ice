@@ -406,6 +406,11 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return "";
 	}
 	
+	@Override
+	public boolean hasAmortizedUpfrontCostForUsage() {
+		return reservationAmortizedUpfrontCostForUsageIndex >= 0;
+	}
+	
 	public int getAmortizedUpfrontFeeForBillingPeriodIndex() {
 		return reservationAmortizedUpfrontFeeForBillingPeriodIndex;
 	};
