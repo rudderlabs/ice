@@ -544,7 +544,7 @@ public class ReservationCapacityPoller extends Poller {
             
             if (reservedInstances.isProduct(Product.ec2)) {
             	if (reservedInstances.getScope().equals("Availability Zone")) {
-	                zone = Zone.getZone(reservedInstances.getAvailabilityZone());
+	                zone = region.getZone(reservedInstances.getAvailabilityZone());
 	                if (zone == null)
 	                    logger.error("Not able to find zone for EC2 reserved instances " + reservedInstances.getAvailabilityZone());
             	}

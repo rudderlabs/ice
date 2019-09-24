@@ -31,12 +31,7 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
 public class InstanceTest {
-	private static Zone us_east_1a;
-
-	static {
-		Region.US_EAST_1.addZone("us-east-1a");
-		us_east_1a = Zone.getZone("us-east-1a");		
-	}
+	private static Zone us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
 
 	@Test
 	public void testSerializer() {

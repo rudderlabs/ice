@@ -40,7 +40,6 @@ import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
-import com.netflix.ice.tag.Zone;
 
 public class DataJsonWriterTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -51,7 +50,7 @@ public class DataJsonWriterTest {
 		Product prod = productService.getProductByName(product);
 		return TagGroup.getTagGroup(
 				new Account("123456789012", "a1"),
-				Region.US_EAST_1, Zone.getZone("us-east-1a"), 
+				Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), 
 				prod, 
 				Operation.getOperation(operation), 
 				UsageType.getUsageType(usageType, ""), 

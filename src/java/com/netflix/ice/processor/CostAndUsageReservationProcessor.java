@@ -24,7 +24,6 @@ import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.Seconds;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -67,7 +66,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			CostAndUsageData data,
 			Long startMilli) {
 		
-		DateTime start = DateTime.now();
+//		DateTime start = DateTime.now();
 		
 		ReadWriteData usageData = data.getUsage(product);
 		ReadWriteData costData = data.getCost(product);
@@ -93,7 +92,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			processHour(i, reservationService, usageMap, costMap, startMilli);
 		}
 		
-		logger.info("process time in seconds: " + Seconds.secondsBetween(start, DateTime.now()).getSeconds());
+//		logger.info("process time in seconds: " + Seconds.secondsBetween(start, DateTime.now()).getSeconds());
 	}
 	
 	private void processHour(

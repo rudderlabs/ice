@@ -168,10 +168,10 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     private static Map<TagGroup, TagGroup> tagGroups = Maps.newConcurrentMap();
 
     public static TagGroup getTagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
-        return getTagGroup(
+        Region r = Region.getRegionByName(region);
+    	return getTagGroup(
     		accountService.getAccountByName(account),
-        	Region.getRegionByName(region),
-        	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
+        	r, StringUtils.isEmpty(zone) ? null : r.getZone(zone),
         	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
@@ -251,7 +251,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Account account = accountService.getAccountByName(in.readUTF());
             Region region = Region.getRegionByName(in.readUTF());
             String zoneStr = in.readUTF();
-            Zone zone = StringUtils.isEmpty(zoneStr) ? null : Zone.getZone(zoneStr, region);
+            Zone zone = StringUtils.isEmpty(zoneStr) ? null : region.getZone(zoneStr);
             String prodStr = in.readUTF();
             Product product = productService.getProductByServiceCode(prodStr);
             Operation operation = Operation.getOperation(in.readUTF());

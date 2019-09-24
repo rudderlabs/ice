@@ -273,7 +273,7 @@ public class ProcessorConfig extends Config {
             try {
 	            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
 	            for (AvailabilityZone az: result.getAvailabilityZones()) {
-	            	region.addZone(az.getZoneName());
+	            	region.getZone(az.getZoneName());
 	            }
             }
             catch(AmazonEC2Exception e) {

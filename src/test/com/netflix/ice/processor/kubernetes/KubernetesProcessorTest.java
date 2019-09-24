@@ -178,8 +178,7 @@ public class KubernetesProcessorTest {
 	private TagGroup getTagGroup(String clusterName) {
         List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1"));
 
-		Region.US_WEST_2.addZone("us-west-2a");
-		Zone us_west_2a = Zone.getZone("us-west-2a");
+		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
 		Product ec2Instance = productService.getProductByName(Product.ec2Instance);
 		UsageType usageType = UsageType.getUsageType("r5.4xlarge", "hours");
 		

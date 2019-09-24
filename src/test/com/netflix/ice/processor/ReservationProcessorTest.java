@@ -97,24 +97,15 @@ public class ReservationProcessorTest {
 		accountService = as;
 		
 		// Initialize the zones we use
-		Region.EU_WEST_1.addZone("eu-west-1b");
-		Region.EU_WEST_1.addZone("eu-west-1c");
-		Region.US_EAST_1.addZone("us-east-1a");
-		Region.US_EAST_1.addZone("us-east-1b");
-		Region.US_EAST_1.addZone("us-east-1c");
-		Region.US_WEST_2.addZone("us-west-2a");
-		Region.US_WEST_2.addZone("us-west-2b");
-		Region.US_WEST_2.addZone("us-west-2c");
-		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
-		eu_west_1b = Zone.getZone("eu-west-1b");
-		eu_west_1c = Zone.getZone("eu-west-1c");
-		us_east_1a = Zone.getZone("us-east-1a");
-		us_east_1b = Zone.getZone("us-east-1b");
-		us_east_1c = Zone.getZone("us-east-1c");
-		us_west_2a = Zone.getZone("us-west-2a");
-		us_west_2b = Zone.getZone("us-west-2b");
-		us_west_2c = Zone.getZone("us-west-2c");
-		ap_southeast_2a = Zone.getZone("ap-southeast-2a");
+		eu_west_1b = Region.EU_WEST_1.getZone("eu-west-1b");
+		eu_west_1c = Region.EU_WEST_1.getZone("eu-west-1c");
+		us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
+		us_east_1b = Region.US_EAST_1.getZone("us-east-1b");
+		us_east_1c = Region.US_EAST_1.getZone("us-east-1c");
+		us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
+		us_west_2b = Region.US_WEST_2.getZone("us-west-2b");
+		us_west_2c = Region.US_WEST_2.getZone("us-west-2c");
+		ap_southeast_2a = Region.AP_SOUTHEAST_2.getZone("ap-southeast-2a");
 	}
 	
 	private static ProductService productService;

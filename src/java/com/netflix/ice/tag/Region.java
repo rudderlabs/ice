@@ -20,7 +20,9 @@ package com.netflix.ice.tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public class Region extends Tag {
@@ -105,7 +107,7 @@ public class Region extends Tag {
     public final String shortName;
     public final String cloudFrontName;
     public final String priceListName;
-    List<Zone> zones = Lists.newArrayList();
+    Map<String, Zone> zones = Maps.newConcurrentMap();
 
     private Region(String name, String shortName, String cloudFrontName, String priceListName) {
         super(name);
@@ -114,14 +116,19 @@ public class Region extends Tag {
         this.priceListName = priceListName;
     }
 
-    public List<Zone> getZones() {
-        return Lists.newArrayList(zones);
+    public Collection<Zone> getZones() {
+        return zones.values();
     }
-
-    public void addZone(String name) {
-    	Zone zone = Zone.addZone(this, name);
-    	if (!zones.contains(zone))
-    		zones.add(zone);
+    
+    public Zone getZone(String name) {
+    	Zone zone = zones.get(name);
+    	if (zone == null) {
+        	zone = Zone.addZone(this, name);
+        	if (zone != null)
+        		zones.put(name, zone);
+    	}
+    	
+    	return zone;
     }
 
     public static Region getRegionByShortName(String shortName) {

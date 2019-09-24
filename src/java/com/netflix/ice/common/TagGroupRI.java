@@ -93,10 +93,10 @@ public class TagGroupRI extends TagGroup {
     }
     
     public static TagGroupRI get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String reservationArn, AccountService accountService, ProductService productService) {
+        Region r = Region.getRegionByName(region);
         return get(
     		accountService.getAccountByName(account),
-        	Region.getRegionByName(region),
-        	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
+        	r, StringUtils.isEmpty(zone) ? null : r.getZone(zone),
         	productService.getProductByName(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),

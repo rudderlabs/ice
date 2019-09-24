@@ -145,7 +145,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Account account = accountService.getAccountById(lineItem.getAccountId());
         Region region = getRegion(lineItem);
-        Zone zone = Zone.getZone(lineItem.getZone(), region);
+        Zone zone = region.getZone(lineItem.getZone());
         
 
         long millisStart = lineItem.getStartMillis();
@@ -464,7 +464,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	}
         }
     	
-		if (cost == 0 && lineItem.getDescription().contains(" 0.0 ")) {
+		if (cost == 0 && (product.isEc2() || lineItem.getDescription().contains(" 0.0 "))) {
         	return Operation.bonusReservedInstancesAllUpfront;
         }
         return Operation.getBonusReservedInstances(defaultReservationUtilization);

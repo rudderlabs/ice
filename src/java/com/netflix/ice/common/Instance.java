@@ -70,7 +70,7 @@ public class Instance {
         this.type = values[1];
         this.account = accountService.getAccountById(values[2]);
         this.region = Region.getRegionByName(values[4]);
-        this.zone = (values.length > 5 && !values[5].isEmpty()) ? Zone.getZone(values[5]) : null;
+        this.zone = (values.length > 5 && !values[5].isEmpty()) ? this.region.getZone(values[5]) : null;
         this.product = productService.getProductByName(values[6]);
 
         final int TAGS_INDEX = 7;

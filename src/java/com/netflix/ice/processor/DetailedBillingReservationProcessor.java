@@ -349,13 +349,14 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			Map<TagGroup, Double> usageMap,
 			Map<TagGroup, Double> costMap,
 			UsedUnused uu,
-			double reservationHourlyCost) {
+			double reservationHourlyCost,
+			boolean debug) {
 				
 		Operation bonusOperation = Operation.getBonusReservedInstances(utilization);
 		
 		if (product == null) {
 			TagGroup bonusTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, bonusOperation, tagGroup.usageType, null);
-			applyUsage(utilization, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost);
+			applyUsage(utilization, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost, debug);
 		}
 		else {
 			// Handle resource groups - make a copy of the keys so we can update the usageMap as we process
@@ -367,7 +368,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 					continue;
 				}
 				TagGroup bonusTagGroup = TagGroup.getTagGroup(usageTg.account, usageTg.region, usageTg.zone, usageTg.product, bonusOperation, usageTg.usageType, usageTg.resourceGroup);
-				applyUsage(utilization, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost);
+				applyUsage(utilization, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost, debug);
 				if (uu.unused <= 0.0)
 					break;
 			}
@@ -379,10 +380,13 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			Map<TagGroup, Double> usageMap,
 			Map<TagGroup, Double> costMap,
 			UsedUnused uu,
-			double reservationHourlyCost) {
+			double reservationHourlyCost, 
+			boolean debug) {
 		Double existing = usageMap.get(bonusTagGroup);
 		double value = existing == null ? 0 : existing;
 		double reservedUsed = Math.min(value, uu.unused);
+		if (debug)
+			logger.info("  ---- zone=" + bonusTagGroup.zone + ", existing=" + existing + ", value=" + value + ", reservedUsed=" + reservedUsed);
 	    if (reservedUsed > 0) {
 	   		uu.used += reservedUsed;
 	   		uu.unused -= reservedUsed;
@@ -627,18 +631,19 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (uu.unused > 0) {
 				    // Do we have any usage from the current reservation?
 				    // First check for region-based usage
-				    processUsage(utilization, tagGroup, null, usageMap, costMap, uu, reservation.reservationHourlyCost);
+				    processUsage(utilization, tagGroup, null, usageMap, costMap, uu, reservation.reservationHourlyCost, debug);
 
 			    	// Check each of the AZs in the region
 			    	for (Zone zone: tagGroup.region.getZones()) {
 			    		if (uu.unused <= 0)
 			    			break;
 			    		
-			    		processUsage(utilization, tagGroup, zone, usageMap, costMap, uu, reservation.reservationHourlyCost);
+			    		processUsage(utilization, tagGroup, zone, usageMap, costMap, uu, reservation.reservationHourlyCost, debug);
 				    }
 			    }
 			    if (debug) {
 			    	logger.info("**** Region reservation **** hour: " + i + ", used: " + uu.used + ", capacity: " + reservation.capacity + ", tagGroup: " + tagGroup);
+			    	logger.info("    zones = " + tagGroup.region.getZones());
 			    }
 			    
 			    if (uu.unused > 0) {

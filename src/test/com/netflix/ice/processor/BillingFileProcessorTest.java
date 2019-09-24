@@ -69,7 +69,6 @@ public class BillingFileProcessorTest {
     private static final String cauReportDir = resourcesReportDir + "Oct2017/";
 	private static PriceListService priceListService = null;
 	private static Properties properties;
-	private static ProductService productService;
 	
 
     private static void init(String propertiesFilename) throws Exception {
@@ -77,10 +76,9 @@ public class BillingFileProcessorTest {
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
         properties = getProperties(propertiesFilename);        
-		productService = new BasicProductService();
 		
 		// Add all the zones we need for our test data		
-		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
+		Region.AP_SOUTHEAST_2.getZone("ap-southeast-2a");
     }
     
     
@@ -156,7 +154,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	public void testFileData(ReportTest reportTest, String prefix) throws Exception {
+	public void testFileData(ReportTest reportTest, String prefix, ProductService productService) throws Exception {
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
         ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
 		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
@@ -430,13 +428,55 @@ public class BillingFileProcessorTest {
 	@Test
 	public void testCostAndUsageReport() throws Exception {
 		init(cauReportDir + "ice.properties");
-		testFileData(new CostAndUsageTest(), "cau-");
+		ProductService productService = new BasicProductService();
+		testFileData(new CostAndUsageTest(), "cau-", productService);
 	}
 	
 	@Test
 	public void testDetailedBillingReport() throws Exception {
 		init(resourcesReportDir + "ice.properties");
-		testFileData(new DetailedBillingReportTest(), "dbr-");
+		ProductService productService = new BasicProductService();
+		// Load products since DBRs don't have product codes (we normally pull them from the pricing service)
+		productService.getProduct("EC2 Instance", "EC2_Instance");
+		productService.getProduct("RDS Instance", "RDS_Instance");
+		productService.getProduct("AWS Support (Developer)", "AWSDeveloperSupport");
+		productService.getProduct("AWS CloudTrail", "AWSCloudTrail");
+		productService.getProduct("AWS Config", "AWSConfig");
+		productService.getProduct("AWS Lambda", "AWSLambda");
+		productService.getProduct("Data Transfer", "Data_Transfer");
+		productService.getProduct("Amazon Simple Queue Service", "AWSQueueService");
+		productService.getProduct("Amazon API Gateway", "AmazonApiGateway");
+		productService.getProduct("AmazonCloudWatch", "AmazonCloudWatch");
+		productService.getProduct("Amazon DynamoDB", "AmazonDynamoDB");
+		productService.getProduct("Amazon Elastic Compute Cloud", "AmazonEC2");
+		productService.getProduct("Elastic Block Storage", "Elastic_Block_Storage");
+		productService.getProduct("Elastic IP", "Elastic_IP");
+		productService.getProduct("Amazon ElastiCache", "AmazonElastiCache");
+		productService.getProduct("Amazon RDS Service", "AmazonRDS");
+		productService.getProduct("Amazon Simple Storage Service", "AmazonS3");
+		productService.getProduct("Amazon Simple Notification Service", "AmazonSNS");
+		productService.getProduct("Amazon Virtual Private Cloud", "AmazonVPC");
+		productService.getProduct("AWS Key Management Service", "awskms");
+		productService.getProduct("Amazon SimpleDB", "AmazonSimpleDB");
+		productService.getProduct("AWS Direct Connect", "AWSDirectConnect");
+		productService.getProduct("Amazon Route 53", "AmazonRoute53");
+		productService.getProduct("Amazon Simple Email Service", "AmazonSES");
+		productService.getProduct("Amazon Glacier", "AmazonGlacier");
+		productService.getProduct("Amazon CloudFront", "AmazonCloudFront");
+		productService.getProduct("Amazon EC2 Container Registry (ECR)", "AmazonECR");
+		productService.getProduct("Amazon Elasticsearch Service", "AmazonES");
+		productService.getProduct("AWS Service Catalog", "AWSServiceCatalog");
+		productService.getProduct("Amazon WorkSpaces", "AmazonWorkSpaces");
+		productService.getProduct("AWS Data Pipeline", "datapipeline");
+		productService.getProduct("Amazon WorkDocs", "AmazonWorkDocs");
+		productService.getProduct("Amazon Elastic MapReduce", "ElasticMapReduce");
+		productService.getProduct("Amazon Mobile Analytics", "mobileanalytics");
+		productService.getProduct("AWS Directory Service", "AWSDirectoryService");
+		productService.getProduct("Amazon Elastic File System", "AmazonEFS");
+		productService.getProduct("Amazon Kinesis", "AmazonKinesis");
+		productService.getProduct("Amazon Redshift", "Redshift");
+				
+		testFileData(new DetailedBillingReportTest(), "dbr-", productService);
 	}
 	
 }

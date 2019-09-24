@@ -33,7 +33,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.Zone;
 
 public class InstancesTest {
 
@@ -49,7 +48,7 @@ public class InstancesTest {
 		String id = "i-17f85eef87efb7a53";
 		
 		Instances instances = new Instances(null, null, null);
-		instances.add(id, 0, "c4.2xlarge", tags, account, Region.US_EAST_1, Zone.getZone("us-east-1a"), ps.getProductByName(Product.ec2));
+		instances.add(id, 0, "c4.2xlarge", tags, account, Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), ps.getProductByName(Product.ec2));
 		String[] originalValues = instances.get("i-17f85eef87efb7a53").values();
 		StringWriter writer = new StringWriter();
 		

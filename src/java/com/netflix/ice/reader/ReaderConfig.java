@@ -264,7 +264,7 @@ public class ReaderConfig extends Config {
     			continue;
     		}
     		for (String zoneName: zones.get(regionName))
-    			r.addZone(zoneName);
+    			r.getZone(zoneName);
     	}
     }
 }
