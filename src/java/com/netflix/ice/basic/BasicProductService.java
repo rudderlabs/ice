@@ -112,51 +112,29 @@ public class BasicProductService implements ProductService {
     	retrieve(localDir, bucket, prefix);
     	
     	// Build/Amend the product list using the AWS Pricing Service
-    	AWSPricing pricing = AWSPricingClientBuilder.standard()
-    			.withClientConfiguration(AwsUtils.clientConfig)
-    			.withRegion(Region.US_EAST_1.name)
-    			.withCredentials(AwsUtils.awsCredentialsProvider).build();
-    	
-    	DescribeServicesRequest request = new DescribeServicesRequest();
-    	List<Service> services = Lists.newLinkedList();
-    	DescribeServicesResult page = null;
-    	do {
-            if (page != null)
-                request.setNextToken(page.getNextToken());
-    		page = pricing.describeServices(request);
-    		services.addAll(page.getServices());
-    	} while (page.getNextToken() != null);
-    	
-    	final String servicename = "servicename";
-		GetAttributeValuesRequest req = new GetAttributeValuesRequest();
-    	for (Service s: services) {
-    		String name = null;
-    		if (s.getAttributeNames().contains(servicename)) {
-	    		req.setServiceCode(s.getServiceCode());
-	    		req.setAttributeName(servicename);
-	    		GetAttributeValuesResult result = pricing.getAttributeValues(req);
-	    		if (!result.getAttributeValues().isEmpty())
-	    			name = result.getAttributeValues().get(0).getValue();
-    		}
+    	Map<String, String> serviceNames = AwsUtils.getAwsServiceNames();
+   	
+    	for (String code: serviceNames.keySet()) {
+    		String name = serviceNames.get(code);
     		// See if we already have this service in the map
-    		Product existing = productsByServiceCode.get(s.getServiceCode());
+    		Product existing = productsByServiceCode.get(code);
     		if (existing != null) {
     			if (name != null && !existing.getServiceName().equals(name))
-    				logger.warn("Found service with different name than one used in CUR for code: " + s.getServiceCode() + ", Pricing Name: " + name + ", CUR Name: " + existing.getServiceName());
+    				logger.warn("Found service with different name than one used in CUR for code: " + code + ", Pricing Name: " + name + ", CUR Name: " + existing.getServiceName());
     			continue;
     		}
     		
     		if (name == null) {
     			// Not all services return a service name even though they have one.
     			// Handle the one we know about and just use the Code for those we don't.
-    			if (missingServiceNames.containsKey(s.getServiceCode()))
-    				name = missingServiceNames.get(s.getServiceCode());
+    			if (missingServiceNames.containsKey(code))
+    				name = missingServiceNames.get(code);
     			else
-    				name = s.getServiceCode();
+    				name = code;
     			
-    			logger.warn("Service " + s.getServiceCode() + " doesn't have a service name, use: " + name);
+    			logger.warn("Service " + code + " doesn't have a service name, use: " + name);
     		}
-    		addProduct(new Product(name, s.getServiceCode(), Source.pricing));
+    		addProduct(new Product(name, code, Source.pricing));
     	}
     	
     	// Add products that aren't included in the pricing service list (as of Aug2019)
