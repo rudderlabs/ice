@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory
 
 import com.netflix.ice.common.IceOptions
 import com.amazonaws.auth.AWSCredentialsProvider
-import com.amazonaws.auth.InstanceProfileCredentialsProvider
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
 import com.google.common.collect.Lists
 import com.netflix.ice.tag.Account
 import com.netflix.ice.tag.Region
@@ -79,7 +79,7 @@ class BootStrap {
 			Properties prop = getProperties("ice.propertiesfile", "ice.properties");			
 			
             if (StringUtils.isEmpty(System.getProperty("ice.s3AccessKeyId")) || StringUtils.isEmpty(System.getProperty("ice.s3SecretKey")))
-                credentialsProvider = new InstanceProfileCredentialsProvider();
+                credentialsProvider = new DefaultAWSCredentialsProviderChain();
             else
                 credentialsProvider = new AWSCredentialsProvider() {
                         public AWSCredentials getCredentials() {
@@ -327,4 +327,3 @@ class BootStrap {
 		return prop;
 	}
 }
-	
