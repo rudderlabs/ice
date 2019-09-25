@@ -63,6 +63,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     }
 
     public int compareTo(TagGroup t) {
+    	if (this == t)
+    		return 0;
         int result = this.account.compareTo(t.account);
         if (result != 0)
             return result;
@@ -82,7 +84,14 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         if (result != 0)
             return result;
         result = this.resourceGroup == t.resourceGroup ? 0 : (this.resourceGroup == null ? 1 : (t.resourceGroup == null ? -1 : t.resourceGroup.compareTo(this.resourceGroup)));
+        if (result != 0)
             return result;
+        // Handle any subclass extensions
+        return compareKey().compareTo(t.compareKey());
+    }
+    
+    public String compareKey() {
+    	return "";
     }
 
     @Override
@@ -159,11 +168,11 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     private static Map<TagGroup, TagGroup> tagGroups = Maps.newConcurrentMap();
 
     public static TagGroup getTagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
-        return getTagGroup(
+        Region r = Region.getRegionByName(region);
+    	return getTagGroup(
     		accountService.getAccountByName(account),
-        	Region.getRegionByName(region),
-        	StringUtils.isEmpty(zone) ? null : Zone.getZone(zone, Region.getRegionByName(region)),
-        	productService.getProductByName(product),
+        	r, StringUtils.isEmpty(zone) ? null : r.getZone(zone),
+        	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
             StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)));   	
@@ -199,11 +208,10 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.account.toString());
             out.writeUTF(tagGroup.region.toString());
             out.writeUTF(tagGroup.zone == null ? "" : tagGroup.zone.toString());
-            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.writeUTF(tagGroup.product.getCanonicalName());
+            out.writeUTF(tagGroup.product.getServiceCode());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
-            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getCanonicalName() : tagGroup.resourceGroup.toString());
+            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getServiceCode() : tagGroup.resourceGroup.toString());
         }
         
         public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
@@ -216,8 +224,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.write(tagGroup.account.toString() + ",");
             out.write(tagGroup.region.toString() + ",");
             out.write(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
-            // Always use the Product AWS name - the tag name can be updated to change how it's displayed
-            out.write(tagGroup.product.getCanonicalName() + ",");
+            out.write(tagGroup.product.getServiceCode() + ",");
             out.write(tagGroup.operation.toString() + ",");
             UsageType.serializeCsv(out, tagGroup.usageType);
             out.write(",");
@@ -244,9 +251,9 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Account account = accountService.getAccountByName(in.readUTF());
             Region region = Region.getRegionByName(in.readUTF());
             String zoneStr = in.readUTF();
-            Zone zone = StringUtils.isEmpty(zoneStr) ? null : Zone.getZone(zoneStr, region);
+            Zone zone = StringUtils.isEmpty(zoneStr) ? null : region.getZone(zoneStr);
             String prodStr = in.readUTF();
-            Product product = productService.getProductByName(prodStr);
+            Product product = productService.getProductByServiceCode(prodStr);
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
@@ -272,7 +279,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
                 	sb.append(",");
                 	sb.append(tagGroup.zone == null ? "" : tagGroup.zone.toString());
                 	sb.append(",");
-                	sb.append(tagGroup.product.getCanonicalName());
+                	sb.append(tagGroup.product.getServiceCode());
                 	sb.append(",");
                 	sb.append(tagGroup.operation.toString());
                 	sb.append(",");

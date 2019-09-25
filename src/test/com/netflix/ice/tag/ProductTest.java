@@ -1,9 +1,28 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.tag;
 
 import static org.junit.Assert.*;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import com.netflix.ice.tag.Product.Source;
 
 public class ProductTest {
 
@@ -13,17 +32,21 @@ public class ProductTest {
 	}
 	
 	@Test
-	public void testCanonicalName() {
-		Product product = new Product("Amazon Elastic MapReduce");
-		assertEquals("Wrong product name", "Elastic MapReduce", product.name);		
+	public void testConstructor() {
+		Product product = new Product("Amazon Elastic MapReduce", "ElasticMapReduce", Source.pricing);
+		assertEquals("Wrong product name", "Elastic MapReduce", product.name);
+		assertEquals("Wrong service name", "Amazon Elastic MapReduce", product.getServiceName());
+		assertEquals("Wrong service code", "ElasticMapReduce", product.getServiceCode());
 
-		product = new Product("AWS Elastic Beanstalk");
-		assertEquals("Wrong product name", "Elastic Beanstalk",  product.name);		
+		product = new Product("AWS CloudTrail", "AWSCloudTrail", Source.pricing);
+		assertEquals("Wrong product name", "CloudTrail",  product.name);		
+		assertEquals("Wrong service name", "AWS CloudTrail", product.getServiceName());
+		assertEquals("Wrong service code", "AWSCloudTrail", product.getServiceCode());
 	}
 	
 	@Test
 	public void testOverrideFromCanonicalName() {
-		Product product = new Product(Product.getOverride("Product"));
+		Product product = new Product(Product.getOverride("Product"), "Code", Source.pricing);
 		assertEquals("Wrong product name", "Product (P)", product.name);
 		
 		String alt = Product.getOverride("Product");
@@ -35,7 +58,7 @@ public class ProductTest {
 	
 	@Test
 	public void testAlternateFromAlternateName() {
-		Product product = new Product(Product.getOverride("Product (P)"));
+		Product product = new Product(Product.getOverride("Product (P)"), "Code", Source.pricing);
 		assertEquals("Wrong product name", "Product (P)", product.name);
 		
 		String alt = Product.getOverride("Product");
@@ -46,45 +69,39 @@ public class ProductTest {
 	}
 	
 	@Test
-	public void testFileName() {
+	public void testCode() {
 		Product.addOverride("Foo Bar", "Foo Bar (FB)");
-		Product product = new Product("Amazon Foo Bar");
-		assertEquals("Wrong filename from getFileName()", "Foo" + Product.spaceReplacement + "Bar", product.getFileName());
-		
-		String testProductName = "Import/Export Snowball";
-		product = new Product("Amazon " + testProductName);
-		String expectFileName = "Import" + Product.slashReplacement + "Export" + Product.spaceReplacement + "Snowball";
-		assertEquals("Wrong filename for product name with space and slash", expectFileName, product.getFileName());
-		assertEquals("Wrong name from filename", testProductName, Product.getNameFromFileName(expectFileName));		
+		Product product = new Product("Amazon Foo Bar", "AmazonFooBar", Source.pricing);
+		assertEquals("Wrong code from getCode()", "AmazonFooBar", product.getServiceCode());
 	}
 	
 	@Test
 	public void testIsEc2() {
-		Product product = new Product(Product.ec2);
+		Product product = new Product(Product.ec2, "AmazonEC2", Source.pricing);
 		assertTrue("isEc2() returned false, but should be true", product.isEc2());
 	}
 	
 	@Test
 	public void testIsSupport() {
-		Product product = new Product("Support (Developer)");
+		Product product = new Product("Support (Developer)", "AWSDeveloperSupport", Source.pricing);
 		assertTrue("isSupport() returned false, but should be true", product.isSupport());
 		
-		product = new Product("Suppose Not");
+		product = new Product("Suppose Not", "AWSSupposeNot", Source.pricing);
 		assertFalse("isSupport() returned true, but should be false", product.isSupport());
 	}
 	
 	@Test
 	public void testIsRds() {
-		Product productRds = new Product(Product.rds);
-		Product productRdsFull = new Product(Product.rdsFull);
+		Product productRds = new Product(Product.rds, "AmazonRDS", Source.pricing);
+		Product productRdsFull = new Product(Product.rdsFull, "AmazonRDS", Source.pricing);
 		assertTrue("isRDS() returned false, but should be true", productRds.isRds());
 		assertTrue("isRDS() returned false, but should be true", productRdsFull.isRds());
 	}
 	
 	@Test
 	public void testHasResourceTag() {
-		Product productRds = new Product(Product.rds);
-		Product productCloudWatch = new Product(Product.cloudWatch);
+		Product productRds = new Product(Product.rds, "AmazonRDS", Source.pricing);
+		Product productCloudWatch = new Product(Product.cloudWatch, "AmazonCloudWatch", Source.pricing);
 		assertTrue("RDS should have resource tags", productRds.hasResourceTags());
 		assertFalse("CloudWatch should not have resource tags", productCloudWatch.hasResourceTags());
 	}

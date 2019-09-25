@@ -77,8 +77,6 @@ class BootStrap {
 			
             logger.info('Read ice.properties ...');
 			Properties prop = getProperties("ice.propertiesfile", "ice.properties");			
-            logger.info('Reading tag.properties...');
-			Properties tagProp = getProperties("tag.propertiesfile", "tag.properties");
 			
             if (StringUtils.isEmpty(System.getProperty("ice.s3AccessKeyId")) || StringUtils.isEmpty(System.getProperty("ice.s3SecretKey")))
                 credentialsProvider = new InstanceProfileCredentialsProvider();
@@ -119,7 +117,7 @@ class BootStrap {
 				}
 			}
 			
-			ProductService productService = new BasicProductService(getSubProperties(tagProp, "tag.product."));
+			ProductService productService = new BasicProductService();
 
             if ("true".equals(prop.getProperty("ice.processor"))) {
 				if (!StringUtils.isEmpty(prop.getProperty(IceOptions.START_MONTH))) {
@@ -167,7 +165,8 @@ class BootStrap {
                     ReservationService.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
                 ReservationService.ReservationUtilization reservationUtilization =
                     ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
-
+				properties.setProperty(IceOptions.RESERVATION_CAPACITY_POLLER, prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER, "false"));
+					
 				// Resource Tagging stuff
 				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
 				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");
@@ -180,8 +179,9 @@ class BootStrap {
 				
 				if (prop.getProperty(IceOptions.PROCESSOR_THREADS) != null)
 					properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));
-									
-				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization, "true".equals(prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)));
+				
+				
+				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
 					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 
@@ -325,17 +325,6 @@ class BootStrap {
                 is.close();
         }
 		return prop;
-	}
-	
-	private Properties getSubProperties(Properties tagProps, String prefix) {
-		Properties subProperties = new Properties();
-		for (String name: tagProps.stringPropertyNames()) {
-			if (name.startsWith(prefix)) {
-				String subName = name.substring(prefix.length());
-				subProperties.setProperty(subName, tagProps.getProperty(name));
-			}
-		}
-		return subProperties;
 	}
 }
 	

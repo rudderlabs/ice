@@ -1,10 +1,26 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.basic;
 
 import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -47,6 +63,11 @@ public class BasicLineItemProcessorTest {
     private static final String manifest2017 = "manifestTest.json";
     private static final String manifest2018 = "manifest-2018-01.json";
     private static final String manifest2019 = "manifest-2019-01.json";
+    
+    private static final String ec2 = "Amazon Elastic Compute Cloud";
+    private static final String rds = "Amazon Relational Database Service";
+    private static final String es = "Amazon Elasticsearch Service";
+    private static final String ec = "Amazon ElastiCache";
 
     static final String[] dbrHeader = {
 		"InvoiceID","PayerAccountId","LinkedAccountId","RecordType","RecordId","ProductName","RateId","SubscriptionId","PricingPlanId","UsageType","Operation","AvailabilityZone","ReservedInstance","ItemDescription","UsageStartDate","UsageEndDate","UsageQuantity","BlendedRate","BlendedCost","UnBlendedRate","UnBlendedCost"
@@ -66,10 +87,7 @@ public class BasicLineItemProcessorTest {
     public static void init(AccountService as) throws Exception {
     	accountService = as;
     	
-		Properties props = new Properties();
-		props.setProperty("RDS", "Relational Database Service");
-		props.setProperty("EC2", "Elastic Compute Cloud");
-		productService = new BasicProductService(props);
+		productService = new BasicProductService();
 
 		cauLineItem = newCurLineItem(manifest2017, null);
         
@@ -89,7 +107,7 @@ public class BasicLineItemProcessorTest {
     }
 	
     public BasicLineItemProcessor newBasicLineItemProcessor(LineItem lineItem, Reservation reservation) {
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL, false);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.PARTIAL);
 		if (reservation != null)
 			reservationService.injectReservation(reservation);
     	
@@ -100,55 +118,70 @@ public class BasicLineItemProcessorTest {
     		return new BasicLineItemProcessor(accountService, productService, reservationService, resourceService);    	
     }
     
+    private ReformedMetaData testReform(Line line, ReservationUtilization utilization) throws IOException {
+		CostAndUsageReportLineItem lineItem = newCurLineItem(manifest2017, null);
+		lineItem.setItems(line.getCauLine(lineItem));
+		return newBasicLineItemProcessor().reform(0L, lineItem, utilization);
+    }
+    
 	@Test
-	public void testReformEC2Spot() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), false, "RunInstances:SV001", "USW2-SpotUsage:c4.large", "c4.large Linux/UNIX Spot Instance-hour in US West (Oregon) in VPC Zone #1", 0.02410000, null, "");
+	public void testReformEC2Spot() throws IOException {
+		Line line = new Line(ec2, "RunInstances:SV001", "USW2-SpotUsage:c4.large", "c4.large Linux/UNIX Spot Instance-hour in US West (Oregon) in VPC Zone #1", null, "0.02410000", null);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
 	    assertTrue("Operation should be spot instance but got " + rmd.operation, rmd.operation == Operation.spotInstances);
 	}
 
 	@Test
-	public void testReformEC2ReservedPartialUpfront() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, null, "");
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	public void testReformEC2ReservedPartialUpfront() throws IOException {
+		Line line = new Line(ec2, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "0.34", null);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.PARTIAL);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	}
 
 	@Test
-	public void testReformEC2ReservedPartialUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.ec2), true, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", 0.34, "Partial Upfront", "");
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	public void testReformEC2ReservedPartialUpfrontWithPurchaseOption() throws IOException {
+		Line line = new Line(ec2, "RunInstances:0002", "APS2-HeavyUsage:c4.2xlarge", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "0.34", "Partial Upfront");
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	}
 
 	@Test
-	public void testReformRDSReservedAllUpfront() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.FIXED, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, null, "");
-	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
+	public void testReformRDSReservedAllUpfront() throws IOException {
+		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.0", null);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.ALL);
+	    assertTrue("Operation should be All instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesAllUpfront);
 	}
 
 	@Test
-	public void testReformRDSReservedAllUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.0, "All Upfront", "");
-	    assertTrue("Operation should be Fixed instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesFixed);
+	public void testReformRDSReservedAllUpfrontWithPurchaseOption() throws IOException {
+		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.0", "All Upfront");
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
+	    assertTrue("Operation should be All instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesAllUpfront);
 	}
 
 	@Test
-	public void testReformRDSReservedPartialUpfront() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, null, "");
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	public void testReformRDSReservedPartialUpfront() throws IOException {
+		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", PricingTerm.reserved, "0.021", null);
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.PARTIAL);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 
-	    rmd = newBasicLineItemProcessor().reform(ReservationUtilization.PARTIAL, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, null, "");	    
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	    line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.012", null);	    
+	    rmd = testReform(line, ReservationUtilization.PARTIAL);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 	}
 	
 	@Test
-	public void testReformRDSReservedPartialUpfrontWithPurchaseOption() {
-	    ReformedMetaData rmd = newBasicLineItemProcessor().reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", 0.021, "Partial Upfront", "");
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	public void testReformRDSReservedPartialUpfrontWithPurchaseOption() throws IOException {
+		Line line = new Line(rds, "CreateDBInstance:0002", "APS2-HeavyUsage:db.t2.small", "USD 0.021 hourly fee per MySQL, db.t2.small instance", PricingTerm.reserved, "0.021", "Partial Upfront");
+	    ReformedMetaData rmd = testReform(line, ReservationUtilization.NO);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 
-	    rmd = newBasicLineItemProcessor().reform(ReservationUtilization.HEAVY, productService.getProductByName(Product.rds), true, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", 0.012, "Partial Upfront", "");	    
-	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartial);
+	    line = new Line(rds, "CreateDBInstance:0002", "APS2-InstanceUsage:db.t2.small", "MySQL, db.t2.small reserved instance applied", PricingTerm.reserved, "0.012", "Partial Upfront");	    
+	    rmd = testReform(line, ReservationUtilization.NO);
+	    assertTrue("Operation should be Partial instance but got " + rmd.operation, rmd.operation == Operation.bonusReservedInstancesPartialUpfront);
 	    assertTrue("Usage type should be db.t2.small.mysql but got " + rmd.usageType, rmd.usageType.name.equals("db.t2.small.mysql"));
 	}
 	
@@ -159,13 +192,12 @@ public class BasicLineItemProcessorTest {
 		return tag.name.equals(expect);
 	}
 	
-	private final int accountIndex = 0;
-	private final int regionIndex = 1;
-	private final int zoneIndex = 2;
-	private final int productIndex = 3;
-	private final int operationIndex = 4;
-	private final int usgaeTypeIndex = 5;
-	private final int resourceGroupIndex = 6;
+	private final int regionIndex = 0;
+	private final int zoneIndex = 1;
+	private final int productIndex = 2;
+	private final int operationIndex = 3;
+	private final int usgaeTypeIndex = 4;
+	private final int resourceGroupIndex = 5;
 		
 	public static enum PricingTerm {
 		onDemand,
@@ -198,29 +230,29 @@ public class BasicLineItemProcessorTest {
 		public String amortization = "";
 		public String recurring = "";
 		public String publicOnDemandCost = "";
+		public String amortizedUpfrontFeeForBillingPeriod = "";
 		public String unusedQuantity = "";
 		public String unusedAmortizedUpfrontFeeForBillingPeriod = "";
 		public String unusedRecurringFee = "";
+		public String numberOfReservations = "";
+		public String reservationStartTime = "";
+		public String reservationEndTime = "";
+		public String normalizationFactor = "";
 		
 		// For basic testing
-		public Line(LineItemType lineItemType, String account, String region, String zone, String product, String type, String operation, 
-				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption,
-				String reservationARN) {
-			init(lineItemType, account, region, zone, product, type, operation, 
-				description, term, start, end, quantity, cost, purchaseOption, reservationARN);
+		public Line(LineItemType lineItemType, String region, String zone, String product, String type, String operation, 
+				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption) {
+			init(lineItemType, "234567890123", region, zone, product, type, operation, 
+				description, term, start, end, quantity, cost, purchaseOption, term == PricingTerm.reserved ? "arn" : "");
 		}
 		
-		// For testing fields added to CUR in 2018 (amortization and recurring reservation fees) and in 2019 (EDP Net pricing for same)
-		public Line(LineItemType lineItemType, String account, String region, String zone, String product, String type, String operation, 
-				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption,
-				String reservationARN, String amortization, String recurring, String publicOnDemandCost) {
-			init(lineItemType, account, region, zone, product, type, operation, 
-				description, term, start, end, quantity, cost, purchaseOption, reservationARN);
-			this.amortization = amortization;
-			this.recurring = recurring;
-			this.publicOnDemandCost = publicOnDemandCost;
+		// For testing reform method in BasicLineItemProcessor
+		public Line(String product, String operation, String type, String description, PricingTerm term, String cost, String purchaseOption) {
+			init(null, null, null, null, product, type, operation, 
+					description, term, null, null, null, cost, purchaseOption, term == PricingTerm.reserved ? "arn" : "");
+			lineItemType = LineItemType.Usage;
 		}
-				
+						
 		private void init(LineItemType lineItemType, String account, String region, String zone, String product, String type, String operation, 
 				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption,
 				String reservationARN) {
@@ -248,11 +280,30 @@ public class BasicLineItemProcessorTest {
 			this.email = email;
 		}
 		
-		// For RIFee unused testing
-		public void setUnused(String unusedQuantity, String unusedAmortizedUpfrontFeeForBillingPeriod, String unusedRecurringFee) {
+		// For DiscountedUsage testing
+		public void setDiscountedUsageFields(String amortization, String recurring, String publicOnDemandCost) {
+			this.amortization = amortization;
+			this.recurring = recurring;
+			this.publicOnDemandCost = publicOnDemandCost;
+		}
+		
+		// For RIFee testing
+		public void setRIFeeFields(String amortizedUpfrontFeeForBillingPeriod, String unusedQuantity, String unusedAmortizedUpfrontFeeForBillingPeriod, String unusedRecurringFee,
+				String numberOfReservations, String reservationStartTime, String reservationEndTime) {
+			this.amortizedUpfrontFeeForBillingPeriod = amortizedUpfrontFeeForBillingPeriod;
 			this.unusedQuantity = unusedQuantity;
 			this.unusedAmortizedUpfrontFeeForBillingPeriod = unusedAmortizedUpfrontFeeForBillingPeriod;
 			this.unusedRecurringFee = unusedRecurringFee;
+			this.numberOfReservations = numberOfReservations;
+			this.reservationStartTime = reservationStartTime;
+			this.reservationEndTime = reservationEndTime;
+			if (this.purchaseOption != null && !this.purchaseOption.isEmpty()) {
+				logger.error("Don't set purchase option in RIFee records - AWS has these blank");
+				this.purchaseOption = "";
+			}
+		}
+		public void setNormalizationFactor(String normalizationFactor) {
+			this.normalizationFactor = normalizationFactor;
 		}
 		
 		String[] getDbrLine() {
@@ -291,11 +342,9 @@ public class BasicLineItemProcessorTest {
 			items[lineItem.getStartTimeIndex()] = start;
 			items[lineItem.getEndTimeIndex()] = end;
 			items[lineItem.getUsageQuantityIndex()] = quantity;
+			items[lineItem.getLineItemNormalizationFactorIndex()] = normalizationFactor;
 			items[lineItem.getLineItemTypeIndex()] = lineItemType.name();
-			if (lineItemType == LineItemType.DiscountedUsage)
-				items[lineItem.getCostIndex()] = "0"; // Discounted usage doesn't carry cost
-			else
-				items[lineItem.getCostIndex()] = cost;
+			items[lineItem.getCostIndex()] = cost;
 			items[lineItem.getPurchaseOptionIndex()] = purchaseOption;
 			items[lineItem.getReservationArnIndex()] = reservationARN;
 			items[lineItem.getResourceIndex()] = resource;
@@ -304,29 +353,46 @@ public class BasicLineItemProcessorTest {
 				items[lineItem.getResourceTagStartIndex() + 2] = email;
 			}
 			
-			int amortIndex = lineItemType == LineItemType.DiscountedUsage ? lineItem.getAmortizedUpfrontCostForUsageIndex() : lineItem.getUnusedAmortizedUpfrontFeeForBillingPeriodIndex();
-			if (amortIndex >= 0)
-				items[amortIndex] = amortization;
-			int recurringIndex = lineItemType == LineItemType.DiscountedUsage ? lineItem.getRecurringFeeForUsageIndex() : lineItem.getUnusedRecurringFeeIndex();
-			if (recurringIndex >= 0)
-				items[recurringIndex] = recurring;
-			if (lineItemType == LineItemType.RIFee) {
+			switch (lineItemType) {
+			case RIFee:
+				// RIFee is used to get recurring and amortization fees for unused reservations
+				set(lineItem.getAmortizedUpfrontFeeForBillingPeriodIndex(), items, amortizedUpfrontFeeForBillingPeriod);
 				int unusedIndex = lineItem.getUnusedQuantityIndex();
 				if (unusedIndex >= 0) {
 					items[unusedIndex] = unusedQuantity;
 					items[lineItem.getUnusedRecurringFeeIndex()] = unusedRecurringFee;
 					items[lineItem.getUnusedAmortizedUpfrontFeeForBillingPeriodIndex()] = unusedAmortizedUpfrontFeeForBillingPeriod;
 				}
-			}
-			if (lineItemType == LineItemType.DiscountedUsage) {
+				if (lineItem.getReservationNumberOfReservationsIndex() >= 0)
+					items[lineItem.getReservationNumberOfReservationsIndex()] = numberOfReservations;
+				if (lineItem.getReservationStartTimeIndex() >= 0) {
+					items[lineItem.getReservationStartTimeIndex()] = reservationStartTime;
+					items[lineItem.getReservationEndTimeIndex()] = reservationEndTime;
+				}
+				break;
+			
+			case DiscountedUsage:
+				set(lineItem.getAmortizedUpfrontCostForUsageIndex(), items, amortization);
+				set(lineItem.getRecurringFeeForUsageIndex(), items, recurring);
 				int publicOnDemandCostIndex = lineItem.getPublicOnDemandCostIndex();
 				if (publicOnDemandCostIndex >= 0)
 					items[publicOnDemandCostIndex] = this.publicOnDemandCost;
+				//items[lineItem.getCostIndex()] = "0"; // Discounted usage doesn't carry cost
+				break;
+				
+			default:
+				break;
 			}
+			
 			return items;
 		}
+		
+		private void set(int index, String[] items, String value) {
+			if (index >= 0)
+				items[index] = value;
+		}
 	}
-	
+		
 	public static enum Which {
 		dbr,
 		cau,
@@ -351,6 +417,7 @@ public class BasicLineItemProcessorTest {
 		private int numExpectedCostTags;
 		private int numExpectedResourceCostTags;
 		private Reservation reservation = null;
+		private Double unusedCost = null;
 				
 		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth) {
 			this.which = which;
@@ -365,18 +432,19 @@ public class BasicLineItemProcessorTest {
 		}
 		
 		// Constructor for testing RIFee line item types
-		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth, Double amortization, boolean delayed, int numExpectedUsageTags, int numExpectedCostTags) {
+		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Result result, int daysInMonth, Double amortization, boolean delayed, int numExpectedUsageTags, int numExpectedCostTags, Double cost, Double unusedCost) {
 			this.which = which;
 			this.line = line;
 			this.expectedTag = expectedTag;
 			this.usage = usage;
-			this.cost = cost;
+			this.cost = cost; // used if before Jan 1, 2018
 			this.result = result;
 			this.daysInMonth = daysInMonth;
 			this.amortization = amortization;
 			this.delayed = delayed;
 			this.numExpectedUsageTags = numExpectedUsageTags;
 			this.numExpectedCostTags = numExpectedCostTags;
+			this.unusedCost = unusedCost; // used if after Jan 1, 2018
 		}
 		
 		public ProcessTest(Which which, Line line, String[] expectedTag, Double usage, Double cost, Result result, int daysInMonth, Double amortization, Double savings) {
@@ -391,7 +459,10 @@ public class BasicLineItemProcessorTest {
 			this.savings = savings;
 			this.numExpectedUsageTags = this.expectedTag == null || this.usage == null ? 0 : 1;
 			this.numExpectedCostTags = this.expectedTag == null || this.cost == null ? 0 : 1;
-			if (this.amortization != null)
+			
+			DateTime dt = new DateTime(line.start, DateTimeZone.UTC);
+
+			if (this.amortization != null && dt.getYear() >= 2018 && this.amortization > 0.0)
 				this.numExpectedCostTags++;
 			if (this.savings != null)
 				this.numExpectedCostTags++;
@@ -408,8 +479,13 @@ public class BasicLineItemProcessorTest {
 			this.reservation = res;
 		}
 	
-		public void run() throws Exception {        
-			long startMilli = new DateTime("2017-06-01T00:00:00Z", DateTimeZone.UTC).getMillis();
+		public void run() throws Exception {
+			run("2017-06-01T00:00:00Z", null);
+		}
+		
+		public void run(String start, String netUnblendedStart) throws Exception {        
+			DateTime dt = new DateTime(start, DateTimeZone.UTC);
+			long startMilli = dt.withDayOfMonth(1).getMillis();
 			
 			if (which == Which.dbr || which == Which.both) {
 		        LineItem dbrLineItem = new DetailedBillingReportLineItem(false, true, dbrHeader);
@@ -418,41 +494,36 @@ public class BasicLineItemProcessorTest {
 			}
 			
 			if (which == Which.cau || which == Which.both) {
-				CostAndUsageReportLineItem lineItem = newCurLineItem(manifest2017, null);
+				String manifest = "";
+				switch(dt.getYear()) {
+				case 2018:
+					manifest = manifest2018;
+					break;
+				case 2019:
+					manifest = manifest2019;
+					break;
+				default:
+					manifest = manifest2017;
+					break;
+				}
+
+				CostAndUsageReportLineItem lineItem = newCurLineItem(manifest, netUnblendedStart == null ? null : new DateTime(netUnblendedStart, DateTimeZone.UTC));
 				lineItem.setItems(line.getCauLine(lineItem));
 				runProcessTest(lineItem, "Cost and Usage", true, startMilli);
 			}
 		}
-	
-		// Version of run() that allows us to test columns added in 2018 and 2019 for CURs
-		public void run(String start, String netUnblendedStart) throws Exception {
-			run(start, netUnblendedStart, null);
-		}
 		
-		public void run(String start, String netUnblendedStart, String[] rawLineItem) throws Exception {
-			DateTime dt = new DateTime(start, DateTimeZone.UTC);
-			String manifest = "";
-			switch(dt.getYear()) {
-			case 2018:
-				manifest = manifest2018;
-				break;
-			case 2019:
-				manifest = manifest2019;
-				break;
-			default:
-				manifest = manifest2017;
-				break;
-			}
-			CostAndUsageReportLineItem lineItem = newCurLineItem(manifest, new DateTime(netUnblendedStart, DateTimeZone.UTC));
-			lineItem.setItems(line == null ? rawLineItem : line.getCauLine(lineItem));
-			runProcessTest(lineItem, "Cost and Usage", true, dt.getMillis());
-		}
-	
-		public CostAndUsageData runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
+		public void runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
 			CostAndUsageData costAndUsageData = new CostAndUsageData(null, TagCoverage.none);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
+			
+			if (delayed) {
+				// Make sure we have one hour of cost and usage data so monthly fees get tallied properly
+				costAndUsageData.getCost(null).getData(0);
+				costAndUsageData.getUsage(null).getData(0);
+			}
 	        
 			Result result = lineItemProc.process(startMilli, delayed, isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
@@ -465,18 +536,23 @@ public class BasicLineItemProcessorTest {
 			}
 			
 			// Check usage data
+			logger.info("Test:");
 			int gotLen = costAndUsageData.getUsage(null).getTagGroups().size();
+			for (TagGroup tg: costAndUsageData.getUsage(null).getTagGroups())
+				logger.info(" - usage: " + costAndUsageData.getUsage(null).getData(0).get(tg) + ", " + tg);
 			assertEquals(reportName + " Incorrect number of usage tags", numExpectedUsageTags, gotLen);
 			if (gotLen > 0) {
 				TagGroup got = (TagGroup) costAndUsageData.getUsage(null).getTagGroups().toArray()[0];
 				//logger.info("Got Tag: " + got);
 				String errors = checkTag(got, expectedTag);
-				assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);
+				assertTrue(reportName + " Tag is not correct: " + errors, errors.isEmpty());
 				double usage = costAndUsageData.getUsage(null).getData(0).get(got);
 				assertEquals(reportName + " Usage is incorrect", usage, usage, 0.001);
 			}
 			// Check cost data
 			gotLen = costAndUsageData.getCost(null).getTagGroups().size();
+			for (TagGroup tg: costAndUsageData.getCost(null).getTagGroups())
+				logger.info(" - cost: " + costAndUsageData.getCost(null).getData(0).get(tg) + ", " + tg);
 			assertEquals(reportName + " Incorrect number of cost tags", numExpectedCostTags, gotLen);
 			if (gotLen > 0) {
 				checkCostAndUsage(costAndUsageData, reportName, null, isCostAndUsageReport, expectedTag);
@@ -491,7 +567,16 @@ public class BasicLineItemProcessorTest {
 				}
 			}
 			
-			return costAndUsageData;
+			// Check reservations if any
+			if (lineItem.getLineItemType() == LineItemType.RIFee && lineItem.getStartMillis() >= CostAndUsageReportLineItemProcessor.jan1_2018) {
+				// We should have a Reservation record for the RIFee line item
+				assertEquals("Wrong number of reservations", 1, costAndUsageData.getReservations().size());
+				Reservation r = costAndUsageData.getReservations().values().iterator().next();
+				String errors = checkTag(r.tagGroup, expectedTag);
+				assertTrue(reportName + " Tag is not correct: " + errors, errors.isEmpty());
+				assertEquals("wrong reservation amortization", amortization, r.hourlyFixedPrice * r.count, 0.001);
+				assertEquals("wrong reservation recurring fee", cost, r.usagePrice * r.count, 0.001);
+			}
 		}
 		
 		private void checkCostAndUsage(CostAndUsageData costAndUsageData, String reportName, Product p, boolean isCostAndUsageReport, String[] expectedTag) {
@@ -514,22 +599,28 @@ public class BasicLineItemProcessorTest {
 					double cost = costData.getData(0).get(tg);
 					assertEquals(reportName + " Cost is incorrect", savings, cost, 0.001);				
 				}
+				else if (tg.operation.isUnused() && unusedCost != null) {
+					String errors = checkTag(tg, expectedTag);
+					assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);					
+					double cost = costData.getData(0).get(tg);
+					assertEquals(reportName + " Cost is incorrect", unusedCost, cost, 0.001);				
+				}
 				else {
 					String errors = checkTag(tg, expectedTag);
 					assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);					
 					double cost = costData.getData(0).get(tg);
-					assertEquals(reportName + " Cost is incorrect", cost, cost, 0.001);				
+					assertEquals(reportName + " Cost is incorrect", this.cost, cost, 0.001);				
 				}
 				if (product != null && product.isEc2Instance() && isCostAndUsageReport) {
-					assertTrue("Tag group is wrong type", tg instanceof TagGroupRI);
+					assertTrue("Tag group is wrong type", tg instanceof TagGroupRI || tg.operation.isSpot() || tg.operation.isOnDemand());
 				}
 			}
 		}
 		
 		private String checkTag(TagGroup tagGroup, String[] tags) {
 			StringBuilder errors = new StringBuilder();
-			if (!tagMatches(tagGroup.account, tags[accountIndex]))
-				errors.append("Account mismatch: " + tagGroup.account + "/" + tags[accountIndex] + ", ");
+			if (!tagMatches(tagGroup.account, "234567890123"))
+				errors.append("Account mismatch: " + tagGroup.account + "/" + "234567890123" + ", ");
 			if (!tagMatches(tagGroup.region, tags[regionIndex]))
 				errors.append("Region mismatch: " + tagGroup.region + "/" + tags[regionIndex] + ", ");
 			if (!tagMatches(tagGroup.zone, tags[zoneIndex]))
@@ -552,164 +643,262 @@ public class BasicLineItemProcessorTest {
 	
 	@Test
 	public void testReservedAllUpfrontUsage() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.both, line, tag, 1.0, 0.0, Result.hourly, 30);
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
+		line.setDiscountedUsageFields("1.5", "0.0", "");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - All Upfront", "c4.2xlarge.windows", null };
+		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 1.0, 0.0, Result.hourly, 30);
 		test.run();
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
+		test.run();
+		
+		// Test 2017 manifest which doesn't support amortization. Savings will come back as full price
+		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "All Upfront");
+		line.setDiscountedUsageFields("1.5", "0.0", "3.0");
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
+		test.run();
+		
+		// Test 2018 which does support amortization
+		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.0 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2018-06-01T00:00:00Z", "2018-06-01T01:00:00Z", "1", "0", "All Upfront");
+		line.setDiscountedUsageFields("1.5", "0.0", "3.0");
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30, 1.5, 1.5);
+		test.run("2018-06-01T00:00:00Z", null);
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontUsage() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
+		line.setDiscountedUsageFields("1.0", "1.0", "3.0");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
 		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 1.0, 0.34, Result.hourly, 30);
 		test.run();
 	}
 	
 	@Test
 	public void testReservedNoUpfrontUsage() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.45 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "1", "0.45", "No Upfront", "arn", "0", "0.45", "0.60");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - No Upfront", "c4.2xlarge.windows", null };
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.45 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "1", "0.45", "No Upfront");
+		line.setDiscountedUsageFields("0", "0.45", "0.60");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - No Upfront", "c4.2xlarge.windows", null };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.45, Result.hourly, 31, null, 0.15);
 		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
 		// Test with resource tags
 		line.setResources("i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
-		String[] resourceTag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - No Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
+		String[] resourceTag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - No Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.45, Result.hourly, 31, null, 0.15);
-		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
+		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 2);
 		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontUsageFamily() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "0.25", "0.085", "Partial Upfront", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "0.25", "0.085", "Partial Upfront");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
 		ProcessTest test = new ProcessTest(Which.dbr, line, tag, 0.25, 0.085, Result.hourly, 30);
 		test.run();
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontUsageFamilyRDS() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Relational Database Service", "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0002", "MySQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "0.5", "0.0", "Partial Upfront", "arn", "0.00739", "0.00902", "0.026");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.mysql", null };
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", rds, "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0002", "MySQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "0.5", "0.0", "Partial Upfront");
+		line.setDiscountedUsageFields("0.00739", "0.00902", "0.026");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.mysql", null };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 0.25, 0.00902, Result.hourly, 31, 0.00739, 0.00959);
 		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontDiscountedUsageWithResourceTags() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn");
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
 		line.setResources("i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		String[] resourceTag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
+		String[] resourceTag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.34, Result.hourly, 30);
 		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
 		test.run();
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontDiscountedUsageFamily() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0.34", "Partial Upfront");
+		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.34, Result.hourly, 30);
 		test.run();
 		
-		line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn", "0.32", "0.36", "1.02");
-		tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
+		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0.34", "Partial Upfront");
+		line.setDiscountedUsageFields("0.32", "0.36", "1.02");
+		tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
 		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.36, Result.hourly, 31, 0.32, 0.34);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 
-		line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "ap-southeast-2a", "Amazon Elastic Compute Cloud", "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "1", "0.34", "Partial Upfront", "arn", "0.32", "0.36", "1.02");
-		tag = new String[] { "234567890123", "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
+		line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "ap-southeast-2a", ec2, "APS2-BoxUsage:c4.large", "RunInstances:0002", "Linux/UNIX (Amazon VPC), c4.2xlarge reserved instance applied", PricingTerm.reserved, "2019-01-01T00:00:00Z", "2019-01-01T01:00:00Z", "1", "0.34", "Partial Upfront");
+		line.setDiscountedUsageFields("0.32", "0.36", "1.02");
+		tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.large.windows", null };
 		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.36, Result.hourly, 31, 0.32, 0.34);
 		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 
 	}
 	
 	@Test
-	public void testReservedPartialUpfrontMonthlyFeeDBR() throws Exception {
-		Line line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "", "arn");
-		ProcessTest test = new ProcessTest(Which.dbr, line, null, 1.0, 0.0, Result.delay, 30);
-		test.run();
-		
-		line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "", "arn");
-		test = new ProcessTest(Which.dbr, line, null, 1.0, 0.0, Result.ignore, 30, 0.0, true, 0, 0);
-		test.run();
-	}
-	
-	@Test
-	public void testReservedNoUpfrontUnusedMonthlyFee() throws Exception {
-		Line line = new Line(LineItemType.RIFee, "234567890123", "eu-west-1", "", "Amazon Elastic Compute Cloud", "EU-HeavyUsage:t2.small", "RunInstances", "USD 0.0146 hourly fee per Linux/UNIX (Amazon VPC), t2.small instance", PricingTerm.none, "2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z", "18600", "271.56", "", "arn", "", "", "");
-		line.setUnused("95", "0", "1.4");
-		String[] tag = new String[] { "234567890123", "eu-west-1", null, "EC2 Instance", "Unused RIs - No Upfront", "t2.small", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 0.0, 32.45, Result.ignore, 31, 0.0, true, 0, 1);
-		TagGroup tg = TagGroup.getTagGroup(tag[0], tag[1], tag[2], tag[3], tag[4], tag[5], "hours", null, accountService, productService);
-		Reservation r = new Reservation("arn", tg, 25, 0, 0, ReservationUtilization.HEAVY, 0.0, 0.028);
+	public void testRIFeeNoUpfront() throws Exception {
+		// Test Cost and Usage Prior to Jan 1, 2018 (Uses Reservations pulled by Capacity Poller, so we inject one)
+		Line line = new Line(LineItemType.RIFee, "eu-west-1", "", ec2, "EU-HeavyUsage:t2.small", "RunInstances", "USD 0.0146 hourly fee per Linux/UNIX (Amazon VPC), t2.small instance", PricingTerm.none, "2017-11-01T00:00:00Z", "2017-12-01T00:00:00Z", "18600", "271.56", "");
+		line.setRIFeeFields("", "", "", "", "25", "", "");
+		String[] tag = new String[] { "eu-west-1", null, "EC2 Instance", "Bonus RIs - No Upfront", "t2.small", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 31, 0.0, true, 0, 0, 0.377, null);
+		TagGroupRI tg = TagGroupRI.get("234567890123", tag[0], tag[1], tag[2], tag[3], tag[4], "hours", null, "arn", accountService, productService);
+		Reservation r = new Reservation(tg, 25, 0, 0, ReservationUtilization.NO, 0.0, 0.028);
 		test.addReservation(r);
-		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z");
+		test.run("2017-11-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Test Cost and Usage After Jan 1, 2018 (Uses RIFee data in CUR)
+		// 25 RIs at 0.0146/hr recurring
+		line = new Line(LineItemType.RIFee, "eu-west-1", "", ec2, "EU-HeavyUsage:t2.small", "RunInstances", "USD 0.0146 hourly fee per Linux/UNIX (Amazon VPC), t2.small instance", PricingTerm.none, "2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z", "18600", "271.56", "");
+		line.setRIFeeFields("0", "0", "0", "0", "25", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "eu-west-1", null, "EC2 Instance", "Used RIs - No Upfront", "t2.small", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 0.0, true, 0, 0, 0.365, null);
+		test.run("2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");		
 	}
 	
 	@Test
-	public void testReservedPartialUpfrontMonthlyFee() throws Exception {
-		Line line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "244.8", "", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 0.0, 0.0, Result.monthly, 30, 0.0, true, 0, 1);
+	public void testRIFeePartialUpfront() throws Exception {
+		// Test case before we had support for Amortization
+		// 1 RI with 1.0/hr recurring and 2.0/hr upfront
+		Line line = new Line(LineItemType.RIFee, "ap-southeast-2", "", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "720", "720.0", "");
+		line.setRIFeeFields("1440", "", "", "", "1", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		String[] tag = new String[] { "ap-southeast-2", null, "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.monthly, 30, 2.0, true, 0, 0, 1.0, null);
 		test.run();
 
 		// Test reservation/unused rates
-		line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "APS2-HeavyUsage:c4.large", "RunInstances", "USD 0.0 hourly fee per Linux/UNIX (Amazon VPC), c4.large instance", PricingTerm.none, "2019-01-01T00:00:00Z", "2019-01-31T23:59:59Z", "744", "0", "", "arn", "34.36895", "32.45", "");
-		line.setUnused("1", "34.36895", "0.01");
-		tag = new String[] { "234567890123", "ap-southeast-2", null, "EC2 Instance", "Unused RIs - Partial Upfront", "c4.large", null };
-		test = new ProcessTest(Which.cau, line, tag, 0.0, 32.45, Result.ignore, 31, 34.36895, true, 0, 2);
-		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z");
+		// 1 RI with 1.0/hr recurring and 2.0/hr upfront
+		line = new Line(LineItemType.RIFee, "ap-southeast-2", "", ec2, "APS2-HeavyUsage:c4.2xlarge", "RunInstances:0002", "USD 0.34 hourly fee per Windows (Amazon VPC), c4.2xlarge instance", PricingTerm.none, "2019-06-01T00:00:00Z", "2019-06-30T23:59:59Z", "720", "720.0", "");
+		line.setRIFeeFields("1440", "0", "0", "0", "1", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "ap-southeast-2", null, "EC2 Instance", "Used RIs - Partial Upfront", "c4.2xlarge.windows", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 2.0, true, 0, 0, 1.0, null);
+		test.run("2019-06-01T00:00:00Z", "2019-02-01T00:00:00Z");
 	}
 	
 	@Test
-	public void testReservedPartialUpfrontMonthlyFeeRDS() throws Exception {
-		Line line = new Line(LineItemType.RIFee, "234567890123", "ap-southeast-2", "", "Amazon Relational Database Service", "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2017-06-01T00:00:00Z", "2017-06-30T23:59:59Z", "1440", "17.28", "", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgres", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, 0.024, Result.delay, 30);
-		test.run();
+	public void testReservedMonthlyFeeRDS() throws Exception {
+		// Partial Upfront - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		Line line = new Line(LineItemType.RIFee, "ap-southeast-2", "", rds, "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2019-06-01T00:00:00Z", "2019-06-30T23:59:59Z", "1440", "1440.0", "");
+		line.setRIFeeFields("720.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		line.setNormalizationFactor("0.5");
+		String[] tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Used RIs - Partial Upfront", "db.t2.micro.postgres", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 30, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+
+		// All Upfront - 2 RIs at 2.0/hr upfront
+		line = new Line(LineItemType.RIFee, "ap-southeast-2", "", rds, "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2019-06-01T00:00:00Z", "2019-06-30T23:59:59Z", "1440", "0", "");
+		line.setRIFeeFields("2880.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		line.setNormalizationFactor("0.5");
+		tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Used RIs - All Upfront", "db.t2.micro.postgres", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 30, 4.0, true, 0, 0, 0.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+
+		// No Upfront - 2 RIs at 1.5/hr recurring
+		line = new Line(LineItemType.RIFee, "ap-southeast-2", "", rds, "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2019-06-01T00:00:00Z", "2019-06-30T23:59:59Z", "1440", "2160", "");
+		line.setRIFeeFields("0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		line.setNormalizationFactor("0.5");
+		tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Used RIs - No Upfront", "db.t2.micro.postgres", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 30, 0.0, true, 0, 0, 3.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Partial Upfront Multi-AZ 1 RI at 2.0/hr recurring and 1.0/hr upfront
+		line = new Line(LineItemType.RIFee, "ap-southeast-2", "", rds, "APS2-HeavyUsage:db.t2.micro", "CreateDBInstance:0014", "USD 0.012 hourly fee per PostgreSQL, db.t2.micro instance", null, "2019-06-01T00:00:00Z", "2019-06-30T23:59:59Z", "720", "1440.0", "");
+		line.setRIFeeFields("720.0", "0", "0", "0", "1", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		line.setNormalizationFactor("1");
+		tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Used RIs - Partial Upfront", "db.t2.micro.multiaz.postgres", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 30, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	}
 	
 	@Test
 	public void testReservedPartialUpfrontHourlyUsageRDS() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "ap-southeast-2", "", "Amazon Relational Database Service", "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0014", "PostgreSQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "Partial Upfront", "arn");
-		String[] tag = new String[] { "234567890123", "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgres", null };
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 30);
+		Line line = new Line(LineItemType.DiscountedUsage, "ap-southeast-2", "", rds, "APS2-InstanceUsage:db.t2.micro", "CreateDBInstance:0014", "PostgreSQL, db.t2.micro reserved instance applied", PricingTerm.reserved, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1", "0", "Partial Upfront");
+		String[] tag = new String[] { "ap-southeast-2", null, "RDS Instance", "Bonus RIs - Partial Upfront", "db.t2.micro.postgres", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 30);
 		test.run();
 	}
 	
 	@Test
 	public void testRIPurchase() throws Exception {
-		Line line = new Line(LineItemType.Fee, "234567890123", "ap-southeast-2", "", "Amazon Elastic Compute Cloud", "", "", "Sign up charge for subscription: 647735683, planId: 2195643", PricingTerm.reserved, "2017-06-09T21:21:37Z", "2018-06-09T21:21:36Z", "150.0", "9832.500000", "", "arn");
+		Line line = new Line(LineItemType.Fee, "ap-southeast-2", "", ec2, "", "", "Sign up charge for subscription: 647735683, planId: 2195643", PricingTerm.reserved, "2017-06-09T21:21:37Z", "2018-06-09T21:21:36Z", "150.0", "9832.500000", "");
 		ProcessTest test = new ProcessTest(Which.both, line, null, 0.0, 0.0, Result.ignore, 30);
 		test.run();
 	}
 	
 	@Test
 	public void testSpot() throws Exception {
-		Line line = new Line(LineItemType.Usage, "234567890123", "ap-northeast-2", "", "Amazon Elastic Compute Cloud", "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "", "arn");
-		String[] tag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
+		Line line = new Line(LineItemType.Usage, "ap-northeast-2", "", ec2, "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "");
+		String[] tag = new String[] { "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
 		ProcessTest test = new ProcessTest(Which.both, line, tag, 1.0, 0.349, Result.hourly, 30);
 		test.run();
 	}
 	@Test
 	public void testSpotWithResourceTags() throws Exception {
-		Line line = new Line(LineItemType.Usage, "234567890123", "ap-northeast-2", "", "Amazon Elastic Compute Cloud", "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "", "arn");
+		Line line = new Line(LineItemType.Usage, "ap-northeast-2", "", ec2, "APN2-SpotUsage:c4.xlarge", "RunInstances:SV052", "c4.xlarge Linux/UNIX Spot Instance-hour in Asia Pacific (Seoul) in VPC Zone #52", PricingTerm.spot, "2017-06-01T00:00:00Z", "2017-06-01T01:00:00Z", "1.00000000", "0.3490000000000", "");
 		line.setResources("i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
-		String[] tag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
-		String[] resourceTag = new String[] { "234567890123", "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
+		String[] tag = new String[] { "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
+		String[] resourceTag = new String[] { "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.349, Result.hourly, 30);
 		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
 		test.run();
 	}
 	
 	@Test
+	public void testReservedMonthlyFeeElasticsearch() throws Exception {
+		// Partial Upfront - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		Line line = new Line(LineItemType.RIFee, "us-east-1", "", es, "HeavyUsage:r4.xlarge.elasticsearch", "ESDomain", "USD 0.0 hourly fee per Elasticsearch, r4.xlarge.elasticsearch instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		String[] tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Used RIs - Partial Upfront", "r4.xlarge.elasticsearch", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// All Upfront - 2 RIs at 2.0/hr upfront
+		line = new Line(LineItemType.RIFee, "us-east-1", "", es, "HeavyUsage:r4.xlarge.elasticsearch", "ESDomain", "USD 0.0 hourly fee per Elasticsearch, r4.xlarge.elasticsearch instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "0", "");
+		line.setRIFeeFields("2976.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Used RIs - All Upfront", "r4.xlarge.elasticsearch", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 4.0, true, 0, 0, 0.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// No Upfront - 2 RIs at 1.5/hr recurring
+		line = new Line(LineItemType.RIFee, "us-east-1", "", es, "HeavyUsage:r4.xlarge.elasticsearch", "ESDomain", "USD 0.0 hourly fee per Elasticsearch, r4.xlarge.elasticsearch instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "2232.0", "");
+		line.setRIFeeFields("0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Used RIs - No Upfront", "r4.xlarge.elasticsearch", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 0.0, true, 0, 0, 3.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+	}
+	
+	@Test
+	public void testReservedElasticsearch() throws Exception {
+		// Partial Upfront
+		Line line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", es, "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Partial Upfront");
+		line.setDiscountedUsageFields("0.25", "0.32", "0.66");
+		String[] tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Bonus RIs - Partial Upfront", "r4.xlarge.elasticsearch", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// All Upfront
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", es, "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront");
+		line.setDiscountedUsageFields("0.30", "0", "0.66");
+		tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Bonus RIs - All Upfront", "r4.xlarge.elasticsearch", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 31, 0.30, 0.36);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// No Upfront
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", es, "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "No Upfront");
+		line.setDiscountedUsageFields("0", "0.34", "0.66");
+		tag = new String[] { "us-east-1", null, "Elasticsearch Service", "Bonus RIs - No Upfront", "r4.xlarge.elasticsearch", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.34, Result.hourly, 31, 0.0, 0.32);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+	}
+	
+	@Test
 	public void testReservedDynamoDB() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon DynamoDB", "WriteCapacityUnit-Hrs", "CommittedThroughput", "DynamoDB, Reserved Write Capacity used this month", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization", "arn", "0.00028082", "0.00020992", "0.0013");
-		String[] tag = new String[] { "234567890123", "us-east-1", null, "DynamoDB", "CommittedThroughput", "WriteCapacityUnit-Hrs", null };
+		Line line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", "Amazon DynamoDB", "WriteCapacityUnit-Hrs", "CommittedThroughput", "DynamoDB, Reserved Write Capacity used this month", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization");
+		line.setDiscountedUsageFields("0.00028082", "0.00020992", "0.0013");
+		String[] tag = new String[] { "us-east-1", null, "DynamoDB", "CommittedThroughput", "WriteCapacityUnit-Hrs", null };
 		// TODO: support DynamoDB amortization
 		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
@@ -717,31 +906,118 @@ public class BasicLineItemProcessorTest {
 	}
 		
 	@Test
-	public void testReservedElastiCache() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon ElastiCache", "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization", "arn", "0.01", "0.0", "0.0");
-		String[] tag = new String[] { "234567890123", "us-east-1", null, "ElastiCache", "CreateCacheCluster:0002", "NodeUsage:cache.m3.medium", null };
-		// TODO: support ElastiCache amortization
-		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
-		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
-	}
+	public void testReservedMonthlyFeeElastiCache() throws Exception {
+		// Partial Upfront - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		Line line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "HeavyUsage:cache.m5.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		String[] tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - Partial Upfront", "cache.m5.medium.redis", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
+		// All Upfront - 2 RIs at 2.0/hr upfront
+		line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "HeavyUsage:cache.m5.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "0", "");
+		line.setRIFeeFields("2976.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - All Upfront", "cache.m5.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 4.0, true, 0, 0, 0.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// No Upfront - 2 RIs at 1.5/hr recurring
+		line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "HeavyUsage:cache.m5.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "2232.0", "");
+		line.setRIFeeFields("0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - No Upfront", "cache.m5.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 0.0, true, 0, 0, 3.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+
+		// Heavy Utilization - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "HeavyUsage:cache.m3.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - Heavy Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Medium Utilization - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "MediumUsage:cache.m3.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - Medium Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Light Utilization - 2 RIs at 1.0/hr recurring and 0.5/hr upfront
+		line = new Line(LineItemType.RIFee, "us-east-1", "", ec, "LightUsage:cache.m3.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Used RIs - Light Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");		
+
+		// Heavy Utilization - 2 RIs at 1.0/hr recurring and 0.5/hr upfront --- test with different region
+		line = new Line(LineItemType.RIFee, "us-west-2", "", ec, "USW2-HeavyUsage:cache.t2.medium", "CreateCacheCluster:0002", "USD 0.03 hourly fee per Redis, cache.m3.medium instance", null, "2019-07-01T00:00:00Z", "2019-07-31T23:59:59Z", "1488", "1488.0", "");
+		line.setRIFeeFields("744.0", "0", "0", "0", "2", "2017-01-01T00:00:00Z", "2020-01-01T00:00:00Z");
+		tag = new String[] { "us-west-2", null, "ElastiCache", "Used RIs - Heavy Utilization", "cache.t2.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, null, Result.ignore, 31, 1.0, true, 0, 0, 2.0, null);
+		test.run("2019-07-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+	}
+	
 	@Test
-	public void testReservedElasticsearch() throws Exception {
-		Line line = new Line(LineItemType.DiscountedUsage, "234567890123", "us-east-1", "", "Amazon Elasticsearch Service", "ESInstance:r4.xlarge", "ESDomain", "Elasticsearch, r4.xlarge.elasticsearch reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront", "arn", "0.25", "0.0", "0.0");
-		String[] tag = new String[] { "234567890123", "us-east-1", null, "Elasticsearch Service", "ESDomain", "ESInstance:r4.xlarge", null };
-		// TODO: support Elasticsearch amortization
-		//test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31, 0.32, 0.34);
-		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.0, Result.hourly, 31);
+	public void testReservedElastiCache() throws Exception {
+		// Partial Upfront
+		Line line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Partial Upfront");
+		line.setDiscountedUsageFields("0.25", "0.32", "0.66");
+		String[] tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Partial Upfront", "cache.m3.medium.redis", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
 		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
-	}
 		
+		// All Upfront
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "All Upfront");
+		line.setDiscountedUsageFields("0.30", "0", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - All Upfront", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, null, Result.hourly, 31, 0.30, 0.36);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// No Upfront
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "No Upfront");
+		line.setDiscountedUsageFields("0", "0.34", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - No Upfront", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.34, Result.hourly, 31, 0.0, 0.32);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+
+		// Heavy Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Heavy Utilization");
+		line.setDiscountedUsageFields("0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Heavy Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Medium Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Medium Utilization");
+		line.setDiscountedUsageFields("0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Medium Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Light Utilization
+		line = new Line(LineItemType.DiscountedUsage, "us-east-1", "", ec, "NodeUsage:cache.m3.medium", "CreateCacheCluster:0002", "Redis, cache.m3.medium reserved instance applied", PricingTerm.reserved, "2018-01-01T00:00:00Z", "2018-01-01T01:00:00Z", "1", "0", "Light Utilization");
+		line.setDiscountedUsageFields("0.25", "0.32", "0.66");
+		tag = new String[] { "us-east-1", null, "ElastiCache", "Bonus RIs - Light Utilization", "cache.m3.medium.redis", null };
+		test = new ProcessTest(Which.cau, line, tag, 1.0, 0.32, Result.hourly, 31, 0.25, 0.09);
+		test.run("2018-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+	}
+	
+	@Test
+	public void testEC2Credit() throws Exception {
+		Line line = new Line(LineItemType.Credit, "us-east-1", "", ec2, "HeavyUsage:m4.large", "RunInstances", "MB - Pricing Adjustment", PricingTerm.reserved, "2019-08-01T00:00:00Z", "2019-09-01T00:00:00Z", "0.0000000000", "-38.3100000000", "");
+		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "RI Credits", "m4.large", null };
+		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
+		test.run("2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
+	
 	
 // TODO: add support for credits
 //	@Test
 //	public void testLambdaCredit() throws Exception {
 //		String rawLineItem = "3s5n7gjxiw5rbappdpqwtq5yx2fiwznedfq5qhw2f3jdiecjlx6q,2019-01-01T00:00:00Z/2019-02-01T00:00:00Z,123456789,AWS,Anniversary,123456789012,2019-01-01T00:00:00Z,2019-02-01T00:00:00Z,234567890123,Credit,2019-01-01T00:00:00Z,2019-02-01T00:00:00Z,AWSDataTransfer,USW2-DataTransfer-Regional-Bytes,,,,0,,,USD,,-35.576771,,-35.576771,AWS Lambda Data Transfer Pricing Adjustment,,,-35.576771,Amazon Web Services. Inc.,AWS Data Transfer,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,US West (Oregon),AWS Region,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data Transfer,,,,,,us-west-2,,,,,,,,,AWSDataTransfer,AWS Data Transfer,62WNQUZDQQ6GRJC5,,,,,,,,,,,,US West (Oregon),AWS Region,,,IntraRegion,,USW2-DataTransfer-Regional-Bytes,,,,,,,,,,,,331970144,0.0000000000,0.0100000000,OnDemand,GB,,,,,,,,,,,,,,,,,,1387008443,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,";
-//		String[] tag = new String[] { "234567890123", "us-west-2", null, "DataTransfer", "", "USW2-DataTransfer-Regional-Bytes", null };
+//		String[] tag = new String[] { "us-west-2", null, "DataTransfer", "", "USW2-DataTransfer-Regional-Bytes", null };
 //		ProcessTest test = new ProcessTest(Which.cau, null, tag, 0.0, -35.576771 / 31, Result.monthly, 31);
 //		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z", rawLineItem.split(","));
 //	}

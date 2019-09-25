@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor;
 
 import java.util.Map;
@@ -21,6 +38,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int purchaseOptionIndex;
 	private int lineItemTypeIndex;
 	private int lineItemNormalizationFactorIndex;
+	private int lineItemProductCodeIndex;
 	private int productNormalizationSizeFactorIndex; // First appeared in 2017-07
 	private int productUsageTypeIndex;
 	private int publicOnDemandCostIndex;
@@ -28,13 +46,18 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int pricingUnitIndex;
 	private int reservationArnIndex;
 	private int productRegionIndex;
+	private int productServicecodeIndex;
 	
 	// First appeared in 2018-01 (Net versions added in 2019-01)
-	private int reservationAmortizedUpfrontCostForUsageIndex; 
+	private int reservationAmortizedUpfrontCostForUsageIndex;
+	private int reservationAmortizedUpfrontFeeForBillingPeriodIndex;
 	private int reservationRecurringFeeForUsageIndex;
 	private int reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex;
 	private int reservationUnusedQuantityIndex;
 	private int reservationUnusedRecurringFeeIndex;
+	private int reservationNumberOfReservationsIndex;
+	private int reservationStartTimeIndex;
+	private int reservationEndTimeIndex;
 	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
@@ -65,6 +88,7 @@ public class CostAndUsageReportLineItem extends LineItem {
             rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
             costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontCostForUsage");
+	        reservationAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontFeeForBillingPeriod");
 	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "NetRecurringFeeForUsage");
 	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "NetUnusedAmortizedUpfrontFeeForBillingPeriod");
 	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "NetUnusedRecurringFee");
@@ -73,11 +97,15 @@ public class CostAndUsageReportLineItem extends LineItem {
 	        rateIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedRate" : "UnblendedRate");
 	        costIndex = report.getColumnIndex("lineItem", useBlended ? "BlendedCost" : "UnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "AmortizedUpfrontCostForUsage");
+	        reservationAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "AmortizedUpfrontFeeForBillingPeriod");
 	        reservationRecurringFeeForUsageIndex = report.getColumnIndex("reservation", "RecurringFeeForUsage");
 	    	reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex = report.getColumnIndex("reservation", "UnusedAmortizedUpfrontFeeForBillingPeriod");
 	    	reservationUnusedRecurringFeeIndex = report.getColumnIndex("reservation", "UnusedRecurringFee");
         }
     	reservationUnusedQuantityIndex = report.getColumnIndex("reservation", "UnusedQuantity");
+    	reservationNumberOfReservationsIndex = report.getColumnIndex("reservation", "NumberOfReservations");
+    	reservationStartTimeIndex = report.getColumnIndex("reservation", "StartTime");
+    	reservationEndTimeIndex = report.getColumnIndex("reservation", "EndTime");
     	
         resourceIndex = report.getColumnIndex("lineItem", "ResourceId");
         reservedIndex = report.getColumnIndex("pricing", "term");
@@ -88,6 +116,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         purchaseOptionIndex = report.getColumnIndex("pricing", "PurchaseOption");
         lineItemTypeIndex = report.getColumnIndex("lineItem", "LineItemType");
         lineItemNormalizationFactorIndex = report.getColumnIndex("lineItem", "NormalizationFactor");
+        lineItemProductCodeIndex = report.getColumnIndex("lineItem", "ProductCode");
         productNormalizationSizeFactorIndex = report.getColumnIndex("product", "normalizationSizeFactor");
         productUsageTypeIndex = report.getColumnIndex("product",  "usagetype"); 
         
@@ -95,14 +124,14 @@ public class CostAndUsageReportLineItem extends LineItem {
         pricingUnitIndex = report.getColumnIndex("pricing", "unit");
         reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
         productRegionIndex = report.getColumnIndex("product", "region");
+        productServicecodeIndex = report.getColumnIndex("product", "servicecode");
     }
     
     public String toString() {
     	String[] values = new String[]{
-    			items[lineItemIdIndex],
     			items[billTypeIndex],
     			items[accountIdIndex],
-    			items[zoneIndex],
+    			items[lineItemTypeIndex],
     			items[productIndex],
     			items[operationIndex],
     			items[usageTypeIndex],
@@ -112,6 +141,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     			items[endTimeIndex],
     			items[rateIndex],
     			items[costIndex],
+    			items[zoneIndex],
     			items[resourceIndex],
     			items[reservedIndex],
     			items[purchaseOptionIndex],
@@ -221,7 +251,11 @@ public class CostAndUsageReportLineItem extends LineItem {
     		logger.error("Line item record too short. Reserved index = " + reservedIndex + ", record length = " + items.length);
     		return false;
     	}
-    	return items[reservedIndex].equals("Reserved") || items[usageTypeIndex].contains("HeavyUsage");
+    	return items[reservedIndex].toLowerCase().equals("reserved")
+    			|| lineItemType == LineItemType.DiscountedUsage
+    			|| lineItemType == LineItemType.RIFee
+    			|| items[usageTypeIndex].contains("HeavyUsage")
+    			|| !items[reservationArnIndex].isEmpty();
     }
 
 	@Override
@@ -234,7 +268,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return lineItemType;
 	}
 	
-	private double computeProductNormalizedSizeFactor(String usageType) {
+	public static double computeProductNormalizedSizeFactor(String usageType) {
 		String ut = usageType;
 		if (ut.contains(":"))
 			ut = ut.split(":")[1];
@@ -296,6 +330,13 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return lineItemNormalizationFactorIndex;
 	}
 
+	@Override
+	public String getLineItemNormalizationFactor() {
+		if (lineItemNormalizationFactorIndex >= 0)
+			return items[lineItemNormalizationFactorIndex];
+		return "";
+	}
+
 	public int getProductNormalizationSizeFactorIndex() {
 		return productNormalizationSizeFactorIndex;
 	}
@@ -339,8 +380,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 	}
 	
 	@Override
-	public String getReservationId() {
+	public String getReservationArn() {
 		String arn = items[reservationArnIndex];
+		return arn;
+		/*
 		// First try the form for ec2 reservations
 		// Note: Prior to October 2017 RDS reservation IDs used the EC2 form and did not match the RDS RI ID.
 		int i = arn.indexOf("/");
@@ -349,6 +392,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 			i = arn.lastIndexOf(":");
 		}
 		return i > 0 ? arn.substring(i + 1) : arn;
+		*/
 	}
 
 	public int getAmortizedUpfrontCostForUsageIndex() {
@@ -360,6 +404,27 @@ public class CostAndUsageReportLineItem extends LineItem {
 		if (reservationAmortizedUpfrontCostForUsageIndex >= 0)
 			return items[reservationAmortizedUpfrontCostForUsageIndex];
 		return "";
+	}
+	
+	@Override
+	public boolean hasAmortizedUpfrontCostForUsage() {
+		return reservationAmortizedUpfrontCostForUsageIndex >= 0;
+	}
+	
+	public int getAmortizedUpfrontFeeForBillingPeriodIndex() {
+		return reservationAmortizedUpfrontFeeForBillingPeriodIndex;
+	};
+
+	@Override
+	public String getAmortizedUpfrontFeeForBillingPeriod() {
+		if (reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0)
+			return items[reservationAmortizedUpfrontFeeForBillingPeriodIndex];
+		return "";
+	}
+
+	@Override
+	public boolean hasAmortizedUpfrontFeeForBillingPeriod() {
+		return reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0;
 	}
 	
 	public int getRecurringFeeForUsageIndex() {
@@ -387,7 +452,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public Double getUnusedAmortizedUpfrontRate() {
-		// Return the recurring rate for an unused RI
+		// Return the amortization rate for an unused RI
 		if (reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex >= 0 &&
 				reservationUnusedQuantityIndex >= 0) {
 			Double amort = Double.parseDouble(items[reservationUnusedAmortizedUpfrontFeeForBillingPeriodIndex]);
@@ -411,5 +476,50 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return null;
 	}
 	
+	@Override
+	public String getProductServiceCode() {
+		// Favor the lineItem/ProductCode over product/ServiceCode because Lambda for example has AWSDataTransfer as the serviceCode
+		if (lineItemProductCodeIndex >= 0 && !items[lineItemProductCodeIndex].isEmpty())
+			return items[lineItemProductCodeIndex];
+		
+		if (productServicecodeIndex >= 0 && !items[productServicecodeIndex].isEmpty())
+			return items[productServicecodeIndex];
+		
+		return "";
+	}
+	
+	public int getReservationStartTimeIndex() {
+		return reservationStartTimeIndex;
+	}
+
+	@Override
+	public String getReservationStartTime() {
+		if (reservationStartTimeIndex >= 0)
+			return items[reservationStartTimeIndex];
+		return null;
+	}
+	
+	public int getReservationEndTimeIndex() {
+		return reservationEndTimeIndex;
+	}
+
+	@Override
+	public String getReservationEndTime() {
+		if (reservationEndTimeIndex >= 0)
+			return items[reservationEndTimeIndex];
+		return null;
+	}
+	
+	public int getReservationNumberOfReservationsIndex() {
+		return reservationNumberOfReservationsIndex;
+	}
+
+	@Override
+	public String getReservationNumberOfReservations() {
+		if (reservationNumberOfReservationsIndex >= 0)
+			return items[reservationNumberOfReservationsIndex];
+		return null;
+	}
+
 }
 

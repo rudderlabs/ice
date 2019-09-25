@@ -29,7 +29,8 @@ public class ResourceGroup extends Tag {
 	private static final long serialVersionUID = 1L;
 	
 	public static final String separator = "|";
-	private static final String splitRegex = "\\|";
+	public static final String separatorReplacement = "~";
+	private static final String separatorRegex = "\\|";
 	
 	private UserTag[] resourceTags;
 	/**
@@ -43,12 +44,32 @@ public class ResourceGroup extends Tag {
         this.isProductName = isProductName;
     }
 	
-	protected ResourceGroup(String[] tags) {
-		super(StringUtils.join(tags, separator));
-		this.isProductName = false;
-		resourceTags = new UserTag[tags.length];
+	private static String joinTags(String[] tags) {
+		String[] values = new String[tags.length];
+		for (int i = 0; i < tags.length; i++) {
+			if (tags[i] != null && tags[i].contains(separator)) {
+				logger.warn("Tag " + i + " value " + tags[i] + " contains " + separator + ", replace with " + separatorReplacement);
+				values[i] = tags[i].replace(separator, separatorReplacement);
+			}
+			else {
+				values[i] = tags[i];
+			}
+		}
+		return StringUtils.join(values, separator);
+	}
+	
+	private static UserTag[] splitTags(String name) {
+		String[] tags = name.split(separatorRegex, -1);
+		UserTag[] ut = new UserTag[tags.length];
 		for (int i = 0; i < tags.length; i++)
-			resourceTags[i] = UserTag.get(tags[i]);
+			ut[i] = UserTag.get(tags[i]);
+		return ut;
+	}
+	
+	protected ResourceGroup(String[] tags) {
+		super(joinTags(tags));
+		this.isProductName = false;
+		resourceTags = splitTags(this.name);
 	}
 	
 	public boolean isProductName() {
@@ -57,17 +78,14 @@ public class ResourceGroup extends Tag {
 	
 	public UserTag[] getUserTags() {
 		if (resourceTags == null) {
-			String[] tags = name.split(splitRegex, -1);
-			resourceTags = new UserTag[tags.length];
-			for (int i = 0; i < tags.length; i++)
-				resourceTags[i] = UserTag.get(tags[i]);
+			resourceTags = splitTags(this.name);
 		}
 		return resourceTags;
 	}
 	
     public static ResourceGroup getResourceGroup(String name, boolean isProductName) {
     	if (name.contains(separator)) {
-    		return getResourceGroup(name.split(splitRegex, -1));
+    		return getResourceGroup(name.split(separatorRegex, -1));
     	}
         ResourceGroup resourceGroup = resourceGroups.get(name);
         if (resourceGroup == null) {
@@ -78,7 +96,7 @@ public class ResourceGroup extends Tag {
     }
 
     public static ResourceGroup getResourceGroup(String[] tags) {
-    	String name = StringUtils.join(tags, separator);
+    	String name = joinTags(tags);
         ResourceGroup resourceGroup = resourceGroups.get(name);
         if (resourceGroup == null) {
             resourceGroups.putIfAbsent(name, new ResourceGroup(tags));

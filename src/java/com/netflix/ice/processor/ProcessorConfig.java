@@ -83,6 +83,7 @@ public class ProcessorConfig extends Config {
     public final SortedMap<DateTime,Double> edpDiscounts;
 
     public final ReservationService reservationService;
+    public final ReservationCapacityPoller reservationCapacityPoller;
     public final PriceListService priceListService;
     public final boolean useBlended;
     public final boolean processOnce;
@@ -94,9 +95,10 @@ public class ProcessorConfig extends Config {
     public final JsonFiles writeJsonFiles;
     
     public enum JsonFiles {
-    	no,
-    	ndjson,
-    	bulk   	
+    	no,		// do not write JSON files
+    	hourly, // generate hourly newline delimited JSON records - one record per line
+    	hourlyWithRates, // generate hourly newline delimited JSON records with RI rates for EC2 and RDS - one record per line
+    	daily;  // generate daily newline delimited JSON records - one record per line
     }
     
     // Kubernetes configuration data keyed by payer account ID
@@ -193,12 +195,21 @@ public class ProcessorConfig extends Config {
         ProcessorConfig.instance = this;
 
         billingFileProcessor = new BillingFileProcessor(this, compress);
+        
+        boolean needPoller = Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)) &&
+        		(startDate.isBefore(CostAndUsageReportLineItemProcessor.jan1_2018) ||
+        		new DateTime(CostAndUsageReportLineItemProcessor.jan1_2018).isBefore(costAndUsageStartDate));
+        
+        reservationCapacityPoller = needPoller ? new ReservationCapacityPoller(this) : null;
     }
 
     public void start () throws Exception {
         logger.info("starting up...");
 
-        reservationService.init();
+        productService.initProcessor(localDir, workS3BucketName, workS3BucketPrefix);
+        
+        if (reservationCapacityPoller != null)
+        	reservationCapacityPoller.init();
         if (resourceService != null)
             resourceService.init();
 
@@ -210,7 +221,8 @@ public class ProcessorConfig extends Config {
         logger.info("Shutting down...");
 
         billingFileProcessor.shutdown();
-        reservationService.shutdown();
+        if (reservationCapacityPoller != null)
+        	reservationCapacityPoller.shutdown();
     }
     
     /**
@@ -261,7 +273,7 @@ public class ProcessorConfig extends Config {
             try {
 	            DescribeAvailabilityZonesResult result = ec2.describeAvailabilityZones();
 	            for (AvailabilityZone az: result.getAvailabilityZones()) {
-	            	region.addZone(az.getZoneName());
+	            	region.getZone(az.getZoneName());
 	            }
             }
             catch(AmazonEC2Exception e) {

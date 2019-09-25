@@ -18,6 +18,7 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -26,6 +27,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -37,20 +39,30 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.UsageType;
 
 public abstract class ReservationProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
+    
+    // Debug Property strings that can be specified in the ice.properites file with prefix "ice.debug."
+    //  Note: reservationArn is stored in the ReservationArn class
+    public final String reservationHour = "reservationHour";
+    public final String reservationFamily = "reservationFamily";
+    public final String reservationAccounts = "reservationAccounts";
+    public final String reservationUtilization = "reservationUtilization";
+    public final String reservationRegions = "reservationRegions";
+    public final String reservationArn = "reservationArn";
 
     // hour of data to print debug statements. Set to -1 to turn off all debug logging.
     protected int debugHour = -1;
-    protected String debugFamily = "db";
+    protected String debugFamily = null;
     // debugAccounts - will print all accounts if null
-    protected String[] debugAccounts = null; // { "AccountName" };
+    protected String[] debugAccounts = null;
     // debugUtilization - will print all utilization if null
     protected ReservationUtilization debugUtilization = null; // ReservationUtilization.PARTIAL;
     // debugRegion - will print all regions if null
-    protected Region[] debugRegions = { Region.AP_SOUTHEAST_2 };
+    protected Region[] debugRegions = null;
     
     protected ProductService productService;
     protected PriceListService priceListService;
@@ -67,6 +79,27 @@ public abstract class ReservationProcessor {
     	this.priceListService = priceListService;
     	this.familyBreakout = familyBreakout;
     	
+    }
+    
+    public void setDebugProperties(Map<String, String> debugProperties) {
+    	if (debugProperties.containsKey(reservationHour))
+    		setDebugHour(Integer.parseInt(debugProperties.get(reservationHour)));
+    	if (debugProperties.containsKey(reservationFamily))
+    		setDebugFamily(debugProperties.get(reservationFamily));
+    	if (debugProperties.containsKey(reservationAccounts))
+    		setDebugAccounts(debugProperties.get(reservationAccounts).split(","));
+    	if (debugProperties.containsKey(reservationUtilization))
+    		setDebugUtilization(ReservationUtilization.get(debugProperties.get(reservationUtilization)));
+    	if (debugProperties.containsKey(reservationRegions)) {
+    		List<Region> regions = Lists.newArrayList();
+    		for (String name: debugProperties.get(reservationRegions).split(","))
+    			regions.add(Region.getRegionByName(name));
+    		setDebugRegions(regions.toArray(new Region[]{}));
+    	}
+    	if (debugProperties.containsKey(reservationUtilization))
+    		setDebugUtilization(ReservationUtilization.get(debugProperties.get(reservationUtilization)));
+    	if (debugProperties.containsKey(reservationArn))
+    		ReservationArn.debugReservationArn = ReservationArn.get(debugProperties.get(reservationArn));
     }
     
     public void setDebugHour(int i) {
@@ -91,6 +124,10 @@ public abstract class ReservationProcessor {
     
     public String[] getDebugAccounts() {
     	return debugAccounts;
+    }
+    
+    public void setDebugUtilization(ReservationUtilization utilization) {
+    	debugUtilization = utilization;
     }
     
     public void setDebugRegions(Region[] regions) {
@@ -147,7 +184,13 @@ public abstract class ReservationProcessor {
 	}
    
 	protected double convertFamilyUnits(double units, UsageType from, UsageType to) {
-		return units * instanceMetrics.getNormalizationFactor(from) / instanceMetrics.getNormalizationFactor(to);
+		double fromNorm = instanceMetrics.getNormalizationFactor(from);
+		if (from.isMultiAZ())
+			fromNorm *= 2.0;
+		double toNorm = instanceMetrics.getNormalizationFactor(to);
+		if (to.isMultiAZ())
+			toNorm *= 2.0;
+		return units *  fromNorm / toNorm;
 	}
 
 	
@@ -214,7 +257,7 @@ public abstract class ReservationProcessor {
 		
 		long startMilli = start.getMillis();
 		
-		processReservations(reservationService, usageData, costData, startMilli);
+		processReservations(reservationService, data, startMilli);
 				
 		if (debugHour >= 0)
 			printUsage("after", usageData, costData);		
@@ -222,8 +265,7 @@ public abstract class ReservationProcessor {
 	
 	abstract protected void processReservations(
 			ReservationService reservationService,
-			ReadWriteData usageData,
-			ReadWriteData costData,
+			CostAndUsageData data,
 			Long startMilli);	
 		
 	protected void printUsage(String when, ReadWriteData usageData, ReadWriteData costData) {
@@ -233,9 +275,11 @@ public abstract class ReservationProcessor {
 		SortedSet<TagGroup> usageTags = Sets.newTreeSet();
 		usageTags.addAll(usageData.getTagGroups());
 		for (TagGroup tagGroup: usageTags) {
+			if (!(tagGroup.operation instanceof Operation.ReservationOperation))
+				continue;
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+			if ((tagGroup.product.hasReservations())
 					&& usageMap.get(tagGroup) != null 
 					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
@@ -247,9 +291,11 @@ public abstract class ReservationProcessor {
 		SortedSet<TagGroup> costTags = Sets.newTreeSet();
 		costTags.addAll(costData.getTagGroups());
 		for (TagGroup tagGroup: costTags) {
+			if (!(tagGroup.operation instanceof Operation.ReservationOperation))
+				continue;
 			if (tagGroup.operation == Operation.ondemandInstances || tagGroup.operation == Operation.spotInstances)
 				continue;
-			if ((tagGroup.product.isEc2Instance() || tagGroup.product.isRdsInstance() || tagGroup.product.isRedshift())
+			if ((tagGroup.product.hasReservations())
 					&& costMap.get(tagGroup) != null 
 					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
 				logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);

@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.common;
 
 import java.util.Map;
@@ -245,17 +262,34 @@ public abstract class LineItem {
 
 	abstract public String getLineItemId();
 
-	public String getReservationId() {
+	public String getReservationArn() {
 		return "";
 	}
 	
 	/**
-	 * reservation/AmortizedUpfrontCostForUsage() appeared 2018-01 in CUR files
-	 * reservation/NetAmortizedUpfrontCostForUsage() appeared 2019-01 in CUR files
+	 * reservation/AmortizedUpfrontCostForUsage appeared 2018-01 in CUR files
+	 * reservation/NetAmortizedUpfrontCostForUsage appeared 2019-01 in CUR files
 	 * @return
 	 */
 	public String getAmortizedUpfrontCostForUsage() {
 		return "";
+	}
+	
+	public boolean hasAmortizedUpfrontCostForUsage() {
+		return false;
+	}
+	
+	/**
+	 * reservation/AmortizedUpfrontFeeForBillingPeriod appeared 2018-01 in CUR files
+	 * reservation/NetAmortizedUpfrontFeeForBillingPeriod appeared 2019-01 in CUR files
+	 * @return
+	 */
+	public String getAmortizedUpfrontFeeForBillingPeriod() {
+		return "";
+	}
+	
+	public boolean hasAmortizedUpfrontFeeForBillingPeriod() {
+		return false;
 	}
 	
 	/**
@@ -278,5 +312,24 @@ public abstract class LineItem {
 	public Region getProductRegion() {
 		return null;
 	}
+	
+	public String getProductServiceCode() {
+		return null;
+	}
 
+	public String getReservationStartTime() {
+		return null;
+	}
+	
+	public String getReservationEndTime() {
+		return null;
+	}
+	
+	public String getReservationNumberOfReservations() {
+		return null;
+	}
+	
+	public String getLineItemNormalizationFactor() {
+		return null;
+	}
 }

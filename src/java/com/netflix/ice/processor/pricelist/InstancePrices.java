@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor.pricelist;
 
 import java.io.DataInput;
@@ -15,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.netflix.ice.processor.pricelist.PriceList.Product.Attributes;
 import com.netflix.ice.processor.pricelist.PriceList.Term;
+import com.netflix.ice.tag.InstanceCache;
 import com.netflix.ice.tag.InstanceDb;
 import com.netflix.ice.tag.InstanceOs;
 import com.netflix.ice.tag.Region;
@@ -31,7 +49,9 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	public enum ServiceCode {
 		AmazonEC2,
 		AmazonRDS,
-		AmazonRedshift;
+		AmazonRedshift,
+		AmazonElastiCache,
+		AmazonES;
 	}
 
 	private final ServiceCode serviceCode;
@@ -210,9 +230,13 @@ public class InstancePrices implements Comparable<InstancePrices> {
         else if (operation.startsWith("CreateDBInstance")) {
         	// RDS instance
         	if (deploymentOption.startsWith("Multi-AZ"))
-        		usageTypeStr += ".multiaz";
+        		usageTypeStr += UsageType.multiAZ;
             InstanceDb db = InstanceDb.withCode(osStr);
             usageTypeStr = usageTypeStr + "." + db;
+        }
+        else if (operation.startsWith("CreateCacheCluster")) {
+        	// ElastiCache
+        	usageTypeStr = usageTypeStr + InstanceCache.withCode(osStr).usageType;
         }
     	
     	return UsageType.getUsageType(usageTypeStr, "hours");
@@ -369,13 +393,21 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		}
 		
 		public Product(PriceList.Product product, PriceList.Rate onDemandRate, Map<String, PriceList.Term> reservationOfferTerms) {
-			String[] memoryParts = product.getAttribute(Attributes.memory).split(" ");
-			if (!memoryParts[1].toLowerCase().equals("gib"))
-				logger.error("Found PriceList entry with product memory using non-GiB units: " + memoryParts[1] + ", usageType: " + product.getAttribute(Attributes.usagetype));
-			this.memory = Double.parseDouble(memoryParts[0].replace(",", ""));
+			String memory = null;
+			if (product.hasAttribute(Attributes.memory)) {
+				String[] memoryParts = product.getAttribute(Attributes.memory).split(" ");
+				if (!memoryParts[1].toLowerCase().equals("gib"))
+					logger.error("Found PriceList entry with product memory using non-GiB units: " + memoryParts[1] + ", usageType: " + product.getAttribute(Attributes.usagetype));
+				memory = memoryParts[0].replace(",", "");
+			}
+			else if (product.hasAttribute(Attributes.memoryGib)) {
+				memory = product.getAttribute(Attributes.memoryGib);
+			}
+			this.memory = Double.parseDouble(memory);
+					
 			String ecu = product.getAttribute(Attributes.ecu);
 			this.vcpu = Integer.parseInt(product.getAttribute(Attributes.vcpu));
-			this.ecu = ecu.isEmpty() ? 0 : ecu.equals("Variable") ? 3 * this.vcpu : ecu.equals("NA") ? 0 : Double.parseDouble(ecu);
+			this.ecu = ecu.isEmpty() ? 0 : ecu.toLowerCase().equals("variable") ? 3 * this.vcpu : (ecu.equals("NA") || ecu.equals("N/A")) ? 0 : Double.parseDouble(ecu);
 			String nsf = product.getAttribute(Attributes.normalizationSizeFactor);
 			this.normalizationSizeFactor = nsf.isEmpty() ? 1.0 : nsf.equals("NA") ? 1.0 : Double.parseDouble(nsf);
 			this.instanceType = product.getAttribute(Attributes.instanceType);
@@ -567,7 +599,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	none("none"),
     	noUpfront("No Upfront"),
     	partialUpfront("Partial Upfront"),
-    	allUpfront("All Upfront");
+    	allUpfront("All Upfront"),
+    	heavy("Heavy Utilization"),
+    	medium("Medium Utilization"),
+    	light("Light Utilization");
     	
     	public final String name;
     	

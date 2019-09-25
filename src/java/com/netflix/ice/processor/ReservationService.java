@@ -17,16 +17,16 @@
  */
 package com.netflix.ice.processor;
 
+import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
-import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Product;
-import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.ReservationArn;
 
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,15 +35,12 @@ import java.util.Set;
  */
 public interface ReservationService {
 
-    void init() throws Exception;
-    public void shutdown();
-
     /**
-     * Get all tag groups with reservations
+     * Get all tag groups with reservations (Used only for Detailed Billing Report Processing)
      * @param utilization
      * @return
      */
-    Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli);
+    Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli, Product product);
 
     /**
      *
@@ -52,17 +49,17 @@ public interface ReservationService {
     ReservationUtilization getDefaultReservationUtilization(long time);
     
     /*
-     * Get ReservationInfo for the given reservation id
+     * Get ReservationInfo for the given reservation ARN
      */
-    ReservationInfo getReservation(String id);
+    ReservationInfo getReservation(ReservationArn arn);
     
     /*
      * Get the set of reservation IDs that are active for the given time.
      */
-    Set<String> getReservations(long time, Product product);
+    Set<ReservationArn> getReservations(long time, Product product);
 
     /**
-     * Get reservation info.
+     * Get reservation info. (Used only for Detailed Billing Report Processing)
      * @param time
      * @param tagGroup
      * @param utilization
@@ -75,36 +72,19 @@ public interface ReservationService {
             InstancePrices instancePrices);
 
     /**
-     * Some companies may get different price tiers at different times depending on reservation cost.
-     * This method is to get the latest hourly price including amortized upfront for given, time, region and usage type.
-     * @param time
-     * @param region
-     * @param usageType
-     * @param utilization
-     * @return
-     */
-    double getLatestHourlyTotalPrice(
-            long time,
-            Region region,
-            UsageType usageType,
-            PurchaseOption purchaseOption,
-            ServiceCode serviceCode,
-            InstancePrices prices);
-
-    /**
      * Methods to indicate that we have reservations for each corresponding service.
      */
-    boolean hasEc2Reservations();
-    boolean hasRdsReservations();
-    boolean hasRedshiftReservations();
+    boolean hasReservations(Product product);
+    
+    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsById);
 
     public static class ReservationInfo {
-    	public final TagGroup tagGroup;
+    	public final TagGroupRI tagGroup;
         public final int capacity;
         public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
         public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
-        public ReservationInfo(TagGroup tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        public ReservationInfo(TagGroupRI tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
         	this.tagGroup = tagGroup;
             this.capacity = capacity;
             this.upfrontAmortized = upfrontAmortized;
@@ -115,12 +95,12 @@ public interface ReservationService {
     public class ReservationKey implements Comparable<ReservationKey> {
     	public String account;
     	public String region;
-    	public String reservationId;
+    	public String reservationArn;
     	
-    	public ReservationKey(String account, String region, String reservationId) {
+    	public ReservationKey(String account, String region, String reservationArn) {
     		this.account = account;
     		this.region = region;
-    		this.reservationId = reservationId;
+    		this.reservationArn = reservationArn;
     	}
 
 		@Override
@@ -131,7 +111,7 @@ public interface ReservationService {
 	        result = region.compareTo(o.region);
 	        if (result != 0)
 	            return result;
-			return reservationId.compareTo(o.reservationId);
+			return reservationArn.compareTo(o.reservationArn);
 		}
 		
 		@Override
@@ -142,7 +122,7 @@ public interface ReservationService {
 		
 		@Override
 		public int hashCode() {
-			return account.hashCode() * region.hashCode() * reservationId.hashCode();
+			return account.hashCode() * region.hashCode() * reservationArn.hashCode();
 		}
     }
 
@@ -161,25 +141,18 @@ public interface ReservationService {
     }
 
     public static enum ReservationUtilization {
-        HEAVY, 		// The new "No Upfront" Reservations
+        NO, 		// The new "No Upfront" Reservations
         PARTIAL,	// The new "Partial Upfront" Reservations
-        FIXED;		// The new "Full Upfront" Reservations
-
-        static final Map<String, String> reservationTypeMap = new HashMap<String, String>();
-        static {
-            reservationTypeMap.put("ALL", "FIXED");
-            reservationTypeMap.put("PARTIAL", "PARTIAL");
-            reservationTypeMap.put("NO", "HEAVY");
-        }
+        ALL,		// The new "Full Upfront" Reservations
+        HEAVY,		// Heavy utilization still used by ElastiCache
+        MEDIUM,		// Medium utilization still used by ElastiCache
+        LIGHT;		// Light utilization still used by ElastiCache
 
         public static ReservationUtilization get(String offeringType) {
             int idx = offeringType.indexOf(" ");
             if (idx > 0) {
             	// We've been called with a reservationInstance record offering type field
                 offeringType = offeringType.substring(0, idx).toUpperCase();
-                String mappedValue = reservationTypeMap.get(offeringType);
-                if (mappedValue != null)
-                    offeringType = mappedValue;
                 return valueOf(offeringType);
             }
             else {
@@ -194,14 +167,20 @@ public interface ReservationService {
         
         public PurchaseOption getPurchaseOption() {
             switch (this) {
-            case HEAVY:
+            case NO:
             	return PurchaseOption.noUpfront;
             case PARTIAL:
             	return PurchaseOption.partialUpfront;
-            case FIXED:
-            default:
+            case ALL:
             	return PurchaseOption.allUpfront;
+            case HEAVY:
+            	return PurchaseOption.heavy;
+            case MEDIUM:
+            	return PurchaseOption.medium;
+            case LIGHT:
+            	return PurchaseOption.light;
             }
+            return null;
         }
     }
 

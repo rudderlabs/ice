@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor.pricelist;
 
 import java.io.BufferedReader;
@@ -42,7 +59,7 @@ public class PriceList {
 	static public class Product {
 		String sku;
 		String productFamily;
-		protected Map<String, String> attributes;
+		private Map<String, String> attributes;
 		
 		public enum Attributes {
 	        servicecode,
@@ -55,6 +72,7 @@ public class PriceList {
 	        physicalProcessor,
 	        clockSpeed,
 	        memory,
+	        memoryGib,
 	        storage,
 	        io,
 	        networkPerformance,
@@ -75,8 +93,12 @@ public class PriceList {
 		}
 
 		public String getAttribute(Attributes a) {
-			String v = attributes.get(a.toString());
+			String v = attributes.get(a.name());
 			return v == null ? "" : v;
+		}
+		
+		public boolean hasAttribute(Attributes a) {
+			return attributes.containsKey(a.name());
 		}
 
 	}

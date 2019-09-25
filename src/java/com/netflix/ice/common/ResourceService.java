@@ -67,14 +67,6 @@ public abstract class ResourceService {
     abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags);
 
     /**
-     * Get products with resources. See example in SampleMapDbResourceService. This method will be used by UI to list
-     * products with resources.
-     * @return List of list of products. The inner list of products share the same resource groups.
-     * E.g. in SampleMapDbResourceService, for products (ec2, ec2_instance, ebs), the resource group names are application names.
-     */
-    abstract public List<List<Product>> getProductsWithResources();
-
-    /**
      * Commit resource mappings. This method will be called at the end of billing file processing to commit your mappings.
      */
     abstract public void commit();

@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor.kubernetes;
 
 import static org.junit.Assert.*;
@@ -44,7 +61,7 @@ public class KubernetesProcessorTest {
 	private static final int testDataHour = 395;
 
 	private String[] customTagNames = new String[]{ "Cluster", "Role", "Namespace", "Environment" };
-    private ProductService productService = new BasicProductService(null);
+    private ProductService productService = new BasicProductService();
     private ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
     
 	class TestConfig extends ProcessorConfig {
@@ -138,7 +155,7 @@ public class KubernetesProcessorTest {
         @SuppressWarnings("deprecation")
 		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
         
-        ReservationService reservationService = new BasicReservationService(null, null, false);
+        ReservationService reservationService = new BasicReservationService(null, null);
         
         props.setProperty(IceOptions.START_MONTH, "2019-01");
         props.setProperty(IceOptions.WORK_S3_BUCKET_NAME, "foo");
@@ -161,8 +178,7 @@ public class KubernetesProcessorTest {
 	private TagGroup getTagGroup(String clusterName) {
         List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1"));
 
-		Region.US_WEST_2.addZone("us-west-2a");
-		Zone us_west_2a = Zone.getZone("us-west-2a");
+		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
 		Product ec2Instance = productService.getProductByName(Product.ec2Instance);
 		UsageType usageType = UsageType.getUsageType("r5.4xlarge", "hours");
 		

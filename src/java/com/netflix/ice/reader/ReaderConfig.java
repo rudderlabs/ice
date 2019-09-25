@@ -123,6 +123,8 @@ public class ReaderConfig extends Config {
         this.monthlyCacheSize = Integer.parseInt(properties.getProperty(IceOptions.MONTHLY_CACHE_SIZE, "12"));
 
         ReaderConfig.instance = this;
+        
+        productService.initReader(localDir, workS3BucketName, workS3BucketPrefix);
 
         if (throughputMetricService != null)
             throughputMetricService.init();
@@ -251,6 +253,7 @@ public class ReaderConfig extends Config {
     	
     	accountService.updateAccounts(config.getAccounts());
     	updateZones(config.getZones());
+        productService.initReader(localDir, workS3BucketName, workS3BucketPrefix);
     }
     
     private void updateZones(Map<String, List<String>> zones) {
@@ -261,7 +264,7 @@ public class ReaderConfig extends Config {
     			continue;
     		}
     		for (String zoneName: zones.get(regionName))
-    			r.addZone(zoneName);
+    			r.getZone(zoneName);
     	}
     }
 }

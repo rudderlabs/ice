@@ -160,8 +160,8 @@ public class BasicManagers extends Poller implements Managers {
                 product = null;
             }
             else {
-                String name = key.substring((config.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).length());
-                product = config.productService.getProductByFileName(name);
+                String serviceCode = key.substring((config.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).length());
+                product = config.productService.getProductByServiceCode(serviceCode);
             }
             if (!products.contains(product)) {
                 products.add(product);
@@ -179,7 +179,7 @@ public class BasicManagers extends Poller implements Managers {
             	if (consolidateType == ConsolidateType.hourly && !config.hourlyData)
             		continue;
                 
-            	String partialDbName = consolidateType + "_" + (product == null ? "all" : product.getFileName());
+            	String partialDbName = consolidateType + "_" + (product == null ? "all" : product.getServiceCode());
                
                 costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress,
                 		config.monthlyCacheSize, config.accountService, config.productService, null));

@@ -1,8 +1,26 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -13,6 +31,7 @@ import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -43,6 +62,7 @@ public class DataJsonWriter extends DataFile {
 	private JsonFiles fileType;
     private final Map<Product, ReadWriteData> costDataByProduct;
     private final Map<Product, ReadWriteData> usageDataByProduct;
+    protected boolean addNormalizedRates;
     protected InstanceMetrics instanceMetrics;
     protected InstancePrices ec2Prices;
     protected InstancePrices rdsPrices;
@@ -59,8 +79,10 @@ public class DataJsonWriter extends DataFile {
 		this.costDataByProduct = costDataByProduct;
 		this.usageDataByProduct = usageDataByProduct;
 	    this.instanceMetrics = instanceMetrics;
-	    this.ec2Prices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonEC2);
-	    this.rdsPrices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonRDS);
+	    if (fileType == JsonFiles.hourlyWithRates) {
+		    this.ec2Prices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonEC2);
+		    this.rdsPrices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonRDS);
+	    }
 	}
 	
 	// For unit testing
@@ -94,7 +116,10 @@ public class DataJsonWriter extends DataFile {
         	if (product == null)
         		continue;
         	
-        	write(costDataByProduct.get(product), usageDataByProduct.get(product));
+        	if (fileType == JsonFiles.daily)
+            	writeDaily(costDataByProduct.get(product), usageDataByProduct.get(product));
+        	else
+        		write(costDataByProduct.get(product), usageDataByProduct.get(product));
         }
 	}
 	
@@ -111,12 +136,58 @@ public class DataJsonWriter extends DataFile {
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
             	Item item = new Item(dtf.print(monthDateTime.plusHours(i)), costEntry.getKey(), costEntry.getValue(), usageValue);
             	String json = gson.toJson(item);
-            	if (fileType == JsonFiles.bulk)
-            		writer.write("{\"index\":{}}\n");
             	writer.write(json + "\n");
             }
         }
 	}
+	
+	private void writeDaily(ReadWriteData cost, ReadWriteData usage) throws IOException {
+		Gson gson = new GsonBuilder().registerTypeAdapter(ResourceGroup.class, new ResourceGroupSerializer()).create();
+		DateTimeFormatter dtf = ISODateTimeFormat.dateTimeNoMillis();
+		
+        List<Map<TagGroup, Double>> dailyCost = Lists.newArrayList();
+        List<Map<TagGroup, Double>> dailyUsage = Lists.newArrayList();
+        
+        Collection<TagGroup> tagGroups = cost.getTagGroups();
+
+        // Aggregate
+        for (int hour = 0; hour < cost.getNum(); hour++) {
+            // this month, add to weekly, monthly and daily
+            Map<TagGroup, Double> costMap = cost.getData(hour);
+            Map<TagGroup, Double> usageMap = usage.getData(hour);
+
+            for (TagGroup tagGroup: tagGroups) {
+                Double v = costMap.get(tagGroup);
+                if (v != null && v != 0)
+                    addValue(dailyCost, hour/24, tagGroup, v);
+                v = usageMap.get(tagGroup);
+                if (v != null && v != 0)
+                    addValue(dailyUsage, hour/24, tagGroup, v);
+            }
+        }
+        
+        // Write it out
+        for (int day = 0; day < dailyCost.size(); day++) {
+            Map<TagGroup, Double> costMap = dailyCost.get(day);
+            if (costMap.size() == 0)
+            	continue;
+        	
+            Map<TagGroup, Double> usageMap = dailyUsage.get(day);
+            for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
+            	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
+            	Item item = new Item(dtf.print(monthDateTime.plusDays(day)), costEntry.getKey(), costEntry.getValue(), usageValue);
+            	String json = gson.toJson(item);
+            	writer.write(json + "\n");
+            }
+        }
+	}
+	
+    private void addValue(List<Map<TagGroup, Double>> list, int index, TagGroup tagGroup, double v) {
+        Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, index);
+        Double existedV = map.get(tagGroup);
+        map.put(tagGroup, existedV == null ? v : existedV + v);
+    }
+
 	
 	public class ResourceGroupSerializer implements JsonSerializer<ResourceGroup> {
 		public JsonElement serialize(ResourceGroup rg, Type typeOfSrc, JsonSerializationContext context) {
@@ -227,7 +298,7 @@ public class DataJsonWriter extends DataFile {
 			tags = tg.resourceGroup;
 			
 			// EC2 & RDS instances
-			if (tg.product.isEc2Instance() || tg.product.isRdsInstance()) {
+			if (fileType == JsonFiles.hourlyWithRates && (tg.product.isEc2Instance() || tg.product.isRdsInstance())) {
 				instanceFamily = FamilyTag.getFamilyName(tg.usageType.name);
 				normalizedUsage = usage == null ? null : usage * instanceMetrics.getNormalizationFactor(tg.usageType);
 				

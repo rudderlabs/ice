@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor;
 
 import static org.junit.Assert.assertEquals;
@@ -20,8 +37,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -54,7 +69,6 @@ public class BillingFileProcessorTest {
     private static final String cauReportDir = resourcesReportDir + "Oct2017/";
 	private static PriceListService priceListService = null;
 	private static Properties properties;
-	private static ProductService productService;
 	
 
     private static void init(String propertiesFilename) throws Exception {
@@ -62,10 +76,9 @@ public class BillingFileProcessorTest {
 		priceListService = new PriceListService(resourcesDir, null, null);
 		priceListService.init();
         properties = getProperties(propertiesFilename);        
-		productService = new BasicProductService(null);
 		
 		// Add all the zones we need for our test data		
-		Region.AP_SOUTHEAST_2.addZone("ap-southeast-2a");
+		Region.AP_SOUTHEAST_2.getZone("ap-southeast-2a");
     }
     
     
@@ -141,34 +154,20 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	public void testFileData(ReportTest reportTest, String prefix) throws Exception {
-		class BasicTestReservationService extends BasicReservationService {
-			BasicTestReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
-				super(term, defaultUtilization, false);
-			}
-			
-			@Override
-			public void init() {
-				// Overridden so that reservation services don't start up
-			}
-		}
+	public void testFileData(ReportTest reportTest, String prefix, ProductService productService) throws Exception {
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
         ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
-		BasicReservationService reservationService = new BasicTestReservationService(reservationPeriod, reservationUtilization);
+		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
 		
-		@SuppressWarnings("deprecation")
-		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
-				
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
 		            Properties properties,
-		            AWSCredentialsProvider credentialsProvider,
 		            ProductService productService,
 		            ReservationService reservationService,
 		            ResourceService resourceService,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, credentialsProvider, productService, reservationService, resourceService, priceListService, compress);
+				super(properties, null, productService, reservationService, resourceService, priceListService, compress);
 			}
 			
 			@Override
@@ -190,7 +189,6 @@ public class BillingFileProcessorTest {
 		
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,
-										credentialsProvider,
 										productService,
 										reservationService,
 										resourceService,
@@ -207,8 +205,9 @@ public class BillingFileProcessorTest {
         Instances instances = new Instances(null, null, null);
         
 		Long startMilli = config.startDate.getMillis();
-		Map<ReservationKey, CanonicalReservedInstances> reservations = BasicReservationService.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
-		reservationService.updateReservations(reservations, config.accountService, startMilli, productService, resourceService);
+		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
+		ReservationCapacityPoller rcp = new ReservationCapacityPoller(config);
+		rcp.updateReservations(reservations, config.accountService, startMilli, productService, resourceService, reservationService);
 				
 		Long endMilli = reportTest.Process(config, config.startDate, costAndUsageData, instances);
 		    
@@ -218,11 +217,14 @@ public class BillingFileProcessorTest {
         		
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
-    	prices.put(productService.getProductByName(Product.ec2Instance), priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
-    	if (reservationService.hasRdsReservations())
-    		prices.put(productService.getProductByName(Product.rdsInstance), priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
-    	if (reservationService.hasRedshiftReservations())
-    		prices.put(productService.getProductByName(Product.redshift), priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
+    	Product p = productService.getProductByName(Product.ec2Instance);
+    	prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
+    	p = productService.getProductByName(Product.rdsInstance);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
+    	p = productService.getProductByName(Product.redshift);
+    	if (reservationService.hasReservations(p))
+    		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
 
         reportTest.getReservationProcessor().process(config.reservationService, costAndUsageData, null, config.startDate, prices);
         
@@ -335,7 +337,7 @@ public class BillingFileProcessorTest {
 			}
 			int numPrinted = 0;
 			for (TagGroup tg: notFound) {
-				//logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
+				logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
 				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
 					logger.info("Tag not found:   " + tg + ", value: " + expected.get(tg));
 					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
@@ -357,7 +359,7 @@ public class BillingFileProcessorTest {
 			}
 			numPrinted = 0;
 			for (TagGroup tg: extras) {
-				//logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
+				logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
 				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
 					logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
 					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
@@ -367,9 +369,9 @@ public class BillingFileProcessorTest {
 			}
 			if (numNotFound > 0 || numExtra > 0) {
 				logger.info("Hour "+i+" Tags not found: " + numNotFound + ", found " + numFound + ", extra " + numExtra);
-				for (Product a: productService.getProducts()) {
-					logger.info(a.name + ": " + a.hashCode() + ", " + System.identityHashCode(a) + ", " + System.identityHashCode(a.name));
-				}
+//				for (Product a: productService.getProducts()) {
+//					logger.info(a.name + ": " + a.hashCode() + ", " + System.identityHashCode(a) + ", " + System.identityHashCode(a.name));
+//				}
 			}
 			
 			// Compare the values on found tags
@@ -392,7 +394,8 @@ public class BillingFileProcessorTest {
 						}
 					}
 				}
-				logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
+				if (numMismatches > 0)
+					logger.info("Hour "+i+" has " + numMatches + " matches and " + numMismatches + " mismatches");
 				assertEquals("Hour "+i+" has " + numMismatches + " incorrect data values", 0, numMismatches);
 			}
 			assertEquals("Hour "+i+" has " + numNotFound + " tags that were not found", 0, numNotFound);
@@ -425,13 +428,55 @@ public class BillingFileProcessorTest {
 	@Test
 	public void testCostAndUsageReport() throws Exception {
 		init(cauReportDir + "ice.properties");
-		testFileData(new CostAndUsageTest(), "cau-");
+		ProductService productService = new BasicProductService();
+		testFileData(new CostAndUsageTest(), "cau-", productService);
 	}
 	
 	@Test
 	public void testDetailedBillingReport() throws Exception {
 		init(resourcesReportDir + "ice.properties");
-		testFileData(new DetailedBillingReportTest(), "dbr-");
+		ProductService productService = new BasicProductService();
+		// Load products since DBRs don't have product codes (we normally pull them from the pricing service)
+		productService.getProduct("EC2 Instance", "EC2_Instance");
+		productService.getProduct("RDS Instance", "RDS_Instance");
+		productService.getProduct("AWS Support (Developer)", "AWSDeveloperSupport");
+		productService.getProduct("AWS CloudTrail", "AWSCloudTrail");
+		productService.getProduct("AWS Config", "AWSConfig");
+		productService.getProduct("AWS Lambda", "AWSLambda");
+		productService.getProduct("Data Transfer", "Data_Transfer");
+		productService.getProduct("Amazon Simple Queue Service", "AWSQueueService");
+		productService.getProduct("Amazon API Gateway", "AmazonApiGateway");
+		productService.getProduct("AmazonCloudWatch", "AmazonCloudWatch");
+		productService.getProduct("Amazon DynamoDB", "AmazonDynamoDB");
+		productService.getProduct("Amazon Elastic Compute Cloud", "AmazonEC2");
+		productService.getProduct("Elastic Block Storage", "Elastic_Block_Storage");
+		productService.getProduct("Elastic IP", "Elastic_IP");
+		productService.getProduct("Amazon ElastiCache", "AmazonElastiCache");
+		productService.getProduct("Amazon RDS Service", "AmazonRDS");
+		productService.getProduct("Amazon Simple Storage Service", "AmazonS3");
+		productService.getProduct("Amazon Simple Notification Service", "AmazonSNS");
+		productService.getProduct("Amazon Virtual Private Cloud", "AmazonVPC");
+		productService.getProduct("AWS Key Management Service", "awskms");
+		productService.getProduct("Amazon SimpleDB", "AmazonSimpleDB");
+		productService.getProduct("AWS Direct Connect", "AWSDirectConnect");
+		productService.getProduct("Amazon Route 53", "AmazonRoute53");
+		productService.getProduct("Amazon Simple Email Service", "AmazonSES");
+		productService.getProduct("Amazon Glacier", "AmazonGlacier");
+		productService.getProduct("Amazon CloudFront", "AmazonCloudFront");
+		productService.getProduct("Amazon EC2 Container Registry (ECR)", "AmazonECR");
+		productService.getProduct("Amazon Elasticsearch Service", "AmazonES");
+		productService.getProduct("AWS Service Catalog", "AWSServiceCatalog");
+		productService.getProduct("Amazon WorkSpaces", "AmazonWorkSpaces");
+		productService.getProduct("AWS Data Pipeline", "datapipeline");
+		productService.getProduct("Amazon WorkDocs", "AmazonWorkDocs");
+		productService.getProduct("Amazon Elastic MapReduce", "ElasticMapReduce");
+		productService.getProduct("Amazon Mobile Analytics", "mobileanalytics");
+		productService.getProduct("AWS Directory Service", "AWSDirectoryService");
+		productService.getProduct("Amazon Elastic File System", "AmazonEFS");
+		productService.getProduct("Amazon Kinesis", "AmazonKinesis");
+		productService.getProduct("Amazon Redshift", "Redshift");
+				
+		testFileData(new DetailedBillingReportTest(), "dbr-", productService);
 	}
 	
 }

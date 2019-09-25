@@ -24,6 +24,7 @@ import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.common.collect.Maps;
+import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -128,20 +129,36 @@ public class BillingFileProcessor extends Poller {
             
             // Get the reservation processor from the first report
             ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
+            ReservationService reservationService = costAndUsageData.hasReservations() ? new BasicReservationService(costAndUsageData.getReservations()) : config.reservationService;
 
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
-        	prices.put(config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
-        	if (config.reservationService.hasRdsReservations())
-        		prices.put(config.productService.getProductByName(Product.rdsInstance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRDS));
-        	if (config.reservationService.hasRedshiftReservations())
-        		prices.put(config.productService.getProductByName(Product.redshift), config.priceListService.getPrices(dataTime, ServiceCode.AmazonRedshift));
-
-        	reservationProcessor.process(config.reservationService, costAndUsageData, null, dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.rdsInstance), dataTime, prices);
-        	reservationProcessor.process(config.reservationService, costAndUsageData, config.productService.getProductByName(Product.redshift), dataTime, prices);
-            
+        	for (ServiceCode sc: ServiceCode.values()) {
+        		// EC2 and RDS Instances are broken out into separate products, so need to grab those
+        		Product prod = null;
+        		switch (sc) {
+        		case AmazonEC2:
+            		prod = config.productService.getProductByName(Product.ec2Instance);
+            		break;
+        		case AmazonRDS:
+        			prod = config.productService.getProductByName(Product.rdsInstance);
+        			break;
+        		default:
+        			prod = config.productService.getProductByServiceCode(sc.name());
+        			break;
+        		}
+        		
+            	if (reservationService.hasReservations(prod)) {
+            		if (!costAndUsageData.hasReservations()) {
+            			// Using reservation data pulled from accounts. Need to also have pricing data
+            			prices.put(prod, config.priceListService.getPrices(dataTime, sc));
+            		}
+                	reservationProcessor.process(reservationService, costAndUsageData, prod, dataTime, prices);
+            	}
+        	}
+        	
+        	reservationProcessor.process(reservationService, costAndUsageData, null, dataTime, prices);
+        	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
@@ -149,12 +166,11 @@ public class BillingFileProcessor extends Poller {
             KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
 
-            /***** Debugging */
-//            used = costMap.get(redshiftHeavyTagGroup);
-//            logger.info("First hour cost is " + used + " for " + redshiftHeavyTagGroup + " after reservation processing");
-
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
+            
+            logger.info("archive product list...");
+            config.productService.archive(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
             costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);

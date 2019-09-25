@@ -1,3 +1,20 @@
+/*
+ *
+ *  Copyright 2013 Netflix, Inc.
+ *
+ *     Licensed under the Apache License, Version 2.0 (the "License");
+ *     you may not use this file except in compliance with the License.
+ *     You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ *
+ */
 package com.netflix.ice.processor;
 
 import java.util.ArrayList;
@@ -9,10 +26,13 @@ import org.joda.time.DateTime;
 
 import com.amazonaws.services.ec2.model.ReservedInstances;
 import com.amazonaws.services.ec2.model.Tag;
+import com.amazonaws.services.elasticache.model.ReservedCacheNode;
+import com.amazonaws.services.elasticsearch.model.ReservedElasticsearchInstance;
 import com.amazonaws.services.rds.model.ReservedDBInstance;
 import com.amazonaws.services.redshift.model.ReservedNode;
 import com.google.common.collect.Lists;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.tag.Product;
 
 /*
  * CanonicalReservedInstances is a universal representation of a reserved instance.
@@ -174,7 +194,7 @@ public class CanonicalReservedInstances {
 
     public CanonicalReservedInstances(String accountId, String region, ReservedInstances ri, String parentReservationId) {
 		this.accountId = accountId;
-        this.product = "EC2";
+        this.product = Product.ec2;
         this.region = region;
         this.reservationId = ri.getReservedInstancesId();
         this.reservationOfferingId = "";
@@ -203,7 +223,7 @@ public class CanonicalReservedInstances {
     
     public CanonicalReservedInstances(String accountId, String region, ReservedDBInstance ri) {
 		this.accountId = accountId;
-        this.product = "RDS";
+        this.product = Product.rds;
         this.region = region;
         this.reservationId = ri.getReservedDBInstanceId();
         this.reservationOfferingId = ri.getReservedDBInstancesOfferingId();
@@ -232,7 +252,7 @@ public class CanonicalReservedInstances {
 
     public CanonicalReservedInstances(String accountId, String region, ReservedNode ri) {
 		this.accountId = accountId;
-        this.product = "Redshift";
+        this.product = Product.redshift;
         this.region = region;
         this.reservationId = ri.getReservedNodeId();
         this.reservationOfferingId = ri.getReservedNodeOfferingId();
@@ -257,6 +277,62 @@ public class CanonicalReservedInstances {
         }
         this.parentReservationId = null;
         this.tags = Lists.newArrayList();
+    }
+    
+    public CanonicalReservedInstances(String accountId, String region, ReservedElasticsearchInstance ri) {
+    	this.accountId = accountId;
+    	this.product = Product.elasticsearch;
+    	this.region = region;
+    	this.reservationId = ri.getReservedElasticsearchInstanceId();
+    	this.instanceType = ri.getElasticsearchInstanceType();
+    	this.scope = "";
+    	this.availabilityZone = "";
+    	this.multiAZ = false;
+    	this.start = ri.getStartTime();
+    	this.end = new Date(start.getTime() + ri.getDuration() * 1000L);
+    	this.duration = new Long(ri.getDuration());
+    	this.usagePrice = ri.getUsagePrice();
+    	this.fixedPrice = ri.getFixedPrice();
+    	this.instanceCount = ri.getElasticsearchInstanceCount();
+    	this.productDescription = "";
+    	this.state = ri.getState();
+    	this.currencyCode = ri.getCurrencyCode();
+    	this.offeringType = "";
+    	this.offeringClass = null;
+    	this.recurringCharges = Lists.newArrayList();
+    	for (com.amazonaws.services.elasticsearch.model.RecurringCharge rc: ri.getRecurringCharges()) {
+    		this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
+    	}
+    	this.parentReservationId = null;
+    	this.tags = Lists.newArrayList();
+    }
+    
+    public CanonicalReservedInstances(String accountId, String region, ReservedCacheNode ri) {
+    	this.accountId = accountId;
+    	this.product = Product.elastiCache;
+    	this.region = region;
+    	this.reservationId = ri.getReservedCacheNodeId();
+    	this.instanceType = ri.getCacheNodeType();
+    	this.scope = "";
+    	this.availabilityZone = "";
+    	this.multiAZ = false;
+    	this.start = ri.getStartTime();
+    	this.end = new Date(start.getTime() + ri.getDuration() * 1000L);
+    	this.duration = new Long(ri.getDuration());
+    	this.usagePrice = ri.getUsagePrice();
+    	this.fixedPrice = ri.getFixedPrice();
+    	this.instanceCount = ri.getCacheNodeCount();
+    	this.productDescription = ri.getProductDescription();
+    	this.state = ri.getState();
+    	this.currencyCode = "";
+    	this.offeringType = ri.getOfferingType();
+    	this.offeringClass = null;
+    	this.recurringCharges = Lists.newArrayList();
+    	for (com.amazonaws.services.elasticache.model.RecurringCharge rc: ri.getRecurringCharges()) {
+    		this.recurringCharges.add(new RecurringCharge(rc.getRecurringChargeFrequency(), rc.getRecurringChargeAmount()));
+    	}
+    	this.parentReservationId = null;
+    	this.tags = Lists.newArrayList();
     }
 
     public CanonicalReservedInstances(String csv) {
@@ -536,18 +612,10 @@ public class CanonicalReservedInstances {
     	return String.join(",", fields);
     }
 	
-	public boolean isEC2() {
-		return product.equals("EC2");
+	public boolean isProduct(String product) {
+		return this.product.equals(product);
 	}
-	
-	public boolean isRDS() {
-		return product.equals("RDS");
-	}
-	
-	public boolean isRedshift() {
-		return product.equals("Redshift");
-	}
-	
+		
 	public double getRecurringHourlyCharges() {
 		double charge = 0.0;
     	for (RecurringCharge rc: recurringCharges) {

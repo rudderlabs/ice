@@ -30,6 +30,13 @@ import com.amazonaws.services.organizations.model.ListAccountsRequest;
 import com.amazonaws.services.organizations.model.ListAccountsResult;
 import com.amazonaws.services.organizations.model.ListTagsForResourceRequest;
 import com.amazonaws.services.organizations.model.ListTagsForResourceResult;
+import com.amazonaws.services.pricing.AWSPricing;
+import com.amazonaws.services.pricing.AWSPricingClientBuilder;
+import com.amazonaws.services.pricing.model.DescribeServicesRequest;
+import com.amazonaws.services.pricing.model.DescribeServicesResult;
+import com.amazonaws.services.pricing.model.GetAttributeValuesRequest;
+import com.amazonaws.services.pricing.model.GetAttributeValuesResult;
+import com.amazonaws.services.pricing.model.Service;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
@@ -46,7 +53,9 @@ import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ClientConfiguration;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.netflix.ice.tag.Region;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -58,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -259,6 +269,45 @@ public class AwsUtils {
         	if (organizations != null)
         		organizations.shutdown();
         }
+    }
+    
+    /*
+     * Return a map of the AWS Service names using the serviceCode as the map keys
+     */
+    public static Map<String, String> getAwsServiceNames() {
+    	// Pricing API gets throttled, so use the Organizations retry policy here as well.
+    	AWSPricing pricing = AWSPricingClientBuilder.standard()
+    			.withClientConfiguration(AwsUtils.clientConfig)
+    			.withRegion(Region.US_EAST_1.name)
+    			.withCredentials(AwsUtils.awsCredentialsProvider)
+    			.withClientConfiguration(clientConfigOrganizationsTags)
+    			.build();
+    	
+    	DescribeServicesRequest request = new DescribeServicesRequest();
+    	List<Service> services = Lists.newLinkedList();
+    	DescribeServicesResult page = null;
+    	do {
+            if (page != null)
+                request.setNextToken(page.getNextToken());
+    		page = pricing.describeServices(request);
+    		services.addAll(page.getServices());
+    	} while (page.getNextToken() != null);
+     	
+    	Map<String, String> serviceNames = Maps.newHashMap();
+    	final String servicename = "servicename";
+		GetAttributeValuesRequest req = new GetAttributeValuesRequest();
+    	for (Service s: services) {
+    		String name = null;
+    		if (s.getAttributeNames().contains(servicename)) {
+	    		req.setServiceCode(s.getServiceCode());
+	    		req.setAttributeName(servicename);
+	    		GetAttributeValuesResult result = pricing.getAttributeValues(req);
+	    		if (!result.getAttributeValues().isEmpty())
+	    			name = result.getAttributeValues().get(0).getValue();
+    		}
+    		serviceNames.put(s.getServiceCode(), name);
+    	}
+    	return serviceNames;
     }
     
 

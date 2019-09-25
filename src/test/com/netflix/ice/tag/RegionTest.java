@@ -15,26 +15,28 @@
  *     limitations under the License.
  *
  */
-package com.netflix.ice.processor;
+package com.netflix.ice.tag;
 
-import java.util.List;
-import java.util.TreeMap;
+import static org.junit.Assert.*;
 
-import org.joda.time.DateTime;
+import org.junit.Test;
 
-/*
- * Monthly cost and usage data
- */
-public interface MonthlyReportProcessor {
-	public TreeMap<DateTime, List<MonthlyReport>> getReportsToProcess();
+public class RegionTest {
+
+	@Test
+	public void testGetZone() {
+		Zone zone = Region.US_WEST_2.getZone("us-west-2a");
+		assertEquals("Wrong region", "us-west-2", zone.region.name);
+		
+		zone = Region.US_WEST_2.getZone("us-west-2");
+		assertNull("Returned non-null zone", zone);
+		
+		zone = Region.US_WEST_2.getZone("eu-west-1");
+		assertNull("Returned non-null zone", zone);
+		
+		zone = Region.EU_WEST_1.getZone("eu-west-1a");
+		assertEquals("Wrong zone", "eu-west-1a", zone.name);
+		assertEquals("Wrong region", "eu-west-1", zone.region.name);		
+	}
 	
-	abstract public long downloadAndProcessReport(
-			DateTime dataTime,
-			MonthlyReport report,
-			String localDir,
-			long lastProcessed,
-			CostAndUsageData costAndUsageData,
-		    Instances instances) throws Exception;
-
-	abstract public ReservationProcessor getReservationProcessor();
 }

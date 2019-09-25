@@ -4,6 +4,7 @@
 accounts:
   - name: account1
     id: 123456789011
+    # riProducts values are: ec2, rds, redshift, es, ec
     riProducts: [ec2, rds]
     role: ice
     externalId:

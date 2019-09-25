@@ -36,57 +36,19 @@ public class Zone extends Tag {
     
     // addZone should only be called by Region.addZone()
     protected static Zone addZone(Region region, String name) {
+    	if (name.isEmpty() || name.equals(region.name))
+    		return null;
+    	
+    	// Make sure we have a lower-case letter for the zone
+        if (!region.name.equals(name.substring(0, name.length()-1)) || !Character.isLowerCase(name.charAt(name.length()-1))) {
+        	logger.error("Attempt to add zone with invalid name to region " + region + ": " + name);
+            return null;
+        }
+        
     	zonesByName.putIfAbsent(name, new Zone(region, name));
     	return zonesByName.get(name);
     }
-    
-    private static boolean isZone(String name) {
-    	// check that last character is lower-case letter
-    	return !name.isEmpty() && Character.isLowerCase(name.charAt(name.length()-1));
-    }
-    
-    public static Zone getZone(String name, Region region) {
-        if (!isZone(name))
-            return null;
         
-        // sanity check on zone name
-    	String regionName = name.substring(0, name.length() - 1);
-    	if (!regionName.equals(region.name)) {
-    		logger.error("getZone called with non-matching region, zone: " + name + ", region: " + region);
-    		return null;
-    	}
-        Zone zone = zonesByName.get(name);
-        if (zone == null) {
-			logger.info("Add unknown zone: " + name + " to region: " + region.name);
-            zonesByName.putIfAbsent(name, new Zone(region, name));
-            zone = zonesByName.get(name);
-        }
-    	if (zone == null) {
-        	logger.error("Unknown zone: " + name + " in region: " + region.name);
-    	}
-        return zone;
-    }
-
-    public static Zone getZone(String name) {
-        if (!isZone(name))
-            return null;
-        
-        Zone zone = zonesByName.get(name);
-        if (zone == null) {
-        	String regionName = name.substring(0, name.length() - 1);
-        	Region region = Region.getRegionByName(regionName);
-        	if (region != null) {
-    			logger.info("Add unknown zone: " + name + " to region: " + regionName);
-        		region.addZone(name);
-        		zone = zonesByName.get(name);
-        	}
-        }
-    	if (zone == null) {
-        	logger.error("Unknown zone: " + name);
-    	}
-        return zone;
-    }
-
     public static Collection<Zone> getZones() {
         return zonesByName.values();
     }

@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 public class UsageType extends Tag {
 	private static final long serialVersionUID = 1L;
 	//private static final Logger logger = LoggerFactory.getLogger(UsageType.class);
+	public static final String multiAZ = ".multiaz";
     public final String unit;
 
     private UsageType (String name, String unit) {
@@ -79,5 +80,9 @@ public class UsageType extends Tag {
         for (String name: names)
             result.add(usageTypes.get(name));
         return result;
+    }
+    
+    public boolean isMultiAZ() {
+    	return name.contains(multiAZ);
     }
 }
