@@ -154,13 +154,13 @@ public class BasicReservationService implements ReservationService {
     /*
      * The following methods are used exclusively by Detailed Billing Report Reservation Processor
      */
-    public Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli) {
+    public Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli, Product product) {
     	// Only return tagGroups with active reservations for the requested start time
     	Set<TagGroup> tagGroups = Sets.newHashSet();
     	for (TagGroup t: reservations.get(utilization).keySet()) {
     		List<Reservation> resList = reservations.get(utilization).get(t);
     		for (Reservation r: resList) {
-	            if (startMilli >= r.start && startMilli < r.end) {
+	            if (startMilli >= r.start && startMilli < r.end && (product == null || r.tagGroup.product == product)) {
 	            	tagGroups.add(t);
 	            	break;
 	            }

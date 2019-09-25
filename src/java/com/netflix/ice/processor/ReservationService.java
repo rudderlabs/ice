@@ -40,7 +40,7 @@ public interface ReservationService {
      * @param utilization
      * @return
      */
-    Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli);
+    Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli, Product product);
 
     /**
      *

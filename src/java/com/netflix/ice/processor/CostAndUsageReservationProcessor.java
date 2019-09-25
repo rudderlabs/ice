@@ -110,7 +110,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    
 	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: usageMap.keySet()) {
-	    	if (!(tagGroup instanceof TagGroupRI))
+	    	if (!(tagGroup instanceof TagGroupRI) || (product != null && product != tagGroup.product))
 	    		continue;
 	    	
 	    	riTagGroups.add((TagGroupRI) tagGroup);

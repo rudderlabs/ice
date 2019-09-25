@@ -421,10 +421,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		ReadWriteData costData = data.getCost(product);
 		
         for (ReservationUtilization utilization: ReservationUtilization.values()) {
-			if (reservationService.getTagGroups(utilization, startMilli).size() == 0)
+			if (reservationService.getTagGroups(utilization, startMilli, product).size() == 0)
 				continue;
 			
-	    	logger.info("---------- Process " + (product == null ? "Non-resource" : product) + " data with " + reservationService.getTagGroups(utilization, startMilli).size() + " reservations for utilization: " + utilization);
+	    	logger.info("---------- Process " + (product == null ? "Non-resource" : product) + " data with " + reservationService.getTagGroups(utilization, startMilli, product).size() + " reservations for utilization: " + utilization);
 	
 	    	processAvailabilityZoneReservations(utilization, reservationService, usageData, costData, startMilli);
 			if (debugHour >= 0)
@@ -450,7 +450,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		// that same usage type.
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
-		reservations.addAll(reservationService.getTagGroups(utilization, startMilli));
+		reservations.addAll(reservationService.getTagGroups(utilization, startMilli, product));
 		
 		if (debugHour >= 0)
 			logger.info("--------------- processAvailabilityZoneReservations ----------- " + reservations.size() + " reservations");
@@ -541,6 +541,9 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			Long startMilli,
 			Set<TagGroup> reservationTagGroups,
 			boolean regional) {
+		
+		if (product != null && !product.isEc2Instance())
+			return;
 
 		Operation bonusOperation = Operation.getBonusReservedInstances(utilization);
 		
@@ -601,7 +604,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		// Regional reservations include RDS and Redshift products.
 		SortedSet<TagGroup> reservationTagGroups = Sets.newTreeSet();
 		SortedSet<TagGroup> reservations = Sets.newTreeSet();
-		reservations.addAll(reservationService.getTagGroups(utilization, startMilli));
+		reservations.addAll(reservationService.getTagGroups(utilization, startMilli, product));
 		if (debugHour >= 0)
 			logger.info("--------------- processRegionalReservations ----------- " + reservations.size() + " reservations");
 		for (TagGroup tagGroup: reservations) {
@@ -614,7 +617,9 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	        TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(utilization), tagGroup.usageType, riResourceGroup);
 	        
 	        InstancePrices instancePrices = prices.get(tagGroup.product);
-	        double onDemandRate = instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
+	        if (instancePrices == null)
+	        	logger.error("No prices for product: " + tagGroup.product + ", have prices for: " + prices.keySet().toString());
+	        double onDemandRate = instancePrices == null ? 0 : instancePrices.getOnDemandRate(tagGroup.region, tagGroup.usageType);
 			
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
