@@ -45,6 +45,15 @@ public class ProductTest {
 	}
 	
 	@Test
+	public void testCanonicalName() {
+		String c = Product.canonicalName("Name (with extra, junk)");
+		assertEquals("Name not cleaned up", "Name", c);
+		
+		c = Product.canonicalName("name,with,commas");
+		assertEquals("Name with commas not fixed", "name-with-commas", c);
+	}
+	
+	@Test
 	public void testOverrideFromCanonicalName() {
 		Product product = new Product(Product.getOverride("Product"), "Code", Source.pricing);
 		assertEquals("Wrong product name", "Product (P)", product.name);

@@ -1013,7 +1013,9 @@ class DashboardController {
 			DateTime curYear = curMonth.withDayOfYear(1);
 			int daysOfData = getManagers().getUsageManager(null, ConsolidateType.daily).getDataLength(curYear);
 			if (interval.getEnd().getDayOfYear() > daysOfData) {
-				interval = new Interval(interval.getStart(), curMonth.withDayOfYear(1).plusDays(daysOfData));
+				DateTime start = interval.getStart();
+				DateTime dataEndDay = curMonth.withDayOfYear(1).plusDays(daysOfData);
+				interval = new Interval(start, dataEndDay.isBefore(start) ? start : dataEndDay);
 			}
 		}
 		return interval;	

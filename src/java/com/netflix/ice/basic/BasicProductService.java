@@ -17,13 +17,6 @@
  */
 package com.netflix.ice.basic;
 
-import com.amazonaws.services.pricing.AWSPricing;
-import com.amazonaws.services.pricing.AWSPricingClientBuilder;
-import com.amazonaws.services.pricing.model.DescribeServicesRequest;
-import com.amazonaws.services.pricing.model.DescribeServicesResult;
-import com.amazonaws.services.pricing.model.GetAttributeValuesRequest;
-import com.amazonaws.services.pricing.model.GetAttributeValuesResult;
-import com.amazonaws.services.pricing.model.Service;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
@@ -31,8 +24,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Product.Source;
-import com.netflix.ice.tag.Region;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -248,8 +239,13 @@ public class BasicProductService implements ProductService {
 
     public List<Product> getProducts(List<String> names) {
     	List<Product> result = Lists.newArrayList();
-    	for (String name: names)
-    	    result.add(productsByName.get(name));
+    	for (String name: names) {
+    		Product p = productsByName.get(name);
+    		if (p == null)
+    			logger.error("Unable to find product by name: " + name);
+    		else
+    	    	result.add(p);
+    	}
     	return result;
     }
 

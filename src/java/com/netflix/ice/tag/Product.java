@@ -92,7 +92,7 @@ public class Product extends Tag {
    
     static {
     	productsWithoutResourceTags = Sets.newHashSet();
-    	// Canonical names for products that do not their own resource tagging.
+    	// Canonical names for products that do not have their own resource tagging.
     	// e.g. Data Transfer tags are actually those from S3 or EC2. There are no Data Transfer resources.
     	String[] names = new String[]{
     			"AppSync",
@@ -100,7 +100,7 @@ public class Product extends Tag {
     			cloudWatch,
     			"Config",
     			dataTransfer,
-    			"EC2 Container Registry (ECR)",
+    			"EC2 Container Registry",
     	};
     	for (String name: names) {
     		productsWithoutResourceTags.add(name);
@@ -129,13 +129,21 @@ public class Product extends Tag {
     	this.source = source;
     }
 
-    private static String canonicalName(String name) {
+    protected static String canonicalName(String name) {
     	String s = name;
     	// Strip off "Amazon" or "AWS"
     	if (s.startsWith("Amazon"))
     		s = s.substring("Amazon".length()).trim();
     	else if (s.startsWith("AWS"))
     		s = s.substring("AWS".length()).trim();
+    	// Strip off any parenthetical portions
+    	//   e.g. "EC2 Container Registry (ECR)" or "Contact Center Telecommunications (service sold by AMCS, LLC)"
+    	if (s.indexOf("(") > 0) {
+    		s = s.substring(0, s.indexOf("(")).trim();
+    	}
+    	// Make sure there are no commas
+    	if (s.contains(","))
+    		s = s.replace(",", "-");
     	return s;
     }
     
