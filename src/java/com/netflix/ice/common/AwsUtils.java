@@ -26,10 +26,18 @@ import com.amazonaws.retry.RetryPolicy;
 import com.amazonaws.services.organizations.AWSOrganizations;
 import com.amazonaws.services.organizations.AWSOrganizationsClientBuilder;
 import com.amazonaws.services.organizations.model.Account;
+import com.amazonaws.services.organizations.model.ListAccountsForParentRequest;
+import com.amazonaws.services.organizations.model.ListAccountsForParentResult;
 import com.amazonaws.services.organizations.model.ListAccountsRequest;
 import com.amazonaws.services.organizations.model.ListAccountsResult;
+import com.amazonaws.services.organizations.model.ListOrganizationalUnitsForParentRequest;
+import com.amazonaws.services.organizations.model.ListOrganizationalUnitsForParentResult;
+import com.amazonaws.services.organizations.model.ListRootsRequest;
+import com.amazonaws.services.organizations.model.ListRootsResult;
 import com.amazonaws.services.organizations.model.ListTagsForResourceRequest;
 import com.amazonaws.services.organizations.model.ListTagsForResourceResult;
+import com.amazonaws.services.organizations.model.OrganizationalUnit;
+import com.amazonaws.services.organizations.model.Root;
 import com.amazonaws.services.pricing.AWSPricing;
 import com.amazonaws.services.pricing.AWSPricingClientBuilder;
 import com.amazonaws.services.pricing.model.DescribeServicesRequest;
@@ -269,6 +277,83 @@ public class AwsUtils {
         	if (organizations != null)
         		organizations.shutdown();
         }
+    }
+    
+    public static Map<String, List<String>> getAccountParents(String payerAccountId, String assumeRole, String externalId, String rootName) {
+    	AWSOrganizations organizations = null;
+        try {
+            if (!StringUtils.isEmpty(payerAccountId) && !StringUtils.isEmpty(assumeRole)) {
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId))
+            						.withClientConfiguration(clientConfigOrganizationsTags)
+            						.build();
+            }
+            else {
+            	organizations = AWSOrganizationsClientBuilder.standard()
+            						.withRegion(AwsUtils.workS3BucketRegion)
+            						.withCredentials(awsCredentialsProvider)
+            						.withClientConfiguration(clientConfigOrganizationsTags)
+            						.build();
+            }
+            
+        	Map<String, List<String>> accountParents = Maps.newHashMap();
+        	
+        	// Get the roots for the account (should be one)
+        	ListRootsRequest request = new ListRootsRequest();
+        	ListRootsResult page = null;
+        	List<Root> roots = Lists.newArrayList();
+        	do {
+        		if (page != null)
+        			request.setNextToken(page.getNextToken());
+	        	page = organizations.listRoots(request);
+	        	roots.addAll(page.getRoots());
+        	} while (page.getNextToken() != null);
+        	
+        	for (Root r: roots) {
+        		
+            	// Recursively walk the tree of organizational Units to find all the accounts
+        		List<String> parents = Lists.newArrayList();
+        		if (rootName != null && !rootName.isEmpty())
+        			parents.add(rootName);
+        		processOrgNode(accountParents, organizations, r.getId(), parents);           	
+        	}
+        	        	
+        	return accountParents;
+        }
+        finally {
+        	if (organizations != null)
+        		organizations.shutdown();
+        }
+    }
+    
+    private static void processOrgNode(Map<String, List<String>> accountParents, AWSOrganizations organizations, String orgId, List<String> parents) {
+    	// Add the accounts for this node
+    	ListAccountsForParentRequest request = new ListAccountsForParentRequest().withParentId(orgId);
+    	ListAccountsForParentResult page = null;
+        do {
+            if (page != null)
+                request.setNextToken(page.getNextToken());
+            page = organizations.listAccountsForParent(request);
+        	for (Account a: page.getAccounts()) {
+        		accountParents.put(a.getId(), parents);
+        	}
+
+        } while (page.getNextToken() != null);
+        
+    	// Process each of the OUs
+        ListOrganizationalUnitsForParentRequest ouRequest = new ListOrganizationalUnitsForParentRequest().withParentId(orgId);
+        ListOrganizationalUnitsForParentResult ouPage = null;
+        do {
+        	if (ouPage != null)
+        		ouRequest.setNextToken(ouPage.getNextToken());
+        	ouPage = organizations.listOrganizationalUnitsForParent(ouRequest);
+        	for (OrganizationalUnit ou: ouPage.getOrganizationalUnits()) {
+            	List<String> newParents = Lists.newArrayList(parents);
+            	newParents.add(ou.getName());
+            	processOrgNode(accountParents, organizations, ou.getId(), newParents);
+        	}
+        } while (ouPage.getNextToken() != null);
     }
     
     /*

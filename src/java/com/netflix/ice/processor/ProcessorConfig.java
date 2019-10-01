@@ -72,6 +72,7 @@ public class ProcessorConfig extends Config {
     public final String[] billingS3BucketPrefixes;
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
+    public final String[] rootNames;
     public final String[] kubernetesAccountIds;
     public final String[] kubernetesS3BucketNames;
     public final String[] kubernetesS3BucketRegions;
@@ -133,6 +134,7 @@ public class ProcessorConfig extends Config {
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        rootNames = properties.getProperty(IceOptions.ROOT_NAME, "").split(",");
         kubernetesS3BucketNames = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, "").split(",");
         kubernetesS3BucketRegions = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, "").split(",");
         kubernetesS3BucketPrefixes = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, "").split(",");
@@ -319,11 +321,17 @@ public class ProcessorConfig extends Config {
             String accountId = billingAccountIds[i];
             String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
             String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+            String rootName = rootNames.length > i ? rootNames[i] : "";
             
             // Only process each payer account once. Can have two if processing both DBRs and CURs
             if (done.contains(accountId))
             	continue;            
             done.add(accountId);
+            
+            logger.info("Get account/organizational unit hierarchy for " + accountId +
+            		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
+            
+            Map<String, List<String>> accountParents = AwsUtils.getAccountParents(accountId, assumeRole, externalId, rootName);
             
             logger.info("Get accounts for organization " + accountId +
             		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
@@ -331,7 +339,7 @@ public class ProcessorConfig extends Config {
             for (Account a: accounts) {
             	// Get tags for the account
             	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), accountId, assumeRole, externalId);
-            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), tags, customTags);
+            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), tags, customTags);
             	result.put(ac.getId(), ac);
             	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
             }
@@ -396,7 +404,7 @@ public class ProcessorConfig extends Config {
                     riProducts = Lists.newArrayList(products);
                 }
                 String awsName = orgAccounts.containsKey(id) ? orgAccounts.get(id).getAwsName() : null;
-                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, riProducts, role, externalId));
+                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, null, riProducts, role, externalId));
     			logger.warn("Using ice.properties config for account " + id + ": " + accountName);
             }
         }

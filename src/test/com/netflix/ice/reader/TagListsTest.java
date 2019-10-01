@@ -36,7 +36,7 @@ import com.netflix.ice.tag.UsageType;
 
 public class TagListsTest {
 	Account[] accounts = new Account[]{
-			new Account("123456789012", "Account1")
+			new Account("123456789012", "Account1", null)
 	};
 	List<String> regions = Lists.newArrayList(new String[]{"us-east-1"});
 	ProductService ps = new BasicProductService();

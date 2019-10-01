@@ -43,7 +43,7 @@ public class BasicAccountService implements AccountService {
     // Constructor used by the processor
     public BasicAccountService(Map<String, AccountConfig> configs) {
     	for (AccountConfig a: configs.values()) {
-			Account account = new Account(a.id, a.name, a.awsName);
+			Account account = new Account(a.id, a.name, a.awsName, a.parents);
 			accountsByName.put(a.name, account);
 			accountsById.put(a.id, account);
 			if (a.riProducts != null && a.riProducts.size() > 0) {
@@ -101,7 +101,7 @@ public class BasicAccountService implements AccountService {
     public Account getAccountById(String accountId) {
         Account account = accountsById.get(accountId);
         if (account == null) {
-            account = new Account(accountId, accountId);
+            account = new Account(accountId, accountId, null);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
             logger.info("getAccountById() created account " + accountId + "=\"" + account.name + "\".");
@@ -117,7 +117,7 @@ public class BasicAccountService implements AccountService {
             account = accountsById.get(accountName);
         }
         if (account == null) {
-            account = new Account(accountName, accountName);
+            account = new Account(accountName, accountName, null);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
             logger.info("getAccountByName() created account " + accountName + ".");

@@ -182,7 +182,7 @@ public class BasicResourceServiceTest {
 		rs.putDefaultTags("12345", defaultTags);
 		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
-		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest"), null, ps.getProductByName(Product.ec2Instance), li, 0);
+		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProductByName(Product.ec2Instance), li, 0);
 		UserTag[] userTags = resourceGroup.getUserTags();
 		assertEquals("default resource group not set", userTags[0].name, "Prod");
 	}

@@ -78,7 +78,7 @@ public class ReadWriteDataTest {
         for (String name: p.stringPropertyNames()) {
             if (name.startsWith("ice.account.")) {
                 String accountName = name.substring("ice.account.".length());
-                accounts.add(new Account(p.getProperty(name), accountName));
+                accounts.add(new Account(p.getProperty(name), accountName, null));
             }
         }
 		as = new BasicAccountService(accounts);

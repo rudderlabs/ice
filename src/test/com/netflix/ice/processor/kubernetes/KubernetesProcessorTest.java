@@ -116,7 +116,7 @@ public class KubernetesProcessorTest {
 		@Override
 	    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
 			Map<String, AccountConfig> accounts = Maps.newHashMap();
-			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null));
+			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null, null));
 			return accounts;
 		}
 		
@@ -176,7 +176,7 @@ public class KubernetesProcessorTest {
 	}
 	
 	private TagGroup getTagGroup(String clusterName) {
-        List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1"));
+        List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1", null));
 
 		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
 		Product ec2Instance = productService.getProductByName(Product.ec2Instance);

@@ -35,8 +35,8 @@ public class BasicAccountServiceTest {
 	public void testAccountConfigMapConstructor() {
 		Map<String, AccountConfig> configs = Maps.newHashMap();
 		
-		configs.put("123456789012", new AccountConfig("123456789012", "account1", "account 1", Lists.newArrayList("ec2"), "role", "12345"));
-		configs.put("234567890123", new AccountConfig("234567890123", "account2", "account 2", null, null, null));
+		configs.put("123456789012", new AccountConfig("123456789012", "account1", "account 1", Lists.newArrayList("Org"), Lists.newArrayList("ec2"), "role", "12345"));
+		configs.put("234567890123", new AccountConfig("234567890123", "account2", "account 2", null, null, null, null));
 		BasicAccountService bas = new BasicAccountService(configs);
 		
 		assertEquals("Wrong number of accounts", 2, bas.getAccounts().size());
@@ -44,11 +44,13 @@ public class BasicAccountServiceTest {
 		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").id);
 		assertEquals("Wrong number of accounts with reserved instances", 1, bas.getReservationAccounts().size());
 		assertEquals("Wrong number of reserved instance products", 1, bas.getReservationAccounts().values().iterator().next().size());
+		assertEquals("Wrong number of account parents", 1, bas.getAccountById("123456789012").parents.size());
+		assertEquals("Wrong root name for account parent", "Org", bas.getAccountById("123456789012").parents.get(0));
 	}
 	
 	@Test
 	public void testAccountListConstructor() {
-		Account a = new Account("123456789012", "account1");
+		Account a = new Account("123456789012", "account1", null);
 		BasicAccountService bas = new BasicAccountService(Lists.newArrayList(a));
 		
 		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").name);
@@ -59,7 +61,7 @@ public class BasicAccountServiceTest {
 	public void testUpdateAccounts() {
 		List<Account> accounts = Lists.newArrayList();
 		String id = "123456789012";
-		accounts.add(new Account(id, "OldName"));
+		accounts.add(new Account(id, "OldName", null));
 		
 		BasicAccountService bas = new BasicAccountService(accounts);
 		
@@ -70,7 +72,7 @@ public class BasicAccountServiceTest {
 		assertEquals("Wrong account id before update", id, bas.getAccountById(id).id);
 		
 		accounts = Lists.newArrayList();		
-		accounts.add(new Account(id, "NewName"));
+		accounts.add(new Account(id, "NewName", null));
 		
 		bas.updateAccounts(accounts);
 		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());

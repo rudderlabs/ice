@@ -49,7 +49,7 @@ public class DataJsonWriterTest {
 	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) {
 		Product prod = productService.getProductByName(product);
 		return TagGroup.getTagGroup(
-				new Account("123456789012", "a1"),
+				new Account("123456789012", "a1", null),
 				Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), 
 				prod, 
 				Operation.getOperation(operation), 

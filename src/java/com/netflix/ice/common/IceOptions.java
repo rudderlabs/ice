@@ -80,6 +80,12 @@ public class IceOptions {
      * For multiple payer accounts, external ids can be specified delimited by comma ",".
      */
     public static final String BILLING_ACCESS_EXTERNALID = "ice.billing_accessExternalId";
+    
+    /**
+     * Root name to be used in parent paths for an account. The path expresses where the account is positioned in the organization hierarchy.
+     * For multiple payer accounts, root names can be specified delimited by comma ",".
+     */
+    public static final String ROOT_NAME = "ice.rootName";
 
     /**
      * s3 bucket name where kubernetes files are located. For multiple payer accounts, multiple bucket names can be specified delimited by comma ",".

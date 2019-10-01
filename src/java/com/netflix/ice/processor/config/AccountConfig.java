@@ -34,6 +34,7 @@ public class AccountConfig {
 	public String id;
 	public String name;
 	public String awsName;
+	public List<String> parents;
 	public Map<String, String> tags;
 	public List<String> riProducts;
 	public String role;
@@ -42,21 +43,23 @@ public class AccountConfig {
 	public AccountConfig() {		
 	}
 	
-	public AccountConfig(String id, String name, String awsName, List<String> riProducts, String role, String externalId) {
+	public AccountConfig(String id, String name, String awsName, List<String> parents, List<String> riProducts, String role, String externalId) {
 		this.id = id;
 		this.name = name;
 		this.awsName = awsName;
+		this.parents = parents;
 		this.tags = null;
 		this.riProducts = riProducts;
 		this.role = role;
 		this.externalId = externalId;
 	}
 	
-	public AccountConfig(String id, String awsName, List<com.amazonaws.services.organizations.model.Tag> tags, List<String> customTags) {
+	public AccountConfig(String id, String awsName, List<String> parents, List<com.amazonaws.services.organizations.model.Tag> tags, List<String> customTags) {
 		// Extract account configuration data from Organization account info and tags
 		this.id = id;
 		this.name = awsName;
 		this.awsName = awsName;
+		this.parents = parents;
 		this.tags = Maps.newHashMap();
 		if (tags != null) {
 			for (com.amazonaws.services.organizations.model.Tag tag: tags) {
@@ -81,6 +84,9 @@ public class AccountConfig {
 		sb.append(", name: " + name);
 		if (awsName != null && !awsName.isEmpty())
 			sb.append(", awsName: " + awsName);
+		if (parents != null && parents.size() > 0) {
+			sb.append(", parents: " + StringUtils.join(parents, "/"));
+		}
 		if (riProducts != null && !riProducts.isEmpty())
 			sb.append(", riProducts: " + riProducts.toString());
 		if (role != null && !role.isEmpty())
@@ -121,6 +127,14 @@ public class AccountConfig {
 
 	public void setAwsName(String awsName) {
 		this.awsName = name;
+	}
+
+	public List<String> getParents() {
+		return parents;
+	}
+
+	public void setParents(List<String> parents) {
+		this.parents = parents;
 	}
 
 	public Map<String, String> getDefaultTags() {

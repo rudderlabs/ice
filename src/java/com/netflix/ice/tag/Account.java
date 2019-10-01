@@ -17,23 +17,28 @@
  */
 package com.netflix.ice.tag;
 
+import java.util.List;
+
 import org.apache.commons.lang.StringUtils;
 
 public class Account extends Tag {
 	private static final long serialVersionUID = 1L;
 	
 	public final String id;
-	public final String awsName; /* Name of account returned by Organizations */
+	public final String awsName; // Name of account returned by Organizations
+	public final List<String> parents; // parent organizational units as defined by the Organizations service
 
-    public Account(String accountId, String accountName) {
+    public Account(String accountId, String accountName, List<String> parents) {
         super(accountName);
         this.id = accountId;
         this.awsName = null;
+        this.parents = parents;
     }
     
-    public Account(String accountId, String accountName, String awsName) {
+    public Account(String accountId, String accountName, String awsName, List<String> parents) {
         super(StringUtils.isEmpty(accountName) ? awsName : accountName);
         this.id = accountId;
         this.awsName = awsName;
+        this.parents = parents;
     }
 }
