@@ -173,7 +173,7 @@ public class BillingFileProcessor extends Poller {
             config.productService.archive(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(startMilli, config.startDate, compress, config.writeJsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
+            costAndUsageData.archive(startMilli, config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
             
             logger.info("archiving instance data...");
             archiveInstances();

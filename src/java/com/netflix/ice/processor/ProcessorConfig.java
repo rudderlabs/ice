@@ -93,12 +93,11 @@ public class ProcessorConfig extends Config {
     public final int numthreads;
 
     public final String useCostForResourceGroup;
-    public final JsonFiles writeJsonFiles;
+    public final List<JsonFileType> jsonFiles;
     
-    public enum JsonFiles {
-    	no,		// do not write JSON files
+    public enum JsonFileType {
     	hourly, // generate hourly newline delimited JSON records - one record per line
-    	hourlyWithRates, // generate hourly newline delimited JSON records with RI rates for EC2 and RDS - one record per line
+    	hourlyRI, // generate hourly newline delimited JSON records with RI rates for product/operations that offer reserved instances
     	daily;  // generate daily newline delimited JSON records - one record per line
     }
     
@@ -187,7 +186,12 @@ public class ProcessorConfig extends Config {
 
         //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "");
-        writeJsonFiles = properties.getProperty(IceOptions.WRITE_JSON_FILES) == null ? JsonFiles.no : JsonFiles.valueOf(properties.getProperty(IceOptions.WRITE_JSON_FILES));
+        jsonFiles = Lists.newArrayList();
+        if (properties.getProperty(IceOptions.WRITE_JSON_FILES) != null) {
+            for (String t: properties.getProperty(IceOptions.WRITE_JSON_FILES).split(",")) {
+            	jsonFiles.add(JsonFileType.valueOf(t));
+            }
+        }
         
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);

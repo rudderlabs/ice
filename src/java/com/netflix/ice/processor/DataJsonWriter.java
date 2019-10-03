@@ -39,7 +39,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.ProcessorConfig.JsonFiles;
+import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
@@ -59,7 +59,7 @@ public class DataJsonWriter extends DataFile {
 	private final DateTime monthDateTime;
 	protected OutputStreamWriter writer;
 	private List<String> tagNames;
-	private JsonFiles fileType;
+	private JsonFileType fileType;
     private final Map<Product, ReadWriteData> costDataByProduct;
     private final Map<Product, ReadWriteData> usageDataByProduct;
     protected boolean addNormalizedRates;
@@ -67,7 +67,7 @@ public class DataJsonWriter extends DataFile {
     protected InstancePrices ec2Prices;
     protected InstancePrices rdsPrices;
     
-	public DataJsonWriter(String name, DateTime monthDateTime, List<String> tagNames, JsonFiles fileType,
+	public DataJsonWriter(String name, DateTime monthDateTime, List<String> tagNames, JsonFileType fileType,
 			Map<Product, ReadWriteData> costDataByProduct,
 			Map<Product, ReadWriteData> usageDataByProduct,
 			InstanceMetrics instanceMetrics, PriceListService priceListService)
@@ -79,7 +79,7 @@ public class DataJsonWriter extends DataFile {
 		this.costDataByProduct = costDataByProduct;
 		this.usageDataByProduct = usageDataByProduct;
 	    this.instanceMetrics = instanceMetrics;
-	    if (fileType == JsonFiles.hourlyWithRates) {
+	    if (fileType == JsonFileType.hourlyRI) {
 		    this.ec2Prices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonEC2);
 		    this.rdsPrices = priceListService.getPrices(monthDateTime, ServiceCode.AmazonRDS);
 	    }
@@ -116,7 +116,7 @@ public class DataJsonWriter extends DataFile {
         	if (product == null)
         		continue;
         	
-        	if (fileType == JsonFiles.daily)
+        	if (fileType == JsonFileType.daily)
             	writeDaily(costDataByProduct.get(product), usageDataByProduct.get(product));
         	else
         		write(costDataByProduct.get(product), usageDataByProduct.get(product));
@@ -133,8 +133,16 @@ public class DataJsonWriter extends DataFile {
             
             Map<TagGroup, Double> usageMap = usage.getData(i);
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
+            	TagGroup tg = costEntry.getKey();
+            	boolean rates = false;
+            	if (fileType == JsonFileType.hourlyRI) {
+            		rates = tg.product.isEc2Instance() || tg.product.isRdsInstance();
+            		if (!rates)
+            			continue;
+            	}
+
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
-            	Item item = new Item(dtf.print(monthDateTime.plusHours(i)), costEntry.getKey(), costEntry.getValue(), usageValue);
+            	Item item = new Item(dtf.print(monthDateTime.plusHours(i)), costEntry.getKey(), costEntry.getValue(), usageValue, rates);
             	String json = gson.toJson(item);
             	writer.write(json + "\n");
             }
@@ -152,7 +160,6 @@ public class DataJsonWriter extends DataFile {
 
         // Aggregate
         for (int hour = 0; hour < cost.getNum(); hour++) {
-            // this month, add to weekly, monthly and daily
             Map<TagGroup, Double> costMap = cost.getData(hour);
             Map<TagGroup, Double> usageMap = usage.getData(hour);
 
@@ -175,7 +182,7 @@ public class DataJsonWriter extends DataFile {
             Map<TagGroup, Double> usageMap = dailyUsage.get(day);
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
-            	Item item = new Item(dtf.print(monthDateTime.plusDays(day)), costEntry.getKey(), costEntry.getValue(), usageValue);
+            	Item item = new Item(dtf.print(monthDateTime.plusDays(day)), costEntry.getKey(), costEntry.getValue(), usageValue, false);
             	String json = gson.toJson(item);
             	writer.write(json + "\n");
             }
@@ -283,7 +290,7 @@ public class DataJsonWriter extends DataFile {
 		Double normalizedUsage;
 		NormalizedRates normalizedRates;
 		
-		public Item(String hour, TagGroup tg, Double cost, Double usage) {
+		public Item(String hour, TagGroup tg, Double cost, Double usage, boolean rates) {
 			this.hour = hour;
 			this.cost = cost;
 			this.usage = usage;
@@ -298,7 +305,7 @@ public class DataJsonWriter extends DataFile {
 			tags = tg.resourceGroup;
 			
 			// EC2 & RDS instances
-			if (fileType == JsonFiles.hourlyWithRates && (tg.product.isEc2Instance() || tg.product.isRdsInstance())) {
+			if (rates) {
 				instanceFamily = FamilyTag.getFamilyName(tg.usageType.name);
 				normalizedUsage = usage == null ? null : usage * instanceMetrics.getNormalizationFactor(tg.usageType);
 				

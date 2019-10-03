@@ -17,13 +17,6 @@
  */
 package com.netflix.ice.basic;
 
-import com.amazonaws.services.pricing.AWSPricing;
-import com.amazonaws.services.pricing.AWSPricingClientBuilder;
-import com.amazonaws.services.pricing.model.DescribeServicesRequest;
-import com.amazonaws.services.pricing.model.DescribeServicesResult;
-import com.amazonaws.services.pricing.model.GetAttributeValuesRequest;
-import com.amazonaws.services.pricing.model.GetAttributeValuesResult;
-import com.amazonaws.services.pricing.model.Service;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
@@ -31,8 +24,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Product.Source;
-import com.netflix.ice.tag.Region;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
