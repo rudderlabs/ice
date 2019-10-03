@@ -239,8 +239,13 @@ public class BasicProductService implements ProductService {
 
     public List<Product> getProducts(List<String> names) {
     	List<Product> result = Lists.newArrayList();
-    	for (String name: names)
-    	    result.add(productsByName.get(name));
+    	for (String name: names) {
+    		Product p = productsByName.get(name);
+    		if (p == null)
+    			logger.error("Unable to find product by name: " + name);
+    		else
+    	    	result.add(p);
+    	}
     	return result;
     }
 
