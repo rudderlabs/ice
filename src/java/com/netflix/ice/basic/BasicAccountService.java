@@ -33,6 +33,8 @@ import java.util.Set;
 public class BasicAccountService implements AccountService {
 
     Logger logger = LoggerFactory.getLogger(getClass());
+    
+    public static final List<String> unlinkedAccountParents = Lists.newArrayList("Unlinked");
 
     private Map<String, Account> accountsById = Maps.newConcurrentMap();
     private Map<String, Account> accountsByName = Maps.newConcurrentMap();
@@ -101,7 +103,8 @@ public class BasicAccountService implements AccountService {
     public Account getAccountById(String accountId) {
         Account account = accountsById.get(accountId);
         if (account == null) {
-            account = new Account(accountId, accountId, null);
+        	// We get here when the billing data has an account that is no longer active in any of the payer accounts
+            account = new Account(accountId, accountId, unlinkedAccountParents);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
             logger.info("getAccountById() created account " + accountId + "=\"" + account.name + "\".");
@@ -117,7 +120,7 @@ public class BasicAccountService implements AccountService {
             account = accountsById.get(accountName);
         }
         if (account == null) {
-            account = new Account(accountName, accountName, null);
+            account = new Account(accountName, accountName, unlinkedAccountParents);
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
             logger.info("getAccountByName() created account " + accountName + ".");

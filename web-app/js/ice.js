@@ -366,6 +366,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     let set = new Set();
     for (var i in accounts) {
       var parents = accounts[i].parents;
+      if (!parents)
+        parents = [];
       var path = [];
       for (var j in parents) {
         path.push(parents[j]);

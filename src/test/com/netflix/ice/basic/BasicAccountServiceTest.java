@@ -82,5 +82,13 @@ public class BasicAccountServiceTest {
 		assertEquals("Wrong account id after update", id, bas.getAccountById(id).id);
 		
 	}
+	
+	@Test
+	public void testGetAccountById() {
+		Map<String, AccountConfig> configs = Maps.newHashMap();
+		BasicAccountService bas = new BasicAccountService(configs);
+		
+		assertEquals("Wrong parent for unlinked account", BasicAccountService.unlinkedAccountParents, bas.getAccountById("123456789012").parents);
+	}
 
 }
