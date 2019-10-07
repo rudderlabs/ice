@@ -309,29 +309,36 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
   var graphonly = false;
 
-  var retrieveNamesIfNotAll = function (array, selected, preselected, filter) {
+  var retrieveNamesIfNotAll = function (array, selected, preselected, filter, organizationalUnit) {
     if (!selected && !preselected)
       return;
 
     var result = [];
     if (selected) {
-      for (var i in selected)
-        if (!filter || selected[i].name.toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
+      for (var i in selected) {
+        if (filterAccountByOrg(selected[i], organizationalUnit) && filterItem(selected[i].name, filter))
           result.push(selected[i].name);
+      }
     }
     else {
-      for (var i in preselected)
-        if (!filter || preselected[i].toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
+      for (var i in preselected) {
+        if (filterItem(preselected[i], filter))
           result.push(preselected[i]);
+      }
     }
     return result.join(",");
   }
 
-  //  var addParams = function(params, name, array, selected, preselected) {
-  //    var selected = retrieveNamesIfNotAll(array, selected, preselected);
-  //    if (selected)
-  //        params[name] = selected;
-  //  }
+  var filterItem = function (name, filter) {
+    return !filter
+          || name.toLowerCase().indexOf(filter.toLowerCase()) >= 0
+          || (filter[0] === "!" && name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0);
+  }
+
+  var filterAccountByOrg = function(account, organizationalUnit) {
+    // Check organizationalUnit -- used for Account filtering
+    return !organizationalUnit || account.path.startsWith(organizationalUnit);
+  }
 
   var getSelected = function (from, selected) {
     var result = [];
@@ -355,26 +362,54 @@ ice.factory('usage_db', function ($window, $http, $filter) {
     return result;
   }
 
+  var getOrgs = function (accounts) {
+    let set = new Set();
+    for (var i in accounts) {
+      var parents = accounts[i].parents;
+      if (!parents)
+        parents = [];
+      var path = [];
+      for (var j in parents) {
+        path.push(parents[j]);
+        set.add(path.join("/"));
+      }
+      accounts[i].path = parents.join("/");
+    }
+    var result = [];
+    set.forEach((org) => {
+      result.push(org);
+    })
+    result.sort();
+    return result;
+  }
+
   var timeParams = "";
 
   return {
     graphOnly: function () {
       return graphonly;
     },
-    addParams: function (params, name, array, selected, preselected, filter) {
-      var selected = retrieveNamesIfNotAll(array, selected, preselected, filter);
+    addParams: function (params, name, array, selected, preselected, filter, organizationalUnit) {
+      var selected = retrieveNamesIfNotAll(array, selected, preselected, filter, organizationalUnit);
       if (selected)
         params[name] = selected;
     },
 
-    filterSelected: function (selected, filter) {
+    filterSelected: function (selected, filter, organizationalUnit) {
       var result = [];
-      for (var i in selected)
-        if (!filter || selected[i].name.toLowerCase().indexOf(filter.toLowerCase()) >= 0 || (filter[0] === "!" && selected[i].name.toLowerCase().indexOf(filter.slice(1).toLowerCase()) < 0))
+      for (var i in selected) {
+        if (filterAccountByOrg(selected[i], organizationalUnit) && filterItem(selected[i].name, filter))
           result.push(selected[i]);
+      }
       return result;
     },
 
+    filterAccount: function ($scope, filter_accounts) {
+      return function(account) {
+        return filterAccountByOrg(account, $scope.organizationalUnit) && filterItem(account.name, filter_accounts);
+      }
+    },
+  
     addDimensionParams: function($scope, params) {
       var hasDimension = false;
       for (var i = 0; i < $scope.dimensions.length; i++) {
@@ -387,7 +422,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         return;
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX]) {
-        var accounts = this.filterSelected($scope.selected_accounts, $scope.filter_accounts);
+        if ($scope.organizationalUnit)
+          params.orgUnit = $scope.organizationalUnit;
+        var accounts = this.filterSelected($scope.selected_accounts, $scope.filter_accounts, $scope.organizationalUnit);
         if (accounts.length > 0)
           params.account = { selected: accounts, filter: $scope.filter_accounts };
       }
@@ -491,10 +528,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       $scope.tagFilterParams = {};
       if (hash) {
         var params = hash.split("&");
-        for (i = 0; i < params.length; i++) {
-          if (params[i].indexOf("=") < 0 && i > 0 && (params[i - 1].indexOf("appgroup=") == 0 || params[i - 1].indexOf("resourceGroup=") == 0))
-            params[i - 1] = params[i - 1] + "&" + params[i];
-        }
         var i, j, time = "";
         for (i = 0; i < params.length; i++) {
 
@@ -509,9 +542,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
           else if (params[i].indexOf("resources=") === 0) {
             $scope.resources = params[i].substr(10);
-          }
-          else if (params[i].indexOf("appgroup=") === 0) {
-            $scope.appgroup = params[i].substr(9);
           }
           else if (params[i].indexOf("showZones=") === 0) {
             $scope.showZones = "true" === params[i].substr(10);
@@ -557,6 +587,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
           else if (params[i].indexOf("groupByTag=") === 0) {
             $scope.initialGroupByTag = params[i].substr(11);
+          }
+          else if (params[i].indexOf("orgUnit=") === 0) {
+            $scope.organizationalUnit = params[i].substr(8);
           }
           else if (params[i].indexOf("account=") === 0) {
             $scope.selected__accounts = params[i].substr(8).split(",");
@@ -669,6 +702,11 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }
     },
 
+    updateOrganizationalUnit: function ($scope) {
+      // select all the accounts in the org
+      $scope.selected_accounts = this.filterSelected($scope.accounts, null, $scope.organizationalUnit);
+    },
+
     getAccounts: function ($scope, fn, params) {
       if (!$scope.dimensions[$scope.ACCOUNT_INDEX]) {
         if (fn)
@@ -685,10 +723,11 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.accounts = result.data;
+          $scope.organizationalUnits = getOrgs($scope.accounts);
           if ($scope.selected__accounts && !$scope.selected_accounts)
             $scope.selected_accounts = getSelected($scope.accounts, $scope.selected__accounts);
           else
-            $scope.selected_accounts = $scope.accounts;
+            this.updateOrganizationalUnit($scope);
           if (fn)
             fn(result.data);
         }
@@ -1040,7 +1079,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }, params);
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
-        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts);
+        this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts, $scope.organizationalUnit);
       if ($scope.showZones) {
         if ($scope.dimensions[$scope.ZONE_INDEX])
           this.addParams(params, "zone", $scope.zones, $scope.selected_zones, $scope.selected__zones, $scope.filter_zones);
@@ -1072,9 +1111,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
         }
       }
-      if ($scope.appgroup) {
-        params.appgroup = $scope.appgroup;
-      }
 
       if (!download) {
         $http({
@@ -1093,9 +1129,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       else {
         jQuery("#download_form").empty();
 
-        if ($scope.appgroup) {
-          params.appgroup = $filter('json')($scope.appgroup);
-        }
         for (var key in params) {
           jQuery("<input type='text' />")
             .attr("id", key)
@@ -1334,7 +1367,6 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
       }
     });
   }
-
 }
 
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
@@ -1426,6 +1458,15 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.updateUsageTypes($scope);
   }
 
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
+  }
+
   $scope.accountsChanged = function () {
     if ($scope.showZones)
       $scope.updateZones($scope);
@@ -1490,7 +1531,6 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
-    { name: "ResourceGroup" },
     { name: "Operation" },
     { name: "UsageType" },
     { name: "Tag" }
@@ -1578,6 +1618,15 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
   
   $scope.usageTypesEnabled = function () {
     $scope.updateUsageTypes($scope);
+  }
+
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
   }
 
   $scope.accountsChanged = function () {
@@ -1719,6 +1768,15 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.updateUsageTypes($scope);
   }
 
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
+  }
+
   $scope.accountsChanged = function () {
     $scope.updateRegions($scope);
   }
@@ -1768,7 +1826,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
-    { name: "ResourceGroup" },
     { name: "Operation" },
     { name: "UsageType" },
     { name: "Tag" }
@@ -1829,7 +1886,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.accountsEnabled = function () {
     $scope.updateAccounts($scope);
   }
-  
+
   $scope.regionsEnabled = function () {
     $scope.updateRegions($scope);
   }
@@ -1844,6 +1901,15 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   
   $scope.usageTypesEnabled = function () {
     $scope.updateUsageTypes($scope);
+  }
+
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
   }
 
   $scope.accountsChanged = function () {
@@ -2044,6 +2110,15 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
   
   $scope.usageTypesEnabled = function () {
     $scope.updateUsageTypes($scope);
+  }
+
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
   }
 
   $scope.accountsChanged = function () {

@@ -25,6 +25,7 @@ import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -79,13 +80,14 @@ public class ReaderConfig extends Config {
      * @throws IOException 
      * @throws InterruptedException 
      * @throws UnsupportedEncodingException 
+     * @throws BadZone 
      */
     public ReaderConfig(
             Properties properties,
             AWSCredentialsProvider credentialsProvider,
             Managers managers,
             ProductService productService,
-            ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException {
+            ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException, BadZone {
         super(properties, credentialsProvider, productService);
                 
         WorkBucketDataConfig dataConfig = readWorkBucketDataConfig();
@@ -263,8 +265,13 @@ public class ReaderConfig extends Config {
     			logger.error("Unknown region: " + regionName);
     			continue;
     		}
-    		for (String zoneName: zones.get(regionName))
-    			r.getZone(zoneName);
+    		for (String zoneName: zones.get(regionName)) {
+    			try {
+					r.getZone(zoneName);
+				} catch (BadZone e) {
+					logger.error("Bad zone " + zoneName + " for region " + r + ": " + e.getMessage());
+				}
+    		}
     	}
     }
 }

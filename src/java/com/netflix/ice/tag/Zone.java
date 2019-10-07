@@ -27,6 +27,14 @@ import java.util.concurrent.ConcurrentMap;
 public class Zone extends Tag {
 	private static final long serialVersionUID = 1L;
 	public final Region region;
+	
+	public static class BadZone extends Exception {
+		private static final long serialVersionUID = 1L;
+
+		BadZone(String msg) {
+			super(msg);
+		}
+	}
 
     private Zone(Region region, String name) {
         super(name);
@@ -35,14 +43,14 @@ public class Zone extends Tag {
     private static ConcurrentMap<String, Zone> zonesByName = Maps.newConcurrentMap();
     
     // addZone should only be called by Region.addZone()
-    protected static Zone addZone(Region region, String name) {
+    protected static Zone addZone(Region region, String name) throws BadZone {
     	if (name.isEmpty() || name.equals(region.name))
     		return null;
     	
     	// Make sure we have a lower-case letter for the zone
         if (!region.name.equals(name.substring(0, name.length()-1)) || !Character.isLowerCase(name.charAt(name.length()-1))) {
         	logger.error("Attempt to add zone with invalid name to region " + region + ": " + name);
-            return null;
+            throw new Zone.BadZone("Name is either not a zone or is in the wrong region");
         }
         
     	zonesByName.putIfAbsent(name, new Zone(region, name));

@@ -21,22 +21,26 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import com.netflix.ice.tag.Zone.BadZone;
+
 public class RegionTest {
 
 	@Test
-	public void testGetZone() {
+	public void testGetZone() throws BadZone {
 		Zone zone = Region.US_WEST_2.getZone("us-west-2a");
 		assertEquals("Wrong region", "us-west-2", zone.region.name);
 		
 		zone = Region.US_WEST_2.getZone("us-west-2");
 		assertNull("Returned non-null zone", zone);
 		
-		zone = Region.US_WEST_2.getZone("eu-west-1");
-		assertNull("Returned non-null zone", zone);
-		
 		zone = Region.EU_WEST_1.getZone("eu-west-1a");
 		assertEquals("Wrong zone", "eu-west-1a", zone.name);
 		assertEquals("Wrong region", "eu-west-1", zone.region.name);		
+	}
+	
+	@Test(expected = BadZone.class)
+	public void testBadZoneException() throws BadZone {
+		Region.US_WEST_2.getZone("eu-west-1");		
 	}
 	
 }

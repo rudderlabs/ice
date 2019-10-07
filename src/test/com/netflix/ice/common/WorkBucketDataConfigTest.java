@@ -38,8 +38,13 @@ public class WorkBucketDataConfigTest {
 	public void testWorkBucketDataConfig() {
 		String startMonth = "2019-01";
 		List<Account> accounts = Lists.newArrayList();
-		accounts.add(new Account("123456789012", "Acct1"));
-		accounts.add(new Account("234567890123", "Acct2"));
+		List<String> parents1 = Lists.newArrayList();
+		parents1.add("ou1");
+		List<String> parents2 = Lists.newArrayList();
+		parents2.add("ou1");
+		parents2.add("ou2");
+		accounts.add(new Account("123456789012", "Acct1", parents1));
+		accounts.add(new Account("234567890123", "Acct2", parents2));
 		
 		List<String> zlist = Lists.newArrayList();
 		zlist.add("us-east-1a");

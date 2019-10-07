@@ -30,6 +30,7 @@ import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 /*
  * TagGroupRI adds the reservationArn for usage of a reserved instance to a TagGroup.
@@ -92,7 +93,7 @@ public class TagGroupRI extends TagGroup {
     	return get(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup, null);
     }
     
-    public static TagGroupRI get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String reservationArn, AccountService accountService, ProductService productService) {
+    public static TagGroupRI get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String reservationArn, AccountService accountService, ProductService productService) throws BadZone {
         Region r = Region.getRegionByName(region);
         return get(
     		accountService.getAccountByName(account),

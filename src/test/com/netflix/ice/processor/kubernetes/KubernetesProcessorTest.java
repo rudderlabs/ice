@@ -55,6 +55,7 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class KubernetesProcessorTest {
 	private static final String resourceDir = "src/test/resources/";
@@ -116,7 +117,7 @@ public class KubernetesProcessorTest {
 		@Override
 	    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
 			Map<String, AccountConfig> accounts = Maps.newHashMap();
-			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null));
+			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null, null));
 			return accounts;
 		}
 		
@@ -175,8 +176,8 @@ public class KubernetesProcessorTest {
 		return new TestKubernetesProcessor(config, null);
 	}
 	
-	private TagGroup getTagGroup(String clusterName) {
-        List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1"));
+	private TagGroup getTagGroup(String clusterName) throws BadZone {
+        List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1", null));
 
 		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
 		Product ec2Instance = productService.getProductByName(Product.ec2Instance);

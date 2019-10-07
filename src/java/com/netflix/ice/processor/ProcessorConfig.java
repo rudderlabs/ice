@@ -38,6 +38,7 @@ import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -72,6 +73,7 @@ public class ProcessorConfig extends Config {
     public final String[] billingS3BucketPrefixes;
     public final String[] billingAccessRoleNames;
     public final String[] billingAccessExternalIds;
+    public final String[] rootNames;
     public final String[] kubernetesAccountIds;
     public final String[] kubernetesS3BucketNames;
     public final String[] kubernetesS3BucketRegions;
@@ -92,12 +94,11 @@ public class ProcessorConfig extends Config {
     public final int numthreads;
 
     public final String useCostForResourceGroup;
-    public final JsonFiles writeJsonFiles;
+    public final List<JsonFileType> jsonFiles;
     
-    public enum JsonFiles {
-    	no,		// do not write JSON files
+    public enum JsonFileType {
     	hourly, // generate hourly newline delimited JSON records - one record per line
-    	hourlyWithRates, // generate hourly newline delimited JSON records with RI rates for EC2 and RDS - one record per line
+    	hourlyRI, // generate hourly newline delimited JSON records with RI rates for product/operations that offer reserved instances
     	daily;  // generate daily newline delimited JSON records - one record per line
     }
     
@@ -133,6 +134,7 @@ public class ProcessorConfig extends Config {
         billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
         billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        rootNames = properties.getProperty(IceOptions.ROOT_NAME, "").split(",");
         kubernetesS3BucketNames = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, "").split(",");
         kubernetesS3BucketRegions = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, "").split(",");
         kubernetesS3BucketPrefixes = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, "").split(",");
@@ -185,7 +187,12 @@ public class ProcessorConfig extends Config {
 
         //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "");
-        writeJsonFiles = properties.getProperty(IceOptions.WRITE_JSON_FILES) == null ? JsonFiles.no : JsonFiles.valueOf(properties.getProperty(IceOptions.WRITE_JSON_FILES));
+        jsonFiles = Lists.newArrayList();
+        if (properties.getProperty(IceOptions.WRITE_JSON_FILES) != null) {
+            for (String t: properties.getProperty(IceOptions.WRITE_JSON_FILES).split(",")) {
+            	jsonFiles.add(JsonFileType.valueOf(t));
+            }
+        }
         
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
@@ -257,7 +264,7 @@ public class ProcessorConfig extends Config {
         return instance;
     }
     
-    protected void initZones() {
+    protected void initZones() throws BadZone {
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
     	AmazonEC2 ec2 = ec2Builder.withRegion(Regions.US_EAST_1).build();
 		DescribeRegionsResult regionResult = ec2.describeRegions();
@@ -319,11 +326,17 @@ public class ProcessorConfig extends Config {
             String accountId = billingAccountIds[i];
             String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
             String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+            String rootName = rootNames.length > i ? rootNames[i] : "";
             
             // Only process each payer account once. Can have two if processing both DBRs and CURs
             if (done.contains(accountId))
             	continue;            
             done.add(accountId);
+            
+            logger.info("Get account/organizational unit hierarchy for " + accountId +
+            		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
+            
+            Map<String, List<String>> accountParents = AwsUtils.getAccountParents(accountId, assumeRole, externalId, rootName);
             
             logger.info("Get accounts for organization " + accountId +
             		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
@@ -331,7 +344,7 @@ public class ProcessorConfig extends Config {
             for (Account a: accounts) {
             	// Get tags for the account
             	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), accountId, assumeRole, externalId);
-            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), tags, customTags);
+            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), tags, customTags);
             	result.put(ac.getId(), ac);
             	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
             }
@@ -396,7 +409,7 @@ public class ProcessorConfig extends Config {
                     riProducts = Lists.newArrayList(products);
                 }
                 String awsName = orgAccounts.containsKey(id) ? orgAccounts.get(id).getAwsName() : null;
-                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, riProducts, role, externalId));
+                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, null, riProducts, role, externalId));
     			logger.warn("Using ice.properties config for account " + id + ": " + accountName);
             }
         }

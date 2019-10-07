@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Map;
+
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -33,11 +34,12 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class InstancesTest {
 
 	@Test
-	public void testReadWriteCsv() throws IOException {
+	public void testReadWriteCsv() throws IOException, BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		String tagValue = "= I have equal signs, a pipe(|), and a comma =";
 		tags.put("Name", tagValue);

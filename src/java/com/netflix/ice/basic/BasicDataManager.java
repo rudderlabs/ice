@@ -40,6 +40,7 @@ import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.UserTag;
+import com.netflix.ice.tag.Zone.BadZone;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
@@ -60,7 +61,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     }
 
     @Override
-    protected ReadOnlyData deserializeData(DataInputStream in) throws IOException {
+    protected ReadOnlyData deserializeData(DataInputStream in) throws IOException, BadZone {
 	    ReadOnlyData result = new ReadOnlyData();
 	    result.deserialize(accountService, productService, in);
 	    return result;

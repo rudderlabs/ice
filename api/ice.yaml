@@ -126,20 +126,6 @@ paths:
           schema:
             $ref: '#/definitions/NamesResponse'
 
-  /getResourceGroups:
-    get:
-      description: Get the list of resource groups for the requested accounts, products, and regions.
-      operationId: getResourceGroups
-      parameters:
-        - $ref: '#/parameters/accountParam'
-        - $ref: '#/parameters/regionParam'
-        - $ref: '#/parameters/productParam'
-      responses:
-        '200':
-          description: collection of resource groups
-          schema:
-            $ref: '#/definitions/NamesResponse'
-  
   /userTags:
     get:
       description: Get the list of user tag names.
@@ -247,8 +233,6 @@ paths:
               resources:
                 description: If true, only return product names that can have tagged resources.
                 type: boolean
-              showResourceGroups:
-                type: boolean
       responses:
         '200':
           description: collection of usage types
@@ -306,7 +290,7 @@ paths:
               groupBy:
                 description: Dimension to use for aggregation buckets (default = none)
                 type: string
-                enum: [None, Account, Region, Zone, ResourceGroup, Product, Operation, UsageType, Tag]
+                enum: [None, Account, Region, Zone, Product, Operation, UsageType, Tag]
               consolidate:
                 type: string
                 description: default = hourly
@@ -334,8 +318,6 @@ paths:
                 type: boolean
               showZones:
                 type: boolean
-              showResourceGroups:
-                type: boolean
               spans:
                 type: integer
               tagCoverage:
@@ -350,11 +332,11 @@ paths:
               region:
                 description: Comma separated list of region names for filtering data
                 type: string
+              zone:
+                description: Comma separated list of zone names for filtering data
+                type: string
               product:
                 description: Comma separated list of product names for filtering data
-                type: string
-              resourceGroup:
-                description: Comma separated list of resourceGroup names for filtering data
                 type: string
               operation:
                 description: Comma separated list of operation names for filtering data
@@ -365,6 +347,12 @@ paths:
               groupByTag:
                 description: When groupBy is set to Tag, indicates which user tag to use for aggregation buckets
                 type: string
+              showResourceGroupTags:
+                description: Deprecated version of showUserTags
+                type: boolean
+              showUserTags:
+                description: Enable filtering and/or group by user tags.
+                type: boolean
             additionalProperties:
                 description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>
                 type: string

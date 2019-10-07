@@ -52,6 +52,7 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class ReadWriteDataTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -78,7 +79,7 @@ public class ReadWriteDataTest {
         for (String name: p.stringPropertyNames()) {
             if (name.startsWith("ice.account.")) {
                 String accountName = name.substring("ice.account.".length());
-                accounts.add(new Account(p.getProperty(name), accountName));
+                accounts.add(new Account(p.getProperty(name), accountName, null));
             }
         }
 		as = new BasicAccountService(accounts);
@@ -86,7 +87,7 @@ public class ReadWriteDataTest {
 	}
 	
 	@Test
-	public void testFileRead() throws IOException {
+	public void testFileRead() throws IOException, BadZone {
         String filename = "cost_monthly_all";
        
         File file = new File(dataDir, filename + ".gz");
@@ -118,7 +119,7 @@ public class ReadWriteDataTest {
 	}
 	
 	@Test
-	public void testSerializeDeserializeRDS() throws IOException {
+	public void testSerializeDeserializeRDS() throws IOException, BadZone {
 		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("RDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		testSerializeDeserialize(tg, 1.0);
 		
@@ -129,7 +130,7 @@ public class ReadWriteDataTest {
 		testSerializeDeserialize(tg, 1.0);
 	}
 	
-	private void testSerializeDeserialize(TagGroup tg, Double value) throws IOException {
+	private void testSerializeDeserialize(TagGroup tg, Double value) throws IOException, BadZone {
 		ReadWriteData data = new ReadWriteData();
 		
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
@@ -145,7 +146,7 @@ public class ReadWriteDataTest {
 	}
 	
 	@Test
-	public void testSerializeDeserializeTwice() throws IOException {
+	public void testSerializeDeserializeTwice() throws IOException, BadZone {
 		ReadWriteData data = new ReadWriteData();
 		
 		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Simple Storage Service"), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
@@ -173,7 +174,7 @@ public class ReadWriteDataTest {
 		assertEquals("Tags don't match", tg, tg2);
 	}
 	
-	ReadWriteData serializeDeserialize(AccountService as, ProductService ps, ReadWriteData data) throws IOException {
+	ReadWriteData serializeDeserialize(AccountService as, ProductService ps, ReadWriteData data) throws IOException, BadZone {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         DataOutput out = new DataOutputStream(output);
 		

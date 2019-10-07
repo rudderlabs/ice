@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadOnlyGenericData<D> {
     D[][] data;
@@ -52,7 +53,7 @@ public abstract class ReadOnlyGenericData<D> {
     abstract protected D[] newDataArray(int size);
     abstract protected D readValue(DataInput in) throws IOException ;
 
-    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
+    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
 
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();

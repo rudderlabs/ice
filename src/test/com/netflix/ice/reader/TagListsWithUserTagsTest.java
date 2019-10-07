@@ -38,7 +38,7 @@ import com.netflix.ice.tag.UserTag;
 
 public class TagListsWithUserTagsTest {
 	Account[] accounts = new Account[]{
-			new Account("123456789012", "Account1")
+			new Account("123456789012", "Account1", null)
 	};
 	List<String> regions = Lists.newArrayList(new String[]{"us-east-1"});
 	List<UserTag> tags0 = UserTag.getUserTags(Lists.newArrayList(new String[]{"", "t0v0"}));

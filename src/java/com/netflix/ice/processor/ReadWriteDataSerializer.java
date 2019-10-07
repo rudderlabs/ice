@@ -23,9 +23,10 @@ import java.io.IOException;
 
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public interface ReadWriteDataSerializer {
     public void serialize(DataOutput out) throws IOException;
 
-    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException;
+    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone;
 }

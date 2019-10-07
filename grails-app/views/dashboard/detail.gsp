@@ -30,7 +30,12 @@
     <tr>
       <td>Start</td>
       <td>Show</td>
-      <td class="metaAccounts"><input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input></td>
+      <td class="metaAccounts">
+      	<input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input>
+      	<select ng-model="organizationalUnit" ng-show="dimensions[ACCOUNT_INDEX]" ng-options="org for org in organizationalUnits" ng-change="orgUnitChanged()">
+      		<option value="">None</option>
+      	</select>
+      </td>
       <td class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
       <td class="metaProducts"><input type="checkbox" ng-model="dimensions[PRODUCT_INDEX]" ng-change="productsEnabled()"> Product</input></td>
       <td class="metaOperations"><input type="checkbox" ng-model="dimensions[OPERATION_INDEX]" ng-change="operationsEnabled()"> Operation</input></td>
@@ -82,7 +87,7 @@
       </td>
       <td>
       	<div ng-show="dimensions[ACCOUNT_INDEX]">
-	        <select ng-model="selected_accounts" ng-options="a.name for a in accounts | filter:filter_accounts" ng-change="accountsChanged()" multiple="multiple" class="metaAccounts metaSelect"></select>
+	        <select ng-model="selected_accounts" ng-options="a.name for a in accounts | filter:filterAccount(filter_accounts)" ng-change="accountsChanged()" multiple="multiple" class="metaAccounts metaSelect"></select>
 	        <br><input ng-model="filter_accounts" type="text" class="metaFilter" placeholder="filter">
 	        <button ng-click="selected_accounts = accounts; accountsChanged()" class="allNoneButton">+</button>
 	        <button ng-click="selected_accounts = []; accountsChanged()" class="allNoneButton">-</button>

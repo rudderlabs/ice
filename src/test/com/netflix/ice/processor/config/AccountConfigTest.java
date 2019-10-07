@@ -50,7 +50,9 @@ public class AccountConfigTest {
 			tags.add(tag);
 		}
 		
-		AccountConfig account = new AccountConfig("123456789012", "account1", tags, customTags);
+		List<String> parents = Lists.newArrayList();
+		parents.add("org1");
+		AccountConfig account = new AccountConfig("123456789012", "account1", parents, tags, customTags);
 		
 		assertEquals("Wrong account id", "123456789012", account.id);
 		assertEquals("Wrong account name", "act1", account.name);
@@ -65,7 +67,7 @@ public class AccountConfigTest {
 		assertEquals("Wrong externalId", "12345", account.externalId);
 		
 		String s = account.toString();
-		assertEquals("Wrong string form", "id: 123456789012, name: act1, awsName: account1, riProducts: [ec2, rds], role: ice, externalId: 12345, tags: {Tag1: tag1value}", s);
+		assertEquals("Wrong string form", "id: 123456789012, name: act1, awsName: account1, parents: org1, riProducts: [ec2, rds], role: ice, externalId: 12345, tags: {Tag1: tag1value}", s);
 	}
 
 }

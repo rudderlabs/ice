@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
@@ -40,6 +41,7 @@ import com.netflix.ice.reader.UsageUnit;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverageData, TagCoverageMetrics> implements DataManager {
     //private final static Logger staticLogger = LoggerFactory.getLogger(TagCoverageDataManager.class);
@@ -72,7 +74,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 
 	@Override
 	protected ReadOnlyTagCoverageData deserializeData(DataInputStream in)
-			throws IOException {
+			throws IOException, BadZone {
 	    ReadOnlyTagCoverageData result = new ReadOnlyTagCoverageData(getUserTagsSize());
 	    result.deserialize(accountService, productService, in);
 	    return result;
