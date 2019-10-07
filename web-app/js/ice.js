@@ -528,10 +528,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       $scope.tagFilterParams = {};
       if (hash) {
         var params = hash.split("&");
-        for (i = 0; i < params.length; i++) {
-          if (params[i].indexOf("=") < 0 && i > 0 && (params[i - 1].indexOf("appgroup=") == 0 || params[i - 1].indexOf("resourceGroup=") == 0))
-            params[i - 1] = params[i - 1] + "&" + params[i];
-        }
         var i, j, time = "";
         for (i = 0; i < params.length; i++) {
 
@@ -546,9 +542,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
           else if (params[i].indexOf("resources=") === 0) {
             $scope.resources = params[i].substr(10);
-          }
-          else if (params[i].indexOf("appgroup=") === 0) {
-            $scope.appgroup = params[i].substr(9);
           }
           else if (params[i].indexOf("showZones=") === 0) {
             $scope.showZones = "true" === params[i].substr(10);
@@ -1118,9 +1111,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           }
         }
       }
-      if ($scope.appgroup) {
-        params.appgroup = $scope.appgroup;
-      }
 
       if (!download) {
         $http({
@@ -1139,9 +1129,6 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       else {
         jQuery("#download_form").empty();
 
-        if ($scope.appgroup) {
-          params.appgroup = $filter('json')($scope.appgroup);
-        }
         for (var key in params) {
           jQuery("<input type='text' />")
             .attr("id", key)
@@ -1544,7 +1531,6 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
-    { name: "ResourceGroup" },
     { name: "Operation" },
     { name: "UsageType" },
     { name: "Tag" }
@@ -1840,7 +1826,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
-    { name: "ResourceGroup" },
     { name: "Operation" },
     { name: "UsageType" },
     { name: "Tag" }
