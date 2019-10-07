@@ -19,6 +19,7 @@ package com.netflix.ice.tag;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import java.util.Collection;
 import java.util.List;
@@ -120,7 +121,7 @@ public class Region extends Tag {
         return zones.values();
     }
     
-    public Zone getZone(String name) {
+    public Zone getZone(String name) throws BadZone {
     	Zone zone = zones.get(name);
     	if (zone == null) {
         	zone = Zone.addZone(this, name);

@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.junit.Test;
+
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
@@ -40,11 +41,12 @@ import com.netflix.ice.processor.TagCoverageMetrics;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class ReadOnlyTagCoverageDataTest {
 
 	@Test
-	public void testDeserialize() throws IOException {
+	public void testDeserialize() throws IOException, BadZone {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		

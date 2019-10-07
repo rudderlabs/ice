@@ -28,6 +28,7 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class Instance {
     protected static Logger logger = LoggerFactory.getLogger(Instance.class);
@@ -65,7 +66,7 @@ public class Instance {
 		this.startMillis = startMillis;
 	}
 	
-	public Instance(String[] values, AccountService accountService, ProductService productService) {
+	public Instance(String[] values, AccountService accountService, ProductService productService) throws BadZone {
         this.id = values[0];
         this.type = values[1];
         this.account = accountService.getAccountById(values[2]);

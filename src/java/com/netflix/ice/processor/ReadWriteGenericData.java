@@ -24,12 +24,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer {
     protected List<Map<TagGroup, T>> data;
@@ -119,7 +121,7 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
 
     abstract protected void writeValue(DataOutput out, T value) throws IOException;
 
-    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
+    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
 
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();

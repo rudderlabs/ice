@@ -50,6 +50,7 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class Instances {
     private final static Logger logger = LoggerFactory.getLogger(Instances.class);
@@ -151,7 +152,7 @@ public class Instances {
         }        
     }
     
-    protected void readCsv(Reader reader, AccountService accountService, ProductService productService) throws IOException {
+    protected void readCsv(Reader reader, AccountService accountService, ProductService productService) throws IOException, BadZone {
     	int numCols = Instance.header().length;
     	
     	Iterable<CSVRecord> records = CSVFormat.DEFAULT

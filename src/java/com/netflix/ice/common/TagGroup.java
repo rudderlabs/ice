@@ -20,11 +20,13 @@ package com.netflix.ice.common;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.tag.*;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -167,7 +169,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
     private static Map<TagGroup, TagGroup> tagGroups = Maps.newConcurrentMap();
 
-    public static TagGroup getTagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) {
+    public static TagGroup getTagGroup(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, AccountService accountService, ProductService productService) throws BadZone {
         Region r = Region.getRegionByName(region);
     	return getTagGroup(
     		accountService.getAccountByName(account),
@@ -231,7 +233,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.write(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
 
-        public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(AccountService accountService, ProductService productService, DataInput in) throws IOException {
+        public static TreeMap<Long, Collection<TagGroup>> deserializeTagGroups(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
             int numCollections = in.readInt();
             TreeMap<Long, Collection<TagGroup>> result = Maps.newTreeMap();
             for (int i = 0; i < numCollections; i++) {
@@ -247,7 +249,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             return result;
         }
 
-        public static TagGroup deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException {
+        public static TagGroup deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
             Account account = accountService.getAccountByName(in.readUTF());
             Region region = Region.getRegionByName(in.readUTF());
             String zoneStr = in.readUTF();

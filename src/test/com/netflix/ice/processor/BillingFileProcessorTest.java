@@ -60,6 +60,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class BillingFileProcessorTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -403,7 +404,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	private Set<TagGroup> deserializeTagGroupsCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException {
+	private Set<TagGroup> deserializeTagGroupsCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException, BadZone {
         Set<TagGroup> result = Sets.newTreeSet();
 
         String line;

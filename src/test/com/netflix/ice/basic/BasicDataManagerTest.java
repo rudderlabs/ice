@@ -51,6 +51,7 @@ import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class BasicDataManagerTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -157,7 +158,7 @@ public class BasicDataManagerTest {
 	}
 	
 	@Test
-	public void groupByUserTagAndFilterByUserTag() {
+	public void groupByUserTagAndFilterByUserTag() throws BadZone {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
@@ -199,7 +200,7 @@ public class BasicDataManagerTest {
 	}
 	
 	@Test
-	public void groupByUserTagAndFilterByEmptyUserTag() {
+	public void groupByUserTagAndFilterByEmptyUserTag() throws BadZone {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
@@ -238,7 +239,7 @@ public class BasicDataManagerTest {
 	}
 	
 	@Test
-	public void groupByNoneWithUserTagFilters() {
+	public void groupByNoneWithUserTagFilters() throws BadZone {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		

@@ -40,13 +40,14 @@ import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class DataJsonWriterTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
 	private ProductService productService = new BasicProductService();
 
-	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) {
+	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) throws BadZone {
 		Product prod = productService.getProductByName(product);
 		return TagGroup.getTagGroup(
 				new Account("123456789012", "a1", null),

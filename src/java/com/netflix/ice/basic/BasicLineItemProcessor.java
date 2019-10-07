@@ -25,6 +25,7 @@ import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationInfo;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.*;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -145,7 +146,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Account account = accountService.getAccountById(lineItem.getAccountId());
         Region region = getRegion(lineItem);
-        Zone zone = region.getZone(lineItem.getZone());
+        Zone zone;
+		try {
+			zone = region.getZone(lineItem.getZone());
+		} catch (BadZone e) {
+			logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
+			zone = null;
+		}
         
 
         long millisStart = lineItem.getStartMillis();

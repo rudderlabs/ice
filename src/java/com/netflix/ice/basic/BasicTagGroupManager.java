@@ -28,6 +28,7 @@ import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.tag.*;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -73,7 +74,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
 
     @Override
-    protected boolean stalePoll() throws IOException {
+    protected boolean stalePoll() throws IOException, BadZone {
         boolean downloaded = AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);

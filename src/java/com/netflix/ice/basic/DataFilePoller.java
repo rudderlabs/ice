@@ -45,6 +45,7 @@ import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.reader.ReaderConfig;
+import com.netflix.ice.tag.Zone.BadZone;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
@@ -192,7 +193,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
         }
     }
     
-    abstract protected T deserializeData(DataInputStream in) throws IOException;
+    abstract protected T deserializeData(DataInputStream in) throws IOException, BadZone;
 
     protected T loadDataFromFile(File file) throws Exception {
         logger.info("trying to load data from " + file);

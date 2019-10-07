@@ -20,6 +20,7 @@ package com.netflix.ice.common;
 import static org.junit.Assert.*;
 
 import java.util.Map;
+
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -29,12 +30,20 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class InstanceTest {
-	private static Zone us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
+	private static Zone us_east_1a;
+	
+	static {
+		try {
+			us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
+		} catch (BadZone e) {
+		}
+	}
 
 	@Test
-	public void testSerializer() {
+	public void testSerializer() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
 		AccountService as = new BasicAccountService();
@@ -59,7 +68,7 @@ public class InstanceTest {
 	}
 	
 	@Test
-	public void testTagWithCommas() {
+	public void testTagWithCommas() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		String tagValue = "= I have equal signs, and a comma =";
 		tags.put("Name", tagValue);
@@ -85,7 +94,7 @@ public class InstanceTest {
 	}
 	
 	@Test
-	public void testMultipleTags() {
+	public void testMultipleTags() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
 		tags.put("Email", "foo@bar.com");
@@ -109,7 +118,7 @@ public class InstanceTest {
 	}
 	
 	@Test
-	public void testTagWithSeparator() {
+	public void testTagWithSeparator() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		String tagValue = "I have a separator: " + Instance.tagSeparator;
 		tags.put("Name", tagValue);
@@ -123,7 +132,7 @@ public class InstanceTest {
 	}
 
 	@Test
-	public void testNoTags() {
+	public void testNoTags() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
@@ -136,7 +145,7 @@ public class InstanceTest {
 	}
 	
 	@Test
-	public void testNoZone() {
+	public void testNoZone() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "prod");
 		AccountService as = new BasicAccountService();
@@ -150,7 +159,7 @@ public class InstanceTest {
 	}
 
 	@Test
-	public void testNoTagsNoZone() {
+	public void testNoTagsNoZone() throws BadZone {
 		Map<String, String> tags = Maps.newHashMap();
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();

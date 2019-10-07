@@ -62,6 +62,7 @@ import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 public class ReservationProcessorTest {
     protected static Logger logger = LoggerFactory.getLogger(ReservationProcessorTest.class);
@@ -97,15 +98,18 @@ public class ReservationProcessorTest {
 		accountService = as;
 		
 		// Initialize the zones we use
-		eu_west_1b = Region.EU_WEST_1.getZone("eu-west-1b");
-		eu_west_1c = Region.EU_WEST_1.getZone("eu-west-1c");
-		us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
-		us_east_1b = Region.US_EAST_1.getZone("us-east-1b");
-		us_east_1c = Region.US_EAST_1.getZone("us-east-1c");
-		us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
-		us_west_2b = Region.US_WEST_2.getZone("us-west-2b");
-		us_west_2c = Region.US_WEST_2.getZone("us-west-2c");
-		ap_southeast_2a = Region.AP_SOUTHEAST_2.getZone("ap-southeast-2a");
+		try {
+			eu_west_1b = Region.EU_WEST_1.getZone("eu-west-1b");
+			eu_west_1c = Region.EU_WEST_1.getZone("eu-west-1c");
+			us_east_1a = Region.US_EAST_1.getZone("us-east-1a");
+			us_east_1b = Region.US_EAST_1.getZone("us-east-1b");
+			us_east_1c = Region.US_EAST_1.getZone("us-east-1c");
+			us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
+			us_west_2b = Region.US_WEST_2.getZone("us-west-2b");
+			us_west_2c = Region.US_WEST_2.getZone("us-west-2c");
+			ap_southeast_2a = Region.AP_SOUTHEAST_2.getZone("ap-southeast-2a");
+		} catch (BadZone e) {
+		}
 	}
 	
 	private static ProductService productService;

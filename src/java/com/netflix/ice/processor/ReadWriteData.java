@@ -31,6 +31,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Zone.BadZone;
 
 /**
  * ReadWriteData is a list of maps that hold usage and cost data for AWS products.
@@ -79,7 +80,7 @@ public class ReadWriteData extends ReadWriteGenericData<Double> {
         }
     }
 
-    public void deserializeCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException {
+    public void deserializeCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException, BadZone {
         List<Map<TagGroup, Double>> data = Lists.newArrayList();
         
         String line;

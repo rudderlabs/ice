@@ -38,6 +38,7 @@ import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -263,7 +264,7 @@ public class ProcessorConfig extends Config {
         return instance;
     }
     
-    protected void initZones() {
+    protected void initZones() throws BadZone {
         AmazonEC2ClientBuilder ec2Builder = AmazonEC2ClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig).withCredentials(AwsUtils.awsCredentialsProvider);
     	AmazonEC2 ec2 = ec2Builder.withRegion(Regions.US_EAST_1).build();
 		DescribeRegionsResult regionResult = ec2.describeRegions();

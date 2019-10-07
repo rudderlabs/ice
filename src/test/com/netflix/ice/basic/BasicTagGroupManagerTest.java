@@ -38,6 +38,7 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.reader.TagListsWithUserTags;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Zone.BadZone;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
@@ -55,7 +56,7 @@ public class BasicTagGroupManagerTest {
 	}
 	
 	@Test
-	public void testGetTagListsMap() {
+	public void testGetTagListsMap() throws BadZone {
 		TagGroup[] tagGroups = new TagGroup[]{
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "ProductA", accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|", 	accountService, productService),
