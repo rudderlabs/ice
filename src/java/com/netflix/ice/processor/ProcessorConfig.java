@@ -91,7 +91,6 @@ public class ProcessorConfig extends Config {
     public final boolean processOnce;
     public final String processorRegion;
     public final String processorInstanceId;
-    public final int numthreads;
 
     public final String useCostForResourceGroup;
     public final List<JsonFileType> jsonFiles;
@@ -197,7 +196,6 @@ public class ProcessorConfig extends Config {
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
         processorInstanceId = properties.getProperty(IceOptions.PROCESSOR_INSTANCE_ID);
-        numthreads = properties.getProperty(IceOptions.PROCESSOR_THREADS) == null ? 5 : Integer.parseInt(properties.getProperty(IceOptions.PROCESSOR_THREADS));
         
         ProcessorConfig.instance = this;
 

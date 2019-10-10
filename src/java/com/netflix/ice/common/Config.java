@@ -22,6 +22,7 @@ import java.util.Properties;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.common.collect.Maps;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,7 @@ public abstract class Config {
     public final ProductService productService;
     public final AWSCredentialsProvider credentialsProvider;
     public final Map<String, String> debugProperties;
+    public final int numthreads;
     private TagCoverage tagCoverage;
     
     public enum TagCoverage {
@@ -70,6 +72,7 @@ public abstract class Config {
 
         this.credentialsProvider = credentialsProvider;
         this.productService = productService;
+        this.numthreads = properties.getProperty(IceOptions.PROCESSOR_THREADS) == null ? 5 : Integer.parseInt(properties.getProperty(IceOptions.PROCESSOR_THREADS));
         this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
 
         if (credentialsProvider != null)

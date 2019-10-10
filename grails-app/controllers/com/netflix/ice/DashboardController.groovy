@@ -207,32 +207,12 @@ class DashboardController {
         Collection<Product> products = getConfig().productService.getProducts(listParams(query, "product"));
 		int index = query.getInt("index");
 
-        Collection<UserTag> data = Sets.newTreeSet();
-		// Add "None" entry
-		data.add(UserTag.get(UserTag.none))
-		
 		// If no products specified, get them all
 		if (products.empty)
-			products = getConfig().productService.getProducts();
+			products = getManagers().getProducts();
+			
+		Collection<UserTag> data = getManagers().getUserTagValues(accounts, regions, zones, products, index);
 
-        for (Product product: products) {
-
-            TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
-			if (tagGroupManager == null) {
-				//logger.error("No TagGroupManager for product " + product + ", products: " + getManagers().getProducts().size());
-				continue;
-			}
-            Collection<ResourceGroup> resourceGroups = tagGroupManager.getResourceGroups(new TagLists(accounts, regions, zones, Lists.newArrayList(product)));
-			for (ResourceGroup rg: resourceGroups) {
-				// If no separator, it's defaulted to the product name, so skip it
-				if (rg.name.contains(ResourceGroup.separator)) {
-					UserTag[] tags = rg.getUserTags();
-					if (tags.length > index && !StringUtils.isEmpty(tags[index].name))
-						data.add(tags[index]);
-				}
-			}
-        }
-		
 		def result = [status: 200, data: data]
 		render result as JSON
 	}
@@ -599,54 +579,22 @@ class DashboardController {
 			logger.debug("groupBy: " + groupBy + (groupBy == TagType.Tag ? ":" + config.userTags.get(userTagGroupByIndex) : "") + ", tags = " + data.keySet());
 		}
         else if (showUserTags) {
-            data = Maps.newTreeMap();
-			if (products.size() == 0) {
-	            if (showUserTags) {
-	                Set productSet = Sets.newTreeSet();
-	                for (Product product: getManagers().getProducts()) {
-	                    if (product == null)
-	                        continue;
-	
-	                    Collection<Product> tmp = getManagers().getTagGroupManager(product).getProducts(new TagLists(accounts, regions, zones));
-	                    productSet.addAll(tmp);
-	                }
-	                products = Lists.newArrayList(productSet);
-	            }
-			}
-            for (Product product: products) {
-                if (product == null)
-                    continue;
-
-                DataManager dataManager = isCost ? getManagers().getCostManager(product, consolidateType) : getManagers().getUsageManager(product, consolidateType);
-				if (dataManager == null) {
-					//logger.error("No DataManager for product " + product);
-					continue;
-				}
-				TagLists tagLists;
-				if (showUserTags) {
-					tagLists = new TagListsWithUserTags(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes, userTagLists);
-				}
-				else {
-					tagLists = new TagLists(accounts, regions, zones, Lists.newArrayList(product), operations, usageTypes);
-				}
-				logger.debug("-------------- Process product ----------------" + product);
-                Map<Tag, double[]> dataOfProduct = dataManager.getData(
-                    interval,
-                    tagLists,
-                    groupBy,
-                    aggregate,
-                    forReservation,
-					usageUnit,
-					userTagGroupByIndex
-                );
-                
-                if (groupBy == TagType.Product && dataOfProduct.size() > 0) {
-                    double[] currentProductValues = dataOfProduct.get(dataOfProduct.keySet().iterator().next());
-                    dataOfProduct.put(Tag.aggregated, Arrays.copyOf(currentProductValues, currentProductValues.size()));
-                } 
-                
-                merge(dataOfProduct, data);
-            }
+            data = getManagers().getData(
+				interval,
+				accounts,
+				regions,
+				zones,
+				products,
+				operations,
+				usageTypes,
+				isCost,
+				consolidateType,
+				groupBy,
+				aggregate,
+				forReservation,
+				usageUnit,
+				userTagLists,
+				userTagGroupByIndex);			
         }
         else {
 			logger.debug("doGetData: " + operations + ", forReservation: " + forReservation);

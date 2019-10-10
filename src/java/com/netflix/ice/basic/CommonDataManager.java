@@ -60,7 +60,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
 	 * Aggregate the columns of data for a single instance in time
 	 */
     abstract protected D aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, D[] data);
-
+        
     /*
      * Aggregate all the data matching the tags in tagLists starting at time start for the specified to and from indecies.
      */
@@ -94,6 +94,46 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         return fromIndex - from;
     }
     
+    private int getFromIndex(DateTime start, Interval interval) {
+    	int fromIndex = 0;
+    	if (!interval.getStart().isBefore(start)) {
+            if (consolidateType == ConsolidateType.hourly) {
+                fromIndex = Hours.hoursBetween(start, interval.getStart()).getHours();
+            }
+            else if (consolidateType == ConsolidateType.daily) {
+                fromIndex = Days.daysBetween(start, interval.getStart()).getDays();
+            }
+            else if (consolidateType == ConsolidateType.weekly) {
+                fromIndex = Weeks.weeksBetween(start, interval.getStart()).getWeeks();
+                if (start.getDayOfWeek() != interval.getStart().getDayOfWeek())
+                    fromIndex++;
+            }
+            else if (consolidateType == ConsolidateType.monthly) {
+                fromIndex = Months.monthsBetween(start, interval.getStart()).getMonths();
+            }
+    	}
+    	return fromIndex;
+    }
+       
+    private int getResultIndex(DateTime start, Interval interval) {
+    	int resultIndex = 0;
+        if (interval.getStart().isBefore(start)) {
+            if (consolidateType == ConsolidateType.hourly) {
+                resultIndex = Hours.hoursBetween(interval.getStart(), start).getHours();
+            }
+            else if (consolidateType == ConsolidateType.daily) {
+                resultIndex = Days.daysBetween(interval.getStart(), start).getDays();
+            }
+            else if (consolidateType == ConsolidateType.weekly) {
+                resultIndex = Weeks.weeksBetween(interval.getStart(), start).getWeeks();
+            }
+            else if (consolidateType == ConsolidateType.monthly) {
+                resultIndex = Months.monthsBetween(interval.getStart(), start).getMonths();
+            }
+        }
+    	return resultIndex;
+    }
+    
     public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
     	Interval adjusted = getAdjustedInterval(interval);
         DateTime start = adjusted.getStart();
@@ -102,40 +142,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         D[] result = getResultArray(getSize(interval));
 
         do {
-            int resultIndex = 0;
-            int fromIndex = 0;
-
-            if (interval.getStart().isBefore(start)) {
-                if (consolidateType == ConsolidateType.hourly) {
-                    resultIndex = Hours.hoursBetween(interval.getStart(), start).getHours();
-                }
-                else if (consolidateType == ConsolidateType.daily) {
-                    resultIndex = Days.daysBetween(interval.getStart(), start).getDays();
-                }
-                else if (consolidateType == ConsolidateType.weekly) {
-                    resultIndex = Weeks.weeksBetween(interval.getStart(), start).getWeeks();
-                }
-                else if (consolidateType == ConsolidateType.monthly) {
-                    resultIndex = Months.monthsBetween(interval.getStart(), start).getMonths();
-                }
-            }
-            else {
-                if (consolidateType == ConsolidateType.hourly) {
-                    fromIndex = Hours.hoursBetween(start, interval.getStart()).getHours();
-                }
-                else if (consolidateType == ConsolidateType.daily) {
-                    fromIndex = Days.daysBetween(start, interval.getStart()).getDays();
-                }
-                else if (consolidateType == ConsolidateType.weekly) {
-                    fromIndex = Weeks.weeksBetween(start, interval.getStart()).getWeeks();
-                    if (start.getDayOfWeek() != interval.getStart().getDayOfWeek())
-                        fromIndex++;
-                }
-                else if (consolidateType == ConsolidateType.monthly) {
-                    fromIndex = Months.monthsBetween(start, interval.getStart()).getMonths();
-                }
-            }
-            
+            int resultIndex = getResultIndex(start, interval);
+            int fromIndex = getFromIndex(start, interval);            
             int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit);
             fromIndex += count;
             resultIndex += count;
@@ -202,15 +210,12 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        
         return rawResult;
     }
 
     private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
         Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
-        
         Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
-        
         return result;
     }
 

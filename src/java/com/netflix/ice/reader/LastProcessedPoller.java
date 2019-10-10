@@ -51,8 +51,8 @@ public class LastProcessedPoller extends Poller {
 			logger.error("Initial poll failed", e);
 		}
 		
-		// Check every 5 minutes
-		start(5*60, 5*60, false);
+		// Check every minute
+		start(1*60, 1*60, false);
 	}
 	
 	public Long getLastProcessedMillis() {
@@ -61,7 +61,7 @@ public class LastProcessedPoller extends Poller {
 
 	@Override
 	protected void poll() throws Exception {
-        logger.info(dbName + " start polling...");
+        //logger.info(dbName + " start polling...");
         Long oldLastProcessedMillis = lastProcessedMillis;
         for (DateTime month = startDate; month.isBefore(DateTime.now()); month = month.plusMonths(1)) {
         	Long lastProcessedForMonth = getLastMillis(month);
