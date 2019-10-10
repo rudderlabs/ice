@@ -276,6 +276,7 @@ public class DataJsonWriter extends DataFile {
 	
 	public class Item {
 		String hour;
+		String org;
 		String accountId;
 		String account;
 		String region;
@@ -295,6 +296,7 @@ public class DataJsonWriter extends DataFile {
 			this.cost = cost;
 			this.usage = usage;
 			
+			org = String.join("/", tg.account.parents);
 			accountId = tg.account.id;
 			account = tg.account.name;
 			region = tg.region.name;
