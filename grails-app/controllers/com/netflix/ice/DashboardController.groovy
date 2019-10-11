@@ -56,6 +56,7 @@ import org.joda.time.Hours
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory
 import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang.time.StopWatch;
 
 import com.netflix.ice.common.AwsUtils
 
@@ -446,6 +447,9 @@ class DashboardController {
         if (tagGroupManager == null) {
             return [status: 200, start: 0, data: [:], stats: [:], groupBy: "None"];
         }
+		
+		StopWatch sw = new StopWatch();
+		sw.start();
 
 		TagType groupBy = query.has("groupBy") ? (query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"))) : null;
         boolean isCost = query.has("isCost") ? query.getBoolean("isCost") : true;
@@ -725,6 +729,7 @@ class DashboardController {
             	result.time = new IntRange(0, data.values().iterator().next().length - 1).collect { interval.getStart().plusMonths(it).getMillis() }
 			}
         }
+		logger.info("doGetData elapsed time: " + sw);
         return result;
     }
 	

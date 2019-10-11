@@ -1120,11 +1120,11 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (result.status === 200 && result.data && fn) {
             fn(result);
           }
-        }).error(function (result) {
-          if (result.status === 401)
+        }).error(function (result, status) {
+          if (status === 401)
             $window.location.reload();
           else if (errfn)
-            errfn(result);
+            errfn(result, status);
           });
       }
       else {
@@ -1434,8 +1434,8 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legendPrecision = $scope.usage_cost == "cost" ? 2 : 0;
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, query, false, function (result) {
-      $scope.errorMessage = "Error: " + result.status;
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
   }
@@ -1605,8 +1605,8 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
 
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, null, false, function (result) {
-      $scope.errorMessage = "Error: " + result.status;
+    }, null, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
   }
@@ -1758,8 +1758,8 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legendPrecision = 0;
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, query, false, function (result) {
-      $scope.errorMessage = "Error: " + result.status;
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
   }
@@ -1898,8 +1898,8 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, null, false, function (result) {
-      $scope.errorMessage = "Error: " + result.status;
+    }, null, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
   }
@@ -2101,12 +2101,12 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
         $scope.legends = [];
         highchart.drawGraph(result, $scope, true);
         $scope.loading = false;
-      }, { consolidate: "daily", aggregate: "none", breakdown: false }, false, function (result) {
-        $scope.errorMessage = "Error: " + result.status;
+      }, { consolidate: "daily", aggregate: "none", breakdown: false }, false, function (result, status) {
+        $scope.errorMessage = "Error: " + status;
         $scope.loading = false;
       });
-    }, { consolidate: "monthly", aggregate: "data", breakdown: true }, false, function (result) {
-      $scope.errorMessage = "Error: " + result.status;
+    }, { consolidate: "monthly", aggregate: "data", breakdown: true }, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
     $scope.legendName = $scope.groupBy.name;

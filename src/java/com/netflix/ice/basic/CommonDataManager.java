@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.commons.lang.time.StopWatch;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.Hours;
@@ -214,8 +215,11 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     }
 
     private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
-        Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
+    	StopWatch sw = new StopWatch();
+    	sw.start();
+    	Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
         Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
+        logger.debug("getData elapsed time: " + sw);
         return result;
     }
 
