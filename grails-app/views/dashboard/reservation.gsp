@@ -146,6 +146,7 @@
     <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
        ng-click="download()" ng-show="!loading"
        ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
+   	<span ng-show="errorMessage">&nbsp;&nbsp;<img src="${resource(dir: '/')}images/error.png" style="position: relative; top: 5px"/>&nbsp;&nbsp;{{errorMessage}}</span>
   </div>
 
   <table style="width: 100%; margin-top: 20px">

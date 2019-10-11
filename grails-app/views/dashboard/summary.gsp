@@ -90,6 +90,7 @@
     <a href="javascript:void(0)" class="monitor" style="background-image: url(${resource(dir: '/')}images/tango/16/apps/utilities-system-monitor.png)"
        ng-click="updateUrl(); getData()" ng-show="!loading"
        ng-disabled="selected_accounts.length == 0|| selected_regions.length == 0 || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Submit</a>
+   	<span ng-show="errorMessage">&nbsp;&nbsp;<img src="${resource(dir: '/')}images/error.png" style="position: relative; top: 5px"/>&nbsp;&nbsp;{{errorMessage}}</span>
   </div>
 
   <div id="highchart_container" style="width: 100%; height: 400px;">
