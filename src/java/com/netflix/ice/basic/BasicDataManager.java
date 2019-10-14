@@ -21,6 +21,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.joda.time.DateTime;
@@ -54,6 +55,11 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService);
         this.instanceMetricsService = instanceMetricsService;
     }
+    	
+	public int size(DateTime start) throws ExecutionException {
+		ReadOnlyData data = getReadOnlyData(start);
+		return data.getTagGroups().size();
+	}
     
     @Override
     protected ReadOnlyData newEmptyData() {

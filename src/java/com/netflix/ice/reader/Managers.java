@@ -32,6 +32,7 @@ import com.netflix.ice.tag.Zone;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.joda.time.Interval;
 
@@ -112,4 +113,7 @@ public interface Managers {
      * shutdown all manager instances
      */
     void shutdown();
+    
+    String getStatistics() throws ExecutionException;
+
 }

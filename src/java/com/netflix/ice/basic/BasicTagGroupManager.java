@@ -72,6 +72,15 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     	this.tagGroupsWithResourceGroups = tagGroupsWithResourceGroups;
     	this.tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
     }
+    
+    public TreeMap<Long, Integer> getSizes() {
+    	TreeMap<Long, Integer> sizes = Maps.newTreeMap();
+    	
+    	for (Long millis: tagGroupsWithResourceGroups.keySet())
+    		sizes.put(millis, tagGroupsWithResourceGroups.get(millis).size());
+    	
+    	return sizes;
+    }
 
     @Override
     protected boolean stalePoll() throws IOException, BadZone {

@@ -83,6 +83,7 @@ class DashboardController {
 		getUsageTypes: "POST",
 		tags: "GET",
 		getData: "POST",
+		readerStats: "GET",
 		getTimeSpan: "GET",
 		instance: "GET",
 		summary: "GET",
@@ -387,6 +388,11 @@ class DashboardController {
         def result = doGetData(query);
         render result as JSON
     }
+	
+	def readerStats = {
+		def result = 
+		render getManagers().getStatistics();
+	}
 
     def getTimeSpan = {
         int spans = Integer.parseInt(params.spans);

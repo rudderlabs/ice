@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -433,4 +434,26 @@ public class BasicManagers extends Poller implements Managers {
         }
     }
 
+    public String getStatistics() throws ExecutionException {
+    	StringBuilder sb = new StringBuilder();
+    	TagGroupManager allTgm = tagGroupManagers.get(null);
+		TreeMap<Long, Integer> allTgmSizes = allTgm.getSizes();
+		DateTime month = new DateTime(allTgmSizes.lastKey());
+		int totalResourceTagGroups = 0;
+    	
+    	sb.append("TagGroupManagers: month=" + AwsUtils.monthDateFormat.print(month) + ", size=" + tagGroupManagers.size() + "<br><br>");
+    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Data TagGroups</td></tr>");
+    	for (Product p: tagGroupManagers.keySet()) {
+    		TagGroupManager tgm = tagGroupManagers.get(p);
+    		TreeMap<Long, Integer> sizes = tgm.getSizes();
+    		BasicDataManager bdm = costManagers.get(new Key(p, ConsolidateType.monthly));
+    		sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm.size(month) + "</td></tr>");
+    		
+    		if (p != null)
+    			totalResourceTagGroups += sizes.lastEntry().getValue();
+       	}
+    	sb.append("</table>");
+    	sb.append("<br><br>Total Resource TagGroups: " + totalResourceTagGroups);
+    	return sb.toString();
+    }
 }
