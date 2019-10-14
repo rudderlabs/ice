@@ -50,7 +50,7 @@ public class DataJsonWriterTest {
 	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) throws BadZone {
 		Product prod = productService.getProductByName(product);
 		return TagGroup.getTagGroup(
-				new Account("123456789012", "a1", null),
+				new Account("123456789012", "a1", Lists.<String>newArrayList()),
 				Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), 
 				prod, 
 				Operation.getOperation(operation), 
@@ -112,6 +112,7 @@ public class DataJsonWriterTest {
 		String expectGet =
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
+					"\"org\":\"\","+
 					"\"accountId\":\"123456789012\","+
 					"\"account\":\"a1\","+
 					"\"region\":\"us-east-1\","+
@@ -126,6 +127,7 @@ public class DataJsonWriterTest {
 		String expectCopy =
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
+					"\"org\":\"\","+
 					"\"accountId\":\"123456789012\","+
 					"\"account\":\"a1\","+
 					"\"region\":\"us-east-1\","+

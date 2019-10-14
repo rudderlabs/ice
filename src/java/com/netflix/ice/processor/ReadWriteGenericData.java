@@ -90,6 +90,12 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
         return data.get(i);
     }
 
+    /**
+     * Gets the aggregated set of TagGroups across all time intervals in the list of maps.
+     * This method walks the list adding all the keys from each map.
+     * 
+     * @return a set of TagGroups
+     */
     public Collection<TagGroup> getTagGroups() {
         Set<TagGroup> keys = Sets.newTreeSet();
 
@@ -100,6 +106,16 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
         return keys;
     }
     
+    /**
+     * Serialize data using standard Java serialization DataOutput methods in the following order:<br/>
+     * 
+     * 1. TagGroup count (int)<br/>
+     * 2. TagGroup Array<br/>
+     * 3. Number of hours/days/weeks/months of data (int)<br/>
+     * 4. Data matrix:<br/>
+     * 		4a. Data present for TagGroup flag (boolean)<br/>
+     * 		4b. Data array for TagGroup (if flag is true)<br/>
+     */
     public void serialize(DataOutput out) throws IOException {
         Collection<TagGroup> keys = getTagGroups();
         out.writeInt(keys.size());

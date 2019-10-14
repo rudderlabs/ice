@@ -64,9 +64,10 @@ public abstract class ReadOnlyGenericData<D> {
         int num = in.readInt();
         D[][] data = newDataMatrix(num);
         for (int i = 0; i < num; i++)  {
-            data[i] = newDataArray(keys.size());
+        	data[i] = null;
             boolean hasData = in.readBoolean();
             if (hasData) {
+                data[i] = newDataArray(keys.size());
                 for (int j = 0; j < keys.size(); j++) {
                     D v = readValue(in);
                     if (v != null) {

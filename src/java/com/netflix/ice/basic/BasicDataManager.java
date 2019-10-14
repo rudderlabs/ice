@@ -118,11 +118,13 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
 	@Override
     protected Double aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, Double[] data) {
 		Double result = 0.0;
-        for (int i = 0; i < columns.size(); i++) {
-        	Double d = data[columns.get(i)];
-        	if (d != null && d != 0.0)
-        		result += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, d);
-        }
+		if (data != null) {
+	        for (int i = 0; i < columns.size(); i++) {
+	        	Double d = data[columns.get(i)];
+	        	if (d != null && d != 0.0)
+	        		result += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, d);
+	        }
+		}
         return result;
 	}
 

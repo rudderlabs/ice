@@ -89,12 +89,15 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	protected TagCoverageMetrics aggregate(List<Integer> columns,
 			List<TagGroup> tagGroups, UsageUnit usageUnit,
 			TagCoverageMetrics[] data) {
+		
 		TagCoverageMetrics result = new TagCoverageMetrics(getUserTagsSize());
-        for (int i = 0; i < columns.size(); i++) {
-        	TagCoverageMetrics d = data[columns.get(i)];
-        	if (d != null)
-        		result.add(d);
-        }
+		if (data != null) {
+	        for (int i = 0; i < columns.size(); i++) {
+	        	TagCoverageMetrics d = data[columns.get(i)];
+	        	if (d != null)
+	        		result.add(d);
+	        }
+		}
         return result;
 	}
 
