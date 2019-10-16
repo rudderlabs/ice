@@ -51,8 +51,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     protected TagGroupManager tagGroupManager;
     
 	public CommonDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService) {
-    	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
+    	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
         this.tagGroupManager = tagGroupManager;
 	}
 	
@@ -66,7 +66,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     /*
      * Aggregate all the data matching the tags in tagLists starting at time start for the specified to and from indecies.
      */
-    protected int aggregateData(DateTime start, TagLists tagLists, int from, int to, D[] result, UsageUnit usageUnit) throws ExecutionException {
+    protected int aggregateData(DateTime start, TagLists tagLists, int from, int to, D[] result, UsageUnit usageUnit, TagType groupBy, Tag tag, int userTagGroupByIndex) throws ExecutionException {
         T data = getReadOnlyData(start);
 
         // Figure out which columns we're going to aggregate
