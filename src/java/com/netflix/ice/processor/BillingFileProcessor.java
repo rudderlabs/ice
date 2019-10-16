@@ -26,6 +26,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
@@ -49,6 +50,7 @@ public class BillingFileProcessor extends Poller {
     protected static Logger staticLogger = LoggerFactory.getLogger(BillingFileProcessor.class);
 
     private ProcessorConfig config;
+    private WorkBucketConfig workBucketConfig;
     private boolean compress;
     private Long startMilli;
     private Long endMilli;
@@ -67,6 +69,7 @@ public class BillingFileProcessor extends Poller {
 
     public BillingFileProcessor(ProcessorConfig config, boolean compress) throws Exception {
     	this.config = config;
+    	this.workBucketConfig = config.workBucketConfig;
     	this.compress = compress;
         
         dbrProcessor = new DetailedBillingReportProcessor(config);
@@ -103,7 +106,7 @@ public class BillingFileProcessor extends Poller {
             }
             
             for (MonthlyReport report: reportsToProcess.get(dataTime)) {
-            	long end = report.getProcessor().downloadAndProcessReport(dataTime, report, config.localDir, lastProcessed, costAndUsageData, instances);
+            	long end = report.getProcessor().downloadAndProcessReport(dataTime, report, workBucketConfig.localDir, lastProcessed, costAndUsageData, instances);
                 endMilli = Math.max(endMilli, end);
             }
         	
@@ -170,7 +173,7 @@ public class BillingFileProcessor extends Poller {
                 config.resourceService.commit();
             
             logger.info("archive product list...");
-            config.productService.archive(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+            config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
             costAndUsageData.archive(startMilli, config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
@@ -237,8 +240,9 @@ public class BillingFileProcessor extends Poller {
     
 
     void init() {
-    	costAndUsageData = new CostAndUsageData(config.resourceService == null ? null : config.resourceService.getUserTags(), config.getTagCoverage());
-        instances = new Instances(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
+    	costAndUsageData = new CostAndUsageData(config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(),
+    			config.getTagCoverage(), config.accountService, config.productService);
+        instances = new Instances(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }
 
     private void archiveInstances() throws Exception {
@@ -251,14 +255,14 @@ public class BillingFileProcessor extends Poller {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(millisStr.length());
 
-        s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr, StandardCharsets.UTF_8), metadata);
+        s3Client.putObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr, StandardCharsets.UTF_8), metadata);
     }
 
     private Long getLastMillis(String filename) {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
         InputStream in = null;
         try {
-            in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + filename).getObjectContent();
+            in = s3Client.getObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename).getObjectContent();
             return Long.parseLong(IOUtils.toString(in, StandardCharsets.UTF_8));
         }
         catch (AmazonServiceException ase) {

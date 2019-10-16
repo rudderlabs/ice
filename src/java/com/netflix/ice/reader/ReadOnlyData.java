@@ -22,15 +22,15 @@ import com.netflix.ice.common.TagGroup;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.Collection;
+import java.util.List;
 
 public class ReadOnlyData extends ReadOnlyGenericData<Double> {
     public ReadOnlyData() {
-        super(new Double[][]{}, Lists.<TagGroup>newArrayList());
+        super(new Double[][]{}, Lists.<TagGroup>newArrayList(), 0);
     }
     
-    public ReadOnlyData(Double[][] data, Collection<TagGroup> tagGroups) {
-        super(data, tagGroups);
+    public ReadOnlyData(Double[][] data, List<TagGroup> tagGroups, int numUserTags) {
+        super(data, tagGroups, numUserTags);
     }
 
 	@Override

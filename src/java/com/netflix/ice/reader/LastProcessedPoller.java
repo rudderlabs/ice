@@ -26,6 +26,7 @@ import org.joda.time.DateTime;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.Poller;
 
 /**
@@ -34,13 +35,14 @@ import com.netflix.ice.common.Poller;
  */
 public class LastProcessedPoller extends Poller {
 	
-    private ReaderConfig config = ReaderConfig.getInstance();
+    private final WorkBucketConfig workBucketConfig;
     private DateTime startDate;
     private final String dbName;
     private Long lastProcessedMillis;
 
-	public LastProcessedPoller(DateTime startDate) {
+	public LastProcessedPoller(DateTime startDate, WorkBucketConfig workBucketConfig) {
 		this.startDate = startDate;
+		this.workBucketConfig = workBucketConfig;
 		this.dbName = "lastProcessMillis";
 		this.lastProcessedMillis = 0L;
 		
@@ -80,7 +82,7 @@ public class LastProcessedPoller extends Poller {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
         InputStream in = null;
         try {
-            in = s3Client.getObject(config.workS3BucketName, config.workS3BucketPrefix + filename).getObjectContent();
+            in = s3Client.getObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename).getObjectContent();
             Long millis = Long.parseLong(IOUtils.toString(in, StandardCharsets.UTF_8));
             //logger.info(filename + ": " + millis);
             return millis;

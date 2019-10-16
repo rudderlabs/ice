@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -60,9 +61,9 @@ public class BasicDataManagerTest {
 	class TestDataFilePoller extends BasicDataManager {
 		private ReadOnlyData data;
 		
-		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-	    		int monthlyCacheSize, AccountService accountService, ProductService productService, ReadOnlyData data) {
-			super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService, null);
+		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+	    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, ReadOnlyData data) {
+			super(startDate, dbName, consolidateType, tagGroupManager, compress, numUserTags, monthlyCacheSize, workBucketConfig, accountService, productService, null);
 			this.data = data;
 		}
 		
@@ -85,7 +86,7 @@ public class BasicDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, as, ps, null);
+		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
 	    
 	    File f = new File(dataDir + "cost_hourly_EC2_Instance_2018-06.gz");
 	    if (!f.exists())
@@ -109,7 +110,7 @@ public class BasicDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, as, ps, null);
+		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
 	    
 	    File f = new File(dataDir + "cost_monthly_all.gz");
 	    if (!f.exists())
@@ -165,16 +166,16 @@ public class BasicDataManagerTest {
 		Double[][] rawData = new Double[][]{
 				new Double[]{ 1.0, 2.0 },
 		};
-		Collection<TagGroup> tagGroups = Lists.newArrayList();
+		List<TagGroup> tagGroups = Lists.newArrayList();
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "operation", "usgaeType", "usageTypeUnit", "TagA|TagB", as, ps));
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "operation", "usgaeType", "usageTypeUnit", "TagA|", as, ps));
 		
 		
-		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups);
+		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups, 2);
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
@@ -211,11 +212,11 @@ public class BasicDataManagerTest {
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "operation", "usgaeType", "usageTypeUnit", "TagA|TagB", as, ps));
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "operation", "usgaeType", "usageTypeUnit", null, as, ps));		
 		
-		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups);
+		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups, 2);
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
@@ -246,16 +247,16 @@ public class BasicDataManagerTest {
 		Double[][] rawData = new Double[][]{
 				new Double[]{ 1.0, 2.0 },
 		};
-		Collection<TagGroup> tagGroups = Lists.newArrayList();
+		List<TagGroup> tagGroups = Lists.newArrayList();
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "On-Demand Instances", "usgaeType", "usageTypeUnit", "TagA|TagB", as, ps));
 		tagGroups.add(TagGroup.getTagGroup("account", "us-east-1", null, "product", "On-Demand Instances", "usgaeType", "usageTypeUnit", "TagA|", as, ps));
 		
 		
-		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups);
+		ReadOnlyData rod = new ReadOnlyData(rawData, tagGroups, 2);
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();

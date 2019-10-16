@@ -36,8 +36,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config;
+import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
@@ -51,16 +54,22 @@ public class CostAndUsageData {
 
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
+    private final WorkBucketConfig workBucketConfig;
+    private final AccountService accountService;
+    private final ProductService productService;
     private Map<Product, ReadWriteTagCoverageData> tagCoverage;
     private List<String> userTags;
     private boolean collectTagCoverageWithUserTags;
     private Map<ReservationArn, Reservation> reservations;
     
-	public CostAndUsageData(List<String> userTags, Config.TagCoverage tagCoverage) {
+	public CostAndUsageData(WorkBucketConfig workBucketConfig, List<String> userTags, Config.TagCoverage tagCoverage, AccountService accountService, ProductService productService) {
 		this.usageDataByProduct = Maps.newHashMap();
 		this.costDataByProduct = Maps.newHashMap();
         this.usageDataByProduct.put(null, new ReadWriteData());
         this.costDataByProduct.put(null, new ReadWriteData());
+        this.workBucketConfig = workBucketConfig;
+        this.accountService = accountService;
+        this.productService = productService;
         this.tagCoverage = null;
         this.userTags = userTags;
         this.collectTagCoverageWithUserTags = tagCoverage == TagCoverage.withUserTags;
@@ -182,7 +191,7 @@ public class CostAndUsageData {
     	
         int totalResourceTagGroups = 0;
         for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true);
+            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true, workBucketConfig, accountService, productService);
             Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
             logger.info("Write " + tagGroups.size() + " tagGroups for " + (product == null ? "all" : product.name));
             if (product != null)
@@ -214,7 +223,7 @@ public class CostAndUsageData {
     	        
     	        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
     	        DataJsonWriter writer = new DataJsonWriter(writeJsonFiles.name() + "_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
-    	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService);
+    	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService, workBucketConfig);
     	        writer.archive();
     	        return null;
     		}
@@ -234,7 +243,7 @@ public class CostAndUsageData {
     	return pool.submit(new Callable<Void>() {
     		@Override
     		public Void call() throws Exception {
-                DataWriter writer = new DataWriter(name, data, compress, false);
+                DataWriter writer = new DataWriter(name, data, compress, false, workBucketConfig, accountService, productService);
                 writer.archive();
                 return null;
     		}
@@ -284,7 +293,7 @@ public class CostAndUsageData {
 	
 	            // get last month data
 	            ReadWriteData lastMonthData = new ReadWriteData();
-	            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), lastMonthData, compress, true);
+	            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), lastMonthData, compress, true, workBucketConfig, accountService, productService);
 	
 	            // aggregate to daily, weekly and monthly
 	            int dayOfWeek = monthDateTime.getDayOfWeek();
@@ -322,14 +331,14 @@ public class CostAndUsageData {
 	            // archive daily
 	            int year = monthDateTime.getYear();
 	            ReadWriteData dailyData = new ReadWriteData();
-	            writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, compress, true);
+	            writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, compress, true, workBucketConfig, accountService, productService);
 	            dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
 	            writer.archive();
 	
 	            // archive monthly
 	            ReadWriteData monthlyData = new ReadWriteData();
 	            int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
-	            writer = new DataWriter(prefix + "monthly_" + prodName, monthlyData, compress, true);
+	            writer = new DataWriter(prefix + "monthly_" + prodName, monthlyData, compress, true, workBucketConfig, accountService, productService);
 	            monthlyData.setData(monthly, numMonths, false);            
 	            writer.archive();
 	
@@ -341,7 +350,7 @@ public class CostAndUsageData {
 	            else
 	                index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
 	            ReadWriteData weeklyData = new ReadWriteData();
-	            writer = new DataWriter(prefix + "weekly_" + prodName, weeklyData, compress, true);
+	            writer = new DataWriter(prefix + "weekly_" + prodName, weeklyData, compress, true, workBucketConfig, accountService, productService);
 	            weeklyData.setData(weekly, index, true);
 	            writer.archive();
 	            return null;
@@ -401,7 +410,7 @@ public class CostAndUsageData {
     	            int previousMonthYear = previousMonthStartDay.getYear();
     	            
     	            ReadWriteTagCoverageData previousDailyData = new ReadWriteTagCoverageData(numUserTags);
-    	            writer = new DataWriter("coverage_daily_" + prodName + "_" + previousMonthYear, previousDailyData, compress, true);
+    	            writer = new DataWriter("coverage_daily_" + prodName + "_" + previousMonthYear, previousDailyData, compress, true, workBucketConfig, accountService, productService);
     	            
     	            int day = previousMonthStartDay.getDayOfYear();
     	            for (int i = 0; i < daysFromLastMonth; i++) {
@@ -433,14 +442,14 @@ public class CostAndUsageData {
                 
                 // archive daily
                 ReadWriteTagCoverageData dailyData = new ReadWriteTagCoverageData(numUserTags);
-                writer = new DataWriter("coverage_daily_" + prodName + "_" + monthDateTime.getYear(), dailyData, compress, true);
+                writer = new DataWriter("coverage_daily_" + prodName + "_" + monthDateTime.getYear(), dailyData, compress, true, workBucketConfig, accountService, productService);
                 dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
                 writer.archive();
 
                 // archive monthly
                 ReadWriteTagCoverageData monthlyData = new ReadWriteTagCoverageData(numUserTags);
                 int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
-                writer = new DataWriter("coverage_monthly_" + prodName, monthlyData, compress, true);
+                writer = new DataWriter("coverage_monthly_" + prodName, monthlyData, compress, true, workBucketConfig, accountService, productService);
                 monthlyData.setData(monthly, numMonths, false);            
                 writer.archive();
 
@@ -452,7 +461,7 @@ public class CostAndUsageData {
                 else
                     index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
                 ReadWriteTagCoverageData weeklyData = new ReadWriteTagCoverageData(numUserTags);
-                writer = new DataWriter("coverage_weekly_" + prodName, weeklyData, compress, true);
+                writer = new DataWriter("coverage_weekly_" + prodName, weeklyData, compress, true, workBucketConfig, accountService, productService);
                 weeklyData.setData(weekly, index, true);
                 writer.archive();
                 return null;

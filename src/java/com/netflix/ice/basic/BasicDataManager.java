@@ -28,6 +28,7 @@ import org.joda.time.DateTime;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -49,11 +50,13 @@ import com.netflix.ice.tag.Zone.BadZone;
 public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> implements DataManager {
 
     protected InstanceMetricsService instanceMetricsService;
+    protected int numUserTags;
     
-    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
-    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService);
+    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
+    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
         this.instanceMetricsService = instanceMetricsService;
+        this.numUserTags = numUserTags;
     }
     	
 	public int size(DateTime start) throws ExecutionException {
@@ -69,7 +72,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     @Override
     protected ReadOnlyData deserializeData(DataInputStream in) throws IOException, BadZone {
 	    ReadOnlyData result = new ReadOnlyData();
-	    result.deserialize(accountService, productService, in);
+	    result.deserialize(accountService, productService, numUserTags, in);
 	    return result;
     }
             

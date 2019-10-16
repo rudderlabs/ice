@@ -21,20 +21,32 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Tag;
+import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadOnlyGenericData<D> {
-    D[][] data;
-    private Collection<TagGroup> tagGroups;
+    private D[][] data;
+    protected List<TagGroup> tagGroups;
+    private Map<TagType, Map<Tag, Map<TagGroup, Integer>>> tagGroupsByTagAndTagType;
+    protected int numUserTags;
+    private List<Map<Tag, Map<TagGroup, Integer>>> tagGroupsByUserTag;
+    
+    final static TagType[] tagTypes = new TagType[]{ TagType.Account, TagType.Region, TagType.Zone, TagType.Product, TagType.Operation, TagType.UsageType };
 
-    public ReadOnlyGenericData(D[][] data, Collection<TagGroup> tagGroups) {
+    public ReadOnlyGenericData(D[][] data, List<TagGroup> tagGroups, int numUserTags) {
         this.data = data;
         this.tagGroups = tagGroups;
+        this.numUserTags = numUserTags;
+        buildIndecies();
     }
 
     public D[] getData(int i) {
@@ -49,11 +61,16 @@ public abstract class ReadOnlyGenericData<D> {
         return tagGroups;
     }
     
+    public Map<TagGroup, Integer> getTagGroups(TagType groupBy, Tag tag, int userTagIndex) {
+    	Map<Tag, Map<TagGroup, Integer>> byTag = groupBy == TagType.Tag ? tagGroupsByUserTag.get(userTagIndex) : tagGroupsByTagAndTagType.get(groupBy);
+        return byTag == null ? null : byTag.get(tag);
+    }
+    
     abstract protected D[][] newDataMatrix(int size);
     abstract protected D[] newDataArray(int size);
     abstract protected D readValue(DataInput in) throws IOException ;
 
-    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
+    public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in) throws IOException, BadZone {
 
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
@@ -79,5 +96,53 @@ public abstract class ReadOnlyGenericData<D> {
 
         this.data = data;
         this.tagGroups = keys;
+        this.numUserTags = numUserTags;
+        buildIndecies();
+    }
+    
+    private void buildIndecies() {	   
+    	// Build the account-based TagGroup maps
+    	tagGroupsByTagAndTagType = Maps.newHashMap();
+    	for (TagType t: tagTypes)
+    		tagGroupsByTagAndTagType.put(t, Maps.<Tag, Map<TagGroup, Integer>>newHashMap());
+    	
+    	if (numUserTags > 0) {
+	    	tagGroupsByUserTag = Lists.newArrayList();
+	    	for (int i = 0; i < numUserTags; i++)
+	    		tagGroupsByUserTag.add(Maps.<Tag, Map<TagGroup, Integer>>newHashMap());
+    	}
+    	    	
+		UserTag emptyUserTag = UserTag.get("");
+		
+    	for (int i = 0; i < tagGroups.size(); i++) {
+    		TagGroup tg = tagGroups.get(i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.Account), tg.account, tg, i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.Region), tg.region, tg, i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.Zone), tg.zone, tg, i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.Product), tg.product, tg, i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.Operation), tg.operation, tg, i);
+    		addIndex(tagGroupsByTagAndTagType.get(TagType.UsageType), tg.usageType, tg, i);
+    		
+    		if (numUserTags > 0) {
+	    		if (tg.resourceGroup == null || tg.resourceGroup.isProductName()) {
+		    		for (int j = 0; j < numUserTags; j++)
+		    			addIndex(tagGroupsByUserTag.get(j), emptyUserTag, tg, i);
+	    		}
+				else {
+		    		UserTag[] userTags = tg.resourceGroup.getUserTags();
+		    		for (int j = 0; j < numUserTags; j++)
+		    			addIndex(tagGroupsByUserTag.get(j), userTags[j], tg, i);
+				}
+    		}
+    	}
+    }
+    
+    private void addIndex(Map<Tag, Map<TagGroup, Integer>> indecies, Tag tag, TagGroup tagGroup, int index) {
+		Map<TagGroup, Integer> m = indecies.get(tag);
+		if (m == null) {
+			indecies.put(tag,  Maps.<TagGroup, Integer>newHashMap());
+			m = indecies.get(tag);
+		}
+		m.put(tagGroup, index);
     }
 }

@@ -32,6 +32,7 @@ import org.joda.time.Weeks;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -72,18 +73,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         List<Integer> columnIndecies = Lists.newArrayList();
         List<TagGroup> tagGroups = Lists.newArrayList();
         
-        //logger.info(" ==== tagLists: " + tagLists);
-        int columnIndex = 0;
-        for (TagGroup tagGroup: data.getTagGroups()) {
-        	boolean contains = tagLists.contains(tagGroup, true);
-            if (contains) {
-            	columnIndecies.add(columnIndex);
-            	tagGroups.add(tagGroup);
-            	
-            	//logger.info("     add TagGroup: " + tagGroup);
-            }
-            columnIndex++;
-        }
+    	getColumns(groupBy, tag, userTagGroupByIndex, data, tagLists, columnIndecies, tagGroups);
         
         int fromIndex = from;
         int resultIndex = to;
@@ -93,6 +83,31 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
             resultIndex++;
         }
         return fromIndex - from;
+    }
+        
+    private void getColumns(TagType groupBy, Tag tag, int userTagGroupByIndex, T data, TagLists tagLists, List<Integer> columnIndecies, List<TagGroup> tagGroups) {    	
+    	Map<TagGroup, Integer> m = data.getTagGroups(groupBy, tag, userTagGroupByIndex);
+    	if (m == null) {
+    		// No index, do it the hard way
+            int columnIndex = 0;
+            for (TagGroup tagGroup: data.getTagGroups()) {
+            	boolean contains = tagLists.contains(tagGroup, true);
+                if (contains) {
+                	columnIndecies.add(columnIndex);
+                	tagGroups.add(tagGroup);
+                }
+                columnIndex++;
+            }    		
+    		return;
+    	}
+    	
+        for (TagGroup tagGroup: m.keySet()) {
+        	boolean contains = tagLists.contains(tagGroup, true);
+            if (contains) {
+            	columnIndecies.add(m.get(tagGroup));
+            	tagGroups.add(tagGroup);
+            }
+        }
     }
     
     private int getFromIndex(DateTime start, Interval interval) {
@@ -135,7 +150,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     	return resultIndex;
     }
     
-    public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
+    public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit, TagType groupBy, Tag tag, int userTagGroupByIndex) throws ExecutionException {
     	Interval adjusted = getAdjustedInterval(interval);
         DateTime start = adjusted.getStart();
         DateTime end = adjusted.getEnd();
@@ -145,7 +160,7 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         do {
             int resultIndex = getResultIndex(start, interval);
             int fromIndex = getFromIndex(start, interval);            
-            int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit);
+            int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit, groupBy, tag, userTagGroupByIndex);
             fromIndex += count;
             resultIndex += count;
 
@@ -179,14 +194,19 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
     	//logger.info("Entered with groupBy: " + groupBy + ", userTagGroupByIndex: " + userTagGroupByIndex + ", tagLists: " + tagLists);
     	Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
-
+    	return getGroupedData(interval, tagListsMap, usageUnit, groupBy, userTagGroupByIndex);
+    }
+    
+    private Map<Tag, D[]> getGroupedData(Interval interval, Map<Tag, TagLists> tagListsMap, UsageUnit usageUnit, TagType groupBy, int userTagGroupByIndex) {
         Map<Tag, D[]> rawResult = Maps.newTreeMap();
+        StopWatch sw = new StopWatch();
+        sw.start();
         
         // For each of the groupBy values
         for (Tag tag: tagListsMap.keySet()) {
             try {
                 //logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
-                D[] data = getData(interval, tagListsMap.get(tag), usageUnit);
+                D[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy, tag, userTagGroupByIndex);
                 
             	// Check for values in the data array and ignore if all zeros
                 if (hasData(data)) {
@@ -211,6 +231,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
+        sw.stop();
+        logger.info("getGroupedData elapsed time " + sw);
         return rawResult;
     }
 

@@ -23,7 +23,6 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone.BadZone;
 
@@ -126,7 +125,7 @@ public class ReaderConfig extends Config {
 
         ReaderConfig.instance = this;
         
-        productService.initReader(localDir, workS3BucketName, workS3BucketPrefix);
+        productService.initReader(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
         if (throughputMetricService != null)
             throughputMetricService.init();
@@ -214,9 +213,9 @@ public class ReaderConfig extends Config {
         }
         else {
         	if (userTagList == null)
-        		dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, false, usageUnit, 0);
+        		dataManager.getData(interval, new TagLists(), null, AggregateType.both, false, usageUnit, 0);
         	else
-        		dataManager.getData(interval, new TagLists(), TagType.Account, AggregateType.both, 0, userTagList);
+        		dataManager.getData(interval, new TagLists(), null, AggregateType.both, 0, userTagList);
         }
     }
     
@@ -231,9 +230,9 @@ public class ReaderConfig extends Config {
     }
     
     private WorkBucketDataConfig downloadConfig() {
-    	File file = new File(localDir, workBucketDataConfigFilename);
+    	File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
     	file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
-		boolean downloaded = AwsUtils.downloadFileIfNotExist(this.workS3BucketName, this.workS3BucketPrefix, file);
+		boolean downloaded = AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
     	if (downloaded) {
         	String json;
 			try {
@@ -255,7 +254,7 @@ public class ReaderConfig extends Config {
     	
     	accountService.updateAccounts(config.getAccounts());
     	updateZones(config.getZones());
-        productService.initReader(localDir, workS3BucketName, workS3BucketPrefix);
+        productService.initReader(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }
     
     private void updateZones(Map<String, List<String>> zones) {

@@ -24,6 +24,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.Config.TagCoverage;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
@@ -96,7 +97,7 @@ public class BasicManagers extends Poller implements Managers {
 
     public void init() {
         config = ReaderConfig.getInstance();
-        lastProcessedPoller = new LastProcessedPoller(config.startDate);
+        lastProcessedPoller = new LastProcessedPoller(config.startDate, config.workBucketConfig);
         pool = Executors.newFixedThreadPool(config.numthreads);
                 		
         doWork();
@@ -153,9 +154,11 @@ public class BasicManagers extends Poller implements Managers {
     		p.stale();
     	}
     	
+    	WorkBucketConfig wbc = config.workBucketConfig;
+    	
     	if (instancesService == null) {
-            instanceMetricsService = new InstanceMetricsService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix);
-            instancesService = new InstancesService(config.localDir, config.workS3BucketName, config.workS3BucketPrefix, config.accountService, config.productService);
+            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
+            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
     	}
     	else {
 	    	instancesService.stale();
@@ -172,7 +175,7 @@ public class BasicManagers extends Poller implements Managers {
 
         Set<Product> newProducts = Sets.newHashSet();
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
-        for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(config.workS3BucketName, config.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).getObjectSummaries()) {
+        for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(wbc.workS3BucketName, wbc.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).getObjectSummaries()) {
             String key = s3ObjectSummary.getKey();
             if (key.endsWith(BasicTagGroupManager.compressExtension)) {
             	key = key.substring(0, key.length() - BasicTagGroupManager.compressExtension.length());
@@ -182,7 +185,7 @@ public class BasicManagers extends Poller implements Managers {
                 product = null;
             }
             else {
-                String serviceCode = key.substring((config.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).length());
+                String serviceCode = key.substring((wbc.workS3BucketPrefix + TagGroupWriter.DB_PREFIX).length());
                 product = config.productService.getProductByServiceCode(serviceCode);
             }
             if (!products.contains(product)) {
@@ -192,7 +195,7 @@ public class BasicManagers extends Poller implements Managers {
         }
 
         for (Product product: newProducts) {
-        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true);
+        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true, config.workBucketConfig, config.accountService, config.productService);
             tagGroupManagers.put(product, tagGroupManager);
             boolean loadTagCoverage = (product == null && config.getTagCoverage() != TagCoverage.none) || (product != null && config.getTagCoverage() == TagCoverage.withUserTags);
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
@@ -202,14 +205,16 @@ public class BasicManagers extends Poller implements Managers {
             		continue;
                 
             	String partialDbName = consolidateType + "_" + (product == null ? "all" : product.getServiceCode());
+            	int numUserTags = product == null ? 0 : config.userTags.size();
                
-                costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress,
-                		config.monthlyCacheSize, config.accountService, config.productService, null));
-                usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress,
-                		config.monthlyCacheSize, config.accountService, config.productService, instanceMetricsService));
+                costManagers.put(key, new BasicDataManager(config.startDate, "cost_" + partialDbName, consolidateType, tagGroupManager, compress, numUserTags,
+                		config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService, null));
+                usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress, numUserTags,
+                		config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService, instanceMetricsService));
                 if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
-    	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress,
-            				config.monthlyCacheSize, config.accountService, config.productService));
+                	List<String> userTags = product == null ? null : config.userTags;
+    	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress, userTags,
+            				config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService));
                 }
             }
         }

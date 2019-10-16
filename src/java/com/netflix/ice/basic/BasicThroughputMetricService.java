@@ -21,9 +21,9 @@ import com.google.common.cache.*;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.Poller;
-import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.ThroughputMetricService;
 
 import org.apache.commons.io.IOUtils;
@@ -45,24 +45,28 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
     private String factoredCostCurrencySign;
     private double factoredCostMultiply;
     private String filePrefix;
-    private ReaderConfig config;
+    private final int monthlyCacheSize;
+    private final WorkBucketConfig workBucketConfig;
 
     private Map<DateTime, File> fileCache;
     private LoadingCache<DateTime, double[]> data;
 
-    public BasicThroughputMetricService(String metricName, String metricUnitName, String factoredCostCurrencySign, double factoredCostMultiply, String filePrefix) {
+    public BasicThroughputMetricService(String metricName, String metricUnitName, String factoredCostCurrencySign, double factoredCostMultiply, String filePrefix,
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig) {
         this.metricName = metricName;
         this.metricUnitName = metricUnitName;
         this.factoredCostCurrencySign = factoredCostCurrencySign;
         this.factoredCostMultiply = factoredCostMultiply;
         this.filePrefix = filePrefix;
+        this.monthlyCacheSize = monthlyCacheSize;
+        this.workBucketConfig = workBucketConfig;
+        
         fileCache = Maps.newConcurrentMap();
     }
 
     public void init() {
-        config = ReaderConfig.getInstance();
         data = CacheBuilder.newBuilder()
-           .maximumSize(config.monthlyCacheSize)
+           .maximumSize(monthlyCacheSize)
            .removalListener(new RemovalListener<DateTime, double[]>() {
                public void onRemoval(RemovalNotification<DateTime, double[]> objectRemovalNotification) {
                    fileCache.remove(objectRemovalNotification.getKey());
@@ -81,7 +85,7 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
     protected void poll() throws Exception {
         for (DateTime key: fileCache.keySet()) {
             File file = fileCache.get(key);
-            boolean downloaded = AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
+            boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
             if (downloaded) {
                 logger.info("trying to re-read data for " + file);
                 FileInputStream in = new FileInputStream(file);
@@ -104,8 +108,8 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
     private double[] loadData(DateTime monthDate) throws InterruptedException {
         while (true) {
             try {
-                File file = new File(config.localDir, filePrefix + AwsUtils.monthDateFormat.print(monthDate));
-                AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
+                File file = new File(workBucketConfig.localDir, filePrefix + AwsUtils.monthDateFormat.print(monthDate));
+                AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
 
                 FileInputStream in = new FileInputStream(file);
                 try {

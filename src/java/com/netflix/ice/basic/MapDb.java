@@ -20,9 +20,10 @@ package com.netflix.ice.basic;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.processor.ProcessorConfig;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Region;
+
 import org.apache.commons.lang.StringUtils;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -38,22 +39,21 @@ public class MapDb {
     private DB db;
     private Map<String, String> items;
     private long numItemsToCommit = 0;
-    private ProcessorConfig config;
     private String dbName;
+    private final WorkBucketConfig workBucketConfig;
 
-    MapDb(String name) {
-        this.config = ProcessorConfig.getInstance();
-
+    MapDb(String name, WorkBucketConfig workBucketConfig) {
+    	this.workBucketConfig = workBucketConfig;
         this.dbName = "db_" + name;
-        File file = new File(config.localDir, dbName);
+        File file = new File(workBucketConfig.localDir, dbName);
         if (!file.exists()) {
             AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
-            for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(config.workS3BucketName, config.workS3BucketPrefix + this.dbName).getObjectSummaries()) {
-                File dbFile = new File(config.localDir, s3ObjectSummary.getKey().substring(config.workS3BucketPrefix.length()));
-                AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, dbFile);
+            for (S3ObjectSummary s3ObjectSummary: s3Client.listObjects(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + this.dbName).getObjectSummaries()) {
+                File dbFile = new File(workBucketConfig.localDir, s3ObjectSummary.getKey().substring(workBucketConfig.workS3BucketPrefix.length()));
+                AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, dbFile);
             }
         }
-        this.db = DBMaker.newFileDB(new File(config.localDir, this.dbName)).make();
+        this.db = DBMaker.newFileDB(new File(workBucketConfig.localDir, this.dbName)).make();
         try {
             this.items = db.createHashMap(name, false, null, null);
         }
@@ -105,17 +105,17 @@ public class MapDb {
     void upload() {
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
 
-        File dir = new File(config.localDir);
+        File dir = new File(workBucketConfig.localDir);
         File[] files = dir.listFiles(new FilenameFilter() {
             public boolean accept(File file, String fileName) {
                 return fileName.startsWith(dbName);
             }
         });
         for (File file: files)
-            s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + file.getName(), file);
+            s3Client.putObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + file.getName(), file);
 
         for (File file: files)
-            s3Client.putObject(config.workS3BucketName, config.workS3BucketPrefix + "copy" + file.getName(), file);
+            s3Client.putObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + "copy" + file.getName(), file);
     }
 
 }

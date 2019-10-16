@@ -41,10 +41,10 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.ProductService;
-import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.tag.Zone.BadZone;
 
 /**
@@ -53,26 +53,27 @@ import com.netflix.ice.tag.Zone.BadZone;
 abstract public class DataFilePoller<T> extends StalePoller {
     protected static final String compressExtension = ".gz";
 
-    protected ReaderConfig config = ReaderConfig.getInstance();
-    protected DateTime startDate;
+    protected final DateTime startDate;
     protected final String dbName;
     protected final boolean compress;
-    protected ConsolidateType consolidateType;
-    protected AccountService accountService;
-    protected ProductService productService;
+    protected final ConsolidateType consolidateType;
+    protected final WorkBucketConfig workBucketConfig;
+    protected final AccountService accountService;
+    protected final ProductService productService;
 
     // map of files we've loaded into the cache
     protected Map<DateTime, File> fileCache = Maps.newConcurrentMap();
     
     // data cache
     protected LoadingCache<DateTime, T> data;
-
+    
     public DataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService) {
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
     	this.startDate = startDate;
         this.consolidateType = consolidateType;
         this.dbName = dbName;
         this.compress = compress;
+        this.workBucketConfig = workBucketConfig;
         this.accountService = accountService;
         this.productService = productService;
         
@@ -167,12 +168,12 @@ abstract public class DataFilePoller<T> extends StalePoller {
         else if (consolidateType == ConsolidateType.daily)
             filename += "_" + monthDate.getYear();
         
-        return new File(config.localDir, filename + (compress ? compressExtension : ""));
+        return new File(workBucketConfig.localDir, filename + (compress ? compressExtension : ""));
     }
 
     protected synchronized boolean downloadFile(File file) {
         try {
-            return AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
+            return AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
         }
         catch (AmazonServiceException ase) {
         	if (ase.getStatusCode() == 404) {
@@ -222,7 +223,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
             	logger.error("Bad key requested for " + dbName + ", " + key);    			
     		break;
     	default:
-    		if (!key.isEqual(config.startDate))
+    		if (!key.isEqual(startDate))
             	logger.error("Bad key requested for " + dbName + ", " + key);    			
     		break;
     	}

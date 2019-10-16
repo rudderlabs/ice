@@ -71,6 +71,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
@@ -420,12 +421,13 @@ public class ReservationCapacityPoller extends Poller {
 	}
     
     private Map<ReservationKey, CanonicalReservedInstances> readArchive(ProcessorConfig config) {
-        File file = new File(config.localDir, archiveFilename);
+    	WorkBucketConfig workBucketConfig = config.workBucketConfig;
+        File file = new File(workBucketConfig.localDir, archiveFilename);
         
         // read from s3 if not exists
         if (!file.exists()) {
             logger.info("downloading " + file + "...");
-            AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
+            AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
             logger.info("downloaded " + file);
         }
         
@@ -467,7 +469,8 @@ public class ReservationCapacityPoller extends Poller {
     }
     
     private void archive(ProcessorConfig config, Map<ReservationKey, CanonicalReservedInstances> reservations) {
-        File file = new File(config.localDir, archiveFilename);
+    	WorkBucketConfig workBucketConfig = config.workBucketConfig;
+        File file = new File(workBucketConfig.localDir, archiveFilename);
 
         // archive to disk
         BufferedWriter writer = null;
@@ -492,7 +495,7 @@ public class ReservationCapacityPoller extends Poller {
 
         // archive to s3
         logger.info("uploading " + file + "...");
-        AwsUtils.upload(config.workS3BucketName, config.workS3BucketPrefix, config.localDir, file.getName());
+        AwsUtils.upload(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, workBucketConfig.localDir, file.getName());
         logger.info("uploaded " + file);
     }
 

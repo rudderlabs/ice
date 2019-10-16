@@ -515,7 +515,7 @@ public class BasicLineItemProcessorTest {
 		
 		public void runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
-			CostAndUsageData costAndUsageData = new CostAndUsageData(null, TagCoverage.none);
+			CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, accountService, productService);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
 			
