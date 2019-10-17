@@ -439,26 +439,43 @@ public class BasicManagers extends Poller implements Managers {
         }
     }
 
-    public String getStatistics() throws ExecutionException {
+    public String getStatistics(boolean csv) throws ExecutionException {
     	StringBuilder sb = new StringBuilder();
     	TagGroupManager allTgm = tagGroupManagers.get(null);
 		TreeMap<Long, Integer> allTgmSizes = allTgm.getSizes();
 		DateTime month = new DateTime(allTgmSizes.lastKey());
+		DateTime year = month.withMonthOfYear(1);
 		int totalResourceTagGroups = 0;
     	
-    	sb.append("TagGroupManagers: month=" + AwsUtils.monthDateFormat.print(month) + ", size=" + tagGroupManagers.size() + "<br><br>");
-    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Data TagGroups</td></tr>");
+		if (csv) {
+	    	sb.append("Product,TagGroups,Daily Cost TagGroups, Daily Usage TagGroups\n");
+		}
+		else {
+	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily TagGroups</td></tr>");
+		}
     	for (Product p: tagGroupManagers.keySet()) {
     		TagGroupManager tgm = tagGroupManagers.get(p);
     		TreeMap<Long, Integer> sizes = tgm.getSizes();
-    		BasicDataManager bdm = costManagers.get(new Key(p, ConsolidateType.monthly));
-    		sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm.size(month) + "</td></tr>");
+    		BasicDataManager bdm_cost = costManagers.get(new Key(p, ConsolidateType.daily));
+    		BasicDataManager bdm_usage = usageManagers.get(new Key(p, ConsolidateType.daily));
     		
-    		if (p != null)
+    		if (csv)
+    			sb.append(p + "," + sizes.lastEntry().getValue() + "," + bdm_cost.size(year) + "," + bdm_usage.size(year) + "\n");
+    		else
+    			sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm_cost.size(year) + "," + bdm_usage.size(year) + "</td></tr>");
+    		
+    		if (p != null) {
     			totalResourceTagGroups += sizes.lastEntry().getValue();
+    		}
        	}
-    	sb.append("</table>");
-    	sb.append("<br><br>Total Resource TagGroups: " + totalResourceTagGroups);
-    	return sb.toString();
+    	if (!csv)
+    		sb.append("</table>");
+    	
+    	String intro = "TagGroupManagers: month=" + AwsUtils.monthDateFormat.print(month) + ", size=" + tagGroupManagers.size() + ", total resource TagGroups=" + totalResourceTagGroups;
+
+		if (csv)
+			intro += csv ? "\n" : "<br><br>";
+
+    	return intro + sb.toString();
     }
 }

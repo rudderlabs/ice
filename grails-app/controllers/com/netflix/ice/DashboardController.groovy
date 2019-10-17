@@ -390,8 +390,9 @@ class DashboardController {
     }
 	
 	def readerStats = {
-		def result = 
-		render getManagers().getStatistics();
+        Object o = params;
+        boolean csv = params.getBoolean("csv");
+		render getManagers().getStatistics(csv);
 	}
 
     def getTimeSpan = {

@@ -114,6 +114,6 @@ public interface Managers {
      */
     void shutdown();
     
-    String getStatistics() throws ExecutionException;
+    String getStatistics(boolean csv) throws ExecutionException;
 
 }

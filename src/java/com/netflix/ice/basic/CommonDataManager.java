@@ -199,8 +199,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     
     private Map<Tag, D[]> getGroupedData(Interval interval, Map<Tag, TagLists> tagListsMap, UsageUnit usageUnit, TagType groupBy, int userTagGroupByIndex) {
         Map<Tag, D[]> rawResult = Maps.newTreeMap();
-        StopWatch sw = new StopWatch();
-        sw.start();
+//        StopWatch sw = new StopWatch();
+//        sw.start();
         
         // For each of the groupBy values
         for (Tag tag: tagListsMap.keySet()) {
@@ -231,8 +231,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        sw.stop();
-        logger.info("getGroupedData elapsed time " + sw);
+//        sw.stop();
+//        logger.info("getGroupedData elapsed time " + sw);
         return rawResult;
     }
 

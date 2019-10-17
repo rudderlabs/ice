@@ -335,7 +335,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             //logger.info("Process Redshift " + operation + " " + costValue + " returned: " + result);
         }
         else if (tg.product.isDataTransfer()) {
-            result = processDataTranfer(processDelayed, tg.usageType);
+            result = processDataTranfer(processDelayed, tg.usageType, costValue);
         }
         else if (tg.product.isCloudHsm()) {
             result = processCloudhsm(processDelayed, tg.usageType);
@@ -379,8 +379,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             return Result.hourly;
     }
 
-    protected Result processDataTranfer(boolean processDelayed, UsageType usageType) {
-        if (!processDelayed && usageType.name.contains("PrevMon-DataXfer-"))
+    protected Result processDataTranfer(boolean processDelayed, UsageType usageType, double costValue) {
+    	// Data Transfer accounts for the vast majority of TagGroup variations when user tags are used.
+    	// To minimize the impact, ignore the zero-cost data-in usage types.
+    	if (usageType.name.endsWith("-In-Bytes") && costValue == 0.0)
+    		return Result.ignore;
+    	else if (!processDelayed && usageType.name.contains("PrevMon-DataXfer-"))
             return Result.delay;
         else if (processDelayed && usageType.name.contains("PrevMon-DataXfer-"))
             return Result.monthly;

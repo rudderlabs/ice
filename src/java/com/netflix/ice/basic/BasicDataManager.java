@@ -63,7 +63,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
 		ReadOnlyData data = getReadOnlyData(start);
 		return data.getTagGroups().size();
 	}
-    
+	
     @Override
     protected ReadOnlyData newEmptyData() {
     	return new ReadOnlyData();

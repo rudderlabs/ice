@@ -92,7 +92,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     	
     	return sizes;
     }
-
+    
     @Override
     protected boolean stalePoll() throws IOException, BadZone {
         boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
