@@ -451,7 +451,7 @@ public class BasicManagers extends Poller implements Managers {
 	    	sb.append("Product,TagGroups,Daily Cost TagGroups, Daily Usage TagGroups\n");
 		}
 		else {
-	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily TagGroups</td></tr>");
+	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily Cost TagGroups</td><td>Daily Usage TagGroups</td></tr>");
 		}
     	for (Product p: tagGroupManagers.keySet()) {
     		TagGroupManager tgm = tagGroupManagers.get(p);
@@ -462,7 +462,7 @@ public class BasicManagers extends Poller implements Managers {
     		if (csv)
     			sb.append(p + "," + sizes.lastEntry().getValue() + "," + bdm_cost.size(year) + "," + bdm_usage.size(year) + "\n");
     		else
-    			sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm_cost.size(year) + "," + bdm_usage.size(year) + "</td></tr>");
+    			sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm_cost.size(year) + "</td><td>" + bdm_usage.size(year) + "</td></tr>");
     		
     		if (p != null) {
     			totalResourceTagGroups += sizes.lastEntry().getValue();
