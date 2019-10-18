@@ -22,6 +22,7 @@ import com.netflix.ice.tag.*;
 import org.joda.time.Interval;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -166,4 +167,6 @@ public interface TagGroupManager {
      * Get sizes of the data
      */
     TreeMap<Long, Integer> getSizes();
+    
+    TreeMap<Long, List<Integer>> getTagValueSizes(int numUserTags);
 }

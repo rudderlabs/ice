@@ -93,6 +93,51 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     	return sizes;
     }
     
+    public TreeMap<Long, List<Integer>> getTagValueSizes(int numUserTags) {
+    	TreeMap<Long, List<Integer>> sizes = Maps.newTreeMap();
+    	for (Long millis: tagGroupsWithResourceGroups.keySet()) {
+    		Collection<TagGroup> tagGroups = tagGroupsWithResourceGroups.get(millis);
+    		
+    		Set<String> accountValues = Sets.newHashSet();
+    		Set<String> regionValues = Sets.newHashSet();
+    		Set<String> zoneValues = Sets.newHashSet();
+    		Set<String> productValues = Sets.newHashSet();
+    		Set<String> operationValues = Sets.newHashSet();
+    		Set<String> usageTypeValues = Sets.newHashSet();
+    		List<Set<String>> userTagValues = Lists.newArrayList();
+    		for (int i = 0; i < numUserTags; i++)
+    			userTagValues.add(Sets.<String>newHashSet());
+    			
+    		for (TagGroup tg: tagGroups) {
+    			accountValues.add(tg.account.name);
+    			regionValues.add(tg.region.name);
+    			if (tg.zone != null)
+    				zoneValues.add(tg.zone.name);
+    			productValues.add(tg.product.name);
+    			operationValues.add(tg.operation.name);
+    			usageTypeValues.add(tg.usageType.name);
+        		if (numUserTags > 0 && tg.resourceGroup != null && !tg.resourceGroup.isProductName()) {
+		    		UserTag[] userTags = tg.resourceGroup.getUserTags();
+		    		for (int j = 0; j < numUserTags; j++) {
+		    			if (!userTags[j].name.isEmpty())
+		    				userTagValues.get(j).add(userTags[j].name);
+		    		}
+        		}
+    		}
+    		List<Integer> counts = Lists.newArrayList();
+    		counts.add(accountValues.size());
+    		counts.add(regionValues.size());
+    		counts.add(zoneValues.size());
+    		counts.add(productValues.size());
+    		counts.add(operationValues.size());
+    		counts.add(usageTypeValues.size());
+    		for (int i = 0; i < numUserTags; i++)
+    			counts.add(userTagValues.get(i).size());
+    		sizes.put(millis, counts);    		
+    	}    	
+    	return sizes;
+    }
+    
     @Override
     protected boolean stalePoll() throws IOException, BadZone {
         boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);

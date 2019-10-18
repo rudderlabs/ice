@@ -457,21 +457,36 @@ public class BasicManagers extends Poller implements Managers {
 		int totalResourceTagGroups = 0;
     	
 		if (csv) {
-	    	sb.append("Product,TagGroups,Daily Cost TagGroups, Daily Usage TagGroups\n");
+	    	sb.append("Product,TagGroups,Daily Cost TagGroups,Daily Usage TagGroups,Accounts,Regions,Zones,Products,Operations,UsageTypes");
+	    	if (config.userTags.size() > 0)
+	    		sb.append("," + String.join(",", config.userTags));
+	    	sb.append("\n");
 		}
 		else {
-	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily Cost TagGroups</td><td>Daily Usage  TagGroups</td></tr>");
+	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily Cost TagGroups</td><td>Daily Usage TagGroups</td><td>Accounts</td><td>Regions</td><td>Zones</td><td>Products</td><td>Operations</td><td>UsageTypes</td>");
+	    	if (config.userTags.size() > 0)
+	    		sb.append("<td>" + String.join("</td><td>", config.userTags) + "</td>");
+	    	sb.append("</tr>");
 		}
     	for (Product p: tagGroupManagers.keySet()) {
     		TagGroupManager tgm = tagGroupManagers.get(p);
     		TreeMap<Long, Integer> sizes = tgm.getSizes();
+    		TreeMap<Long, List<Integer>> tagValuesSizes = tgm.getTagValueSizes(config.userTags.size());
     		BasicDataManager bdm_cost = costManagers.get(new Key(p, ConsolidateType.daily));
     		BasicDataManager bdm_usage = usageManagers.get(new Key(p, ConsolidateType.daily));
     		
-    		if (csv)
-    			sb.append(p + "," + sizes.lastEntry().getValue() + "," + bdm_cost.size(year) + "," + bdm_usage.size(year) + "\n");
-    		else
-    			sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm_cost.size(year) + "</td><td>" + bdm_usage.size(year) + "</td></tr>");
+    		if (csv) {
+    			sb.append(p + "," + sizes.lastEntry().getValue() + "," + bdm_cost.size(year) + "," + bdm_usage.size(year));
+    			for (Integer i: tagValuesSizes.lastEntry().getValue())
+    				sb.append("," + i);
+    	    	sb.append("\n");
+    		}
+    		else {
+    			sb.append("<tr><td>" + p + "</td><td>" + sizes.lastEntry().getValue() + "</td><td>" + bdm_cost.size(year) + "</td><td>" + bdm_usage.size(year) + "</td>");
+    			for (Integer i: tagValuesSizes.lastEntry().getValue())
+    				sb.append("<td>" + i + "</td>");
+    	    	sb.append("</tr>");
+    		}
     		
     		if (p != null) {
     			totalResourceTagGroups += sizes.lastEntry().getValue();
