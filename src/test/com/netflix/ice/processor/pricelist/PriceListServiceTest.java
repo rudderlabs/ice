@@ -114,7 +114,8 @@ public class PriceListServiceTest {
 	@Test
 	public void testImportCurrentEc2PriceList() throws Exception {
 		
-		priceListService.getPrices(DateTime.now(), ServiceCode.AmazonEC2);
+		InstancePrices prices = priceListService.getPrices(DateTime.now(), ServiceCode.AmazonEC2);
+		assertFalse("Errors processing EC2 pricelist", prices.hasErrors());
 		
 		// Spot check some instance metrics
 		InstanceMetrics im = priceListService.getInstanceMetrics();
@@ -125,6 +126,8 @@ public class PriceListServiceTest {
 	public void testImportCurrentRdsPriceList() throws Exception {
 		
 		InstancePrices prices = priceListService.getPrices(DateTime.now(), ServiceCode.AmazonRDS);
+		
+		assertFalse("Errors processing RDS pricelist", prices.hasErrors());
 		
 		// Verify that we have a couple products
 		assertNotNull("no RDS product in US_EAST_1", prices.getProduct(Region.US_EAST_1, UsageType.getUsageType("db.m4.10xlarge.mysql", "hours")));

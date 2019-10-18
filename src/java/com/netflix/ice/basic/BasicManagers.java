@@ -451,7 +451,7 @@ public class BasicManagers extends Poller implements Managers {
 	    	sb.append("Product,TagGroups,Daily Cost TagGroups, Daily Usage TagGroups\n");
 		}
 		else {
-	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily Cost TagGroups</td><td>Daily Usage TagGroups</td></tr>");
+	    	sb.append("<table><tr><td>Product</td><td>TagGroups</td><td>Daily Cost TagGroups</td><td>Daily Usage  TagGroups</td></tr>");
 		}
     	for (Product p: tagGroupManagers.keySet()) {
     		TagGroupManager tgm = tagGroupManagers.get(p);

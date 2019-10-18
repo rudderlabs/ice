@@ -44,6 +44,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	private final String versionId;
 	private final DateTime effectiveBeginDate;
 	private final DateTime effectiveEndDate;
+	private boolean hasErrors;
 	private Map<Key, Product> prices = Maps.newHashMap();
 
 	public enum ServiceCode {
@@ -61,6 +62,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		this.versionId = versionId;
 		effectiveBeginDate = begin;
 		effectiveEndDate = end;
+		hasErrors = false;
 	}
 	
 	public String toString() {
@@ -78,6 +80,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		sb.append("\t}\n");
 		sb.append("}\n");
 		return sb.toString();
+	}
+	
+	public boolean hasErrors() {
+		return hasErrors;
 	}
 	
     public Map<Key, Product> getPrices() {
@@ -176,11 +182,15 @@ public class InstancePrices implements Comparable<InstancePrices> {
         			region = r;
         		else {
         			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr);
+        			hasErrors = true;
         			continue; // unsupported region
         		}
         	}
         	String operationStr = p.getAttribute(Attributes.operation);
         	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), operationStr, p.getAttribute(Attributes.deploymentOption));
+        	if (usageType.name.endsWith(".others")) {
+        		logger.error("Pricelist entry with unknown usage type: " + p);
+        	}
         	Key key = new Key(region, usageType);
         	
     		PriceList.Terms terms = priceList.getTerms();
@@ -211,6 +221,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	// new pricelist changes with additional options that we're not looking for.
         	if (prices.containsKey(key)) {
         		logger.error("Multiple products with same key: " + key + " Previous: " + prices.get(key) + " Current: " + product);
+    			hasErrors = true;
         	}
         	
         	prices.put(key, product);
@@ -375,6 +386,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		// fields used to debug ingest
 		public final String usagetype;
 		public final String preInstalledSw;
+		public final String databaseEngine;
+		public final String databaseEdition;
 		
 		private Product(double memory, double ecu, double normalizationSizeFactor,
 				int vcpu, String instanceType, String operatingSystem, String operation, double onDemandRate,
@@ -390,14 +403,17 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			this.reservationRates = reservationRates;
 			this.usagetype = null;
 			this.preInstalledSw = null;
+			this.databaseEngine = null;
+			this.databaseEdition = null;
 		}
 		
 		public Product(PriceList.Product product, PriceList.Rate onDemandRate, Map<String, PriceList.Term> reservationOfferTerms) {
 			String memory = null;
 			if (product.hasAttribute(Attributes.memory)) {
 				String[] memoryParts = product.getAttribute(Attributes.memory).split(" ");
-				if (!memoryParts[1].toLowerCase().equals("gib"))
+				if (!memoryParts[1].toLowerCase().equals("gib")) {
 					logger.error("Found PriceList entry with product memory using non-GiB units: " + memoryParts[1] + ", usageType: " + product.getAttribute(Attributes.usagetype));
+				}
 				memory = memoryParts[0].replace(",", "");
 			}
 			else if (product.hasAttribute(Attributes.memoryGib)) {
@@ -437,6 +453,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			}
 			this.usagetype = product.getAttribute(Attributes.usagetype);
 			this.preInstalledSw = product.getAttribute(Attributes.preInstalledSw);
+			this.databaseEngine = product.getAttribute(Attributes.databaseEngine);
+			this.databaseEdition = product.getAttribute(Attributes.databaseEdition);
 		}
 		
         @Override
@@ -454,6 +472,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			sb.append(",reservationRates:" + reservationRates.keySet().toString());
 			sb.append(",usagetype:" + usagetype);
 			sb.append(",preInstalledSw:" + preInstalledSw);
+			sb.append(",databaseEngine:" + databaseEngine);
+			sb.append(",databaseEdition:" + databaseEdition);
         	sb.append("}");
             return sb.toString();
         }
