@@ -64,9 +64,7 @@
         </div>
         <div style="padding-top: 5px">Aggregate
           <select ng-model="consolidate">
-          	<g:if test="${ReaderConfig.getInstance().hourlyData}">
-            	<option>hourly</option>
-            </g:if>
+            <option>hourly</option>
             <option>daily</option>
             <option>weekly</option>
             <option>monthly</option>

@@ -51,12 +51,22 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
 
     protected InstanceMetricsService instanceMetricsService;
     protected int numUserTags;
+    protected boolean forReservations;
     
     public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
     		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
     	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
         this.instanceMetricsService = instanceMetricsService;
         this.numUserTags = numUserTags;
+        this.forReservations = false;
+    }
+    	
+    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService, boolean forReservations) {
+    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
+        this.instanceMetricsService = instanceMetricsService;
+        this.numUserTags = numUserTags;
+        this.forReservations = forReservations;
     }
     	
 	public int size(DateTime start) throws ExecutionException {
@@ -72,7 +82,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     @Override
     protected ReadOnlyData deserializeData(DataInputStream in) throws IOException, BadZone {
 	    ReadOnlyData result = new ReadOnlyData();
-	    result.deserialize(accountService, productService, numUserTags, in);
+	    result.deserialize(accountService, productService, numUserTags, in, forReservations);
 	    return result;
     }
             

@@ -172,7 +172,7 @@ public class ReaderConfig extends Config {
                     return null;
                 boolean loadTagCoverage = (product == null && getTagCoverage() != TagCoverage.none) || (product != null && getTagCoverage() == TagCoverage.withUserTags);
                 for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                	if (consolidateType == ConsolidateType.hourly && !hourlyData)
+                	if (consolidateType == ConsolidateType.hourly && !hourlyData && product != null)
                 		continue;
                 	
                     readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);

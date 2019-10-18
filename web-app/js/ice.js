@@ -1373,6 +1373,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
+  $scope.consolidate = "hourly";
   $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [

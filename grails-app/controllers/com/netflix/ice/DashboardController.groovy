@@ -516,7 +516,7 @@ class DashboardController {
 			consolidateType = consolidateType == ConsolidateType.hourly ? ConsolidateType.daily : consolidateType;
 		}
 		
-		if (consolidateType == ConsolidateType.hourly && !getConfig().hourlyData)
+		if (consolidateType == ConsolidateType.hourly && !getConfig().hourlyData && !forReservation)
 			consolidateType = ConsolidateType.daily;
 
         DateTime start;

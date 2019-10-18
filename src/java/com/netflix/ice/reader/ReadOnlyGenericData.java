@@ -34,7 +34,7 @@ import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadOnlyGenericData<D> {
-    private D[][] data;
+    protected D[][] data;
     protected List<TagGroup> tagGroups;
     private Map<TagType, Map<Tag, Map<TagGroup, Integer>>> tagGroupsByTagAndTagType;
     protected int numUserTags;
@@ -71,6 +71,10 @@ public abstract class ReadOnlyGenericData<D> {
     abstract protected D readValue(DataInput in) throws IOException ;
 
     public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in) throws IOException, BadZone {
+    	deserialize(accountService, productService, numUserTags, in, true);
+    }
+    
+    public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in, boolean buildIndecies) throws IOException, BadZone {
 
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
@@ -97,10 +101,11 @@ public abstract class ReadOnlyGenericData<D> {
         this.data = data;
         this.tagGroups = keys;
         this.numUserTags = numUserTags;
-        buildIndecies();
+        if (buildIndecies)
+        	buildIndecies();
     }
     
-    private void buildIndecies() {	   
+    protected void buildIndecies() {	   
     	// Build the account-based TagGroup maps
     	tagGroupsByTagAndTagType = Maps.newHashMap();
     	for (TagType t: tagTypes)
