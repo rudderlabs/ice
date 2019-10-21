@@ -34,7 +34,7 @@
       <td class="metaAccounts">
       	<input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input>
       	<select ng-model="organizationalUnit" ng-show="dimensions[ACCOUNT_INDEX]" ng-options="org for org in organizationalUnits" ng-change="orgUnitChanged()">
-      		<option value="">None</option>
+      		<option value="">All</option>
       	</select>
       </td>
       <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
