@@ -154,37 +154,36 @@ public class ReaderConfig extends Config {
 
     	
         for (Product product: products) {
-        	futures.add(readDataForProduct(product, userTagList, pool));
+            TagGroupManager tagGroupManager = managers.getTagGroupManager(product);
+            Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
+            if (interval == null)
+                continue;
+            boolean loadTagCoverage = (product == null && getTagCoverage() != TagCoverage.none) || (product != null && getTagCoverage() == TagCoverage.withUserTags);
+            for (ConsolidateType consolidateType: ConsolidateType.values()) {
+            	if (consolidateType == ConsolidateType.hourly && !hourlyData && product != null)
+            		continue;
+            	futures.add(readData(product, consolidateType, interval, managers.getCostManager(product, consolidateType), null, pool));
+            	futures.add(readData(product, consolidateType, interval, managers.getUsageManager(product, consolidateType), null, pool));
+                // Prime the tag coverage cache
+                if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
+                	futures.add(readData(product, consolidateType, interval, managers.getTagCoverageManager(product, consolidateType), userTagList, pool));
+                }
+            }
         }
 		// Wait for completion
 		for (Future<Void> f: futures) {
 			f.get();
 		}
     }
-    
-    public Future<Void> readDataForProduct(final Product product, final List<UserTag> userTagList, ExecutorService pool) {
+        
+    public Future<Void> readData(final Product product, final ConsolidateType consolidateType, final Interval interval, final DataManager dataManager, final List<UserTag> userTagList, ExecutorService pool) {
     	return pool.submit(new Callable<Void>() {
     		@Override
     		public Void call() throws Exception {
-                TagGroupManager tagGroupManager = managers.getTagGroupManager(product);
-                Interval interval = tagGroupManager.getOverlapInterval(new Interval(new DateTime(DateTimeZone.UTC).minusMonths(monthlyCacheSize), new DateTime(DateTimeZone.UTC)));
-                if (interval == null)
-                    return null;
-                boolean loadTagCoverage = (product == null && getTagCoverage() != TagCoverage.none) || (product != null && getTagCoverage() == TagCoverage.withUserTags);
-                for (ConsolidateType consolidateType: ConsolidateType.values()) {
-                	if (consolidateType == ConsolidateType.hourly && !hourlyData && product != null)
-                		continue;
-                	
-                    readData(product, managers.getCostManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
-                    readData(product, managers.getUsageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, null);
-                    // Prime the tag coverage cache
-                    if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
-                    	readData(product, managers.getTagCoverageManager(product, consolidateType), interval, consolidateType, UsageUnit.Instances, userTagList);
-                    }
-                }
-    	        return null;
+                readData(product, dataManager, interval, consolidateType, UsageUnit.Instances, userTagList);
+                return null;
     		}
-    	});        
+    	});
     }
 
     public void shutdown() {
