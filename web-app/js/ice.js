@@ -731,7 +731,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -767,7 +767,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -801,7 +801,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -841,7 +841,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -892,7 +892,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -933,7 +933,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -971,7 +971,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -1013,7 +1013,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
             fn(result.data);
         }
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -1033,7 +1033,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         if (fn)
           fn(result.data);
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     
@@ -1054,7 +1054,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         if (fn)
           fn(result.data);
       }).error(function (result, status) {
-        if (status === 401 || status === 405)
+        if (status === 401 || status === 0)
           $window.location.reload();
       });    
     },
@@ -2193,7 +2193,7 @@ function resourceInfoCtrl($scope, $location, $http) {
     }).success(function (result) {
         $scope.resourceInfo = JSON.stringify(result, null, "    ");
     }).error(function(result, status) {
-      if (status === 401 || status === 405)
+      if (status === 401 || status === 0)
         $window.location.reload();
       else if (status === 404)
         $scope.resourceInfo = "Resource " + $scope.resource.name + " does not exist.";
