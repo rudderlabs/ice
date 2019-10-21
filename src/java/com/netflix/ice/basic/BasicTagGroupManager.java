@@ -20,11 +20,13 @@ package com.netflix.ice.basic;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.TagGroupWriter;
-import com.netflix.ice.reader.ReaderConfig;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.tag.*;
@@ -45,19 +47,23 @@ import java.util.zip.GZIPInputStream;
 public class BasicTagGroupManager extends StalePoller implements TagGroupManager {
     public static final String compressExtension = ".gz";
 
-    private ReaderConfig config;
-    private String dbName;
-    private File file;
+    private final WorkBucketConfig workBucketConfig;
+    private final AccountService accountService;
+    private final ProductService productService;
+    private final String dbName;
+    private final File file;
     private TreeMap<Long, Collection<TagGroup>> tagGroups;
     private TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups;
     private Interval totalInterval;
     private boolean compress;
 
-    BasicTagGroupManager(Product product, boolean compress) {
+    BasicTagGroupManager(Product product, boolean compress, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
     	this.compress = compress;
-    	config = ReaderConfig.getInstance();
+    	this.workBucketConfig = workBucketConfig;
+    	this.accountService = accountService;
+    	this.productService = productService;
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getServiceCode());
-        file = new File(config.localDir, dbName + (compress ? compressExtension : ""));
+        file = new File(workBucketConfig.localDir, dbName + (compress ? compressExtension : ""));
         try {
             poll();
         }
@@ -71,11 +77,70 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     BasicTagGroupManager(TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups) {
     	this.tagGroupsWithResourceGroups = tagGroupsWithResourceGroups;
     	this.tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
+    	this.workBucketConfig = null;
+    	this.accountService = null;
+    	this.productService = null;
+    	this.dbName = null;
+    	this.file = null;
     }
-
+    
+    public TreeMap<Long, Integer> getSizes() {
+    	TreeMap<Long, Integer> sizes = Maps.newTreeMap();
+    	
+    	for (Long millis: tagGroupsWithResourceGroups.keySet())
+    		sizes.put(millis, tagGroupsWithResourceGroups.get(millis).size());
+    	
+    	return sizes;
+    }
+    
+    public TreeMap<Long, List<Integer>> getTagValueSizes(int numUserTags) {
+    	TreeMap<Long, List<Integer>> sizes = Maps.newTreeMap();
+    	for (Long millis: tagGroupsWithResourceGroups.keySet()) {
+    		Collection<TagGroup> tagGroups = tagGroupsWithResourceGroups.get(millis);
+    		
+    		Set<String> accountValues = Sets.newHashSet();
+    		Set<String> regionValues = Sets.newHashSet();
+    		Set<String> zoneValues = Sets.newHashSet();
+    		Set<String> productValues = Sets.newHashSet();
+    		Set<String> operationValues = Sets.newHashSet();
+    		Set<String> usageTypeValues = Sets.newHashSet();
+    		List<Set<String>> userTagValues = Lists.newArrayList();
+    		for (int i = 0; i < numUserTags; i++)
+    			userTagValues.add(Sets.<String>newHashSet());
+    			
+    		for (TagGroup tg: tagGroups) {
+    			accountValues.add(tg.account.name);
+    			regionValues.add(tg.region.name);
+    			if (tg.zone != null)
+    				zoneValues.add(tg.zone.name);
+    			productValues.add(tg.product.name);
+    			operationValues.add(tg.operation.name);
+    			usageTypeValues.add(tg.usageType.name);
+        		if (numUserTags > 0 && tg.resourceGroup != null && !tg.resourceGroup.isProductName()) {
+		    		UserTag[] userTags = tg.resourceGroup.getUserTags();
+		    		for (int j = 0; j < numUserTags; j++) {
+		    			if (!userTags[j].name.isEmpty())
+		    				userTagValues.get(j).add(userTags[j].name);
+		    		}
+        		}
+    		}
+    		List<Integer> counts = Lists.newArrayList();
+    		counts.add(accountValues.size());
+    		counts.add(regionValues.size());
+    		counts.add(zoneValues.size());
+    		counts.add(productValues.size());
+    		counts.add(operationValues.size());
+    		counts.add(usageTypeValues.size());
+    		for (int i = 0; i < numUserTags; i++)
+    			counts.add(userTagValues.get(i).size());
+    		sizes.put(millis, counts);    		
+    	}    	
+    	return sizes;
+    }
+    
     @Override
     protected boolean stalePoll() throws IOException, BadZone {
-        boolean downloaded = AwsUtils.downloadFileIfChanged(config.workS3BucketName, config.workS3BucketPrefix, file, 0);
+        boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);
             InputStream is = new FileInputStream(file);
@@ -83,7 +148,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             	is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
-                TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(config.accountService, config.productService, in);
+                TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(accountService, productService, in);
                 TreeMap<Long, Collection<TagGroup>> tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
                 Interval totalInterval = null;
                 if (tagGroups.size() > 0) {
@@ -242,13 +307,15 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     public Collection<UserTag> getResourceGroupTags(Interval interval, TagLists tagLists, int userTagGroupByIndex) {
         Set<UserTag> result = Sets.newTreeSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
+        
+        UserTag emptyUserTag = UserTag.get("");
 
         // Add ResourceGroup tags that are null, just the product name, or userTag CSVs.
         for (TagGroup tagGroup: tagGroupsInRange) {
         	//logger.info("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
             if (tagLists.contains(tagGroup)) {
             	try {
-            		UserTag t = (tagGroup.resourceGroup == null || tagGroup.resourceGroup.isProductName()) ? UserTag.get("") : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+            		UserTag t = (tagGroup.resourceGroup == null || tagGroup.resourceGroup.isProductName()) ? emptyUserTag : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
             		result.add(t);
             	}
             	catch (Exception e) {

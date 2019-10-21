@@ -51,7 +51,7 @@ public class TagCoverageDataManagerTest {
 
 	class TestTagCoverageDataManager extends TagCoverageDataManager {
 		TestTagCoverageDataManager() {
-			super(DateTime.now(), "dummy", ConsolidateType.hourly, null, true, 0, null, null);
+			super(DateTime.now(), "dummy", ConsolidateType.hourly, null, true, null, 0, null, null, null);
 		}
 		
 		@Override
@@ -110,7 +110,7 @@ public class TagCoverageDataManagerTest {
 		
 		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
 	    		int monthlyCacheSize, AccountService accountService, ProductService productService, int size) {
-			super(startDate, dbName, consolidateType, null, compress, monthlyCacheSize, accountService, productService);
+			super(startDate, dbName, consolidateType, null, compress, Lists.<String>newArrayList(), monthlyCacheSize, null, accountService, productService);
 			userTagSize = size;
 		}
 		

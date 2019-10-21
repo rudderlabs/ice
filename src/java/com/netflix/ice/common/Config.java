@@ -22,6 +22,7 @@ import java.util.Properties;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.google.common.collect.Maps;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,20 +30,31 @@ public abstract class Config {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
     public static final String workBucketDataConfigFilename = "data_config.json";
-    
-    public final String workS3BucketName;
-    public final String workS3BucketRegion;
-    public final String workS3BucketPrefix;
-    public final String localDir;
+    public final WorkBucketConfig workBucketConfig;
     public final ProductService productService;
     public final AWSCredentialsProvider credentialsProvider;
     public final Map<String, String> debugProperties;
+    public final int numthreads;
     private TagCoverage tagCoverage;
     
     public enum TagCoverage {
     	none,
     	basic,
     	withUserTags   	
+    }
+    
+    public class WorkBucketConfig {
+        public final String workS3BucketName;
+        public final String workS3BucketRegion;
+        public final String workS3BucketPrefix;
+        public final String localDir;
+        
+        public WorkBucketConfig(String workS3BucketName, String workS3BucketRegion, String workS3BucketPrefix, String localDir) {
+        	this.workS3BucketName = workS3BucketName;
+        	this.workS3BucketRegion = workS3BucketRegion;
+        	this.workS3BucketPrefix = workS3BucketPrefix;
+        	this.localDir = localDir;
+        }
     }
     
     /**
@@ -60,20 +72,22 @@ public abstract class Config {
         if (properties == null) throw new IllegalArgumentException("properties must be specified");
         if (productService == null) throw new IllegalArgumentException("productService must be specified");
 
-        workS3BucketName = properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME);
-        workS3BucketRegion = properties.getProperty(IceOptions.WORK_S3_BUCKET_REGION);
-        workS3BucketPrefix = properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX);
-        localDir = properties.getProperty(IceOptions.LOCAL_DIR);
+        workBucketConfig = new WorkBucketConfig(
+                properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME),
+                properties.getProperty(IceOptions.WORK_S3_BUCKET_REGION),
+                properties.getProperty(IceOptions.WORK_S3_BUCKET_PREFIX),
+                properties.getProperty(IceOptions.LOCAL_DIR));
         
-        if (workS3BucketName == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_NAME must be specified");
-        if (workS3BucketRegion == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_REGION must be specified");
+        if (workBucketConfig.workS3BucketName == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_NAME must be specified");
+        if (workBucketConfig.workS3BucketRegion == null) throw new IllegalArgumentException("IceOptions.WORK_S3_BUCKET_REGION must be specified");
 
         this.credentialsProvider = credentialsProvider;
         this.productService = productService;
+        this.numthreads = properties.getProperty(IceOptions.PROCESSOR_THREADS) == null ? 5 : Integer.parseInt(properties.getProperty(IceOptions.PROCESSOR_THREADS));
         this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
 
         if (credentialsProvider != null)
-        	AwsUtils.init(credentialsProvider, workS3BucketRegion);
+        	AwsUtils.init(credentialsProvider, workBucketConfig.workS3BucketRegion);
         
         // Stash the arbitrary list of debug flags - names that start with "ice.debug."
         debugProperties = Maps.newHashMap();

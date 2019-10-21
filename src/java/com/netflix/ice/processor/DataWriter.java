@@ -17,7 +17,10 @@
  */
 package com.netflix.ice.processor;
 
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.common.ProductService;
 
 import java.io.*;
 import java.util.zip.GZIPInputStream;
@@ -25,8 +28,9 @@ import java.util.zip.GZIPInputStream;
 public class DataWriter extends DataFile {
     private ReadWriteDataSerializer data;
 
-    DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load) throws Exception {
-    	super(name, compress);
+    DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load, WorkBucketConfig workBucketConfig,
+    		AccountService accountService, ProductService productService) throws Exception {
+    	super(name, compress, workBucketConfig);
         this.data = data;
 
         if (!load)
@@ -40,7 +44,7 @@ public class DataWriter extends DataFile {
         		is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
-                data.deserialize(config.accountService, config.productService, in);		
+                data.deserialize(accountService, productService, in);		
             }
             catch (Exception e) {
                 throw new RuntimeException("DataWriter: failed to load " + file.getName() + ", " + e + ", " + e.getMessage());

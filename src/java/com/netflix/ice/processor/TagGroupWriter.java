@@ -18,7 +18,10 @@
 package com.netflix.ice.processor;
 
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 
 import org.slf4j.Logger;
@@ -36,19 +39,20 @@ public class TagGroupWriter {
     private static final String compressExtension = ".gz";
 
     private TreeMap<Long, Collection<TagGroup>> tagGroups;
-    private ProcessorConfig config = ProcessorConfig.getInstance();
-    private String dbName;
-    private File file;
-    private boolean compress;
+    private final String dbName;
+    private final File file;
+    private final boolean compress;
+    private final WorkBucketConfig workBucketConfig;
 
-    TagGroupWriter(String name, boolean compress) throws Exception {
+    TagGroupWriter(String name, boolean compress, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) throws Exception {
     	this.compress = compress;
+    	this.workBucketConfig = workBucketConfig;
 
         dbName = DB_PREFIX + name;
         String filename = dbName + (compress ? compressExtension : "");
-        file = new File(config.localDir, filename);
+        file = new File(workBucketConfig.localDir, filename);
         logger.info("creating TagGroupWriter for " + file);
-        AwsUtils.downloadFileIfNotExist(config.workS3BucketName, config.workS3BucketPrefix, file);
+        AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
 
         if (file.exists()) {
         	InputStream is = new FileInputStream(file);
@@ -56,7 +60,7 @@ public class TagGroupWriter {
         		is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
-                tagGroups = TagGroup.Serializer.deserializeTagGroups(config.accountService, config.productService, in);
+                tagGroups = TagGroup.Serializer.deserializeTagGroups(accountService, productService, in);
             }
             finally {
                 if (in != null)
@@ -84,7 +88,7 @@ public class TagGroupWriter {
         }
         
         logger.info(dbName + " uploading to s3...");
-        AwsUtils.upload(config.workS3BucketName, config.workS3BucketPrefix, config.localDir, dbName);
+        AwsUtils.upload(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, workBucketConfig.localDir, dbName);
         logger.info(dbName + " uploading done.");
     }
     

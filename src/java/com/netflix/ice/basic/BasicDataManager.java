@@ -21,12 +21,14 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.joda.time.DateTime;
 
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -48,13 +50,30 @@ import com.netflix.ice.tag.Zone.BadZone;
 public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> implements DataManager {
 
     protected InstanceMetricsService instanceMetricsService;
+    protected int numUserTags;
+    protected boolean forReservations;
     
-    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
-    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService);
+    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService) {
+    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
         this.instanceMetricsService = instanceMetricsService;
+        this.numUserTags = numUserTags;
+        this.forReservations = false;
     }
-    
+    	
+    public BasicDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, InstanceMetricsService instanceMetricsService, boolean forReservations) {
+    	super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
+        this.instanceMetricsService = instanceMetricsService;
+        this.numUserTags = numUserTags;
+        this.forReservations = forReservations;
+    }
+    	
+	public int size(DateTime start) throws ExecutionException {
+		ReadOnlyData data = getReadOnlyData(start);
+		return data.getTagGroups().size();
+	}
+	
     @Override
     protected ReadOnlyData newEmptyData() {
     	return new ReadOnlyData();
@@ -63,7 +82,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     @Override
     protected ReadOnlyData deserializeData(DataInputStream in) throws IOException, BadZone {
 	    ReadOnlyData result = new ReadOnlyData();
-	    result.deserialize(accountService, productService, in);
+	    result.deserialize(accountService, productService, numUserTags, in, forReservations);
 	    return result;
     }
             
@@ -118,11 +137,13 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
 	@Override
     protected Double aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, Double[] data) {
 		Double result = 0.0;
-        for (int i = 0; i < columns.size(); i++) {
-        	Double d = data[columns.get(i)];
-        	if (d != null && d != 0.0)
-        		result += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, d);
-        }
+		if (data != null) {
+	        for (int i = 0; i < columns.size(); i++) {
+	        	Double d = data[columns.get(i)];
+	        	if (d != null && d != 0.0)
+	        		result += adjustForUsageUnit(usageUnit, tagGroups.get(i).usageType, d);
+	        }
+		}
         return result;
 	}
 

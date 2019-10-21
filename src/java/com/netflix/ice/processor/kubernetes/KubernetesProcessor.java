@@ -114,7 +114,7 @@ public class KubernetesProcessor {
 		}
 		
 		for (KubernetesReport report: reports) {
-			report.loadReport(config.localDir);
+			report.loadReport(config.workBucketConfig.localDir);
 		}
 		
 		String[] products = new String[]{

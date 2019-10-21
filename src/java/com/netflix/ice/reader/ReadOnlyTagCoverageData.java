@@ -25,11 +25,9 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.TagCoverageMetrics;
 
 public class ReadOnlyTagCoverageData extends ReadOnlyGenericData<TagCoverageMetrics> {
-	private final int numUserTags;
 
 	public ReadOnlyTagCoverageData(int numUserTags) {
-		super(new TagCoverageMetrics[][]{}, Lists.<TagGroup>newArrayList());
-		this.numUserTags = numUserTags;
+		super(new TagCoverageMetrics[][]{}, Lists.<TagGroup>newArrayList(), numUserTags);
 	}
 
 	@Override

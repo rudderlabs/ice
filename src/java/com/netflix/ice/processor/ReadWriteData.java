@@ -35,6 +35,8 @@ import com.netflix.ice.tag.Zone.BadZone;
 
 /**
  * ReadWriteData is a list of maps that hold usage and cost data for AWS products.
+ * Each map in the list has a unique set of tags representing the data in the particular
+ * hour/day/week/month.
  * The list index is the hour in the month for the instance data.
  * The map keys are a TagGroup which is the unique combination of Tags associated with
  * the cost or usage number stored as the value in the map.

@@ -91,7 +91,6 @@ public class ProcessorConfig extends Config {
     public final boolean processOnce;
     public final String processorRegion;
     public final String processorInstanceId;
-    public final int numthreads;
 
     public final String useCostForResourceGroup;
     public final List<JsonFileType> jsonFiles;
@@ -197,7 +196,6 @@ public class ProcessorConfig extends Config {
         processOnce = properties.getProperty(IceOptions.PROCESS_ONCE) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.PROCESS_ONCE));
         processorRegion = properties.getProperty(IceOptions.PROCESSOR_REGION);
         processorInstanceId = properties.getProperty(IceOptions.PROCESSOR_INSTANCE_ID);
-        numthreads = properties.getProperty(IceOptions.PROCESSOR_THREADS) == null ? 5 : Integer.parseInt(properties.getProperty(IceOptions.PROCESSOR_THREADS));
         
         ProcessorConfig.instance = this;
 
@@ -213,7 +211,7 @@ public class ProcessorConfig extends Config {
     public void start () throws Exception {
         logger.info("starting up...");
 
-        productService.initProcessor(localDir, workS3BucketName, workS3BucketPrefix);
+        productService.initProcessor(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
         
         if (reservationCapacityPoller != null)
         	reservationCapacityPoller.init();
@@ -303,14 +301,14 @@ public class ProcessorConfig extends Config {
     	}
     	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), zones,
     			resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout, getTagCoverage());
-        File file = new File(localDir, workBucketDataConfigFilename);
+        File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);
     	writer.write(wbdc.toJSON());
     	writer.close();
     	
     	logger.info("Upload work bucket data config file");
-    	AwsUtils.upload(workS3BucketName, workS3BucketPrefix, file);
+    	AwsUtils.upload(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
     }
     
     /**
@@ -464,7 +462,7 @@ public class ProcessorConfig extends Config {
     		return null;
     	
     	String fileKey = configFiles.get(0).getKey();
-        File file = new File(localDir, fileKey.substring(prefix.length()));
+        File file = new File(workBucketConfig.localDir, fileKey.substring(prefix.length()));
         
 		boolean downloaded = AwsUtils.downloadFileIfChangedSince(bucket, region, prefix, file, 0, accountId, roleName, externalId);
     	if (downloaded) {

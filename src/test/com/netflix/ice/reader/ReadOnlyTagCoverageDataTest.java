@@ -72,7 +72,7 @@ public class ReadOnlyTagCoverageDataTest {
 		DataInput in = new DataInputStream(input);
 		
 		ReadOnlyTagCoverageData readOnlyData = new ReadOnlyTagCoverageData(numTags);
-		readOnlyData.deserialize(as, ps, in);
+		readOnlyData.deserialize(as, ps, 0, in);
 		
 		assertEquals("wrong data size", 1, readOnlyData.getNum());
 		

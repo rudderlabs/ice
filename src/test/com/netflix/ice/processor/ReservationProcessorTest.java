@@ -232,7 +232,7 @@ public class ReservationProcessorTest {
 			ReservationProcessor reservationProcessor,
 			Product product) throws Exception {
 		
-		CostAndUsageData caud = new CostAndUsageData(null, TagCoverage.none);
+		CostAndUsageData caud = new CostAndUsageData(null, null, TagCoverage.none, null, null);
 		if (product != null) {
 			caud.putUsage(product, new ReadWriteData());
 			caud.putCost(product, new ReadWriteData());

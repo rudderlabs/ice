@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 /**
@@ -68,6 +70,7 @@ public class PriceList {
 	        instanceType,
 	        currentGeneration,
 	        instanceFamily,
+	        instanceTypeFamily,
 	        vcpu,
 	        physicalProcessor,
 	        clockSpeed,
@@ -81,6 +84,7 @@ public class PriceList {
 	        engineCode,
 	        operatingSystem,
 	        databaseEngine,
+	        databaseEdition,
 	        licenseModel,
 	        usagetype,
 	        operation,
@@ -89,7 +93,9 @@ public class PriceList {
 	        normalizationSizeFactor,
 	        preInstalledSw,
 	        processorFeatures,
-	        deploymentOption;
+	        deploymentOption,
+	        enhancedNetworkingSupported,
+	        servicename;
 		}
 
 		public String getAttribute(Attributes a) {
@@ -101,6 +107,14 @@ public class PriceList {
 			return attributes.containsKey(a.name());
 		}
 
+		@Override
+		public String toString() {
+			List<String> attrs = Lists.newArrayList();
+        	for (String a: attributes.keySet()) {
+        		attrs.add(a + ":" + attributes.get(a));
+        	}
+            return "{" + String.join(",", attrs) + "}";
+		}
 	}
 	
 	public class Terms {

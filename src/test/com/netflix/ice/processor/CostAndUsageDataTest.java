@@ -39,7 +39,7 @@ public class CostAndUsageDataTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		String[] userTags = new String[]{ "Email, Environment" };
-		CostAndUsageData cau = new CostAndUsageData(Lists.newArrayList(userTags), TagCoverage.withUserTags);
+		CostAndUsageData cau = new CostAndUsageData(null, Lists.newArrayList(userTags), TagCoverage.withUserTags, as, ps);
 		
         TagGroup tagGroup = TagGroup.getTagGroup(as.getAccountById("123"), Region.US_WEST_2, null, ps.getProductByName("S3"), Operation.ondemandInstances, UsageType.getUsageType("c1.medium", "hours"), null);
 		cau.addTagCoverage(null, 0, tagGroup, new boolean[]{true, false});

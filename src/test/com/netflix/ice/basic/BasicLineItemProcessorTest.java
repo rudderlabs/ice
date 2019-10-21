@@ -515,7 +515,7 @@ public class BasicLineItemProcessorTest {
 		
 		public void runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
-			CostAndUsageData costAndUsageData = new CostAndUsageData(null, TagCoverage.none);
+			CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, accountService, productService);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
 			
@@ -1011,8 +1011,7 @@ public class BasicLineItemProcessorTest {
 		ProcessTest test = new ProcessTest(Which.cau, line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
 		test.run("2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
-	
-	
+		
 // TODO: add support for credits
 //	@Test
 //	public void testLambdaCredit() throws Exception {

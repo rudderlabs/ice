@@ -27,21 +27,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 
 public abstract class DataFile {
     private final static Logger logger = LoggerFactory.getLogger(DataWriter.class);
 
     private static final String compressExtension = ".gz";
     
-    protected ProcessorConfig config = ProcessorConfig.getInstance();
-    protected String dbName;
-    protected File file;
-    protected boolean compress;
+    protected final WorkBucketConfig config;
+    protected final String dbName;
+    protected final File file;
+    protected final boolean compress;
     
     protected OutputStream os;
 
-    DataFile(String name, boolean compress) throws Exception {
+    DataFile(String name, boolean compress, WorkBucketConfig config) throws Exception {
     	this.compress = compress;
+    	this.config = config;
         dbName = name;
         os = null;
         
@@ -51,6 +53,10 @@ public abstract class DataFile {
     
     // For unit testing
     protected DataFile() {
+    	config = null;
+    	dbName = null;
+    	file = null;
+    	compress = true;
     }
     
     public void open() throws IOException {

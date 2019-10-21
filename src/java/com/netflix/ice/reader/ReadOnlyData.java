@@ -18,19 +18,28 @@
 package com.netflix.ice.reader;
 
 import com.google.common.collect.Lists;
+import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Zone.BadZone;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.Collection;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReadOnlyData extends ReadOnlyGenericData<Double> {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
     public ReadOnlyData() {
-        super(new Double[][]{}, Lists.<TagGroup>newArrayList());
+        super(new Double[][]{}, Lists.<TagGroup>newArrayList(), 0);
     }
     
-    public ReadOnlyData(Double[][] data, Collection<TagGroup> tagGroups) {
-        super(data, tagGroups);
+    public ReadOnlyData(Double[][] data, List<TagGroup> tagGroups, int numUserTags) {
+        super(data, tagGroups, numUserTags);
     }
 
 	@Override
@@ -48,4 +57,40 @@ public class ReadOnlyData extends ReadOnlyGenericData<Double> {
 		Double v = in.readDouble();
 		return v == null || v == 0 ? null : v;
 	}
+	
+	@Override
+    public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in, boolean forReservations) throws IOException, BadZone {
+    	super.deserialize(accountService, productService, numUserTags, in, !forReservations);
+    	
+    	if (forReservations) {
+    		//Strip out all data that isn't for a reservation operation
+    		
+    		// Build a column map index
+    		List<Integer> columnMap = Lists.newArrayList();
+            for (int i = 0; i < tagGroups.size(); i++) {
+            	if (tagGroups.get(i).operation instanceof ReservationOperation)
+            		columnMap.add(i);
+            }
+
+            // Copy the tagGroups
+    		List<TagGroup> newTagGroups = Lists.newArrayList();
+    		for (int i: columnMap)
+            	newTagGroups.add(tagGroups.get(i));
+            this.tagGroups = newTagGroups;
+            
+    		// Copy the data
+            for (int i = 0; i < data.length; i++)  {
+            	Double[] oldData = data[i];
+            	Double[] newData = null;
+            	if (oldData != null) {            		
+            		newData = newDataArray(columnMap.size());
+	            	for (int j = 0; j < columnMap.size(); j++)
+	            		newData[j] = oldData[columnMap.get(j)];
+            	}
+	            data[i] = newData;
+            }
+        	buildIndecies();
+    	}
+    }
+
 }

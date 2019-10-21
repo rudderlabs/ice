@@ -290,7 +290,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
         
         if (tg.product.isDataTransfer()) {
-            result = processDataTranfer(processDelayed, tg.usageType);
+            result = processDataTranfer(processDelayed, tg.usageType, costValue);
         }
         else if (tg.product.isCloudHsm()) {
             result = processCloudhsm(processDelayed, tg.usageType);

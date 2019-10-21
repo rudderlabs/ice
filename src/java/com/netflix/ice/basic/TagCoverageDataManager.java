@@ -28,6 +28,7 @@ import org.joda.time.Interval;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -45,14 +46,17 @@ import com.netflix.ice.tag.Zone.BadZone;
 
 public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverageData, TagCoverageMetrics> implements DataManager {
     //private final static Logger staticLogger = LoggerFactory.getLogger(TagCoverageDataManager.class);
+	
+	protected List<String> userTags;
 
-	public TagCoverageDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-			int monthlyCacheSize, AccountService accountService, ProductService productService) {
-		super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, accountService, productService);
+	public TagCoverageDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, List<String> userTags,
+			int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
+		super(startDate, dbName, consolidateType, tagGroupManager, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
+		this.userTags = userTags;
 	}
 	
 	protected int getUserTagsSize() {
-		return config.userTags.size();
+		return userTags.size();
 	}
     
 	@Override
@@ -76,7 +80,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	protected ReadOnlyTagCoverageData deserializeData(DataInputStream in)
 			throws IOException, BadZone {
 	    ReadOnlyTagCoverageData result = new ReadOnlyTagCoverageData(getUserTagsSize());
-	    result.deserialize(accountService, productService, in);
+	    result.deserialize(accountService, productService, userTags.size(), in);
 	    return result;
 	}
 
@@ -89,12 +93,15 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	protected TagCoverageMetrics aggregate(List<Integer> columns,
 			List<TagGroup> tagGroups, UsageUnit usageUnit,
 			TagCoverageMetrics[] data) {
+		
 		TagCoverageMetrics result = new TagCoverageMetrics(getUserTagsSize());
-        for (int i = 0; i < columns.size(); i++) {
-        	TagCoverageMetrics d = data[columns.get(i)];
-        	if (d != null)
-        		result.add(d);
-        }
+		if (data != null) {
+	        for (int i = 0; i < columns.size(); i++) {
+	        	TagCoverageMetrics d = data[columns.get(i)];
+	        	if (d != null)
+	        		result.add(d);
+	        }
+		}
         return result;
 	}
 
@@ -109,7 +116,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	}
 	
 	protected List<String> getUserTags() {
-		return config.userTags;
+		return userTags;
 	}
 
 	@Override

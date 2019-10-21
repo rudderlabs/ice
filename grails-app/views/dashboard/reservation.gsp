@@ -34,7 +34,7 @@
       <td class="metaAccounts">
       	<input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input>
       	<select ng-model="organizationalUnit" ng-show="dimensions[ACCOUNT_INDEX]" ng-options="org for org in organizationalUnits" ng-change="orgUnitChanged()">
-      		<option value="">None</option>
+      		<option value="">All</option>
       	</select>
       </td>
       <td ng-show="1-showZones" class="metaRegions"><input type="checkbox" ng-model="dimensions[REGION_INDEX]" ng-change="regionsEnabled()"> Region</input></td>
@@ -64,9 +64,7 @@
         </div>
         <div style="padding-top: 5px">Aggregate
           <select ng-model="consolidate">
-          	<g:if test="${ReaderConfig.getInstance().hourlyData}">
-            	<option>hourly</option>
-            </g:if>
+            <option>hourly</option>
             <option>daily</option>
             <option>weekly</option>
             <option>monthly</option>
@@ -146,6 +144,7 @@
     <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
        ng-click="download()" ng-show="!loading"
        ng-disabled="selected_accounts.length == 0 || selected_regions.length == 0 && !showZones || selected_zones.length == 0 && showZones || selected_products.length == 0 || selected_operations.length == 0 || selected_usageTypes.length == 0">Download</a>
+   	<span ng-show="errorMessage">&nbsp;&nbsp;<img src="${resource(dir: '/')}images/error.png" style="position: relative; top: 5px"/>&nbsp;&nbsp;{{errorMessage}}</span>
   </div>
 
   <table style="width: 100%; margin-top: 20px">

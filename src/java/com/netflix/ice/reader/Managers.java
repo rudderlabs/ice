@@ -19,8 +19,22 @@ package com.netflix.ice.reader;
 
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.Instances;
+import com.netflix.ice.tag.Account;
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.Tag;
+import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
+import com.netflix.ice.tag.Zone;
+
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
+import org.joda.time.Interval;
 
 /**
  * Interface to manager all TagGroupManager and DataManager instances for different products
@@ -41,6 +55,12 @@ public interface Managers {
      * @return TagGroupManager instance for specified product
      */
     TagGroupManager getTagGroupManager(Product product);
+    
+    /**
+     * @throws Exception 
+     * 
+     */
+    Collection<UserTag> getUserTagValues(List<Account> accounts, List<Region> regions, List<Zone> zones, Collection<Product> products, int index) throws Exception;
 
     /**
      *
@@ -60,6 +80,26 @@ public interface Managers {
 
     /**
      * 
+     */
+    Map<Tag, double[]> getData(
+    		Interval interval,
+    		List<Account> accounts,
+    		List<Region> regions,
+    		List<Zone> zones,
+    		List<Product> products,
+    		List<Operation> operations,
+    		List<UsageType> usageTypes,
+    		boolean isCost,
+    		ConsolidateType consolidateType,
+    		TagType groupBy,
+    		AggregateType aggregate,
+    		boolean forReservation,
+    		UsageUnit usageUnit,
+    		List<List<UserTag>> userTagLists,
+    		int userTagGroupByIndex) throws Exception;
+    
+    /**
+     * 
      * @return
      */
     DataManager getTagCoverageManager(Product product, ConsolidateType consolidateType);
@@ -73,4 +113,7 @@ public interface Managers {
      * shutdown all manager instances
      */
     void shutdown();
+    
+    String getStatistics(boolean csv) throws ExecutionException;
+
 }

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.commons.lang.time.StopWatch;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.Hours;
@@ -31,6 +32,7 @@ import org.joda.time.Weeks;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -49,8 +51,8 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     protected TagGroupManager tagGroupManager;
     
 	public CommonDataManager(DateTime startDate, String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress,
-    		int monthlyCacheSize, AccountService accountService, ProductService productService) {
-    	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, accountService, productService);
+    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
+    	super(startDate, dbName, consolidateType, compress, monthlyCacheSize, workBucketConfig, accountService, productService);
         this.tagGroupManager = tagGroupManager;
 	}
 	
@@ -60,29 +62,18 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
 	 * Aggregate the columns of data for a single instance in time
 	 */
     abstract protected D aggregate(List<Integer> columns, List<TagGroup> tagGroups, UsageUnit usageUnit, D[] data);
-
+        
     /*
      * Aggregate all the data matching the tags in tagLists starting at time start for the specified to and from indecies.
      */
-    protected int aggregateData(DateTime start, TagLists tagLists, int from, int to, D[] result, UsageUnit usageUnit) throws ExecutionException {
+    protected int aggregateData(DateTime start, TagLists tagLists, int from, int to, D[] result, UsageUnit usageUnit, TagType groupBy, Tag tag, int userTagGroupByIndex) throws ExecutionException {
         T data = getReadOnlyData(start);
 
         // Figure out which columns we're going to aggregate
         List<Integer> columnIndecies = Lists.newArrayList();
         List<TagGroup> tagGroups = Lists.newArrayList();
         
-        //logger.info(" ==== tagLists: " + tagLists);
-        int columnIndex = 0;
-        for (TagGroup tagGroup: data.getTagGroups()) {
-        	boolean contains = tagLists.contains(tagGroup, true);
-            if (contains) {
-            	columnIndecies.add(columnIndex);
-            	tagGroups.add(tagGroup);
-            	
-            	//logger.info("     add TagGroup: " + tagGroup);
-            }
-            columnIndex++;
-        }
+    	getColumns(groupBy, tag, userTagGroupByIndex, data, tagLists, columnIndecies, tagGroups);
         
         int fromIndex = from;
         int resultIndex = to;
@@ -93,8 +84,73 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         }
         return fromIndex - from;
     }
+        
+    private void getColumns(TagType groupBy, Tag tag, int userTagGroupByIndex, T data, TagLists tagLists, List<Integer> columnIndecies, List<TagGroup> tagGroups) {    	
+    	Map<TagGroup, Integer> m = data.getTagGroups(groupBy, tag, userTagGroupByIndex);
+    	if (m == null) {
+    		// No index, do it the hard way
+            int columnIndex = 0;
+            for (TagGroup tagGroup: data.getTagGroups()) {
+            	boolean contains = tagLists.contains(tagGroup, true);
+                if (contains) {
+                	columnIndecies.add(columnIndex);
+                	tagGroups.add(tagGroup);
+                }
+                columnIndex++;
+            }    		
+    		return;
+    	}
+    	
+        for (TagGroup tagGroup: m.keySet()) {
+        	boolean contains = tagLists.contains(tagGroup, true);
+            if (contains) {
+            	columnIndecies.add(m.get(tagGroup));
+            	tagGroups.add(tagGroup);
+            }
+        }
+    }
     
-    public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit) throws ExecutionException {
+    private int getFromIndex(DateTime start, Interval interval) {
+    	int fromIndex = 0;
+    	if (!interval.getStart().isBefore(start)) {
+            if (consolidateType == ConsolidateType.hourly) {
+                fromIndex = Hours.hoursBetween(start, interval.getStart()).getHours();
+            }
+            else if (consolidateType == ConsolidateType.daily) {
+                fromIndex = Days.daysBetween(start, interval.getStart()).getDays();
+            }
+            else if (consolidateType == ConsolidateType.weekly) {
+                fromIndex = Weeks.weeksBetween(start, interval.getStart()).getWeeks();
+                if (start.getDayOfWeek() != interval.getStart().getDayOfWeek())
+                    fromIndex++;
+            }
+            else if (consolidateType == ConsolidateType.monthly) {
+                fromIndex = Months.monthsBetween(start, interval.getStart()).getMonths();
+            }
+    	}
+    	return fromIndex;
+    }
+       
+    private int getResultIndex(DateTime start, Interval interval) {
+    	int resultIndex = 0;
+        if (interval.getStart().isBefore(start)) {
+            if (consolidateType == ConsolidateType.hourly) {
+                resultIndex = Hours.hoursBetween(interval.getStart(), start).getHours();
+            }
+            else if (consolidateType == ConsolidateType.daily) {
+                resultIndex = Days.daysBetween(interval.getStart(), start).getDays();
+            }
+            else if (consolidateType == ConsolidateType.weekly) {
+                resultIndex = Weeks.weeksBetween(interval.getStart(), start).getWeeks();
+            }
+            else if (consolidateType == ConsolidateType.monthly) {
+                resultIndex = Months.monthsBetween(interval.getStart(), start).getMonths();
+            }
+        }
+    	return resultIndex;
+    }
+    
+    public D[] getData(Interval interval, TagLists tagLists, UsageUnit usageUnit, TagType groupBy, Tag tag, int userTagGroupByIndex) throws ExecutionException {
     	Interval adjusted = getAdjustedInterval(interval);
         DateTime start = adjusted.getStart();
         DateTime end = adjusted.getEnd();
@@ -102,41 +158,9 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         D[] result = getResultArray(getSize(interval));
 
         do {
-            int resultIndex = 0;
-            int fromIndex = 0;
-
-            if (interval.getStart().isBefore(start)) {
-                if (consolidateType == ConsolidateType.hourly) {
-                    resultIndex = Hours.hoursBetween(interval.getStart(), start).getHours();
-                }
-                else if (consolidateType == ConsolidateType.daily) {
-                    resultIndex = Days.daysBetween(interval.getStart(), start).getDays();
-                }
-                else if (consolidateType == ConsolidateType.weekly) {
-                    resultIndex = Weeks.weeksBetween(interval.getStart(), start).getWeeks();
-                }
-                else if (consolidateType == ConsolidateType.monthly) {
-                    resultIndex = Months.monthsBetween(interval.getStart(), start).getMonths();
-                }
-            }
-            else {
-                if (consolidateType == ConsolidateType.hourly) {
-                    fromIndex = Hours.hoursBetween(start, interval.getStart()).getHours();
-                }
-                else if (consolidateType == ConsolidateType.daily) {
-                    fromIndex = Days.daysBetween(start, interval.getStart()).getDays();
-                }
-                else if (consolidateType == ConsolidateType.weekly) {
-                    fromIndex = Weeks.weeksBetween(start, interval.getStart()).getWeeks();
-                    if (start.getDayOfWeek() != interval.getStart().getDayOfWeek())
-                        fromIndex++;
-                }
-                else if (consolidateType == ConsolidateType.monthly) {
-                    fromIndex = Months.monthsBetween(start, interval.getStart()).getMonths();
-                }
-            }
-            
-            int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit);
+            int resultIndex = getResultIndex(start, interval);
+            int fromIndex = getFromIndex(start, interval);            
+            int count = aggregateData(start, tagLists, fromIndex, resultIndex, result, usageUnit, groupBy, tag, userTagGroupByIndex);
             fromIndex += count;
             resultIndex += count;
 
@@ -170,14 +194,19 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex) {
     	//logger.info("Entered with groupBy: " + groupBy + ", userTagGroupByIndex: " + userTagGroupByIndex + ", tagLists: " + tagLists);
     	Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, userTagGroupByIndex);
-
+    	return getGroupedData(interval, tagListsMap, usageUnit, groupBy, userTagGroupByIndex);
+    }
+    
+    private Map<Tag, D[]> getGroupedData(Interval interval, Map<Tag, TagLists> tagListsMap, UsageUnit usageUnit, TagType groupBy, int userTagGroupByIndex) {
         Map<Tag, D[]> rawResult = Maps.newTreeMap();
+//        StopWatch sw = new StopWatch();
+//        sw.start();
         
         // For each of the groupBy values
         for (Tag tag: tagListsMap.keySet()) {
             try {
                 //logger.info("Tag: " + tag + ", TagLists: " + tagListsMap.get(tag));
-                D[] data = getData(interval, tagListsMap.get(tag), usageUnit);
+                D[] data = getData(interval, tagListsMap.get(tag), usageUnit, groupBy, tag, userTagGroupByIndex);
                 
             	// Check for values in the data array and ignore if all zeros
                 if (hasData(data)) {
@@ -202,15 +231,17 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
                 logger.error("error in getData for " + tag + " " + interval, e);
             }
         }
-        
+//        sw.stop();
+//        logger.info("getGroupedData elapsed time " + sw);
         return rawResult;
     }
 
     private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
-        Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
-        
+    	StopWatch sw = new StopWatch();
+    	sw.start();
+    	Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, usageUnit, userTagGroupByIndex);
         Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
-        
+        logger.debug("getData elapsed time: " + sw);
         return result;
     }
 

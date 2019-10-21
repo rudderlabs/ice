@@ -202,7 +202,7 @@ public class BillingFileProcessorTest {
 		//bfp.reservationProcessor.setDebugHour(0);
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
-		CostAndUsageData costAndUsageData = new CostAndUsageData(null, TagCoverage.none);
+		CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, null, productService);
         Instances instances = new Instances(null, null, null);
         
 		Long startMilli = config.startDate.getMillis();

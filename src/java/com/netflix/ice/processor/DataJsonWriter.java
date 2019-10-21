@@ -38,6 +38,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
+import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -70,9 +71,9 @@ public class DataJsonWriter extends DataFile {
 	public DataJsonWriter(String name, DateTime monthDateTime, List<String> tagNames, JsonFileType fileType,
 			Map<Product, ReadWriteData> costDataByProduct,
 			Map<Product, ReadWriteData> usageDataByProduct,
-			InstanceMetrics instanceMetrics, PriceListService priceListService)
+			InstanceMetrics instanceMetrics, PriceListService priceListService, WorkBucketConfig workBucketConfig)
 			throws Exception {
-		super(name, true);
+		super(name, true, workBucketConfig);
 		this.monthDateTime = monthDateTime;
 		this.tagNames = tagNames;
 		this.fileType = fileType;
@@ -276,6 +277,7 @@ public class DataJsonWriter extends DataFile {
 	
 	public class Item {
 		String hour;
+		String org;
 		String accountId;
 		String account;
 		String region;
@@ -295,6 +297,7 @@ public class DataJsonWriter extends DataFile {
 			this.cost = cost;
 			this.usage = usage;
 			
+			org = String.join("/", tg.account.parents);
 			accountId = tg.account.id;
 			account = tg.account.name;
 			region = tg.region.name;

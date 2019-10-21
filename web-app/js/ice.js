@@ -238,7 +238,6 @@ ice.factory('highchart', function () {
 
         if ($scope) {
           legends = $scope.legends;
-          $scope.loading = false;
         }
 
         var xextemes = chart.xAxis[0].getExtremes();
@@ -731,8 +730,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -767,8 +766,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -801,8 +800,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -841,8 +840,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -892,8 +891,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -933,8 +932,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -971,8 +970,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -1013,8 +1012,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (fn)
             fn(result.data);
         }
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     },
@@ -1033,8 +1032,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         }
         if (fn)
           fn(result.data);
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });
     
@@ -1054,13 +1053,13 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         }
         if (fn)
           fn(result.data);
-      }).error(function (result) {
-        if (result.status === 401)
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
           $window.location.reload();
       });    
     },
 
-    getData: function ($scope, fn, params, download) {
+    getData: function ($scope, fn, params, download, errfn) {
       if (!params)
         params = {};
       params = jQuery.extend({
@@ -1121,9 +1120,11 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           if (result.status === 200 && result.data && fn) {
             fn(result);
           }
-        }).error(function (result) {
-          if (result.status === 401)
+        }).error(function (result, status) {
+          if (status === 401)
             $window.location.reload();
+          else if (errfn)
+            errfn(result, status);
           });
       }
       else {
@@ -1372,6 +1373,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
+  $scope.consolidate = "hourly";
   $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
@@ -1415,6 +1417,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.getData = function () {
     $scope.loading = true;
+    $scope.errorMessage = null;
     var query = { operation: $scope.reservationOps.join(","), forReservation: true };
     if ($scope.showZones)
       query.showZones = true;
@@ -1427,11 +1430,15 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legends = [];
       $scope.stats = result.stats;
       highchart.drawGraph(result, $scope);
+      $scope.loading = false;
 
       $scope.legendPrecision = $scope.usage_cost == "cost" ? 2 : 0;
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, query);
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
+    });
   }
 
   $scope.accountsEnabled = function () {
@@ -1585,6 +1592,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.getData = function () {
     $scope.loading = true;
+    $scope.errorMessage = null;
     usage_db.getData($scope, function (result) {
       var hourlydata = [];
       for (var key in result.data) {
@@ -1594,9 +1602,13 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legends = [];
       $scope.stats = result.stats;
       highchart.drawGraph(result, $scope, false, false, true);
+      $scope.loading = false;
 
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
+    }, null, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
     });
   }
 
@@ -1730,6 +1742,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.getData = function () {
     $scope.loading = true;
+    $scope.errorMessage = null;
     var query = { operation: $scope.utilizationOps.join(","), forReservation: true, elasticity: true };
 
     usage_db.getData($scope, function (result) {
@@ -1741,11 +1754,15 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legends = [];
       $scope.stats = result.stats;
       highchart.drawGraph(result, $scope, false, true, false);
+      $scope.loading = false;
 
       $scope.legendPrecision = 0;
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
-    }, query);
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
+    });
   }
 
   $scope.accountsEnabled = function () {
@@ -1868,6 +1885,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.getData = function () {
     $scope.loading = true;
+    $scope.errorMessage = null;
     usage_db.getData($scope, function (result) {
       var hourlydata = [];
       for (var key in result.data) {
@@ -1877,9 +1895,13 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.legends = [];
       $scope.stats = result.stats;
       highchart.drawGraph(result, $scope);
+      $scope.loading = false;
 
       $scope.legendName = $scope.groupBy.name;
       $scope.legend_usage_cost = $scope.usage_cost;
+    }, null, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
     });
   }
 
@@ -2046,6 +2068,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
 
   $scope.getData = function () {
     $scope.loading = true;
+    $scope.errorMessage = null;
     usage_db.getData($scope, function (result) {
       $scope.data = {};
       $scope.months = usage_db.reverse(result.time);
@@ -2078,8 +2101,15 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
         result.data = hourlydata;
         $scope.legends = [];
         highchart.drawGraph(result, $scope, true);
-      }, { consolidate: "daily", aggregate: "none", breakdown: false });
-    }, { consolidate: "monthly", aggregate: "data", breakdown: true });
+        $scope.loading = false;
+      }, { consolidate: "daily", aggregate: "none", breakdown: false }, false, function (result, status) {
+        $scope.errorMessage = "Error: " + status;
+        $scope.loading = false;
+      });
+    }, { consolidate: "monthly", aggregate: "data", breakdown: true }, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
+    });
     $scope.legendName = $scope.groupBy.name;
   }
 
@@ -2163,7 +2193,7 @@ function resourceInfoCtrl($scope, $location, $http) {
     }).success(function (result) {
         $scope.resourceInfo = JSON.stringify(result, null, "    ");
     }).error(function(result, status) {
-      if (result.status === 401)
+      if (status === 401 || status === 0)
         $window.location.reload();
       else if (status === 404)
         $scope.resourceInfo = "Resource " + $scope.resource.name + " does not exist.";

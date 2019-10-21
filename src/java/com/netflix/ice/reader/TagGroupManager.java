@@ -18,10 +18,13 @@
 package com.netflix.ice.reader;
 
 import com.netflix.ice.tag.*;
+
 import org.joda.time.Interval;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Interface to manager tag groups.
@@ -159,4 +162,11 @@ public interface TagGroupManager {
      * @return
      */
     Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, int userTagGroupByIndex);
+    
+    /**
+     * Get sizes of the data
+     */
+    TreeMap<Long, Integer> getSizes();
+    
+    TreeMap<Long, List<Integer>> getTagValueSizes(int numUserTags);
 }
