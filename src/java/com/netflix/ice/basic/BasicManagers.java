@@ -220,8 +220,7 @@ public class BasicManagers extends Poller implements Managers {
 	                usageManagers.put(key, new BasicDataManager(config.startDate, "usage_" + partialDbName, consolidateType, tagGroupManager, compress, numUserTags,
 	                		config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService, instanceMetricsService));
 	                if (loadTagCoverage && consolidateType != ConsolidateType.hourly) {
-	                	List<String> userTags = product == null ? null : config.userTags;
-	    	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress, userTags,
+	    	            tagCoverageManagers.put(key, new TagCoverageDataManager(config.startDate, "coverage_" + partialDbName, consolidateType, tagGroupManager, compress, config.userTags,
 	            				config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService));
 	                }
             	}
