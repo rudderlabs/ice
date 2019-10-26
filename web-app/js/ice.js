@@ -2206,22 +2206,29 @@ function resourceInfoCtrl($scope, $location, $http) {
 
 function accountsCtrl($scope, $location, $http, usage_db) {
   $scope.accounts = [];
+  $scope.revs = {
+    name: false,
+    awsName: false,
+    id: false,
+    status: false
+  };
+  $scope.predicate = null;
 
   $scope.order = function (data, name) {
 
     if ($scope.predicate != name) {
-      $scope.reservse = name === 'name';
+      $scope.rev = $scope.revs[name];
       $scope.predicate = name;
     }
     else {
-      $scope.reservse = !$scope.reservse;
+      $scope.rev = !$scope.revs[name];
     }
 
     var compare = function (a, b) {
       if (a[name] < b[name])
-        return !$scope.reservse ? 1 : -1;
+        return $scope.rev ? 1 : -1;
       if (a[name] > b[name])
-        return !$scope.reservse ? -1 : 1;
+        return $scope.rev ? -1 : 1;
       return 0;
     }
 
@@ -2255,5 +2262,6 @@ function accountsCtrl($scope, $location, $http, usage_db) {
       if ($scope.accounts[i].awsName === null)
         $scope.accounts[i].awsName = "";
     }
+    $scope.order($scope.accounts, 'name');
   });
 }
