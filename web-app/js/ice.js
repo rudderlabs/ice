@@ -2252,6 +2252,8 @@ function accountsCtrl($scope, $location, $http, usage_db) {
         $scope.accounts[i].path = "unlinked";
       else
         $scope.accounts[i].path = parents.length > 0 ? $scope.accounts[i].parents.join("/") : "";
+      if ($scope.accounts[i].awsName === null)
+        $scope.accounts[i].awsName = "";
     }
   });
 }
