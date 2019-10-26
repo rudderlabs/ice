@@ -78,6 +78,7 @@
       <a class="link_with_params" href="${resource(dir: 'dashboard', file: 'resourceinfo')}" ng-click="reload()">Resources</a>
       <ul>
         <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'resourceinfo')}" ng-click="reload()">Resource Info</a></li>
+        <li class="menuButton"><a class="" href="${resource(dir: 'dashboard', file: 'accounts')}" ng-click="reload()">Accounts</a></li>
       </ul>
     </li>
     </g:if>

@@ -342,7 +342,7 @@ public class ProcessorConfig extends Config {
             for (Account a: accounts) {
             	// Get tags for the account
             	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), accountId, assumeRole, externalId);
-            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), tags, customTags);
+            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), a.getStatus(), tags, customTags);
             	result.put(ac.getId(), ac);
             	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
             }
@@ -407,7 +407,7 @@ public class ProcessorConfig extends Config {
                     riProducts = Lists.newArrayList(products);
                 }
                 String awsName = orgAccounts.containsKey(id) ? orgAccounts.get(id).getAwsName() : null;
-                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, null, riProducts, role, externalId));
+                accountConfigs.put(id, new AccountConfig(id, accountName, awsName, null, null, riProducts, role, externalId));
     			logger.warn("Using ice.properties config for account " + id + ": " + accountName);
             }
         }

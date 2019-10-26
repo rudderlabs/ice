@@ -2203,3 +2203,55 @@ function resourceInfoCtrl($scope, $location, $http) {
   
   }
 }
+
+function accountsCtrl($scope, $location, $http, usage_db) {
+  $scope.accounts = [];
+
+  $scope.order = function (data, name) {
+
+    if ($scope.predicate != name) {
+      $scope.reservse = name === 'name';
+      $scope.predicate = name;
+    }
+    else {
+      $scope.reservse = !$scope.reservse;
+    }
+
+    var compare = function (a, b) {
+      if (a[name] < b[name])
+        return !$scope.reservse ? 1 : -1;
+      if (a[name] > b[name])
+        return !$scope.reservse ? -1 : 1;
+      return 0;
+    }
+
+    data.sort(compare);
+  }
+
+  var getAccounts = function ($scope, fn) {
+    $http({
+      method: "GET",
+      url: "getAccounts",
+      params: { all: true }
+    }).success(function (result) {
+      if (result.status === 200 && result.data) {
+        $scope.accounts = result.data;
+        if (fn)
+          fn(result.data);
+      }
+    }).error(function (result, status) {
+      if (status === 401 || status === 0)
+        $window.location.reload();
+    });
+  }
+  
+  getAccounts($scope, function (data) {
+    for (var i = 0; i < $scope.accounts.length; i++) {
+      var parents = $scope.accounts[i].parents;
+      if (!parents)
+        $scope.accounts[i].path = "unlinked";
+      else
+        $scope.accounts[i].path = parents.length > 0 ? $scope.accounts[i].parents.join("/") : "";
+    }
+  });
+}

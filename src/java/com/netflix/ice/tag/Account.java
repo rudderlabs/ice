@@ -27,18 +27,21 @@ public class Account extends Tag {
 	public final String id;
 	public final String awsName; // Name of account returned by Organizations
 	public final List<String> parents; // parent organizational units as defined by the Organizations service
+	public final String status;  // status as returned by the Organizations service
 
     public Account(String accountId, String accountName, List<String> parents) {
         super(accountName);
         this.id = accountId;
         this.awsName = null;
         this.parents = parents;
+        this.status = null;
     }
     
-    public Account(String accountId, String accountName, String awsName, List<String> parents) {
+    public Account(String accountId, String accountName, String awsName, List<String> parents, String status) {
         super(StringUtils.isEmpty(accountName) ? awsName : accountName);
         this.id = accountId;
         this.awsName = awsName;
         this.parents = parents;
+        this.status = status;
     }
 }

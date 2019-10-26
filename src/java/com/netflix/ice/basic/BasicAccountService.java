@@ -45,7 +45,7 @@ public class BasicAccountService implements AccountService {
     // Constructor used by the processor
     public BasicAccountService(Map<String, AccountConfig> configs) {
     	for (AccountConfig a: configs.values()) {
-			Account account = new Account(a.id, a.name, a.awsName, a.parents);
+			Account account = new Account(a.id, a.name, a.awsName, a.parents, a.status);
 			accountsByName.put(a.name, account);
 			accountsById.put(a.id, account);
 			if (a.riProducts != null && a.riProducts.size() > 0) {

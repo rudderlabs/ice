@@ -138,8 +138,15 @@ class DashboardController {
 	}
 
     def getAccounts = {
-        TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
-        Collection<Account> data = tagGroupManager == null ? [] : tagGroupManager.getAccounts(new TagLists());
+        boolean all = params.getBoolean("all");
+		Collection<Account> data = null;
+		if (all) {
+			data = getConfig().accountService.getAccounts();
+		}
+		else {
+	        TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
+	        data = tagGroupManager == null ? [] : tagGroupManager.getAccounts(new TagLists());
+		}
 
         def result = [status: 200, data: data]
         render result as JSON
@@ -446,6 +453,8 @@ class DashboardController {
     def utilization = {}
 
 	def resourceinfo = {}
+	
+	def accounts = {}
 
     private Map doGetData(JSONObject query) {
 		logger.debug("******** doGetData: called");
