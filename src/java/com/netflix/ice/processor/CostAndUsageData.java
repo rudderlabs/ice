@@ -189,16 +189,9 @@ public class CostAndUsageData {
     	for (JsonFileType jft: jsonFiles)
         	futures.add(archiveJson(startMilli, jft, instanceMetrics, priceListService, pool));
     	
-        int totalResourceTagGroups = 0;
         for (Product product: costDataByProduct.keySet()) {
-            TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true, workBucketConfig, accountService, productService);
-            Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
-            logger.info("Write " + tagGroups.size() + " tagGroups for " + (product == null ? "all" : product.name));
-            if (product != null)
-            	totalResourceTagGroups += tagGroups.size();
-            writer.archive(startMilli, tagGroups);
+        	futures.add(archiveTagGroups(startMilli, product, pool));
         }
-        logger.info("Total of " + totalResourceTagGroups + " resource tagGroups");
 
         archiveSummary(startMilli, startDate, usageDataByProduct, "usage_", compress, pool, futures);
         archiveSummary(startMilli, startDate, costDataByProduct, "cost_", compress, pool, futures);
@@ -215,7 +208,7 @@ public class CostAndUsageData {
 		}
     }
     
-    public Future<Void> archiveJson(final long startMilli, final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
+    private Future<Void> archiveJson(final long startMilli, final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
     	return pool.submit(new Callable<Void>() {
     		@Override
     		public Void call() throws Exception {
@@ -225,6 +218,18 @@ public class CostAndUsageData {
     	        DataJsonWriter writer = new DataJsonWriter(writeJsonFiles.name() + "_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
     	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService, workBucketConfig);
     	        writer.archive();
+    	        return null;
+    		}
+    	});        
+    }
+    
+    private Future<Void> archiveTagGroups(final long startMilli, final Product product, ExecutorService pool) throws Exception {
+    	return pool.submit(new Callable<Void>() {
+    		@Override
+    		public Void call() throws Exception {
+                TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true, workBucketConfig, accountService, productService);
+                Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
+                writer.archive(startMilli, tagGroups);
     	        return null;
     		}
     	});        
