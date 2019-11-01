@@ -1612,6 +1612,13 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
     });
   }
 
+  $scope.getUserTagValues = function (index, count) {
+    var vals = [];
+    for (var i = index; i < index + count && i < $scope.userTagValues.length; i++)
+      vals.push($scope.userTagValues[i]);
+    return vals;
+  }
+
   $scope.accountsEnabled = function () {
     $scope.updateAccounts($scope);
   }
@@ -1903,6 +1910,13 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
       $scope.errorMessage = "Error: " + status;
       $scope.loading = false;
     });
+  }
+
+  $scope.getUserTagValues = function (index, count) {
+    var vals = [];
+    for (var i = index; i < index + count && i < $scope.userTagValues.length; i++)
+      vals.push($scope.userTagValues[i]);
+    return vals;
   }
 
   $scope.accountsEnabled = function () {
