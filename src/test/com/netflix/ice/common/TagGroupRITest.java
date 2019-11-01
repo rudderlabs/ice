@@ -36,7 +36,7 @@ public class TagGroupRITest {
 		ProductService ps = new BasicProductService();
 		
 		TagGroup tg1 = TagGroup.getTagGroup(
-				as.getAccountById("111111111234"),
+				as.getAccountById("111111111234", ""),
 				Region.US_EAST_1, 
 				null, 
 				ps.getProduct("AWS Relational Database Service", "AmazonRDS"), 
@@ -45,7 +45,7 @@ public class TagGroupRITest {
 				null);
 
 		TagGroup tg2 = TagGroupRI.get(
-				as.getAccountById("111111111234"), 
+				as.getAccountById("111111111234", ""), 
 				Region.US_EAST_1, 
 				null, 
 				ps.getProduct("AWS Relational Database Service", "AmazonRDS"), 

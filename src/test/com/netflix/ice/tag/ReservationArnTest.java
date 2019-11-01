@@ -58,7 +58,7 @@ public class ReservationArnTest {
 		};
 		
 		for (TestCase tc: testCases) {
-			ReservationArn arn = ReservationArn.get(as.getAccountById(account), region, ps.getProductByName(tc.name), reservationID);
+			ReservationArn arn = ReservationArn.get(as.getAccountById(account, ""), region, ps.getProductByName(tc.name), reservationID);
 			String expect = "arn:aws:" + tc.code + ":" + region.name + ":" + account + ":" + tc.prefix + reservationID;
 			assertEquals("Incorrect ARN for " + tc.name, expect, arn.name);
 		}

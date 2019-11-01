@@ -49,6 +49,7 @@ import com.google.common.collect.Maps
 import org.json.JSONObject
 
 import com.netflix.ice.basic.TagCoverageDataManager
+import com.netflix.ice.common.Config;
 import com.netflix.ice.common.ConsolidateType
 import com.netflix.ice.common.Instance
 
@@ -64,7 +65,7 @@ import com.netflix.ice.common.AwsUtils
 class DashboardController {
     private static Logger logger = LoggerFactory.getLogger(DashboardController.class);
 
-	private static ReaderConfig config = ReaderConfig.getInstance();
+	private static Config config = ReaderConfig.getInstance();
     private static Managers managers = config == null ? null : config.managers;
     private static DateTimeFormatter dateFormatterForDownload = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd hha").withZone(DateTimeZone.UTC);
@@ -93,7 +94,7 @@ class DashboardController {
 		utilization: "GET",
 	];
 			
-    private static ReaderConfig getConfig() {
+    private static Config getConfig() {
         if (config == null) {
             config = ReaderConfig.getInstance();
         }

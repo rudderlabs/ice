@@ -50,6 +50,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
@@ -67,19 +68,8 @@ public class ProcessorConfig extends Config {
     public final AccountService accountService;
     public final ResourceService resourceService;
     public final boolean familyRiBreakout;
-    public final String[] billingAccountIds;
-    public final String[] billingS3BucketNames;
-    public final String[] billingS3BucketRegions;
-    public final String[] billingS3BucketPrefixes;
-    public final String[] billingAccessRoleNames;
-    public final String[] billingAccessExternalIds;
-    public final String[] rootNames;
-    public final String[] kubernetesAccountIds;
-    public final String[] kubernetesS3BucketNames;
-    public final String[] kubernetesS3BucketRegions;
-    public final String[] kubernetesS3BucketPrefixes;
-    public final String[] kubernetesAccessRoleNames;
-    public final String[] kubernetesAccessExternalIds;
+    public final List<BillingBucket> billingBuckets;
+    public final List<BillingBucket> kubernetesBuckets;
     public final DateTime costAndUsageStartDate;
     public final DateTime costAndUsageNetUnblendedStartDate;
     public final SortedMap<DateTime,Double> edpDiscounts;
@@ -127,20 +117,11 @@ public class ProcessorConfig extends Config {
         
         initZones();
         
-        billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
-        billingS3BucketRegions = properties.getProperty(IceOptions.BILLING_S3_BUCKET_REGION).split(",");
-        billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
-        billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
-        billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
-        billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
-        rootNames = properties.getProperty(IceOptions.ROOT_NAME, "").split(",");
-        kubernetesS3BucketNames = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, "").split(",");
-        kubernetesS3BucketRegions = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, "").split(",");
-        kubernetesS3BucketPrefixes = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, "").split(",");
-        kubernetesAccountIds = properties.getProperty(IceOptions.KUBERNETES_ACCOUNT_ID, "").split(",");
-        kubernetesAccessRoleNames = properties.getProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, "").split(",");
-        kubernetesAccessExternalIds = properties.getProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, "").split(",");
-                
+        this.billingBuckets = Lists.newArrayList();
+        initBillingBuckets(properties);
+        this.kubernetesBuckets = Lists.newArrayList();
+        initKubernetesBuckets(properties);
+        
         if (reservationService == null)
         	throw new IllegalArgumentException("reservationService must be specified");
 
@@ -151,6 +132,7 @@ public class ProcessorConfig extends Config {
     	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);
         processBillingDataConfig(accountConfigs);
+        processWorkBucketConfig(accountConfigs);
         for (AccountConfig ac: accountConfigs.values())
         	logger.info("  Account " + ac.toString());
         	
@@ -206,6 +188,51 @@ public class ProcessorConfig extends Config {
         		new DateTime(CostAndUsageReportLineItemProcessor.jan1_2018).isBefore(costAndUsageStartDate));
         
         reservationCapacityPoller = needPoller ? new ReservationCapacityPoller(this) : null;
+    }
+    
+    private void initBillingBuckets(Properties properties) {
+        String[] billingS3BucketNames = properties.getProperty(IceOptions.BILLING_S3_BUCKET_NAME).split(",");
+        String[] billingS3BucketRegions = properties.getProperty(IceOptions.BILLING_S3_BUCKET_REGION).split(",");
+        String[] billingS3BucketPrefixes = properties.getProperty(IceOptions.BILLING_S3_BUCKET_PREFIX, "").split(",");
+        String[] billingAccountIds = properties.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, "").split(",");
+        String[] billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
+        String[] billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
+        String[] rootNames = properties.getProperty(IceOptions.ROOT_NAME, "").split(",");
+        
+        for (int i = 0; i < billingS3BucketNames.length; i++) {
+        	BillingBucket bb = new BillingBucket(
+        			billingS3BucketNames.length > i ? billingS3BucketNames[i] : "",
+        			billingS3BucketRegions.length > i ? billingS3BucketRegions[i] : "",
+        			billingS3BucketPrefixes.length > i ? billingS3BucketPrefixes[i] : "",
+        			billingAccountIds.length > i ? billingAccountIds[i] : "",
+        			billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "",
+        			billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "",
+        			rootNames.length > i ? rootNames[i] : ""
+        		);
+        	billingBuckets.add(bb);
+        }
+    }
+    
+    private void initKubernetesBuckets(Properties properties) {
+    	String[] kubernetesS3BucketNames = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, "").split(",");
+    	String[] kubernetesS3BucketRegions = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, "").split(",");
+    	String[] kubernetesS3BucketPrefixes = properties.getProperty(IceOptions.KUBERNETES_S3_BUCKET_PREFIX, "").split(",");
+    	String[] kubernetesAccountIds = properties.getProperty(IceOptions.KUBERNETES_ACCOUNT_ID, "").split(",");
+    	String[] kubernetesAccessRoleNames = properties.getProperty(IceOptions.KUBERNETES_ACCESS_ROLENAME, "").split(",");
+    	String[] kubernetesAccessExternalIds = properties.getProperty(IceOptions.KUBERNETES_ACCESS_EXTERNALID, "").split(",");
+
+        for (int i = 0; i < kubernetesS3BucketNames.length; i++) {
+        	BillingBucket bb = new BillingBucket(
+        			kubernetesS3BucketNames.length > i ? kubernetesS3BucketNames[i] : "",
+        			kubernetesS3BucketRegions.length > i ? kubernetesS3BucketRegions[i] : "",
+        			kubernetesS3BucketPrefixes.length > i ? kubernetesS3BucketPrefixes[i] : "",
+        			kubernetesAccountIds.length > i ? kubernetesAccountIds[i] : "",
+        			kubernetesAccessRoleNames.length > i ? kubernetesAccessRoleNames[i] : "",
+        			kubernetesAccessExternalIds.length > i ? kubernetesAccessExternalIds[i] : "",
+        			""
+        		);
+        	kubernetesBuckets.add(bb);
+        }
     }
 
     public void start () throws Exception {
@@ -320,28 +347,23 @@ public class ProcessorConfig extends Config {
     	
     	List<String> customTags = Lists.newArrayList(resourceService.getCustomTags());
     	
-        for (int i = 0; i < billingS3BucketNames.length; i++) {
-            String accountId = billingAccountIds[i];
-            String assumeRole = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
-            String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
-            String rootName = rootNames.length > i ? rootNames[i] : "";
-            
+        for (BillingBucket bb: billingBuckets) {            
             // Only process each payer account once. Can have two if processing both DBRs and CURs
-            if (done.contains(accountId))
+            if (done.contains(bb.accountId))
             	continue;            
-            done.add(accountId);
+            done.add(bb.accountId);
             
-            logger.info("Get account/organizational unit hierarchy for " + accountId +
-            		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
+            logger.info("Get account/organizational unit hierarchy for " + bb.accountId +
+            		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
             
-            Map<String, List<String>> accountParents = AwsUtils.getAccountParents(accountId, assumeRole, externalId, rootName);
+            Map<String, List<String>> accountParents = AwsUtils.getAccountParents(bb.accountId, bb.accessRoleName, bb.accessExternalId, bb.rootName);
             
-            logger.info("Get accounts for organization " + accountId +
-            		" using assume role \"" + assumeRole + "\", and external id \"" + externalId + "\"");
-            List<Account> accounts = AwsUtils.listAccounts(accountId, assumeRole, externalId);
+            logger.info("Get accounts for organization " + bb.accountId +
+            		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
+            List<Account> accounts = AwsUtils.listAccounts(bb.accountId, bb.accessRoleName, bb.accessExternalId);
             for (Account a: accounts) {
             	// Get tags for the account
-            	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), accountId, assumeRole, externalId);
+            	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), bb.accountId, bb.accessRoleName, bb.accessExternalId);
             	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), a.getStatus(), tags, customTags);
             	result.put(ac.getId(), ac);
             	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
@@ -417,54 +439,52 @@ public class ProcessorConfig extends Config {
 
     
     /**
-     * get the billing data configurations specified along side the billing reports and override any account names and default tagging
+     * Get the billing data configurations specified along side the billing reports and override any account names and default tagging
      */
     protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
     	kubernetesConfigs = Lists.newArrayList();
     	
-        for (int i = 0; i < billingS3BucketNames.length; i++) {
-        	String bucket = billingS3BucketNames[i];
-        	String region = billingS3BucketRegions[i];
-        	String prefix = billingS3BucketPrefixes[i];
-            String accountId = billingAccountIds[i];
-            String roleName = billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "";
-            String externalId = billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "";
+        for (BillingBucket bb: billingBuckets) {
             
-        	BillingDataConfig billingDataConfig = readBillingDataConfig(bucket, region, prefix, accountId, roleName, externalId);
+        	BillingDataConfig billingDataConfig = readBillingDataConfig(bb);
         	if (billingDataConfig == null)
         		continue;
            	
         	for (AccountConfig account: billingDataConfig.accounts) {
-        		if (account.id == null || account.id.isEmpty())
+        		if (account.id == null || account.id.isEmpty()) {
+        			logger.warn("Ignoring billing data config for account with no id: " + account.name);
         			continue;
+        		}
         		
         		if (accountConfigs.containsKey(account.id)) {
         			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
         			continue;
         		}
-        		accountConfigs.put(account.id, account);    			
+        		accountConfigs.put(account.id, account);
+        		logger.info("Adding billing data config account: " + account.toString());
             	resourceService.putDefaultTags(account.id, account.tags);        			
         	}
         	
-        	resourceService.setTagConfigs(accountId, billingDataConfig.tags);
+        	resourceService.setTagConfigs(bb.accountId, billingDataConfig.tags);
         	List<KubernetesConfig> k = billingDataConfig.getKubernetes();
         	if (k != null)
         		kubernetesConfigs.addAll(k);
         }
     }
     
-    private BillingDataConfig readBillingDataConfig(String bucket, String region, String prefix, String accountId, String roleName, String externalId) {
+    protected BillingDataConfig readBillingDataConfig(BillingBucket bb) {
     	// Make sure prefix ends with /
-    	prefix = prefix.endsWith("/") ? prefix : prefix + "/";
+    	String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
     	
-    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bucket, region, prefix + billingDataConfigBasename, accountId, roleName, externalId);
+    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
     	if (configFiles.size() == 0)
     		return null;
     	
     	String fileKey = configFiles.get(0).getKey();
         File file = new File(workBucketConfig.localDir, fileKey.substring(prefix.length()));
-        
-		boolean downloaded = AwsUtils.downloadFileIfChangedSince(bucket, region, prefix, file, 0, accountId, roleName, externalId);
+        // Always download - specify 0 for time since.
+		boolean downloaded = AwsUtils.downloadFileIfChangedSince(bb.s3BucketName, bb.s3BucketRegion, prefix, file, 0, bb.accountId, bb.accessRoleName, bb.accessExternalId);
     	if (downloaded) {
         	String body;
 			try {
@@ -473,11 +493,11 @@ public class ProcessorConfig extends Config {
 				logger.error("Error reading account properties " + e);
 				return null;
 			}
-        	logger.info("downloaded billing data config: " + bucket + "/" + fileKey);
+        	logger.info("downloaded billing data config: " + bb.s3BucketName + "/" + fileKey);
         	try {
 				return new BillingDataConfig(body);
 			} catch (Exception e) {
-				logger.error("Failed to parse billing data config: " + bucket + "/" + fileKey);
+				logger.error("Failed to parse billing data config: " + bb.s3BucketName + "/" + fileKey);
 				e.printStackTrace();
 				return null;
 			}    	
@@ -485,4 +505,26 @@ public class ProcessorConfig extends Config {
     	return null;
     }
 
+    /**
+     * Read the work bucket data configuration file and add any account configs that aren't already in our map.
+     * 
+     * @param accountConfigs
+     * @throws UnsupportedEncodingException
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    protected void processWorkBucketConfig(Map<String, AccountConfig> accountConfigs) throws UnsupportedEncodingException, InterruptedException, IOException {
+    	WorkBucketDataConfig wbdc = readWorkBucketDataConfig();
+    	if (wbdc == null)
+    		return;
+    	
+    	for (com.netflix.ice.tag.Account a: wbdc.getAccounts()) {
+    		if (accountConfigs.containsKey(a.id))
+    			continue;
+    		
+    		AccountConfig ac = new AccountConfig(a);
+    		accountConfigs.put(a.id, ac);
+    		logger.warn("Adding work bucket data config account - needs to be added to billing bucket config: " + ac);
+    	}
+    }
 }

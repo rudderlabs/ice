@@ -22,8 +22,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 public abstract class MonthlyReport extends Report {
     final MonthlyReportProcessor processor;
 
-    MonthlyReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
-    	super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix);
+    MonthlyReport(S3ObjectSummary s3ObjectSummary, BillingBucket billingBucket, MonthlyReportProcessor processor) {
+    	super(s3ObjectSummary, billingBucket);
         this.processor = processor;
     }
     

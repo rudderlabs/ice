@@ -525,14 +525,14 @@ public class BasicLineItemProcessorTest {
 				costAndUsageData.getUsage(null).getData(0);
 			}
 	        
-			Result result = lineItemProc.process(startMilli, delayed, isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+			Result result = lineItemProc.process(startMilli, delayed, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
 			
 			if (result == Result.delay) {
 				// Expand the data by number of hours in month
 				costAndUsageData.getUsage(null).getData(daysInMonth * 24 - 1);
 				costAndUsageData.getCost(null).getData(daysInMonth * 24 - 1);
-				result = lineItemProc.process(startMilli, true, isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+				result = lineItemProc.process(startMilli, true, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			}
 			
 			// Check usage data

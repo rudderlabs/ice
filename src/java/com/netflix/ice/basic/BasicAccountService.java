@@ -34,7 +34,8 @@ public class BasicAccountService implements AccountService {
 
     Logger logger = LoggerFactory.getLogger(getClass());
     
-    public static final List<String> unlinkedAccountParents = Lists.newArrayList("Unlinked");
+    public static final String unlinkedAccountOrgUnitName = "Unlinked";
+    public static final List<String> unlinkedAccountParents = Lists.newArrayList(unlinkedAccountOrgUnitName);
 
     private Map<String, Account> accountsById = Maps.newConcurrentMap();
     private Map<String, Account> accountsByName = Maps.newConcurrentMap();
@@ -45,8 +46,9 @@ public class BasicAccountService implements AccountService {
     // Constructor used by the processor
     public BasicAccountService(Map<String, AccountConfig> configs) {
     	for (AccountConfig a: configs.values()) {
-			Account account = new Account(a.id, a.name, a.awsName, a.parents, a.status);
-			accountsByName.put(a.name, account);
+    		String name = StringUtils.isEmpty(a.name) ? a.awsName : a.name;
+			Account account = new Account(a.id, name, a.awsName, a.parents, a.status, a.tags);
+			accountsByName.put(name, account);
 			accountsById.put(a.id, account);
 			if (a.riProducts != null && a.riProducts.size() > 0) {
 				reservationAccounts.put(account, Sets.newHashSet(a.riProducts));
@@ -99,12 +101,17 @@ public class BasicAccountService implements AccountService {
     		}
     	}
     }
-
+    
     public Account getAccountById(String accountId) {
+    	return accountsById.get(accountId);
+    }
+
+    public Account getAccountById(String accountId, String root) {
         Account account = accountsById.get(accountId);
         if (account == null) {
         	// We get here when the billing data has an account that is no longer active in any of the payer accounts
-            account = new Account(accountId, accountId, unlinkedAccountParents);
+        	String[] parents = StringUtils.isEmpty(root) ? new String[]{ unlinkedAccountOrgUnitName } : new String[]{ root, unlinkedAccountOrgUnitName };
+            account = new Account(accountId, accountId, Lists.newArrayList(parents));
             accountsByName.put(account.name, account);
             accountsById.put(account.id, account);
             logger.info("getAccountById() created account " + accountId + "=\"" + account.name + "\".");

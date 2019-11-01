@@ -17,6 +17,10 @@
  */
 package com.netflix.ice.common;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.Properties;
 
@@ -113,6 +117,33 @@ public abstract class Config {
 
 	protected void setTagCoverage(TagCoverage tagCoverage) {
 		this.tagCoverage = tagCoverage;
+	}
+
+	protected WorkBucketDataConfig readWorkBucketDataConfig() throws InterruptedException, UnsupportedEncodingException, IOException {
+		// Try to download the work bucket data configuration.
+		// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
+		WorkBucketDataConfig config = null;
+		for (config = downloadConfig(); config == null; config = downloadConfig()) {
+			Thread.sleep(60 * 1000L);
+		}
+		return config;    	
+	}
+
+	protected WorkBucketDataConfig downloadConfig() {
+		File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
+		file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
+		boolean downloaded = AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
+		if (downloaded) {
+	    	String json;
+			try {
+				json = new String(Files.readAllBytes(file.toPath()), "UTF-8");
+			} catch (IOException e) {
+				logger.error("Error reading work bucket data configuration " + e);
+				return null;
+			}
+	    	return new WorkBucketDataConfig(json);    	
+		}
+		return null;
 	}
     
 }

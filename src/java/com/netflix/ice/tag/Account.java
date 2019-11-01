@@ -18,6 +18,7 @@
 package com.netflix.ice.tag;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -28,6 +29,7 @@ public class Account extends Tag {
 	public final String awsName; // Name of account returned by Organizations
 	public final List<String> parents; // parent organizational units as defined by the Organizations service
 	public final String status;  // status as returned by the Organizations service
+	public final Map<String, String> tags;
 
     public Account(String accountId, String accountName, List<String> parents) {
         super(accountName);
@@ -35,13 +37,15 @@ public class Account extends Tag {
         this.awsName = null;
         this.parents = parents;
         this.status = null;
+        this.tags = null;
     }
     
-    public Account(String accountId, String accountName, String awsName, List<String> parents, String status) {
+    public Account(String accountId, String accountName, String awsName, List<String> parents, String status, Map<String, String> tags) {
         super(StringUtils.isEmpty(accountName) ? awsName : accountName);
         this.id = accountId;
         this.awsName = awsName;
         this.parents = parents;
         this.status = status;
+        this.tags = tags;
     }
 }

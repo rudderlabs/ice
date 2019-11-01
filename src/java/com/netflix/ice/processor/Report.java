@@ -22,19 +22,11 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 public class Report {
 
 	protected final S3ObjectSummary s3ObjectSummary;
-	protected final String region;
-	protected final String accountId;
-	protected final String accessRoleName;
-	protected final String externalId;
-	protected final String prefix;
+	protected final BillingBucket billingBucket;
 
-	public Report(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix) {
+	public Report(S3ObjectSummary s3ObjectSummary, BillingBucket billingBucket) {
         this.s3ObjectSummary = s3ObjectSummary;
-        this.region = region;
-        this.accountId = accountId;
-        this.accessRoleName = accessRoleName;
-        this.externalId = externalId;
-        this.prefix = prefix;
+        this.billingBucket = billingBucket;
 	}
 
 	public long getLastModifiedMillis() {
@@ -49,24 +41,8 @@ public class Report {
 		return s3ObjectSummary;
 	}
 
-	public String getRegion() {
-		return region;
-	}
-
-	public String getAccountId() {
-		return accountId;
-	}
-
-	public String getAccessRoleName() {
-		return accessRoleName;
-	}
-
-	public String getExternalId() {
-		return externalId;
-	}
-
-	public String getPrefix() {
-		return prefix;
+	public BillingBucket getBillingBucket() {
+		return billingBucket;
 	}
 
 }

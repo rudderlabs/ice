@@ -2221,7 +2221,7 @@ function accountsCtrl($scope, $location, $http, usage_db) {
       $scope.predicate = name;
     }
     else {
-      $scope.rev = !$scope.revs[name];
+      $scope.rev = $scope.revs[name] = !$scope.revs[name];
     }
 
     var compare = function (a, b) {
@@ -2256,11 +2256,20 @@ function accountsCtrl($scope, $location, $http, usage_db) {
     for (var i = 0; i < $scope.accounts.length; i++) {
       var parents = $scope.accounts[i].parents;
       if (!parents)
-        $scope.accounts[i].path = "unlinked";
+        $scope.accounts[i].path = "Unlinked";
       else
         $scope.accounts[i].path = parents.length > 0 ? $scope.accounts[i].parents.join("/") : "";
       if ($scope.accounts[i].awsName === null)
         $scope.accounts[i].awsName = "";
+
+      $scope.accounts[i].tagsStr = "";
+      var tags = $scope.accounts[i].tags;
+      if (tags) {
+        var tagArray = [];
+        for (var j in tags)
+          tagArray.push(j + "=" + tags[j])
+        $scope.accounts[i].tagsStr = tagArray.join(", ");
+      }
     }
     $scope.order($scope.accounts, 'name');
   });

@@ -25,7 +25,8 @@ import com.netflix.ice.common.LineItem;
 public interface LineItemProcessor {
     Result process(
     		long startMilli, 
-    		boolean processAll, 
+    		boolean processAll,
+    		String root,
     		boolean isCostAndUsageReport,
     		LineItem lineItem, 
     		CostAndUsageData costAndUsageData,

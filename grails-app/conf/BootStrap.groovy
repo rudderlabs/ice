@@ -1,7 +1,3 @@
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
-import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.netflix.ice.common.AwsUtils;
 
 /*
@@ -20,46 +16,49 @@ import com.netflix.ice.common.AwsUtils;
  * limitations under the License.
  */
 
-import com.netflix.ice.reader.ReaderConfig
+import com.amazonaws.auth.AWSCredentials
+import com.amazonaws.auth.AWSCredentialsProvider
+import com.amazonaws.auth.BasicSessionCredentials
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.services.ec2.AmazonEC2;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.StopInstancesRequest;
+
+import com.google.common.collect.Lists
+import com.google.common.collect.Maps
+
+import com.netflix.ice.basic.BasicLineItemProcessor
+import com.netflix.ice.basic.BasicManagers
+import com.netflix.ice.basic.BasicProductService
+import com.netflix.ice.basic.BasicReservationService
+import com.netflix.ice.basic.BasicResourceService
+import com.netflix.ice.common.Config;
+import com.netflix.ice.common.IceOptions
+import com.netflix.ice.common.ProductService
+import com.netflix.ice.common.ResourceService
 import com.netflix.ice.processor.LineItemProcessor
 import com.netflix.ice.processor.ProcessorConfig
 import com.netflix.ice.processor.ReservationService
+import com.netflix.ice.processor.pricelist.PriceListService
 import com.netflix.ice.JSONConverter
+import com.netflix.ice.reader.ReaderConfig
+import com.netflix.ice.tag.Account
+import com.netflix.ice.tag.Region
 
+import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringUtils
+import org.joda.time.DateTime
+import org.joda.time.DateTimeZone
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.netflix.ice.common.IceOptions
-import com.amazonaws.auth.AWSCredentialsProvider
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain
-import com.google.common.collect.Lists
-import com.netflix.ice.tag.Account
-import com.netflix.ice.tag.Region
-import com.google.common.collect.Maps
-import com.netflix.ice.basic.BasicProductService
-import com.netflix.ice.basic.BasicReservationService
-import com.netflix.ice.basic.BasicLineItemProcessor
-import com.netflix.ice.basic.BasicResourceService
-import com.netflix.ice.processor.pricelist.PriceListService
-import com.netflix.ice.basic.BasicManagers
-
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-
-import com.amazonaws.auth.AWSCredentials
-import com.amazonaws.auth.BasicSessionCredentials
-
-import org.apache.commons.io.IOUtils
-
-import com.netflix.ice.common.ResourceService
-import com.netflix.ice.common.ProductService
 
 class BootStrap {
     private static boolean initialized = false;
     private static Logger logger = LoggerFactory.getLogger(BootStrap.class);
 
-    private ReaderConfig readerConfig;
+    private Config readerConfig;
     private ProcessorConfig processorConfig;
 
     def init = { servletContext ->

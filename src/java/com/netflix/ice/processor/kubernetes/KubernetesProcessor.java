@@ -31,6 +31,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.BillingBucket;
 import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReadWriteData;
@@ -62,43 +63,35 @@ public class KubernetesProcessor {
         List<KubernetesReport> filesToProcess = Lists.newArrayList();
 
         // list the kubernetes report files in the kubernetes buckets
-        for (int i = 0; i < config.kubernetesS3BucketNames.length; i++) {
-            String kubernetesS3BucketName = config.kubernetesS3BucketNames[i];
-            if (kubernetesS3BucketName.isEmpty())
+        for (BillingBucket kb: config.kubernetesBuckets) {
+            if (kb.s3BucketName.isEmpty())
             	continue;
-            
-            String kubernetesS3BucketRegion = config.kubernetesS3BucketRegions.length > i ? config.kubernetesS3BucketRegions[i] : "";
-            String kubernetesS3BucketPrefix = config.kubernetesS3BucketPrefixes.length > i ? config.kubernetesS3BucketPrefixes[i] : "";
-            String accountId = config.kubernetesAccountIds.length > i ? config.kubernetesAccountIds[i] : "";
-            String kubernetesAccessRoleName = config.kubernetesAccessRoleNames.length > i ? config.kubernetesAccessRoleNames[i] : "";
-            String kubernetesAccessExternalId = config.kubernetesAccessExternalIds.length > i ? config.kubernetesAccessExternalIds[i] : "";
-            
-            String prefix = kubernetesS3BucketPrefix;
+                        
+            String prefix = kb.s3BucketPrefix;
             if (!prefix.isEmpty() && !prefix.endsWith("/"))
             	prefix += "/";
 
             String fileKey = prefix + reportPrefix + AwsUtils.monthDateFormat.print(start);
 
-            logger.info("trying to list objects in kubernetes bucket " + kubernetesS3BucketName +
-            		" using assume role \"" + accountId + ":" + kubernetesAccessRoleName + "\", and external id \"" + kubernetesAccessExternalId + "\" with key " + fileKey);
+            logger.info("trying to list objects in kubernetes bucket " + kb.s3BucketName +
+            		" using assume role \"" + kb.accountId + ":" + kb.accessRoleName + "\", and external id \"" + kb.accessExternalId + "\" with key " + fileKey);
             
-            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(kubernetesS3BucketName, kubernetesS3BucketRegion, fileKey,
-                    accountId, kubernetesAccessRoleName, kubernetesAccessExternalId);
-            logger.info("found " + objectSummaries.size() + " in billing bucket " + kubernetesS3BucketName);
+            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(kb.s3BucketName, kb.s3BucketRegion, fileKey,
+                    kb.accountId, kb.accessRoleName, kb.accessExternalId);
+            logger.info("found " + objectSummaries.size() + " in billing bucket " + kb.s3BucketName);
             
             if (objectSummaries.size() > 0) {
             	// Find the matching configuration data for this Kubernetes report
             	KubernetesConfig kubernetesConfig = null;
             	for (KubernetesConfig kc: config.kubernetesConfigs) {
-            		logger.info("Bucket " + kubernetesS3BucketName + ", " + kc.getBucket() + ", Prefix " + kubernetesS3BucketPrefix + ", " + kc.getPrefix());
-            		if (kubernetesS3BucketName.equals(kc.getBucket()) && kubernetesS3BucketPrefix.equals(kc.getPrefix())) {
+            		logger.info("Bucket " + kb.s3BucketName + ", " + kc.getBucket() + ", Prefix " + kb.s3BucketPrefix + ", " + kc.getPrefix());
+            		if (kb.s3BucketName.equals(kc.getBucket()) && kb.s3BucketPrefix.equals(kc.getPrefix())) {
             			kubernetesConfig = kc;
             			break;
             		}
             	}
             	if (kubernetesConfig != null) {
-	            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kubernetesS3BucketRegion, accountId,
-	            			kubernetesAccessRoleName, kubernetesAccessExternalId, prefix, start, kubernetesConfig, config.resourceService));
+	            	filesToProcess.add(new KubernetesReport(objectSummaries.get(0), kb, start, kubernetesConfig, config.resourceService));
             	}
             }
         }

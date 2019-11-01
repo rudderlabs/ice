@@ -25,8 +25,16 @@ import java.util.Set;
 public interface AccountService {
     /**
      * Get account by AWS id. The AWS id is usually an un-readable 12 digit string.
+     * Will create an account object if it doesn't already exist.
      * @param accountId
      * @return Account object associated with the account id
+     */
+    Account getAccountById(String accountId, String root);
+
+    /**
+     * Get account by AWS id. The AWS id is usually an un-readable 12 digit string.
+     * @param accountId
+     * @return Account object associated with the account id if it already exists, null otherwise.
      */
     Account getAccountById(String accountId);
 

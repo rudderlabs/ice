@@ -63,19 +63,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         TreeMap<DateTime, List<MonthlyReport>> filesToProcess = Maps.newTreeMap();
 
         // list the tar.gz file in billing file folder
-        for (int i = 0; i < config.billingS3BucketNames.length; i++) {
-            String billingS3BucketName = config.billingS3BucketNames[i];
-            String billingS3BucketRegion = config.billingS3BucketRegions.length > i ? config.billingS3BucketRegions[i] : "";
-            String billingS3BucketPrefix = config.billingS3BucketPrefixes.length > i ? config.billingS3BucketPrefixes[i] : "";
-            String accountId = config.billingAccountIds.length > i ? config.billingAccountIds[i] : "";
-            String billingAccessRoleName = config.billingAccessRoleNames.length > i ? config.billingAccessRoleNames[i] : "";
-            String billingAccessExternalId = config.billingAccessExternalIds.length > i ? config.billingAccessExternalIds[i] : "";
+        for (BillingBucket bb: config.billingBuckets) {
 
-            logger.info("trying to list objects in billing bucket " + billingS3BucketName +
-            		" using assume role \"" + billingAccessRoleName + "\", and external id \"" + billingAccessExternalId + "\"");
-            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(billingS3BucketName, billingS3BucketRegion, billingS3BucketPrefix,
-                    accountId, billingAccessRoleName, billingAccessExternalId);
-            logger.info("found " + objectSummaries.size() + " in billing bucket " + billingS3BucketName);
+            logger.info("trying to list objects in billing bucket " + bb.s3BucketName +
+            		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
+            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, bb.s3BucketPrefix,
+                    bb.accountId, bb.accessRoleName, bb.accessExternalId);
+            logger.info("found " + objectSummaries.size() + " in billing bucket " + bb.s3BucketName);
             TreeMap<DateTime, S3ObjectSummary> filesToProcessInOneBucket = Maps.newTreeMap();
 
             for (S3ObjectSummary objectSummary : objectSummaries) {
@@ -114,7 +108,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                     list = Lists.newArrayList();
                     filesToProcess.put(key, list);
                 }
-                list.add(new BillingFile(filesToProcessInOneBucket.get(key), billingS3BucketRegion, accountId, billingAccessRoleName, billingAccessExternalId, billingS3BucketPrefix, this));
+                list.add(new BillingFile(filesToProcessInOneBucket.get(key), bb, this));
             }
         }
 
@@ -131,7 +125,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		startMilli = endMilli = dataTime.getMillis();
 		reservationProcessor.clearBorrowers();
 		
-        processBillingZipFile(dataTime, file, report.hasTags(), costAndUsageData, instances, report.accountId);
+        processBillingZipFile(dataTime, file, report.hasTags(), report.billingBucket.rootName, costAndUsageData, instances, report.getBillingBucket().accountId);
         
         return endMilli;
 	}
@@ -141,6 +135,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 			DateTime dataTime,
     		File file,
     		boolean withTags,
+    		String root,
     		CostAndUsageData costAndUsageData,
     		Instances instances,
     		String accountId) throws Exception {
@@ -154,7 +149,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 if (entry.isDirectory())
                     continue;
 
-                processBillingFile(dataTime, entry.getName(), zipInput, withTags, costAndUsageData, instances, accountId);
+                processBillingFile(dataTime, entry.getName(), zipInput, withTags, root, costAndUsageData, instances, accountId);
             }
         }
         catch (IOException e) {
@@ -178,7 +173,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         }
     }
     
-    private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, CostAndUsageData costAndUsageData, Instances instances, String accountId) throws Exception {
+    private void processBillingFile(DateTime dataTime, String fileName, InputStream tempIn, boolean withTags, String root, CostAndUsageData costAndUsageData, Instances instances, String accountId) throws Exception {
 
         CsvReader reader = new CsvReader(new InputStreamReader(tempIn), ',');
 
@@ -197,7 +192,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, lineItem, costAndUsageData, instances);
+                    processOneLine(delayedItems, root, lineItem, costAndUsageData, instances);
                     String accountID = lineItem.getAccountId();
                     if (!accountID.isEmpty()) {
                         reservationProcessor.addBorrower(config.accountService.getAccountById(accountID));
@@ -230,13 +225,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, lineItem, costAndUsageData, instances);
+            processOneLine(null, root, lineItem, costAndUsageData, instances);
         }
     }
 
-    private void processOneLine(List<String[]> delayedItems, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
+    private void processOneLine(List<String[]> delayedItems, String root, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
 
-        LineItemProcessor.Result result = lineItemProcessor.process(startMilli, delayedItems == null, false, lineItem, costAndUsageData, instances, 0.0);
+        LineItemProcessor.Result result = lineItemProcessor.process(startMilli, delayedItems == null, root, false, lineItem, costAndUsageData, instances, 0.0);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
@@ -248,10 +243,11 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
 	private File downloadReport(Report report, String localDir, long lastProcessed) {
         String fileKey = report.getS3ObjectSummary().getKey();
-        File file = new File(localDir, fileKey.substring(report.getPrefix().length()));
+        BillingBucket bb = report.getBillingBucket();
+        File file = new File(localDir, fileKey.substring(bb.s3BucketPrefix.length()));
         logger.info("trying to download " + fileKey + "...");
-        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), report.getRegion(), report.getPrefix(), file, lastProcessed,
-                report.getAccountId(), report.getAccessRoleName(), report.getExternalId());
+        boolean downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), bb.s3BucketRegion, bb.s3BucketPrefix, file, lastProcessed,
+                bb.accountId, bb.accessRoleName, bb.accessExternalId);
         if (downloaded)
             logger.info("downloaded " + fileKey);
         else {
@@ -264,16 +260,15 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
     class BillingFile extends MonthlyReport {
     	
-		BillingFile(S3ObjectSummary s3ObjectSummary, String region, String accountId,
-				String accessRoleName, String externalId, String prefix, MonthlyReportProcessor processor) {
-			super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix, processor);
+		BillingFile(S3ObjectSummary s3ObjectSummary, BillingBucket billingBucket, MonthlyReportProcessor processor) {
+			super(s3ObjectSummary, billingBucket, processor);
 		}
 
 		/**
 		 * Constructor used for testing only
 		 */
 		BillingFile(S3ObjectSummary s3ObjectSummary, MonthlyReportProcessor processor) {
-			super(s3ObjectSummary, null, null, null, null, null, processor);
+			super(s3ObjectSummary, new BillingBucket(null, null, null, null, null, null, ""), processor);
 		}
 		
 		@Override

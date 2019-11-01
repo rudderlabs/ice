@@ -49,7 +49,8 @@ import com.netflix.ice.tag.Zone;
 public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor {
 	public final static long jan1_2018 = new DateTime("2018-01", DateTimeZone.UTC).getMillis();
 	
-	public CostAndUsageReportLineItemProcessor(AccountService accountService,
+	public CostAndUsageReportLineItemProcessor(
+			AccountService accountService,
 			ProductService productService,
 			ReservationService reservationService,
 			ResourceService resourceService) {
@@ -58,7 +59,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(long startMilli, LineItem lineItem) {
+    protected boolean ignore(long startMilli, String root, LineItem lineItem) {
     	// Cost and Usage report-specific checks
     	LineItemType lit = lineItem.getLineItemType();
     	if (lit == LineItemType.Tax ||
@@ -66,7 +67,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		lit == LineItemType.RiVolumeDiscount)
     		return true;
     	
-    	return super.ignore(startMilli, lineItem);
+    	return super.ignore(startMilli, root, lineItem);
     }
 
 	@Override

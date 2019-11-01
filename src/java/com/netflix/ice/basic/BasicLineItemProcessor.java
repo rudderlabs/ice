@@ -65,13 +65,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(long startMilli, LineItem lineItem) {    	
+    protected boolean ignore(long startMilli, String root, LineItem lineItem) {    	
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
             return true;
 
-        Account account = accountService.getAccountById(lineItem.getAccountId());
+        Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         if (account == null)
             return true;
 
@@ -132,19 +132,20 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
     
     public Result process(
-    		long startMilli, 
+    		long startMilli,
     		boolean processDelayed,
+    		String root,
     		boolean isCostAndUsageReport,
     		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
     		Instances instances,
     		double edpDiscount) {
     	
-    	if (ignore(startMilli, lineItem))
+    	if (ignore(startMilli, root, lineItem))
     		return Result.ignore;
     	
 
-        Account account = accountService.getAccountById(lineItem.getAccountId());
+        Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         Region region = getRegion(lineItem);
         Zone zone;
 		try {

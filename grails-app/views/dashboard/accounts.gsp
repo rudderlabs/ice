@@ -33,6 +33,7 @@
 	      <th ng-click="order(accounts, 'id')">ID</th>
 	      <th ng-click="order(accounts, 'path')">Organization Path</th>
 	      <th ng-click="order(accounts, 'status')">Status</th>
+	      <th ng-click="order(accounts, 'tagsStr')">Tags</th>
 	    </tr>
 	    </thead>
 	    <tbody>
@@ -42,6 +43,7 @@
 	      <td>{{account.id}}</td>
 	      <td>{{account.path}}</td>
 	      <td>{{account.status}}</td>
+	      <td>{{account.tagsStr}}</td>
 	    </tr>
 	    </tbody>
 	  </table>

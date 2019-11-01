@@ -45,7 +45,7 @@ public class InstancesTest {
 		tags.put("Name", tagValue);
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
-		Account account = as.getAccountById("123456789012");
+		Account account = as.getAccountById("123456789012", "");
 		
 		String id = "i-17f85eef87efb7a53";
 		

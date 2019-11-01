@@ -40,6 +40,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.processor.BillingBucket;
 import com.netflix.ice.processor.Report;
 import com.netflix.ice.processor.config.KubernetesConfig;
 import com.netflix.ice.tag.UserTag;
@@ -81,9 +82,9 @@ public class KubernetesReport extends Report {
     private Map<String, List<List<String[]>>> data = null;
     private final Tagger tagger;
 
-	public KubernetesReport(S3ObjectSummary s3ObjectSummary, String region, String accountId, String accessRoleName, String externalId, String prefix,
+	public KubernetesReport(S3ObjectSummary s3ObjectSummary, BillingBucket billingBucket,
 			DateTime month, KubernetesConfig config, ResourceService resourceService) {
-    	super(s3ObjectSummary, region, accountId, accessRoleName, externalId, prefix);
+    	super(s3ObjectSummary, billingBucket);
     	this.month = month;
     	this.startMillis = month.getMillis();
 		this.config = config;
@@ -108,11 +109,11 @@ public class KubernetesReport extends Report {
 
 	private File download(String localDir) {
         String fileKey = getS3ObjectSummary().getKey();
-        File file = new File(localDir, fileKey.substring(getPrefix().length()));
+        File file = new File(localDir, fileKey.substring(billingBucket.s3BucketPrefix.length()));
         if (getS3ObjectSummary().getLastModified().getTime() > file.lastModified()) {
 	        logger.info("trying to download " + fileKey + "...");
-	        boolean downloaded = AwsUtils.downloadFileIfChangedSince(getS3ObjectSummary().getBucketName(), getRegion(), getPrefix(), file, file.lastModified(),
-	                getAccountId(), getAccessRoleName(), getExternalId());
+	        boolean downloaded = AwsUtils.downloadFileIfChangedSince(getS3ObjectSummary().getBucketName(), billingBucket.s3BucketRegion, billingBucket.s3BucketPrefix, file, file.lastModified(),
+	                billingBucket.accountId, billingBucket.accessRoleName, billingBucket.accessExternalId);
 	        if (downloaded)
 	            logger.info("downloaded " + fileKey);
 	        else {

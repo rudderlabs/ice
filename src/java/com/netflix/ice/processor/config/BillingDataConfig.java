@@ -38,6 +38,7 @@ import com.google.gson.Gson;
 		{
 			"id": "123456789012",
 			"name": "act1",
+			"parents": [ "root", "ou" ],
 			"tags": {
 				"TagName": "tag-value"
 			},
@@ -64,6 +65,7 @@ import com.google.gson.Gson;
 accounts:
   -  id: 123456789012
 	 name: act1
+	 parents: [root, ou]
 	 tags:
 	   TagName: tag-value
 	 riProducts: [ec2, rds]

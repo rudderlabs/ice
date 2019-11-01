@@ -24,6 +24,7 @@ import org.apache.commons.lang.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.tag.Account;
 
 public class AccountConfig {
 	private static final String tagIceName = "IceName";
@@ -44,6 +45,17 @@ public class AccountConfig {
 	public AccountConfig() {		
 	}
 	
+	/**
+	 * Constructor for initializing an account from the old ice.properties data.
+	 * @param id
+	 * @param name
+	 * @param awsName
+	 * @param parents
+	 * @param status
+	 * @param riProducts
+	 * @param role
+	 * @param externalId
+	 */
 	public AccountConfig(String id, String name, String awsName, List<String> parents, String status, List<String> riProducts, String role, String externalId) {
 		this.id = id;
 		this.name = name;
@@ -79,6 +91,19 @@ public class AccountConfig {
 						this.tags.put(tag.getKey(), tag.getValue());
 			}
 		}
+	}
+	
+	/**
+	 * Constructor for creating AccountConfig from Account tag read from WorkBucketDataConfig
+	 * @param account
+	 */
+	public AccountConfig(Account account) {
+		this.id = account.id;
+		this.name = account.name;
+		this.awsName = account.awsName;
+		this.parents = account.parents;
+		this.status = account.status;
+		this.tags = account.tags;
 	}
 	
 	public String toString() {
@@ -131,7 +156,7 @@ public class AccountConfig {
 	}
 
 	public void setAwsName(String awsName) {
-		this.awsName = name;
+		this.awsName = awsName;
 	}
 
 	public List<String> getParents() {

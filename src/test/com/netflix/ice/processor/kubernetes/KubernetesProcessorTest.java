@@ -143,7 +143,7 @@ public class KubernetesProcessorTest {
 	class TestKubernetesReport extends KubernetesReport {
 
 		public TestKubernetesReport(KubernetesConfig config) {
-			super(null, null, null, null, null, null, new DateTime("2019-01", DateTimeZone.UTC), config, resourceService);
+			super(null, null, new DateTime("2019-01", DateTimeZone.UTC), config, resourceService);
 
 			File file = new File(resourceDir, "kubernetes-2019-01.csv");
 			readFile(file);			

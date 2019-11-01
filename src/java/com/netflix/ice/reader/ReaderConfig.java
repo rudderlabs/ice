@@ -32,10 +32,8 @@ import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.file.Files;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +49,7 @@ import java.util.concurrent.Future;
  */
 public class ReaderConfig extends Config {
     private static ReaderConfig instance;
-    private static final Logger logger = LoggerFactory.getLogger(ReaderConfig.class);
+    public static final Logger logger = LoggerFactory.getLogger(ReaderConfig.class);
     
     private final int numThreads = 16;
 
@@ -216,33 +214,6 @@ public class ReaderConfig extends Config {
         	else
         		dataManager.getData(interval, new TagLists(), null, AggregateType.both, 0, userTagList);
         }
-    }
-    
-    private WorkBucketDataConfig readWorkBucketDataConfig() throws InterruptedException, UnsupportedEncodingException, IOException {
-    	// Try to download the work bucket data configuration.
-    	// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
-    	WorkBucketDataConfig config = null;
-    	for (config = downloadConfig(); config == null; config = downloadConfig()) {
-    		Thread.sleep(60 * 1000L);
-    	}
-    	return config;    	
-    }
-    
-    private WorkBucketDataConfig downloadConfig() {
-    	File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
-    	file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
-		boolean downloaded = AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
-    	if (downloaded) {
-        	String json;
-			try {
-				json = new String(Files.readAllBytes(file.toPath()), "UTF-8");
-			} catch (IOException e) {
-				logger.error("Error reading work bucket data configuration " + e);
-				return null;
-			}
-        	return new WorkBucketDataConfig(json);    	
-    	}
-    	return null;
     }
     
     public void update() {
