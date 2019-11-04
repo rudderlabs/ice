@@ -87,7 +87,7 @@ public class ReaderConfig extends Config {
             ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException, BadZone {
         super(properties, credentialsProvider, productService);
                 
-        WorkBucketDataConfig dataConfig = readWorkBucketDataConfig();
+        WorkBucketDataConfig dataConfig = readWorkBucketDataConfig(true);
         this.startDate = new DateTime(dataConfig.getStartMonth(), DateTimeZone.UTC);
         this.userTags = dataConfig.getUserTags();
         this.familyRiBreakout = dataConfig.getFamilyRiBreakout();

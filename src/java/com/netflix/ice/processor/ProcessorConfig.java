@@ -514,7 +514,7 @@ public class ProcessorConfig extends Config {
      * @throws IOException
      */
     protected void processWorkBucketConfig(Map<String, AccountConfig> accountConfigs) throws UnsupportedEncodingException, InterruptedException, IOException {
-    	WorkBucketDataConfig wbdc = readWorkBucketDataConfig();
+    	WorkBucketDataConfig wbdc = readWorkBucketDataConfig(false);
     	if (wbdc == null)
     		return;
     	

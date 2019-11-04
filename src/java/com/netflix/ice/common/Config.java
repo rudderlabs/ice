@@ -119,11 +119,11 @@ public abstract class Config {
 		this.tagCoverage = tagCoverage;
 	}
 
-	protected WorkBucketDataConfig readWorkBucketDataConfig() throws InterruptedException, UnsupportedEncodingException, IOException {
+	protected WorkBucketDataConfig readWorkBucketDataConfig(boolean wait) throws InterruptedException, UnsupportedEncodingException, IOException {
 		// Try to download the work bucket data configuration.
 		// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
 		WorkBucketDataConfig config = null;
-		for (config = downloadConfig(); config == null; config = downloadConfig()) {
+		for (config = downloadConfig(); config == null && wait; config = downloadConfig()) {
 			Thread.sleep(60 * 1000L);
 		}
 		return config;    	

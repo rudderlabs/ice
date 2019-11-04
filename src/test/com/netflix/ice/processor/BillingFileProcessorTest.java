@@ -47,6 +47,7 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.common.WorkBucketDataConfig;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
@@ -183,6 +184,11 @@ public class BillingFileProcessorTest {
 			@Override
 		    protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
 			
+			}
+			
+			@Override
+			protected WorkBucketDataConfig readWorkBucketDataConfig(boolean wait) {
+				return null;
 			}
 		}
 		

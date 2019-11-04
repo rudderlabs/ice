@@ -31,7 +31,7 @@ import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.InstanceProfileCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicProductService;
@@ -41,6 +41,7 @@ import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.common.WorkBucketDataConfig;
 import com.netflix.ice.processor.ProcessorConfig;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.processor.ReservationService;
@@ -124,6 +125,11 @@ public class KubernetesProcessorTest {
 		@Override
 		protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
 		}
+		
+		@Override
+		protected WorkBucketDataConfig readWorkBucketDataConfig(boolean wait) {
+			return null;
+		}
 	}
 	
 	class TestKubernetesProcessor extends KubernetesProcessor {
@@ -153,8 +159,7 @@ public class KubernetesProcessorTest {
 	private KubernetesProcessor newKubernetesProcessor(String[] formulae) throws Exception {
 		Properties props = new Properties();
 		
-        @SuppressWarnings("deprecation")
-		AWSCredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider();
+		AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
         
         ReservationService reservationService = new BasicReservationService(null, null);
         
