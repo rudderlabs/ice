@@ -109,10 +109,13 @@ public class KubernetesReport extends Report {
 
 	private File download(String localDir) {
         String fileKey = getS3ObjectSummary().getKey();
-        File file = new File(localDir, fileKey.substring(billingBucket.s3BucketPrefix.length()));
+		String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
+		String filename = fileKey.substring(prefix.length());
+        File file = new File(localDir, filename);
+
         if (getS3ObjectSummary().getLastModified().getTime() > file.lastModified()) {
-	        logger.info("trying to download " + fileKey + "...");
-	        boolean downloaded = AwsUtils.downloadFileIfChangedSince(getS3ObjectSummary().getBucketName(), billingBucket.s3BucketRegion, billingBucket.s3BucketPrefix, file, file.lastModified(),
+	        logger.info("trying to download " + getS3ObjectSummary().getBucketName() + "/" + billingBucket.s3BucketPrefix + file.getName() + "...");
+	        boolean downloaded = AwsUtils.downloadFileIfChangedSince(getS3ObjectSummary().getBucketName(), billingBucket.s3BucketRegion, prefix, file, file.lastModified(),
 	                billingBucket.accountId, billingBucket.accessRoleName, billingBucket.accessExternalId);
 	        if (downloaded)
 	            logger.info("downloaded " + fileKey);
