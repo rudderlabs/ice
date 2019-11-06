@@ -297,9 +297,9 @@ public class DataJsonWriter extends DataFile {
 			this.cost = cost;
 			this.usage = usage;
 			
-			org = String.join("/", tg.account.parents);
-			accountId = tg.account.id;
-			account = tg.account.name;
+			org = String.join("/", tg.account.getParents());
+			accountId = tg.account.getId();
+			account = tg.account.getIceName();
 			region = tg.region.name;
 			zone = tg.zone == null ? null : tg.zone.name;
 			product = tg.product.name;

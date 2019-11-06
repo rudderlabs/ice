@@ -207,7 +207,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         }
 
         public static void serialize(DataOutput out, TagGroup tagGroup) throws IOException {
-            out.writeUTF(tagGroup.account.toString());
+            out.writeUTF(tagGroup.account.getId());
             out.writeUTF(tagGroup.region.toString());
             out.writeUTF(tagGroup.zone == null ? "" : tagGroup.zone.toString());
             out.writeUTF(tagGroup.product.getServiceCode());
@@ -223,7 +223,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         }
 
         public static void serializeCsv(OutputStreamWriter out, TagGroup tagGroup) throws IOException {
-            out.write(tagGroup.account.toString() + ",");
+            out.write(tagGroup.account.getId() + ",");
             out.write(tagGroup.region.toString() + ",");
             out.write(tagGroup.zone == null ? "," : (tagGroup.zone.toString() + ","));
             out.write(tagGroup.product.getServiceCode() + ",");
@@ -250,7 +250,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         }
 
         public static TagGroup deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
-            Account account = accountService.getAccountByName(in.readUTF());
+            Account account = accountService.getAccountById(in.readUTF());
             Region region = Region.getRegionByName(in.readUTF());
             String zoneStr = in.readUTF();
             Zone zone = StringUtils.isEmpty(zoneStr) ? null : region.getZone(zoneStr);

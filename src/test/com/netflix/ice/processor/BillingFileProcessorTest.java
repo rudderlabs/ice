@@ -345,10 +345,6 @@ public class BillingFileProcessorTest {
 			int numPrinted = 0;
 			for (TagGroup tg: notFound) {
 				logger.info("Tag not found: " + tg + ", value: " + expected.get(tg));
-				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
-					logger.info("Tag not found:   " + tg + ", value: " + expected.get(tg));
-					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
-				}
 				if (numPrinted++ > 1000)
 					break;
 			}
@@ -367,10 +363,6 @@ public class BillingFileProcessorTest {
 			numPrinted = 0;
 			for (TagGroup tg: extras) {
 				logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
-				if (tg.account.name.equals("AppliedResearch") && tg.operation.name.equals("HeadBucket")) {
-					logger.info("Extra tag found: " + tg + ", value: " + got.get(tg));
-					logger.info("--------------- hash: " + System.identityHashCode(tg.product) + ", " + System.identityHashCode(tg.product.name) + ", " + System.identityHashCode(tg));
-				}
 				if (numPrinted++ > 1000)
 					break;
 			}

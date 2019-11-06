@@ -196,7 +196,7 @@ public class ProcessorConfigTest {
 		accounts.put(id1, ac1);
 		
 		// Initialize the work bucket data with id1 and id2
-		String json = "{ \"accounts\": [ { \"id\": " + id1 + ", \"name\": \"workName1\", \"awsName\": \"workAwsName1\" }, { \"id\": " + id2 + ", \"name\": \"workName2\", \"awsName\": \"workAwsName2\"} ] }";
+		String json = "{ \"accounts\": [ { \"name\": " + id1 + ", \"iceName\": \"workName1\", \"awsName\": \"workAwsName1\" }, { \"name\": " + id2 + ", \"iceName\": \"workName2\", \"awsName\": \"workAwsName2\"} ] }";
 		config.setWorkBucketDataConfig(new WorkBucketDataConfig(json));
 		
 		// Make sure we only add id2 and don't overwrite id1

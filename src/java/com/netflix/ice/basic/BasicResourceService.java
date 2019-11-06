@@ -187,7 +187,7 @@ public class BasicResourceService extends ResourceService {
     
     private String getDefaultUserTagValue(Account account, String tag) {
     	// return the default user tag value for the specified account if there is one.
-    	Map<String, String> defaults = defaultTags.get(account.id);
+    	Map<String, String> defaults = defaultTags.get(account.getId());
     	return defaults == null ? null : defaults.get(tag);
     }
     

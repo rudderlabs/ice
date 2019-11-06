@@ -98,12 +98,12 @@ public class AccountConfig {
 	 * @param account
 	 */
 	public AccountConfig(Account account) {
-		this.id = account.id;
-		this.name = account.name;
-		this.awsName = account.awsName;
-		this.parents = account.parents;
-		this.status = account.status;
-		this.tags = account.tags;
+		this.id = account.getId();
+		this.name = account.getIceName();
+		this.awsName = account.getAwsName();
+		this.parents = account.getParents();
+		this.status = account.getStatus();
+		this.tags = account.getTags();
 	}
 	
 	public String toString() {

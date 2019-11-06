@@ -68,7 +68,7 @@ public class ReservationArn extends Tag {
 			throw new Exception("Prefix is null");
 		}
 		
-		String arn = "arn:aws:" + prod + ":" + region.name + ":" + account.id + ":" + prefix + id;
+		String arn = "arn:aws:" + prod + ":" + region.name + ":" + account.getId() + ":" + prefix + id;
 		return get(arn);
 	}
 	

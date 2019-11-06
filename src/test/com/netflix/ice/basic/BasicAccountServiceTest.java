@@ -40,12 +40,12 @@ public class BasicAccountServiceTest {
 		BasicAccountService bas = new BasicAccountService(configs);
 		
 		assertEquals("Wrong number of accounts", 2, bas.getAccounts().size());
-		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").name);
-		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").id);
+		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").getIceName());
+		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").getId());
 		assertEquals("Wrong number of accounts with reserved instances", 1, bas.getReservationAccounts().size());
 		assertEquals("Wrong number of reserved instance products", 1, bas.getReservationAccounts().values().iterator().next().size());
-		assertEquals("Wrong number of account parents", 1, bas.getAccountById("123456789012").parents.size());
-		assertEquals("Wrong root name for account parent", "Org", bas.getAccountById("123456789012").parents.get(0));
+		assertEquals("Wrong number of account parents", 1, bas.getAccountById("123456789012").getParents().size());
+		assertEquals("Wrong root name for account parent", "Org", bas.getAccountById("123456789012").getParents().get(0));
 	}
 	
 	@Test
@@ -53,8 +53,8 @@ public class BasicAccountServiceTest {
 		Account a = new Account("123456789012", "account1", null);
 		BasicAccountService bas = new BasicAccountService(Lists.newArrayList(a));
 		
-		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").name);
-		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").id);
+		assertEquals("Wrong name for account1 by ID", "account1", bas.getAccountById("123456789012").getIceName());
+		assertEquals("Wrong id for account1 by name", "123456789012", bas.getAccountByName("account1").getId());
 	}
 	
 	@Test
@@ -68,8 +68,8 @@ public class BasicAccountServiceTest {
 		assertEquals("Wrong number of accounts before update", 1, bas.getAccounts().size());
 		assertNotNull("Missing account before update fetch by ID", bas.getAccountById(id));
 		assertNotNull("Missing account before update fetch by Name", bas.getAccountByName("OldName"));
-		assertEquals("Wrong account name before update", "OldName", bas.getAccountById(id).name);
-		assertEquals("Wrong account id before update", id, bas.getAccountById(id).id);
+		assertEquals("Wrong account name before update", "OldName", bas.getAccountById(id).getIceName());
+		assertEquals("Wrong account id before update", id, bas.getAccountById(id).getId());
 		
 		accounts = Lists.newArrayList();		
 		accounts.add(new Account(id, "NewName", null));
@@ -78,8 +78,8 @@ public class BasicAccountServiceTest {
 		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());
 		assertNotNull("Missing account after update fetch by ID", bas.getAccountById(id));
 		assertNotNull("Missing account after update fetch by Name", bas.getAccountByName("NewName"));
-		assertEquals("Wrong account name after update", "NewName", bas.getAccountById(id).name);
-		assertEquals("Wrong account id after update", id, bas.getAccountById(id).id);
+		assertEquals("Wrong account name after update", "NewName", bas.getAccountById(id).getIceName());
+		assertEquals("Wrong account id after update", id, bas.getAccountById(id).getId());
 		
 	}
 	
@@ -88,7 +88,7 @@ public class BasicAccountServiceTest {
 		Map<String, AccountConfig> configs = Maps.newHashMap();
 		BasicAccountService bas = new BasicAccountService(configs);
 		
-		assertEquals("Wrong parent for unlinked account", BasicAccountService.unlinkedAccountParents, bas.getAccountById("123456789012", "").parents);
+		assertEquals("Wrong parent for unlinked account", BasicAccountService.unlinkedAccountParents, bas.getAccountById("123456789012", "").getParents());
 	}
 
 }

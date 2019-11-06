@@ -109,7 +109,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     			userTagValues.add(Sets.<String>newHashSet());
     			
     		for (TagGroup tg: tagGroups) {
-    			accountValues.add(tg.account.name);
+    			accountValues.add(tg.account.getIceName());
     			regionValues.add(tg.region.name);
     			if (tg.zone != null)
     				zoneValues.add(tg.zone.name);

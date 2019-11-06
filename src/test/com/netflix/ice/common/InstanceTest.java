@@ -52,7 +52,7 @@ public class InstanceTest {
 		Account account = as.getAccountById("123456789012", "");
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
 		String[] values = i.values();
-		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.name,"us-east-1","us-east-1a","EC2","Environment=prod"};
+		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.getIceName(),"us-east-1","us-east-1a","EC2","Environment=prod"};
 		assertArrayEquals("serialized form wrong", expected, values);
 		
 		Instance got = new Instance(values, as, ps);
@@ -79,7 +79,7 @@ public class InstanceTest {
 		Account account = as.getAccountById("123456789012", "");
 		Instance i = new Instance("i-17f85eef87efb7a53", "c4.2xlarge", account, Region.US_EAST_1, us_east_1a, ps.getProductByName(Product.ec2), tags, 0);
 		String[] values = i.values();
-		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.name,"us-east-1","us-east-1a","EC2","Name=" + tagValue};
+		String[] expected = new String[]{"i-17f85eef87efb7a53","c4.2xlarge","123456789012",account.getIceName(),"us-east-1","us-east-1a","EC2","Name=" + tagValue};
 		assertArrayEquals("serialized form wrong", expected, values);
 		
 		Instance got = new Instance(values, as, ps);

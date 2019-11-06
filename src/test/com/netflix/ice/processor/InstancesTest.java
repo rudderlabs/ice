@@ -54,7 +54,7 @@ public class InstancesTest {
 		String[] originalValues = instances.get("i-17f85eef87efb7a53").values();
 		StringWriter writer = new StringWriter();
 		
-		String expected = id + ",c4.2xlarge,123456789012," + account.name + ",us-east-1,us-east-1a,EC2,\"Name=" + tagValue + "\"\r";
+		String expected = id + ",c4.2xlarge,123456789012," + account.getIceName() + ",us-east-1,us-east-1a,EC2,\"Name=" + tagValue + "\"\r";
 		instances.writeCsv(writer);
 		String[] lines = writer.toString().split("\n");
 		assertEquals("wrong number of lines", 2, lines.length);
