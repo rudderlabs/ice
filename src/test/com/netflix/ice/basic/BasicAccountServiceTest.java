@@ -61,26 +61,36 @@ public class BasicAccountServiceTest {
 	public void testUpdateAccounts() {
 		List<Account> accounts = Lists.newArrayList();
 		String id = "123456789012";
-		accounts.add(new Account(id, "OldName", null));
+		accounts.add(new Account(id, "OldName", "OldAwsName", null, "ACTIVE", null));
 		
 		BasicAccountService bas = new BasicAccountService(accounts);
 		
 		assertEquals("Wrong number of accounts before update", 1, bas.getAccounts().size());
-		assertNotNull("Missing account before update fetch by ID", bas.getAccountById(id));
+		
+		Account origAccount = bas.getAccountById(id);
+		assertNotNull("Missing account before update fetch by ID", origAccount);
+		
 		assertNotNull("Missing account before update fetch by Name", bas.getAccountByName("OldName"));
 		assertEquals("Wrong account name before update", "OldName", bas.getAccountById(id).getIceName());
 		assertEquals("Wrong account id before update", id, bas.getAccountById(id).getId());
+		assertEquals("Wrong status", "ACTIVE", bas.getAccountById(id).getStatus());
 		
-		accounts = Lists.newArrayList();		
-		accounts.add(new Account(id, "NewName", null));
+		accounts = Lists.newArrayList();	
+		List<String> parents = Lists.newArrayList("OrgRoot");
+		Map<String, String> tags = Maps.newHashMap();
+		tags.put("Environment", "Production");
+		accounts.add(new Account(id, "NewName", "NewAwsName", parents, "SUSPENDED", tags));
 		
 		bas.updateAccounts(accounts);
 		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());
+		assertEquals("Account object not the same", origAccount, bas.getAccountById(id));
 		assertNotNull("Missing account after update fetch by ID", bas.getAccountById(id));
 		assertNotNull("Missing account after update fetch by Name", bas.getAccountByName("NewName"));
 		assertEquals("Wrong account name after update", "NewName", bas.getAccountById(id).getIceName());
 		assertEquals("Wrong account id after update", id, bas.getAccountById(id).getId());
-		
+		assertEquals("Wrong parent", parents, bas.getAccountById(id).getParents());
+		assertEquals("Wrong status", "SUSPENDED", bas.getAccountById(id).getStatus());
+		assertEquals("Wrong tags", tags, bas.getAccountById(id).getTags());
 	}
 	
 	@Test
