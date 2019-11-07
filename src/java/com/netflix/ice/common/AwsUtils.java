@@ -612,20 +612,27 @@ public class AwsUtils {
         if (download) {
             return download(bucketName, bucketFilePrefix + file.getName(), file);
         }
-        else
-            return download;
+        
+        return false;
     }
 
-    public static boolean downloadFileIfChanged(String bucketName, String bucketFilePrefix, File file, long milles) {
+    /**
+     * Download the specified file from S3 if it doesn't exist locally or the local copy is not current.
+     * @param bucketName The S3 bucket name to pull from.
+     * @param bucketFilePrefix The bucket prefix for the file
+     * @param file The local path for the file. The filename is appended to the prefix to get the S3 key.
+     * @return True if a fresh copy was downloaded.
+     */
+    public static boolean downloadFileIfChanged(String bucketName, String bucketFilePrefix, File file) {
         ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());
-        boolean download = !file.exists() || metadata.getLastModified().getTime() > file.lastModified() + milles;
-        logger.info("downloadFileIfChanged " + file + " " + metadata.getLastModified().getTime() + " " + (file.lastModified() + milles));
+        boolean download = !file.exists() || metadata.getLastModified().getTime() > file.lastModified();
 
         if (download) {
+            logger.info("downloadFileIfChanged " + file + " " + metadata.getLastModified().getTime() + " " + file.lastModified());
             return download(bucketName, bucketFilePrefix + file.getName(), file);
         }
-        else
-            return false;
+            
+        return false;
     }
 
     public static boolean downloadFileIfNotExist(String bucketName, String bucketFilePrefix, File file) {

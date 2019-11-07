@@ -87,7 +87,7 @@ public class ProcessorConfigTest {
 		}
 		
 		@Override
-		protected WorkBucketDataConfig readWorkBucketDataConfig(boolean wait) {
+		protected WorkBucketDataConfig downloadWorkBucketDataConfig(boolean force) {
 			return workBucketDataConfig;
 		}
 		

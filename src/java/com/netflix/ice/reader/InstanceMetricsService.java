@@ -75,7 +75,7 @@ public class InstanceMetricsService extends StalePoller {
 
     private boolean downloadFile(File file) {
         try {
-            return AwsUtils.downloadFileIfChanged(workS3BucketName, workS3BucketPrefix, file, 0);
+            return AwsUtils.downloadFileIfChanged(workS3BucketName, workS3BucketPrefix, file);
         }
         catch (Exception e) {
             logger.error("error downloading " + file + " from " + workS3BucketName + "/" + workS3BucketPrefix + file.getName(), e);

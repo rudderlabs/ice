@@ -80,7 +80,8 @@ public class BillingFileProcessor extends Poller {
     protected void poll() throws Exception {
         TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = dbrProcessor.getReportsToProcess();
         reportsToProcess.putAll(cauProcessor.getReportsToProcess());
-                
+        boolean wroteConfig = false;
+        
         for (DateTime dataTime: reportsToProcess.keySet()) {
             startMilli = endMilli = dataTime.getMillis();
             init();
@@ -183,10 +184,16 @@ public class BillingFileProcessor extends Poller {
             
             logger.info("done archiving " + dataTime);
             
-            // Write out a new config in case we added accounts or zones while processing.
+            // Write out a new config each time we process a report. We may have added accounts or zones while processing.
             config.saveWorkBucketDataConfig();
+            wroteConfig = true;
 
             updateProcessTime(AwsUtils.monthDateFormat.print(dataTime), processTime);
+        }
+        if (!wroteConfig) {
+        	// No reports to process. We still want to update the work bucket config in case
+        	// changes were made to the account configurations.
+            config.saveWorkBucketDataConfig();        	
         }
 
         logger.info("AWS usage processed.");

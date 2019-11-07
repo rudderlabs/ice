@@ -127,7 +127,7 @@ public class Instances {
         boolean downloaded = false;
         
         try {
-            downloaded = AwsUtils.downloadFileIfChanged(workS3BucketName, workS3BucketPrefix, file, 0);
+            downloaded = AwsUtils.downloadFileIfChanged(workS3BucketName, workS3BucketPrefix, file);
         }
         catch (Exception e) {
             logger.error("error downloading " + file, e);

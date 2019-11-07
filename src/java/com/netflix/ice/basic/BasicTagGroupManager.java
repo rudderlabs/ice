@@ -140,7 +140,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     
     @Override
     protected boolean stalePoll() throws IOException, BadZone {
-        boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
+        boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);
             InputStream is = new FileInputStream(file);

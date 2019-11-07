@@ -134,11 +134,11 @@ public class BasicManagers extends Poller implements Managers {
     }
 
     private void doWork() {
-    	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
-    		return;	// nothing to do
-    	
     	// Update the reader configuration from the work bucket data configuration
     	config.update();
+    	
+    	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
+    		return;	// nothing to do
     	
     	// Mark all the data managers so they update their caches
     	for (StalePoller m: tagGroupManagers.values()) {
