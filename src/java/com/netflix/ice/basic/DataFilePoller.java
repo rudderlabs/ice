@@ -173,7 +173,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
 
     protected synchronized boolean downloadFile(File file) {
         try {
-            return AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
+            return AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
         }
         catch (AmazonServiceException ase) {
         	if (ase.getStatusCode() == 404) {

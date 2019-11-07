@@ -29,7 +29,7 @@ class JSONConverter {
         }
 		
 		JSON.registerObjectMarshaller(Account) { Account it ->
-			return [name: it.name, awsName: it.awsName, id: it.id, parents: it.parents, status: it.status, tags: it.tags]
+			return [name: it.getIceName(), awsName: it.getAwsName(), id: it.getId(), parents: it.getParents(), status: it.getStatus(), tags: it.getTags()]
 		}
     }
 }

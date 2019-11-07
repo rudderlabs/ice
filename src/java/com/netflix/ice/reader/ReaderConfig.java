@@ -87,7 +87,7 @@ public class ReaderConfig extends Config {
             ThroughputMetricService throughputMetricService) throws UnsupportedEncodingException, InterruptedException, IOException, BadZone {
         super(properties, credentialsProvider, productService);
                 
-        WorkBucketDataConfig dataConfig = readWorkBucketDataConfig(true);
+        WorkBucketDataConfig dataConfig = readWorkBucketDataConfig();
         this.startDate = new DateTime(dataConfig.getStartMonth(), DateTimeZone.UTC);
         this.userTags = dataConfig.getUserTags();
         this.familyRiBreakout = dataConfig.getFamilyRiBreakout();
@@ -216,11 +216,21 @@ public class ReaderConfig extends Config {
         }
     }
     
+	protected WorkBucketDataConfig readWorkBucketDataConfig() throws InterruptedException, UnsupportedEncodingException, IOException {
+		// Try to download the work bucket data configuration.
+		// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
+		WorkBucketDataConfig config = null;
+		for (config = downloadWorkBucketDataConfig(true); config == null; config = downloadWorkBucketDataConfig(true)) {
+			Thread.sleep(60 * 1000L);
+		}
+		return config;    	
+	}
+
     public void update() {
     	// Update the account list from the work bucket data configuration file
-    	WorkBucketDataConfig config = downloadConfig();
+    	WorkBucketDataConfig config = downloadWorkBucketDataConfig(false);
     	if (config == null)
-    		return; // Fail silently
+    		return; // No new configuration changes
     	
     	accountService.updateAccounts(config.getAccounts());
     	updateZones(config.getZones());

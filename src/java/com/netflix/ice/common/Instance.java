@@ -103,8 +103,8 @@ public class Instance {
 		return new String[]{
 			id,
 			type,
-			account.id,
-			account.name,
+			account.getId(),
+			account.getIceName(),
 			region.toString(),
 			zone == null ? "" : zone.toString(),
 			product.name,

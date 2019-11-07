@@ -19,7 +19,6 @@ package com.netflix.ice.common;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.Map;
 import java.util.Properties;
@@ -119,20 +118,16 @@ public abstract class Config {
 		this.tagCoverage = tagCoverage;
 	}
 
-	protected WorkBucketDataConfig readWorkBucketDataConfig(boolean wait) throws InterruptedException, UnsupportedEncodingException, IOException {
-		// Try to download the work bucket data configuration.
-		// Keep polling if file doesn't exist yet (Can happen if processor hasn't run yet for the first time)
-		WorkBucketDataConfig config = null;
-		for (config = downloadConfig(); config == null && wait; config = downloadConfig()) {
-			Thread.sleep(60 * 1000L);
-		}
-		return config;    	
-	}
-
-	protected WorkBucketDataConfig downloadConfig() {
+	/**
+	 * Download the work bucket data configuration file.
+	 * @param forceDownload
+	 * @return Returns null if the file has not changed or there is no config file in the bucket.
+	 */
+	protected WorkBucketDataConfig downloadWorkBucketDataConfig(boolean forceDownload) {
 		File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
-		file.delete(); // Delete if it exists so we get a fresh copy from S3 each time
-		boolean downloaded = AwsUtils.downloadFileIfNotExist(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
+		if (forceDownload)
+			file.delete(); // Delete if it exists so we get a fresh copy from S3
+		boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
 		if (downloaded) {
 	    	String json;
 			try {

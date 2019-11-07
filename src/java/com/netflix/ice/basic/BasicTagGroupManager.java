@@ -109,7 +109,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     			userTagValues.add(Sets.<String>newHashSet());
     			
     		for (TagGroup tg: tagGroups) {
-    			accountValues.add(tg.account.name);
+    			accountValues.add(tg.account.getIceName());
     			regionValues.add(tg.region.name);
     			if (tg.zone != null)
     				zoneValues.add(tg.zone.name);
@@ -140,7 +140,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     
     @Override
     protected boolean stalePoll() throws IOException, BadZone {
-        boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
+        boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
         if (downloaded || tagGroups == null) {
             logger.info("trying to read from " + file);
             InputStream is = new FileInputStream(file);

@@ -2268,21 +2268,24 @@ function accountsCtrl($scope, $location, $http, usage_db) {
   
   getAccounts($scope, function (data) {
     for (var i = 0; i < $scope.accounts.length; i++) {
-      var parents = $scope.accounts[i].parents;
+      var account = $scope.accounts[i];
+      var parents = account.parents;
       if (!parents)
-        $scope.accounts[i].path = "Unlinked";
+        account.path = "Unlinked";
       else
-        $scope.accounts[i].path = parents.length > 0 ? $scope.accounts[i].parents.join("/") : "";
-      if ($scope.accounts[i].awsName === null)
-        $scope.accounts[i].awsName = "";
+        account.path = parents.length > 0 ? account.parents.join("/") : "";
+      if (account.awsName === null)
+        account.awsName = "";
+      if (account.status === null)
+        account.status = "";
 
-      $scope.accounts[i].tagsStr = "";
-      var tags = $scope.accounts[i].tags;
+      account.tagsStr = "";
+      var tags = account.tags;
       if (tags) {
         var tagArray = [];
         for (var j in tags)
           tagArray.push(j + "=" + tags[j])
-        $scope.accounts[i].tagsStr = tagArray.join(", ");
+        account.tagsStr = tagArray.join(", ");
       }
     }
     $scope.order($scope.accounts, 'name');

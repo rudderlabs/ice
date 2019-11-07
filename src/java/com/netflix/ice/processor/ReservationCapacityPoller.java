@@ -170,11 +170,11 @@ public class ReservationCapacityPoller extends Poller {
                 if (assumeRole != null && assumeRole.isEmpty())
                 	assumeRole = null;
 
-                logger.info("Get reservations for account: " + account.name + ", role: " + assumeRole + ", externalId: " + externalId);
+                logger.info("Get reservations for account: " + account.getIceName() + ", role: " + assumeRole + ", externalId: " + externalId);
 
                 AWSCredentialsProvider credentialsProvider = AwsUtils.awsCredentialsProvider;
                 if (assumeRole != null) {
-                    credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.id, assumeRole, externalId);
+                    credentialsProvider = AwsUtils.getAssumedCredentialsProvider(account.getId(), assumeRole, externalId);
                 }
                 
 
@@ -202,10 +202,10 @@ public class ReservationCapacityPoller extends Poller {
                 		   }
                 	   }
                        catch(AmazonEC2Exception e) {
-                    	   logger.info("could not get EC2 reservation modifications for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get EC2 reservation modifications for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                           logger.error("error in describeReservedInstancesModifications for " + region.name + " " + account.name, e);
+                           logger.error("error in describeReservedInstancesModifications for " + region.name + " " + account.getIceName(), e);
                        }
                 	   Ec2Mods mods = new Ec2Mods(modifications);
                        try {
@@ -213,19 +213,19 @@ public class ReservationCapacityPoller extends Poller {
                            DescribeReservedInstancesResult result = ec2Client.describeReservedInstances();
                            for (ReservedInstances reservation: result.getReservedInstances()) {
                         	   //logger.info("*** Reservation: " + reservation.getReservedInstancesId());
-                               ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedInstancesId());
+                               ReservationKey key = new ReservationKey(account.getId(), region.name, reservation.getReservedInstancesId());
                                
                                CanonicalReservedInstances cri = new CanonicalReservedInstances(
-                            		   account.id, region.name, reservation, 
+                            		   account.getId(), region.name, reservation, 
                             		   mods.getModResId(reservation.getReservedInstancesId()));
                                ec2Reservations.put(key, cri);
                            }
                        }
                        catch(AmazonEC2Exception e) {
-                    	   logger.info("could not get EC2 reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get EC2 reservations for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                           logger.error("error in describeReservedInstances for " + region.name + " " + account.name, e);
+                           logger.error("error in describeReservedInstances for " + region.name + " " + account.getIceName(), e);
                        }
                        ec2Client.shutdown();
                        handleEC2Modifications(ec2Reservations, mods, region, config.priceListService);
@@ -241,16 +241,16 @@ public class ReservationCapacityPoller extends Poller {
                        try {
                            DescribeReservedDBInstancesResult result = rdsClient.describeReservedDBInstances();
                            for (ReservedDBInstance reservation: result.getReservedDBInstances()) {
-                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedDBInstanceId());
-                               CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+                        	   ReservationKey key = new ReservationKey(account.getId(), region.name, reservation.getReservedDBInstanceId());
+                               CanonicalReservedInstances cri = new CanonicalReservedInstances(account.getId(), region.name, reservation);
                                reservations.put(key, cri);
                            }
                        }
                        catch(AmazonRDSException e) {
-                    	   logger.info("could not get RDS reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get RDS reservations for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                           logger.error("error in describeReservedDBInstances for " + region.name + " " + account.name, e);
+                           logger.error("error in describeReservedDBInstances for " + region.name + " " + account.getIceName(), e);
                        }
                        rdsClient.shutdown();
                    }
@@ -264,16 +264,16 @@ public class ReservationCapacityPoller extends Poller {
 	                   try {
 	                        DescribeReservedNodesResult result = redshiftClient.describeReservedNodes();
 	                        for (ReservedNode reservation: result.getReservedNodes()) {
-	                            ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedNodeId());
-	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+	                            ReservationKey key = new ReservationKey(account.getId(), region.name, reservation.getReservedNodeId());
+	                            CanonicalReservedInstances cri = new CanonicalReservedInstances(account.getId(), region.name, reservation);
 	                            reservations.put(key, cri);
 	                        }
 	                   }
                        catch(AmazonRedshiftException e) {
-                    	   logger.info("could not get Redshift reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get Redshift reservations for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
 	                   catch (Exception e) {
-	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.name, e);
+	                        logger.error("error in describeReservedNodes for " + region.name + " " + account.getIceName(), e);
 	                   }
 	                   redshiftClient.shutdown();
                    }
@@ -294,17 +294,17 @@ public class ReservationCapacityPoller extends Poller {
                                
                                page = elasticsearch.describeReservedElasticsearchInstances(request);
                                for (ReservedElasticsearchInstance reservation: page.getReservedElasticsearchInstances()) {
-                            	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedElasticsearchInstanceId());
-                            	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+                            	   ReservationKey key = new ReservationKey(account.getId(), region.name, reservation.getReservedElasticsearchInstanceId());
+                            	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.getId(), region.name, reservation);
                             	   reservations.put(key, cri);
                                }
                            } while (page.getNextToken() != null);
                 	   }
                        catch(AWSElasticsearchException e) {
-                    	   logger.info("could not get Elasticsearch reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get Elasticsearch reservations for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                            logger.error("error in describeReservedElasticsearchInstances for " + region.name + " " + account.name, e);
+                            logger.error("error in describeReservedElasticsearchInstances for " + region.name + " " + account.getIceName(), e);
                        }
                        elasticsearch.shutdown();
                    }
@@ -318,16 +318,16 @@ public class ReservationCapacityPoller extends Poller {
                 	   try {
                 		   DescribeReservedCacheNodesResult result = elastiCache.describeReservedCacheNodes();                		   
                            for (ReservedCacheNode reservation: result.getReservedCacheNodes()) {
-                        	   ReservationKey key = new ReservationKey(account.id, region.name, reservation.getReservedCacheNodeId());
-                        	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.id, region.name, reservation);
+                        	   ReservationKey key = new ReservationKey(account.getId(), region.name, reservation.getReservedCacheNodeId());
+                        	   CanonicalReservedInstances cri = new CanonicalReservedInstances(account.getId(), region.name, reservation);
                         	   reservations.put(key, cri);
                            }
                 	   }
                        catch(AmazonElastiCacheException e) {
-                    	   logger.info("could not get ElastiCache reservations for " + region + " " + account.name + ", " + e.getErrorMessage());
+                    	   logger.info("could not get ElastiCache reservations for " + region + " " + account.getIceName() + ", " + e.getErrorMessage());
                        }
                        catch (Exception e) {
-                            logger.error("error in describeReservedCacheNodes for " + region.name + " " + account.name, e);
+                            logger.error("error in describeReservedCacheNodes for " + region.name + " " + account.getIceName(), e);
                        }
                 	   elastiCache.shutdown();
                    }
@@ -335,7 +335,7 @@ public class ReservationCapacityPoller extends Poller {
                
             }
             catch (Exception e) {
-                logger.error("Error in describeReservedInstances for " + account.name, e);
+                logger.error("Error in describeReservedInstances for " + account.getIceName(), e);
             }
         }
         archive(config, reservations);

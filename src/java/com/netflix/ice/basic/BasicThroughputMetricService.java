@@ -85,7 +85,7 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
     protected void poll() throws Exception {
         for (DateTime key: fileCache.keySet()) {
             File file = fileCache.get(key);
-            boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
+            boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
             if (downloaded) {
                 logger.info("trying to re-read data for " + file);
                 FileInputStream in = new FileInputStream(file);
@@ -109,7 +109,7 @@ public class BasicThroughputMetricService extends Poller implements ThroughputMe
         while (true) {
             try {
                 File file = new File(workBucketConfig.localDir, filePrefix + AwsUtils.monthDateFormat.print(monthDate));
-                AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file, 0);
+                AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
 
                 FileInputStream in = new FileInputStream(file);
                 try {

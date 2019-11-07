@@ -73,7 +73,7 @@ public class ReadWriteTagCoverageDataTest {
 	    	logger.info("  " + p.name);
 	    logger.info("Accounts:");
 	    for (Account a: accounts)
-	    	logger.info("  " + a.name);
+	    	logger.info("  " + a.getIceName());
 	}
 
 }

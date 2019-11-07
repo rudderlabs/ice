@@ -164,7 +164,7 @@ public abstract class ReservationProcessor {
 		if (debugAccounts != null) {
 			boolean match = false;
 			for (String a: debugAccounts) {
-				if (a.equals(tg.account.name)) {
+				if (a.equals(tg.account.getIceName())) {
 					match = true;
 					break;
 				}

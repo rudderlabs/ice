@@ -169,7 +169,7 @@ public class ProcessorConfig extends Config {
         //useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled");
         useCostForResourceGroup = properties.getProperty(IceOptions.RESOURCE_GROUP_COST, "");
         jsonFiles = Lists.newArrayList();
-        if (properties.getProperty(IceOptions.WRITE_JSON_FILES) != null) {
+        if (!properties.getProperty(IceOptions.WRITE_JSON_FILES, "").isEmpty()) {
             for (String t: properties.getProperty(IceOptions.WRITE_JSON_FILES).split(",")) {
             	jsonFiles.add(JsonFileType.valueOf(t));
             }
@@ -514,16 +514,16 @@ public class ProcessorConfig extends Config {
      * @throws IOException
      */
     protected void processWorkBucketConfig(Map<String, AccountConfig> accountConfigs) throws UnsupportedEncodingException, InterruptedException, IOException {
-    	WorkBucketDataConfig wbdc = readWorkBucketDataConfig(false);
+    	WorkBucketDataConfig wbdc = downloadWorkBucketDataConfig(true);
     	if (wbdc == null)
     		return;
     	
     	for (com.netflix.ice.tag.Account a: wbdc.getAccounts()) {
-    		if (accountConfigs.containsKey(a.id))
+    		if (accountConfigs.containsKey(a.getId()))
     			continue;
     		
     		AccountConfig ac = new AccountConfig(a);
-    		accountConfigs.put(a.id, ac);
+    		accountConfigs.put(a.getId(), ac);
     		logger.warn("Adding work bucket data config account - needs to be added to billing bucket config: " + ac);
     	}
     }

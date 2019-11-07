@@ -38,7 +38,7 @@ public class BasicAccountService implements AccountService {
     public static final List<String> unlinkedAccountParents = Lists.newArrayList(unlinkedAccountOrgUnitName);
 
     private Map<String, Account> accountsById = Maps.newConcurrentMap();
-    private Map<String, Account> accountsByName = Maps.newConcurrentMap();
+    private Map<String, Account> accountsByIceName = Maps.newConcurrentMap();
     private Map<Account, Set<String>> reservationAccounts = Maps.newHashMap();
     private Map<Account, String> reservationAccessRoles = Maps.newHashMap();
     private Map<Account, String> reservationAccessExternalIds = Maps.newHashMap();
@@ -46,9 +46,9 @@ public class BasicAccountService implements AccountService {
     // Constructor used by the processor
     public BasicAccountService(Map<String, AccountConfig> configs) {
     	for (AccountConfig a: configs.values()) {
-    		String name = StringUtils.isEmpty(a.name) ? a.awsName : a.name;
-			Account account = new Account(a.id, name, a.awsName, a.parents, a.status, a.tags);
-			accountsByName.put(name, account);
+    		String iceName = StringUtils.isEmpty(a.name) ? a.awsName : a.name;
+			Account account = new Account(a.id, iceName, a.awsName, a.parents, a.status, a.tags);
+			accountsByIceName.put(iceName, account);
 			accountsById.put(a.id, account);
 			if (a.riProducts != null && a.riProducts.size() > 0) {
 				reservationAccounts.put(account, Sets.newHashSet(a.riProducts));
@@ -66,8 +66,8 @@ public class BasicAccountService implements AccountService {
     // Also used by unit test code.
     public BasicAccountService(List<Account> accounts) {
     	for (Account a: accounts) {
-    		accountsById.put(a.id, a);
-    		accountsByName.put(a.name, a);
+    		accountsById.put(a.getId(), a);
+    		accountsByIceName.put(a.getIceName(), a);
     	}
     	// Reservation maps are not used by the reader.
     }
@@ -75,29 +75,19 @@ public class BasicAccountService implements AccountService {
     // Used by test code
     public BasicAccountService() {}
     
-    // Accounts for the reader are refreshed from the work bucket data config after each processor run
+    // Accounts for the reader are refreshed from the work bucket data configuration after each processor run
     public void updateAccounts(List<Account> accounts) {
      	// Run through the account list and update our maps
     	for (Account a: accounts) {
-    		Account existingId = accountsById.get(a.id);
-    		if (existingId == null || !existingId.name.equals(a.name)) {
+    		Account existing = accountsById.get(a.getId());
+    		if (existing == null) {
     			// Add the new account
-    			accountsById.put(a.id, a);
-    			accountsByName.put(a.name, a);
+    			accountsById.put(a.getId(), a);
+    			accountsByIceName.put(a.getIceName(), a);
     		}
-    	}
-		// We should never get conflicts on IDs and account IDs should never go away,
-		// but we do want to clean up old names due to name changes
-    	for (String name: accountsByName.keySet()) {
-    		boolean found = false;
-    		for (Account a: accounts) {
-    			if (name.equals(a.name)) {
-    				found = true;
-    				break;
-    			}
-    		}
-    		if (!found) {
-    			accountsByName.remove(name);
+    		else {
+    			// Update account organization info
+    			existing.update(a);
     		}
     	}
     }
@@ -112,15 +102,15 @@ public class BasicAccountService implements AccountService {
         	// We get here when the billing data has an account that is no longer active in any of the payer accounts
         	String[] parents = StringUtils.isEmpty(root) ? new String[]{ unlinkedAccountOrgUnitName } : new String[]{ root, unlinkedAccountOrgUnitName };
             account = new Account(accountId, accountId, Lists.newArrayList(parents));
-            accountsByName.put(account.name, account);
-            accountsById.put(account.id, account);
-            logger.info("getAccountById() created account " + accountId + "=\"" + account.name + "\".");
+            accountsByIceName.put(account.getIceName(), account);
+            accountsById.put(account.getId(), account);
+            logger.info("getAccountById() created account " + accountId + "=\"" + account.getIceName() + "\".");
         }
         return account;
     }
     
     public Account getAccountByName(String accountName) {
-        Account account = accountsByName.get(accountName);
+        Account account = accountsByIceName.get(accountName);
         // for accounts that were not mapped to names in ice.properties (ice.account.xxx), this check will make sure that
         // data/tags are updated properly once the mapping is established in ice.properties
         if (account == null) {
@@ -128,8 +118,8 @@ public class BasicAccountService implements AccountService {
         }
         if (account == null) {
             account = new Account(accountName, accountName, unlinkedAccountParents);
-            accountsByName.put(account.name, account);
-            accountsById.put(account.id, account);
+            accountsByIceName.put(account.getIceName(), account);
+            accountsById.put(account.getId(), account);
             logger.info("getAccountByName() created account " + accountName + ".");
         }
         return account;
@@ -137,7 +127,7 @@ public class BasicAccountService implements AccountService {
 
     public List<Account> getAccounts() {
         List<Account> result = Lists.newArrayList();
-        for (Account a: accountsByName.values())
+        for (Account a: accountsByIceName.values())
             result.add(a);
         return result;
     }
@@ -145,7 +135,7 @@ public class BasicAccountService implements AccountService {
     public List<Account> getAccounts(List<String> accountNames) {
         List<Account> result = Lists.newArrayList();
         for (String name: accountNames)
-            result.add(accountsByName.get(name));
+            result.add(accountsByIceName.get(name));
         return result;
     }
 
