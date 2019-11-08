@@ -127,7 +127,14 @@ public abstract class Config {
 		File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
 		if (forceDownload)
 			file.delete(); // Delete if it exists so we get a fresh copy from S3
-		boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
+		boolean downloaded = false;
+    	try {
+    		downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
+    	}
+    	catch (Exception e) {
+    		logger.info("No work bucket data config file available");
+    	}
+
 		if (downloaded) {
 	    	String json;
 			try {
