@@ -514,7 +514,13 @@ public class ProcessorConfig extends Config {
      * @throws IOException
      */
     protected void processWorkBucketConfig(Map<String, AccountConfig> accountConfigs) throws UnsupportedEncodingException, InterruptedException, IOException {
-    	WorkBucketDataConfig wbdc = downloadWorkBucketDataConfig(true);
+    	WorkBucketDataConfig wbdc = null;
+    	try {
+    		wbdc = downloadWorkBucketDataConfig(true);
+    	}
+    	catch (Exception e) {
+    		logger.info("No work bucket data config file available");
+    	}
     	if (wbdc == null)
     		return;
     	
