@@ -314,13 +314,13 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
     var result = [];
     if (selected) {
-      for (var i in selected) {
+      for (var i = 0; i < selected.length; i++) {
         if (filterAccountByOrg(selected[i], organizationalUnit) && filterItem(selected[i].name, filter))
           result.push(selected[i].name);
       }
     }
     else {
-      for (var i in preselected) {
+      for (var i = 0; i < preselected.length; i++) {
         if (filterItem(preselected[i], filter))
           result.push(preselected[i]);
       }
@@ -341,7 +341,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
   var getSelected = function (from, selected) {
     var result = [];
-    for (var i in from) {
+    for (var i = 0; i < from.length; i++) {
       if (selected.indexOf(from[i].name) >= 0)
         result.push(from[i]);
     }
@@ -351,9 +351,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
   var updateSelected = function (from, selected) {
     var result = [];
     var selectedArr = [];
-    for (var i in selected)
+    for (var i = 0; i < selected.length; i++)
       selectedArr.push(selected[i].name);
-    for (var i in from) {
+    for (var i = 0; i < from.length; i++) {
       if (selectedArr.indexOf(from[i].name) >= 0)
         result.push(from[i]);
     }
@@ -363,12 +363,12 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
   var getOrgs = function (accounts) {
     let set = new Set();
-    for (var i in accounts) {
+    for (var i = 0; i < accounts.length; i++) {
       var parents = accounts[i].parents;
       if (!parents)
         parents = [];
       var path = [];
-      for (var j in parents) {
+      for (var j = 0; j < parents.length; j++) {
         path.push(parents[j]);
         set.add(path.join("/"));
       }
@@ -396,7 +396,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
 
     filterSelected: function (selected, filter, organizationalUnit) {
       var result = [];
-      for (var i in selected) {
+      for (var i = 0; i < selected.length; i++) {
         if (filterAccountByOrg(selected[i], organizationalUnit) && filterItem(selected[i].name, filter))
           result.push(selected[i]);
       }
