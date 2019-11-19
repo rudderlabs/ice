@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.processor.config;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -35,8 +36,11 @@ public class AccountConfig {
 	public String id;
 	public String name;
 	public String awsName;
-	public List<String> parents;
+	public String email;
+	public String joinedMethod;
+	public Date joinedTimestamp;
 	public String status;
+	public List<String> parents;
 	public Map<String, String> tags;
 	public List<String> riProducts;
 	public String role;
@@ -60,21 +64,27 @@ public class AccountConfig {
 		this.id = id;
 		this.name = name;
 		this.awsName = awsName;
-		this.parents = parents;
+		this.email = null;
+		this.joinedMethod = null;
+		this.joinedTimestamp = null;
 		this.status = status;
+		this.parents = parents;
 		this.tags = null;
 		this.riProducts = riProducts;
 		this.role = role;
 		this.externalId = externalId;
 	}
 	
-	public AccountConfig(String id, String awsName, List<String> parents, String status, List<com.amazonaws.services.organizations.model.Tag> tags, List<String> customTags) {
+	public AccountConfig(com.amazonaws.services.organizations.model.Account account, List<String> parents, List<com.amazonaws.services.organizations.model.Tag> tags, List<String> customTags) {
 		// Extract account configuration data from Organization account info and tags
-		this.id = id;
-		this.name = awsName;
-		this.awsName = awsName;
+		this.id = account.getId();
+		this.name = account.getName();
+		this.awsName = account.getName();
+		this.email = account.getEmail();
+		this.joinedMethod = account.getJoinedMethod();
+		this.joinedTimestamp = account.getJoinedTimestamp();
+		this.status = account.getStatus();
 		this.parents = parents;
-		this.status = status;
 		this.tags = Maps.newHashMap();
 		if (tags != null) {
 			for (com.amazonaws.services.organizations.model.Tag tag: tags) {
@@ -159,12 +169,28 @@ public class AccountConfig {
 		this.awsName = awsName;
 	}
 
-	public List<String> getParents() {
-		return parents;
+	public String getEmail() {
+		return email;
 	}
 
-	public void setParents(List<String> parents) {
-		this.parents = parents;
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getJoinedMethod() {
+		return joinedMethod;
+	}
+
+	public void setJoinedMethod(String joinedMethod) {
+		this.joinedMethod = joinedMethod;
+	}
+
+	public Date getJoinedTimestamp() {
+		return joinedTimestamp;
+	}
+
+	public void setJoinedTimestamp(Date joinedTimestamp) {
+		this.joinedTimestamp = joinedTimestamp;
 	}
 
 	public String getStatus() {
@@ -173,6 +199,14 @@ public class AccountConfig {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+
+	public List<String> getParents() {
+		return parents;
+	}
+
+	public void setParents(List<String> parents) {
+		this.parents = parents;
 	}
 
 	public Map<String, String> getDefaultTags() {

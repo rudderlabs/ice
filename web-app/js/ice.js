@@ -2249,23 +2249,45 @@ function accountsCtrl($scope, $location, $http, usage_db) {
     data.sort(compare);
   }
 
-  var getAccounts = function ($scope, fn) {
-    $http({
-      method: "GET",
-      url: "getAccounts",
-      params: { all: true }
-    }).success(function (result) {
-      if (result.status === 200 && result.data) {
-        $scope.accounts = result.data;
-        if (fn)
-          fn(result.data);
+  var getAccounts = function ($scope, fn, download) {
+    var params = { all: true };
+
+    if (download) {
+      params["dashboard"] = "accounts";
+      jQuery("#download_form").empty();
+
+      for (var key in params) {
+        jQuery("<input type='text' />")
+          .attr("id", key)
+          .attr("name", key)
+          .attr("value", params[key])
+          .appendTo(jQuery("#download_form"));
       }
-    }).error(function (result, status) {
-      if (status === 401 || status === 0)
-        $window.location.reload();
-    });
+
+      jQuery("#download_form").submit();
+    }
+    else {
+      $http({
+        method: "GET",
+        url: "getAccounts",
+        params: params
+      }).success(function (result) {
+        if (result.status === 200 && result.data) {
+          $scope.accounts = result.data;
+          if (fn)
+            fn(result.data);
+        }
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
+          $window.location.reload();
+      });
+    }
   }
   
+  $scope.download = function () {
+    getAccounts($scope, null, true);
+  }
+
   getAccounts($scope, function (data) {
     for (var i = 0; i < $scope.accounts.length; i++) {
       var account = $scope.accounts[i];

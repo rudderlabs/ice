@@ -19,6 +19,10 @@ package com.netflix.ice.processor;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -35,6 +39,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.basic.BasicResourceService;
+import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
@@ -211,5 +216,22 @@ public class ProcessorConfigTest {
 		assertEquals("Wrong account ID", id2, ac.id);
 		assertEquals("Wrong account name", "workName2", ac.name);
 		assertEquals("Wrong account awsName", "workAwsName2", ac.awsName);
+	}
+	
+	@Test
+	public void testGetOrganizationAccounts() throws UnsupportedEncodingException, IOException {
+	    final String resourcesDir = "src/test/resources/private/";
+	    File bbConfig = new File(resourcesDir, "billing-bucket.yml");
+	    File tags = new File(resourcesDir, "customTags.csv");
+	    
+	    if (!(bbConfig.exists() && tags.exists()))
+	    	return;
+	    	    
+		String body = new String(Files.readAllBytes(bbConfig.toPath()), "UTF-8");
+		List<String> customTags = Lists.newArrayList(new String(Files.readAllBytes(tags.toPath()), "UTF-8").split(","));
+		BillingBucket bb = new BillingBucket(body);
+		AwsUtils.workS3BucketRegion = "us-east-1";
+		@SuppressWarnings("unused")
+		Map<String, AccountConfig> accounts = ProcessorConfig.getOrganizationAccounts(bb, customTags);
 	}
 }

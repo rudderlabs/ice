@@ -54,6 +54,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
@@ -353,23 +354,32 @@ public class ProcessorConfig extends Config {
             	continue;            
             done.add(bb.accountId);
             
-            logger.info("Get account/organizational unit hierarchy for " + bb.accountId +
-            		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
-            
-            Map<String, List<String>> accountParents = AwsUtils.getAccountParents(bb.accountId, bb.accessRoleName, bb.accessExternalId, bb.rootName);
-            
-            logger.info("Get accounts for organization " + bb.accountId +
-            		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
-            List<Account> accounts = AwsUtils.listAccounts(bb.accountId, bb.accessRoleName, bb.accessExternalId);
-            for (Account a: accounts) {
-            	// Get tags for the account
-            	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), bb.accountId, bb.accessRoleName, bb.accessExternalId);
-            	AccountConfig ac = new AccountConfig(a.getId(), a.getName(), accountParents.get(a.getId()), a.getStatus(), tags, customTags);
-            	result.put(ac.getId(), ac);
-            	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
+            Map<String, AccountConfig> accounts = getOrganizationAccounts(bb, customTags);
+            for (Entry<String, AccountConfig> entry: accounts.entrySet()) {
+            	result.put(entry.getKey(), entry.getValue());
+            	resourceService.putDefaultTags(entry.getKey(), entry.getValue().getDefaultTags());        			
             }
         }
     	return result;
+    }
+    
+    protected static Map<String, AccountConfig> getOrganizationAccounts(BillingBucket bb, List<String> customTags) {        
+        logger.info("Get account/organizational unit hierarchy for " + bb.accountId +
+        		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
+        
+        Map<String, List<String>> accountParents = AwsUtils.getAccountParents(bb.accountId, bb.accessRoleName, bb.accessExternalId, bb.rootName);
+        
+        logger.info("Get accounts for organization " + bb.accountId +
+        		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
+        List<Account> accounts = AwsUtils.listAccounts(bb.accountId, bb.accessRoleName, bb.accessExternalId);
+    	Map<String, AccountConfig> result = Maps.newHashMap();
+        for (Account a: accounts) {
+        	// Get tags for the account
+        	List<com.amazonaws.services.organizations.model.Tag> tags = AwsUtils.listAccountTags(a.getId(), bb.accountId, bb.accessRoleName, bb.accessExternalId);
+        	AccountConfig ac = new AccountConfig(a, accountParents.get(a.getId()), tags, customTags);
+        	result.put(ac.getId(), ac);
+        }
+        return result;
     }
     
     /*

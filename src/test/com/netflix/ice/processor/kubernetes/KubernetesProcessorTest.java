@@ -118,7 +118,8 @@ public class KubernetesProcessorTest {
 		@Override
 	    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
 			Map<String, AccountConfig> accounts = Maps.newHashMap();
-			accounts.put("123456789012", new AccountConfig("123456789012", "Account1", null, null, null, null));
+			com.amazonaws.services.organizations.model.Account a = new com.amazonaws.services.organizations.model.Account().withId("123456789012").withName("Account1");
+			accounts.put("123456789012", new AccountConfig(a, null, null, null));
 			return accounts;
 		}
 		

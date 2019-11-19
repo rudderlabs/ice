@@ -48,6 +48,11 @@
 	    </tbody>
 	  </table>
   </div>
+  <div class="buttons">
+    <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
+       ng-click="download()"
+       ng-disabled="accounts.length == 0">Download</a>
+  </div>  
 </div>
 </body>
 </html>

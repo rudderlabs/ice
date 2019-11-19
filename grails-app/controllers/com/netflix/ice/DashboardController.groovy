@@ -49,13 +49,14 @@ import com.google.common.collect.Maps
 import org.json.JSONObject
 
 import com.netflix.ice.basic.TagCoverageDataManager
-import com.netflix.ice.common.Config;
 import com.netflix.ice.common.ConsolidateType
 import com.netflix.ice.common.Instance
 
 import org.joda.time.Hours
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang.StringUtils
 import org.apache.commons.lang.time.StopWatch;
 
@@ -65,7 +66,7 @@ import com.netflix.ice.common.AwsUtils
 class DashboardController {
     private static Logger logger = LoggerFactory.getLogger(DashboardController.class);
 
-	private static Config config = ReaderConfig.getInstance();
+	private static ReaderConfig config = ReaderConfig.getInstance();
     private static Managers managers = config == null ? null : config.managers;
     private static DateTimeFormatter dateFormatterForDownload = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC);
     private static DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd hha").withZone(DateTimeZone.UTC);
@@ -94,7 +95,7 @@ class DashboardController {
 		utilization: "GET",
 	];
 			
-    private static Config getConfig() {
+    private static ReaderConfig getConfig() {
         if (config == null) {
             config = ReaderConfig.getInstance();
         }
@@ -175,7 +176,6 @@ class DashboardController {
     }
 
     def getProducts = {
-        Object o = params;
         List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
         List<Region> regions = Region.getRegions(listParams("region"));
         List<Zone> zones = Zone.getZones(listParams("zone"));
@@ -337,11 +337,51 @@ class DashboardController {
 	}
 
     def download = {
-        def o = params;
-        JSONObject query = new JSONObject();
-        for (Map.Entry entry: params.entrySet()) {
-            query.put(entry.getKey(), entry.getValue());
-        }
+		String dashboard = params.containsKey("dashboard") ? params.get("dashboard") : "";
+		
+		if (dashboard.equals("accounts"))
+			download_accounts();
+		else
+			download_data();
+    }
+	
+	private download_accounts() {
+		def accounts = doGetAccounts();
+		StringWriter writer = new StringWriter(1024);
+		CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(Account.header()));
+		
+		for (Account a: accounts) {
+			printer.printRecord((Object[]) a.values());
+		}
+		printer.close(true);
+		String body = writer.toString();
+		
+		response.setContentType("application/octet-stream;");
+		response.setContentLength(body.length());		
+        response.setHeader("Content-disposition", "attachment;filename=aws-accounts.csv");
+        response.outputStream << body;
+        response.outputStream.flush();
+		return;
+	}
+	
+	private Collection<Account> doGetAccounts() {
+		boolean all = params.getBoolean("all");
+		Collection<Account> data = null;
+		if (all) {
+			data = getConfig().accountService.getAccounts();
+		}
+		else {
+			TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
+			data = tagGroupManager == null ? [] : tagGroupManager.getAccounts(new TagLists());
+		}
+		return data;
+	}
+	
+	private download_data() {
+		JSONObject query = new JSONObject();
+		for (Map.Entry entry: params.entrySet()) {
+			query.put(entry.getKey(), entry.getValue());
+		}
 
         def result = doGetData(query);
 

@@ -279,6 +279,9 @@ public class AwsUtils {
         }
     }
     
+    /**
+     * Get a map which holds the parent organizational unit list for each account.
+     */
     public static Map<String, List<String>> getAccountParents(String payerAccountId, String assumeRole, String externalId, String rootName) {
     	AWSOrganizations organizations = null;
         try {

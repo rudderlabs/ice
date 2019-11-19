@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 
 import org.junit.Test;
 
+import com.amazonaws.services.organizations.model.Account;
 import com.amazonaws.services.organizations.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -52,7 +53,8 @@ public class AccountConfigTest {
 		
 		List<String> parents = Lists.newArrayList();
 		parents.add("org1");
-		AccountConfig account = new AccountConfig("123456789012", "account1", parents, "ACTIVE", tags, customTags);
+		Account a = new Account().withId("123456789012").withName("account1").withStatus("ACTIVE");
+		AccountConfig account = new AccountConfig(a, parents, tags, customTags);
 		
 		assertEquals("Wrong account id", "123456789012", account.id);
 		assertEquals("Wrong account name", "act1", account.name);

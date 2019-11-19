@@ -19,8 +19,11 @@ package com.netflix.ice.tag;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
+
+import com.google.common.collect.Lists;
 
 public class Account extends Tag {
 	private static final long serialVersionUID = 1L;
@@ -96,4 +99,26 @@ public class Account extends Tag {
 	public Map<String, String> getTags() {
 		return tags;
 	}
+	
+	public static String[] header() {
+		return new String[] {"ICE Name", "AWS Name", "ID", "Organization Path", "Status", "Tags"};
+	}
+	
+	public String[] values() {
+		List<String> tagSet = Lists.newArrayList();
+		if (tags != null) {
+			for (Entry<String, String> e: tags.entrySet()) {
+				tagSet.add(String.join("=", e.getKey(), e.getValue()));
+			}
+		}
+		return new String[]{
+			getIceName(),
+			getAwsName(),
+			getId(),
+			String.join("/", getParents()),
+			getStatus(),
+			String.join(",", tagSet)
+		};
+	}
+
 }

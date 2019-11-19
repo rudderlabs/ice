@@ -17,14 +17,25 @@
  */
 package com.netflix.ice.processor;
 
+import java.io.IOException;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.gson.Gson;
+
 public class BillingBucket {
-    public final String accountId;
-    public final String s3BucketName;
-    public final String s3BucketRegion;
-    public final String s3BucketPrefix;
-    public final String accessRoleName;
-    public final String accessExternalId;
-    public final String rootName;
+    public String accountId;
+    public String s3BucketName;
+    public String s3BucketRegion;
+    public String s3BucketPrefix;
+    public String accessRoleName;
+    public String accessExternalId;
+    public String rootName;
+    
+    public BillingBucket() {
+    }
     
     public BillingBucket(String s3BucketName, String s3BucketRegion, String s3BucketPrefix, String accountId, String accessRoleName, String accessExternalId, String rootName) {
     	this.s3BucketName = s3BucketName;
@@ -34,5 +45,33 @@ public class BillingBucket {
     	this.accessRoleName = accessRoleName;
     	this.accessExternalId = accessExternalId;
     	this.rootName = rootName;
+    }
+    
+    /**
+     * Constructor for deserializing from JSON or YAML
+     * 
+     * @param in String to parse.
+     * @throws JsonParseException
+     * @throws JsonMappingException
+     * @throws IOException
+     */
+    public BillingBucket(String in) throws JsonParseException, JsonMappingException, IOException {
+    	BillingBucket bb = null;
+    	
+		if (in.trim().startsWith("{")) {
+			Gson gson = new Gson();
+			bb = gson.fromJson(in, getClass());
+		}
+		else {
+			ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+			bb = mapper.readValue(in, getClass());			
+		}
+    	this.s3BucketName = bb.s3BucketName;
+    	this.s3BucketRegion = bb.s3BucketRegion;
+    	this.s3BucketPrefix = bb.s3BucketPrefix;
+    	this.accountId = bb.accountId;
+    	this.accessRoleName = bb.accessRoleName;
+    	this.accessExternalId = bb.accessExternalId;
+    	this.rootName = bb.rootName;
     }
 }

@@ -13,3 +13,4 @@ src/test/resources/prices_*
 src/test/resources/ice.properties
 src/test/data
 test.xml
+src/test/resources/private
