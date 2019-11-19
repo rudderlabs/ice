@@ -140,18 +140,8 @@ class DashboardController {
 	}
 
     def getAccounts = {
-        boolean all = params.getBoolean("all");
-		Collection<Account> data = null;
-		if (all) {
-			data = getConfig().accountService.getAccounts();
-		}
-		else {
-	        TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
-	        data = tagGroupManager == null ? [] : tagGroupManager.getAccounts(new TagLists());
-		}
-
-        def result = [status: 200, data: data]
-        render result as JSON
+        def result = [status: 200, data: doGetAccounts()]
+		render result as JSON
     }
 
     def getRegions = {
