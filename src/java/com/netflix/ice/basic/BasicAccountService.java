@@ -47,7 +47,7 @@ public class BasicAccountService implements AccountService {
     public BasicAccountService(Map<String, AccountConfig> configs) {
     	for (AccountConfig a: configs.values()) {
     		String iceName = StringUtils.isEmpty(a.name) ? a.awsName : a.name;
-			Account account = new Account(a.id, iceName, a.awsName, a.parents, a.status, a.tags);
+			Account account = new Account(a.id, iceName, a.awsName, a.email, a.parents, a.status, a.tags);
 			accountsByIceName.put(iceName, account);
 			accountsById.put(a.id, account);
 			if (a.riProducts != null && a.riProducts.size() > 0) {

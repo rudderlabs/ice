@@ -61,7 +61,7 @@ public class BasicAccountServiceTest {
 	public void testUpdateAccounts() {
 		List<Account> accounts = Lists.newArrayList();
 		String id = "123456789012";
-		accounts.add(new Account(id, "OldName", "OldAwsName", null, "ACTIVE", null));
+		accounts.add(new Account(id, "OldName", "OldAwsName", "OldEmail", null, "ACTIVE", null));
 		
 		BasicAccountService bas = new BasicAccountService(accounts);
 		
@@ -73,13 +73,14 @@ public class BasicAccountServiceTest {
 		assertNotNull("Missing account before update fetch by Name", bas.getAccountByName("OldName"));
 		assertEquals("Wrong account name before update", "OldName", bas.getAccountById(id).getIceName());
 		assertEquals("Wrong account id before update", id, bas.getAccountById(id).getId());
+		assertEquals("Wrong email before update", "OldEmail", bas.getAccountById(id).getEmail());
 		assertEquals("Wrong status", "ACTIVE", bas.getAccountById(id).getStatus());
 		
 		accounts = Lists.newArrayList();	
 		List<String> parents = Lists.newArrayList("OrgRoot");
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "Production");
-		accounts.add(new Account(id, "NewName", "NewAwsName", parents, "SUSPENDED", tags));
+		accounts.add(new Account(id, "NewName", "NewAwsName", "NewEmail", parents, "SUSPENDED", tags));
 		
 		bas.updateAccounts(accounts);
 		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());
@@ -88,6 +89,7 @@ public class BasicAccountServiceTest {
 		assertNotNull("Missing account after update fetch by Name", bas.getAccountByName("NewName"));
 		assertEquals("Wrong account name after update", "NewName", bas.getAccountById(id).getIceName());
 		assertEquals("Wrong account id after update", id, bas.getAccountById(id).getId());
+		assertEquals("Wrong account email after update", "NewEmail", bas.getAccountById(id).getEmail());
 		assertEquals("Wrong parent", parents, bas.getAccountById(id).getParents());
 		assertEquals("Wrong status", "SUSPENDED", bas.getAccountById(id).getStatus());
 		assertEquals("Wrong tags", tags, bas.getAccountById(id).getTags());

@@ -33,6 +33,7 @@ public class Account extends Tag {
 	// so we can't make them final.
 	private String iceName; // Name assigned to account for display in the dashboards
 	private String awsName; // Name of account returned by Organizations
+	private String email; // Email address of the account
 	private List<String> parents; // parent organizational units as defined by the Organizations service
 	private String status;  // status as returned by the Organizations service
 	private Map<String, String> tags;
@@ -41,15 +42,17 @@ public class Account extends Tag {
         super(accountId);
         this.iceName = accountName;
         this.awsName = null;
+        this.email = null;
         this.parents = parents;
         this.status = null;
         this.tags = null;
     }
     
-    public Account(String accountId, String accountName, String awsName, List<String> parents, String status, Map<String, String> tags) {
+    public Account(String accountId, String accountName, String awsName, String email, List<String> parents, String status, Map<String, String> tags) {
     	super(accountId);
         this.iceName = StringUtils.isEmpty(accountName) ? awsName : accountName;
         this.awsName = awsName;
+        this.email = email;
         this.parents = parents;
         this.status = status;
         this.tags = tags;
@@ -58,6 +61,7 @@ public class Account extends Tag {
     public void update(Account a) {
 		this.iceName = a.iceName;
 		this.awsName = a.awsName;
+		this.email = a.email;
 		this.parents = a.parents;
 		this.status = a.status;
 		this.tags = a.tags;
@@ -88,6 +92,10 @@ public class Account extends Tag {
 		return awsName;
 	}
 
+	public String getEmail() {
+		return email;
+	}
+
 	public List<String> getParents() {
 		return parents;
 	}
@@ -101,7 +109,7 @@ public class Account extends Tag {
 	}
 	
 	public static String[] header() {
-		return new String[] {"ICE Name", "AWS Name", "ID", "Organization Path", "Status", "Tags"};
+		return new String[] {"ICE Name", "AWS Name", "ID", "Email", "Organization Path", "Status", "Tags"};
 	}
 	
 	public String[] values() {
@@ -115,6 +123,7 @@ public class Account extends Tag {
 			getIceName(),
 			getAwsName(),
 			getId(),
+			getEmail(),
 			String.join("/", getParents()),
 			getStatus(),
 			String.join(",", tagSet)
