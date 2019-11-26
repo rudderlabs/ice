@@ -111,7 +111,7 @@
           <select ng-model="groupByTag" ng-options="a.name for a in groupByTags"></select>
         </div>      
       </td>
-      <td ng-repeat="tagValue in getUserTagValues(0, 7)">
+      <td ng-repeat="tagValue in getUserTagValues(0, 6)">
         <input type="checkbox" ng-model="enabledUserTags[$index]" ng-change="userTagsChanged($index)"> {{userTags[$index].name}}</input>
       	<div ng-show="enabledUserTags[$index]">
           <select ng-model="selected_userTagValues[$index]" ng-options="a.name for a in userTagValues[$index] | filter:filter_userTagValues[$index]" multiple="multiple" class="metaUserTags metaSelect"></select>
@@ -121,15 +121,27 @@
 		</div>      
       </td>
     </tr>
-    <tr ng-show="userTagValues.length > 7">
+    <tr ng-show="userTagValues.length > 6">
       <td></td>
-      <td ng-repeat="tagValue in getUserTagValues(7, 7)">
-        <input type="checkbox" ng-model="enabledUserTags[7+$index]" ng-change="userTagsChanged(7+$index)"> {{userTags[7+$index].name}}</input>
-      	<div ng-show="enabledUserTags[7+$index]">
-          <select ng-model="selected_userTagValues[7+$index]" ng-options="a.name for a in userTagValues[7+$index] | filter:filter_userTagValues[7+$index]" multiple="multiple" class="metaUserTags metaSelect"></select>
-          <br><input ng-model="filter_userTagValues[7+$index]" type="text" class="metaFilter" placeholder="filter">
-          <button ng-click="selected_userTagValues[7+$index] = userTagValues[7+$index]" class="allNoneButton">+</button>
-          <button ng-click="selected_userTagValues[7+$index] = []" class="allNoneButton">-</button>
+      <td ng-repeat="tagValue in getUserTagValues(6, 6)">
+        <input type="checkbox" ng-model="enabledUserTags[6+$index]" ng-change="userTagsChanged(6+$index)"> {{userTags[6+$index].name}}</input>
+      	<div ng-show="enabledUserTags[6+$index]">
+          <select ng-model="selected_userTagValues[6+$index]" ng-options="a.name for a in userTagValues[6+$index] | filter:filter_userTagValues[6+$index]" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <br><input ng-model="filter_userTagValues[6+$index]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[6+$index] = userTagValues[6+$index]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[6+$index] = []" class="allNoneButton">-</button>
+		</div>      
+      </td>
+    </tr>
+    <tr ng-show="userTagValues.length > 12">
+      <td></td>
+      <td ng-repeat="tagValue in getUserTagValues(12, 6)">
+        <input type="checkbox" ng-model="enabledUserTags[12+$index]" ng-change="userTagsChanged(12+$index)"> {{userTags[12+$index].name}}</input>
+      	<div ng-show="enabledUserTags[12+$index]">
+          <select ng-model="selected_userTagValues[12+$index]" ng-options="a.name for a in userTagValues[12+$index] | filter:filter_userTagValues[12+$index]" multiple="multiple" class="metaUserTags metaSelect"></select>
+          <br><input ng-model="filter_userTagValues[12+$index]" type="text" class="metaFilter" placeholder="filter">
+          <button ng-click="selected_userTagValues[12+$index] = userTagValues[12+$index]" class="allNoneButton">+</button>
+          <button ng-click="selected_userTagValues[12+$index] = []" class="allNoneButton">-</button>
 		</div>      
       </td>
     </tr>
