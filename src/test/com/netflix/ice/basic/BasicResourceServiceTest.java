@@ -38,6 +38,7 @@ import com.netflix.ice.processor.CostAndUsageReportLineItem;
 import com.netflix.ice.processor.config.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UserTag;
 
@@ -45,7 +46,7 @@ public class BasicResourceServiceTest {
     private static final String resourcesDir = "src/test/resources";
 
 	@Test
-	public void testGetResource() {
+	public void testGetResourceGroup() {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
@@ -59,14 +60,19 @@ public class BasicResourceServiceTest {
 
 		li.setItems(item);
 		ProductService ps = new BasicProductService();
+		// include a tag not in the line item
 		String[] customTags = new String[]{
-				"Environment", "Product"
+				"Environment", "Product", "CostCenter"
 			};
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
 		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
+		Map<String, String> defaultTags = Maps.newHashMap();
+		defaultTags.put("CostCenter", "1234");
+		rs.putDefaultTags("123456789012", defaultTags);
 		
-		ResourceGroup resource = rs.getResourceGroup(null, null, ps.getProductByName(Product.ec2Instance), li, 0);
-		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
+		BasicAccountService as = new BasicAccountService();
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI" + ResourceGroup.separator + "1234", resource.name);
 	}
 	
 	@Test
