@@ -198,10 +198,15 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         double costValue = Double.parseDouble(lineItem.getCost());
         final Result result = getResult(lineItem, startMilli, tagGroup, processDelayed, lineItem.isReserved(), costValue);
-                
+
+        ResourceGroup resourceGroup = null;
+        if (resourceService != null) {
+            resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
+        }
+        
         // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
         if (processDelayed && lineItem.getLineItemType() == LineItemType.RIFee) {
-        	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, null, reservationArn);
+        	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, resourceGroup, reservationArn);
         	addReservation(lineItem, costAndUsageData, tgri, startMilli);
         }
 
@@ -244,10 +249,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         TagGroup resourceTagGroup = null;
         if (resourceService != null) {
-            ResourceGroup resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
-        
         addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
     }
