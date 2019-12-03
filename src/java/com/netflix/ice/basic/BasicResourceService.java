@@ -240,9 +240,11 @@ public class BasicResourceService extends ResourceService {
     		return null;
     	
     	for (Integer sourceTagIndex: sourceTags.keySet()) {
-    		String have = tags[sourceTagIndex].toLowerCase();    		
+    		String have = tags[sourceTagIndex];
+    		if (have == null)
+    			continue;
     		Map<String, String> values = sourceTags.get(sourceTagIndex);
-    		String v = values.get(have);
+    		String v = values.get(have.toLowerCase());
     		if (v != null)
     			return v;
     	}

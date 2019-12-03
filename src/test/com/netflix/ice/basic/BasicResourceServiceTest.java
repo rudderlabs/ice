@@ -317,9 +317,9 @@ public class BasicResourceServiceTest {
 		
 		// Test without mapped value or resource tag - should use account default
 		item[3] = "";
-		item[5] = "foo";
+		item[5] = "";
 		li.setItems(item);
 		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
-		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "foo", resource.name);
+		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "", resource.name);
 	}
 }
