@@ -28,6 +28,10 @@ import java.util.Properties;
 
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
@@ -260,5 +264,62 @@ public class BasicResourceServiceTest {
 		assertFalse("Environment is set", coverage[0]);
 		assertTrue("Department not set", coverage[1]);
 		assertTrue("Email not set", coverage[2]);
+	}
+	
+	@Test
+	public void testGetTagGroupComputed() throws JsonParseException, JsonMappingException, IOException {
+		String yaml = "" +
+		"name: Env\n" +
+		"aliases: [Environment]\n" +
+		"values:\n" +
+		"  Prod: [production]\n" +
+		"mapped:\n" +
+		"  QA:\n" +
+		"    Product: [serviceAPI]\n";
+
+		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+		TagConfig tc = new TagConfig();
+		tc = mapper.readValue(yaml, tc.getClass());
+		List<TagConfig> tagConfigs = Lists.newArrayList(tc);
+		
+		ProductService ps = new BasicProductService();
+		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{});
+		rs.setTagConfigs("123456789012", tagConfigs);
+		
+		Map<String, String> defaultTags = Maps.newHashMap();
+		defaultTags.put("Env", "Prod");
+		rs.putDefaultTags("123456789012", defaultTags);
+		
+		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
+		String[] item = {
+				"123456789012", // PayerAccountId
+				"DiscountedUsage", // LineItemType
+				"foobar@example.com", // resourceTags/user:Email
+				"", // resourceTags/user:Environment
+				"", // resourceTags/user:environment
+				"serviceAPI", // resourceTags/user:Product
+		};
+
+		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
+
+		BasicAccountService as = new BasicAccountService();
+		
+		// Test with mapped value
+		li.setItems(item);
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		// Test with value on resource
+		item[3] = "test";
+		li.setItems(item);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "test" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		// Test without mapped value or resource tag - should use account default
+		item[3] = "";
+		item[5] = "foo";
+		li.setItems(item);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "foo", resource.name);
 	}
 }

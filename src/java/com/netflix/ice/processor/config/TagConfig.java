@@ -28,7 +28,8 @@ public class TagConfig {
 	public String name;
 	public List<String> aliases;
 	public Map<String, List<String>> values;
-	
+	public Map<String, Map<String, List<String>>> mapped;
+		
 	public TagConfig() {}
 	
 	public TagConfig(String name, List<String> aliases, Map<String, List<String>> values) {

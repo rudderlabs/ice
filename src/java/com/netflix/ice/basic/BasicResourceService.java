@@ -59,8 +59,18 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
     
+    // Map containing values to assign to destination tags based on a match with a value
+    // in a source tag. These are returned if the requested resource doesn't have a tag value.
+    private Map<String, Map<String, Map<Integer, Map<String, String>>>> mappedTags;
+    //           ^            ^           ^           ^
+    //           |            |           |           +-- match
+    //           |            |           +-- source tag index
+    //           |            +-- destination tag
+    //           +-- payer account ID
+    
+
     // Map of default user tag values for each account. These are returned if the requested resource doesn't
-    // have a tag value. Outer key is the account ID, inner map key is the tag name.
+    // have a tag value nor a mapped value. Outer key is the account ID, inner map key is the tag name.
     private Map<String, Map<String, String>> defaultTags;
 
     public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags) {
@@ -84,6 +94,7 @@ public class BasicResourceService extends ResourceService {
 		this.defaultTags = Maps.newHashMap();
 		this.tagConfigs = Maps.newHashMap();
 		this.tagValuesInverted = Maps.newHashMap();
+		this.mappedTags = Maps.newHashMap();
 	}
     
     @Override
@@ -119,6 +130,27 @@ public class BasicResourceService extends ResourceService {
 			indecies.put(config.name, invertedIndex);
 		}
 		this.tagValuesInverted.put(payerAccountId, indecies);
+		
+		// Create the maps setting tags based on the values of other tags
+		Map<String, Map<Integer, Map<String, String>>> mapped = Maps.newHashMap();
+		for (TagConfig config: tagConfigs) {
+			if (config.mapped == null || config.mapped.isEmpty())
+				continue;
+			
+			Map<Integer, Map<String, String>> tagSources = Maps.newHashMap();
+			for (String mappedValue: config.mapped.keySet()) {
+				Map<String, List<String>> configValueMaps = config.mapped.get(mappedValue);
+				for (String sourceTag: configValueMaps.keySet()) {
+					Map<String, String> mappedValues = Maps.newHashMap();
+					for (String target: configValueMaps.get(sourceTag)) {
+						mappedValues.put(target.toLowerCase(), mappedValue);
+					}
+					tagSources.put(tagResourceGroupIndecies.get(sourceTag), mappedValues);
+				}
+			}
+			mapped.put(config.name, tagSources);
+		}
+		this.mappedTags.put(payerAccountId, mapped);
     }
 
 	@Override
@@ -146,7 +178,13 @@ public class BasicResourceService extends ResourceService {
     	String[] tags = new String[customTags.length];
        	boolean hasTag = false;
        	for (int i = 0; i < customTags.length; i++) {
-        	String v = getUserTagValue(lineItem, customTags[i]);
+       		tags[i] = getUserTagValue(lineItem, customTags[i]);
+       	}
+       	
+       	for (int i = 0; i < customTags.length; i++) {
+       		String v = tags[i];
+        	if (v == null || v.isEmpty())
+        		v = getMappedUserTagValue(account, customTags[i], tags);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags[i]);
         	tags[i] = v;
@@ -189,6 +227,27 @@ public class BasicResourceService extends ResourceService {
     	// return the default user tag value for the specified account if there is one.
     	Map<String, String> defaults = defaultTags.get(account.getId());
     	return defaults == null ? null : defaults.get(tag);
+    }
+    
+    private String getMappedUserTagValue(Account account, String tag, String[] tags) {
+    	// return the default user tag value for the specified account if there is one.
+    	Map<String, Map<Integer, Map<String, String>>> mappedTagsForAccount = mappedTags.get(account.getId());
+    	if (mappedTagsForAccount == null)
+    		return null;
+    	
+    	Map<Integer, Map<String, String>> sourceTags = mappedTagsForAccount.get(tag);
+    	if (sourceTags == null)
+    		return null;
+    	
+    	for (Integer sourceTagIndex: sourceTags.keySet()) {
+    		String have = tags[sourceTagIndex].toLowerCase();    		
+    		Map<String, String> values = sourceTags.get(sourceTagIndex);
+    		String v = values.get(have);
+    		if (v != null)
+    			return v;
+    	}
+    	
+    	return null;
     }
     
     @Override
