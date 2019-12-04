@@ -275,7 +275,9 @@ public class BasicResourceServiceTest {
 		"  Prod: [production]\n" +
 		"mapped:\n" +
 		"  QA:\n" +
-		"    Product: [serviceAPI]\n";
+		"    Product: [serviceAPI]\n" +
+		"  1234567:\n" +
+		"    Product: [webServer]\n";
 
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		TagConfig tc = new TagConfig();

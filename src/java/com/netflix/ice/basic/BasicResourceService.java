@@ -141,11 +141,15 @@ public class BasicResourceService extends ResourceService {
 			for (String mappedValue: config.mapped.keySet()) {
 				Map<String, List<String>> configValueMaps = config.mapped.get(mappedValue);
 				for (String sourceTag: configValueMaps.keySet()) {
-					Map<String, String> mappedValues = Maps.newHashMap();
+					Integer sourceTagIndex = tagResourceGroupIndecies.get(sourceTag);
+					Map<String, String> mappedValues = tagSources.get(sourceTagIndex);
+					if (mappedValues == null) {
+						mappedValues = Maps.newHashMap();
+						tagSources.put(sourceTagIndex, mappedValues);
+					}
 					for (String target: configValueMaps.get(sourceTag)) {
 						mappedValues.put(target.toLowerCase(), mappedValue);
 					}
-					tagSources.put(tagResourceGroupIndecies.get(sourceTag), mappedValues);
 				}
 			}
 			mapped.put(config.name, tagSources);
@@ -184,7 +188,7 @@ public class BasicResourceService extends ResourceService {
        	for (int i = 0; i < customTags.length; i++) {
        		String v = tags[i];
         	if (v == null || v.isEmpty())
-        		v = getMappedUserTagValue(account, customTags[i], tags);
+        		v = getMappedUserTagValue(lineItem.getPayerAccountId(), customTags[i], tags);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags[i]);
         	tags[i] = v;
@@ -229,9 +233,9 @@ public class BasicResourceService extends ResourceService {
     	return defaults == null ? null : defaults.get(tag);
     }
     
-    private String getMappedUserTagValue(Account account, String tag, String[] tags) {
+    private String getMappedUserTagValue(String payerAccount, String tag, String[] tags) {
     	// return the default user tag value for the specified account if there is one.
-    	Map<String, Map<Integer, Map<String, String>>> mappedTagsForAccount = mappedTags.get(account.getId());
+    	Map<String, Map<Integer, Map<String, String>>> mappedTagsForAccount = mappedTags.get(payerAccount);
     	if (mappedTagsForAccount == null)
     		return null;
     	
