@@ -1377,6 +1377,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
+    { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
     { name: "Zone" },
@@ -1384,7 +1385,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.groupBy = $scope.groupBys[4];
+  $scope.groupBy = $scope.groupBys[5];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1535,6 +1536,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.groupBys = [
     { name: "None" },
     { name: "TagKey" },
+    { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
@@ -1708,6 +1710,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
+    { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
@@ -1847,6 +1850,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "None" },
+    { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
@@ -1854,7 +1858,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "UsageType" },
     { name: "Tag" }
   ],
-  $scope.groupBy = $scope.groupBys[2];
+  $scope.groupBy = $scope.groupBys[3];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -2020,13 +2024,14 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
   $scope.init($scope);
   $scope.usageUnit = "";
   $scope.groupBys = [
+    { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
     { name: "Product" },
     { name: "Operation" },
     { name: "UsageType" }
   ],
-  $scope.groupBy = $scope.groupBys[2];
+  $scope.groupBy = $scope.groupBys[3];
   var startMonth = $scope.end.getUTCMonth() - 6;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -2406,11 +2411,12 @@ function tagconfigsCtrl($scope, $location, $http) {
         if (tagConfigsForDestKey.values) {
           // handle consolidations
           Object.keys(tagConfigsForDestKey.values).forEach(function(value) {
+            var valueAliases = tagConfigsForDestKey.values[value];
             tagConsolidations.push({
               key: destKey,
-              keyAliases: tagConfigsForDestKey.aliases.join(', '),
+              keyAliases: tagConfigsForDestKey.aliases ? tagConfigsForDestKey.aliases.join(', ') : '',
               value: value,
-              valueAliases: tagConfigsForDestKey.values[value].join(', ')
+              valueAliases: valueAliases ? valueAliases.join(', ') : ''
             })
           });
         }

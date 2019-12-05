@@ -18,6 +18,7 @@
 package com.netflix.ice.tag;
 
 public enum TagType {
+	OrgUnit,
     Account,
     Region,
     Zone,
