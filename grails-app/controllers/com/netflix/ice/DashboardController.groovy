@@ -28,8 +28,10 @@ import com.netflix.ice.tag.Region
 import com.netflix.ice.tag.UserTag
 import com.netflix.ice.tag.Zone
 import com.netflix.ice.tag.UsageType
+import com.netflix.ice.tag.OrganizationalUnit
 import com.netflix.ice.tag.Operation
 import com.netflix.ice.tag.ResourceGroup
+import com.netflix.ice.tag.Tag
 import com.netflix.ice.tag.TagType
 
 import org.joda.time.format.DateTimeFormatter
@@ -38,7 +40,6 @@ import org.joda.time.DateTimeZone
 import org.joda.time.DateTime
 import org.joda.time.Interval
 
-import com.netflix.ice.tag.Tag
 import com.netflix.ice.processor.Instances
 import com.netflix.ice.processor.TagCoverageMetrics
 import com.netflix.ice.reader.*;
@@ -515,6 +516,10 @@ class DashboardController {
 		sw.start();
 
 		TagType groupBy = query.has("groupBy") ? (query.getString("groupBy").equals("None") ? null : TagType.valueOf(query.getString("groupBy"))) : null;
+		boolean groupByOrgUnit = groupBy == TagType.OrgUnit;
+		if (groupByOrgUnit)
+			groupBy = TagType.Account;
+		
         boolean isCost = query.has("isCost") ? query.getBoolean("isCost") : true;
         boolean breakdown = query.has("breakdown") ? query.getBoolean("breakdown") : false;
         boolean showsps = query.has("showsps") ? query.getBoolean("showsps") : false;
@@ -691,6 +696,8 @@ class DashboardController {
 				data = consolidateFamilies(data);
 			else if (groupBy == TagType.Operation && consolidateGroups)
 				data = consolidateOperations(data);
+			else if (groupByOrgUnit)
+				data = consolidateAccounts(data);
 	        stats = getStats(data);
 		}
 		
@@ -922,6 +929,30 @@ class DashboardController {
 			double[] consolidated = result[riTag];
 			if (consolidated == null) {
 				result[riTag] = values;
+			}
+			else {
+				for (int i = 0; i < consolidated.length; i++)
+					consolidated[i] += values[i];
+			}
+		}
+		return result;
+	}
+	
+	// consolidate accounts down into organization units
+	private Map<Tag, double[]> consolidateAccounts(Map<Tag, double[]> data) {
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			if (entry.getKey() == Tag.aggregated) {
+				// Don't mess with the aggregated data series.
+				result[entry.getKey()] = entry.getValue();
+				continue;
+			}
+			
+			Tag ou = OrganizationalUnit.get(((Account)entry.getKey()).getParents());
+			double[] values = entry.getValue();
+			double[] consolidated = result[ou];
+			if (consolidated == null) {
+				result[ou] = values;
 			}
 			else {
 				for (int i = 0; i < consolidated.length; i++)
