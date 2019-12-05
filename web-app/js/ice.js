@@ -2411,11 +2411,12 @@ function tagconfigsCtrl($scope, $location, $http) {
         if (tagConfigsForDestKey.values) {
           // handle consolidations
           Object.keys(tagConfigsForDestKey.values).forEach(function(value) {
+            var valueAliases = tagConfigsForDestKey.values[value];
             tagConsolidations.push({
               key: destKey,
-              keyAliases: tagConfigsForDestKey.aliases.join(', '),
+              keyAliases: tagConfigsForDestKey.aliases ? tagConfigsForDestKey.aliases.join(', ') : '',
               value: value,
-              valueAliases: tagConfigsForDestKey.values[value].join(', ')
+              valueAliases: valueAliases ? valueAliases.join(', ') : ''
             })
           });
         }
