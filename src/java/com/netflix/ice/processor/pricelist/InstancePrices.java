@@ -181,7 +181,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
         		if (r != null)
         			region = r;
         		else {
-        			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr);
+        			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr + ", location: " + location);
         			hasErrors = true;
         			continue; // unsupported region
         		}

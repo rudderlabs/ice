@@ -33,6 +33,7 @@ public class Region extends Tag {
     public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US", "US East (Ohio)");
     public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US", "US West (N. California)");
     public static final Region US_WEST_2 = new Region("us-west-2", "USW2", "US", "US West (Oregon)");
+    public static final Region US_WEST_2_LAX_1 = new Region("us-west-2-lax-1", "LAX1", "US", "US West (Los Angeles)");
     public static final Region CA_CENTRAL_1 = new Region("ca-central-1", "CAN1", "CA", "Canada (Central)");
     public static final Region EU_WEST_1 = new Region("eu-west-1", "EU", "EU", "EU (Ireland)");
     public static final Region EU_CENTRAL_1 = new Region("eu-central-1", "EUC1", "EU", "EU (Frankfurt)");
@@ -57,6 +58,7 @@ public class Region extends Tag {
         regionsByShortName.put(US_EAST_2.shortName, US_EAST_2);
         regionsByShortName.put(US_WEST_1.shortName, US_WEST_1);
         regionsByShortName.put(US_WEST_2.shortName, US_WEST_2);
+        regionsByShortName.put(US_WEST_2_LAX_1.shortName, US_WEST_2_LAX_1);
         regionsByShortName.put(CA_CENTRAL_1.shortName, CA_CENTRAL_1);
         regionsByShortName.put(EU_WEST_1.shortName, EU_WEST_1);
         regionsByShortName.put(EU_CENTRAL_1.shortName, EU_CENTRAL_1);
@@ -88,6 +90,7 @@ public class Region extends Tag {
         regionsByName.put(US_EAST_2.name, US_EAST_2);
         regionsByName.put(US_WEST_1.name, US_WEST_1);
         regionsByName.put(US_WEST_2.name, US_WEST_2);
+        regionsByName.put(US_WEST_2_LAX_1.name, US_WEST_2_LAX_1);
         regionsByName.put(CA_CENTRAL_1.name, CA_CENTRAL_1);
         regionsByName.put(EU_WEST_1.name, EU_WEST_1);
         regionsByName.put(EU_CENTRAL_1.name, EU_CENTRAL_1);
