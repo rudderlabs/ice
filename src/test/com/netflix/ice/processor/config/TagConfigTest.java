@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.TagConfig;
 
 public class TagConfigTest {
 

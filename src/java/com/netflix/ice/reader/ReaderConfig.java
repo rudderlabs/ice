@@ -66,6 +66,7 @@ public class ReaderConfig extends Config {
     public final boolean familyRiBreakout;
     public final String dashboardNotice;
     public final boolean hourlyData;
+    public final Map<String, Map<String, TagConfig>> tagConfigs;
 
     /**
      *
@@ -91,6 +92,7 @@ public class ReaderConfig extends Config {
         this.startDate = new DateTime(dataConfig.getStartMonth(), DateTimeZone.UTC);
         this.userTags = dataConfig.getUserTags();
         this.familyRiBreakout = dataConfig.getFamilyRiBreakout();
+        this.tagConfigs = dataConfig.getTagConfigs();
         
         // update tagCoverage to level supported by processor
         switch (dataConfig.getTagCoverage()) {

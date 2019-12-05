@@ -25,13 +25,15 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
+
+
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.config.TagConfig;
+import com.netflix.ice.common.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -96,6 +98,12 @@ public class BasicResourceService extends ResourceService {
 		this.tagValuesInverted = Maps.newHashMap();
 		this.mappedTags = Maps.newHashMap();
 	}
+    
+    @Override
+    public Map<String, Map<String, TagConfig>> getTagConfigs() {
+    	return tagConfigs;
+    }
+
     
     @Override
     public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {

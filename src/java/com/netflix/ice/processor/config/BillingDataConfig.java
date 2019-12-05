@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
+import com.netflix.ice.common.TagConfig;
 
 /*
  *  BillingDataConfig loads and holds AWS account name and default tagging configuration data

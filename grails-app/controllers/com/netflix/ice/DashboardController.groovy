@@ -51,6 +51,7 @@ import org.json.JSONObject
 import com.netflix.ice.basic.TagCoverageDataManager
 import com.netflix.ice.common.ConsolidateType
 import com.netflix.ice.common.Instance
+import com.netflix.ice.common.TagConfig
 
 import org.joda.time.Hours
 import org.slf4j.Logger;
@@ -76,6 +77,7 @@ class DashboardController {
 		index: "GET",
 		getReservationOps: "GET",
 		getUtilizationOps: "GET",
+		getTagConfigs: "GET",
 		getAccounts: "GET",
 		getRegions: "GET",
 		getZones: "GET",
@@ -325,6 +327,18 @@ class DashboardController {
 		def result = [status: 200, data: data]
 		render result as JSON		
 	}
+	
+	def getTagConfigs = {
+		Map<String, Map<String, TagConfig>> tagConfigs = config.tagConfigs;
+		Map<String, Map<String, TagConfig>> data = Maps.newHashMap();
+		for (String payerId: tagConfigs.keySet()) {
+			Account payerAccount = config.accountService.getAccountById(payerId);
+			String payerStr = payerAccount.getIceName() + "(" + payerAccount.getId() + ")";
+			data.put(payerStr, tagConfigs.get(payerId));
+		}
+		def result = [status: 200, data: data]
+		render result as JSON		
+	}
 
     def download = {
 		String dashboard = params.containsKey("dashboard") ? params.get("dashboard") : "";
@@ -486,6 +500,8 @@ class DashboardController {
 	def resourceinfo = {}
 	
 	def accounts = {}
+	
+	def tagconfigs = {}
 
     private Map doGetData(JSONObject query) {
 		logger.debug("******** doGetData: called");

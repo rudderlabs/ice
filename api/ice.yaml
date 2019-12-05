@@ -84,8 +84,31 @@ paths:
         '200':
           description: getAccounts response
           schema:
-            $ref: '#/definitions/NamesResponse'
-
+            type: object
+            properties:
+              status:
+                type: number
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    awsName:
+                      type: string
+                    id:
+                      type: string
+                    email:
+                      type: string
+                    parents:
+                      type: array
+                      items:
+                        type: string
+                    status:
+                      type: string
+                    tags:
+                      type: object                                                
   /getRegions:
     get:
       description: Get the list of regions used by the supplied accounts.
@@ -454,5 +477,11 @@ paths:
                   type: string
         '404':
           description: not found error
+  /getTagConfigs:
+    get:
+      description: Get the tag configuration settings used by the ICE processor
+      responses:
+        '200':
+          description: tag configurations
 
 

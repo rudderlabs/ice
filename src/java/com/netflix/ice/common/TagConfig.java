@@ -15,7 +15,7 @@
  *     limitations under the License.
  *
  */
-package com.netflix.ice.processor.config;
+package com.netflix.ice.common;
 
 import java.util.List;
 import java.util.Map;
@@ -62,5 +62,8 @@ public class TagConfig {
 		this.values = values;
 	}
 
+	public Map<String, Map<String, List<String>>> getMapped() {
+		return mapped;
+	}
 
 }
