@@ -34,14 +34,17 @@ public class WorkBucketDataConfig {
     private final List<Account> accounts;
     private final Map<String, List<String>> zones;
     private final TagCoverage tagCoverage;
+    private final Map<String, Map<String, TagConfig>> tagConfigs;
 	
-	public WorkBucketDataConfig(String startMonth, List<Account> accounts, Map<String, List<String>> zones, List<String> userTags, boolean familyRiBreakout, TagCoverage tagCoverage) {
+	public WorkBucketDataConfig(String startMonth, List<Account> accounts, Map<String, List<String>> zones, List<String> userTags,
+			boolean familyRiBreakout, TagCoverage tagCoverage, Map<String, Map<String, TagConfig>> tagConfigs) {
 		this.startMonth = startMonth;
 		this.accounts = accounts;
 		this.zones = zones;
 		this.userTags = userTags;
 		this.familyRiBreakout = familyRiBreakout;
 		this.tagCoverage = tagCoverage;
+		this.tagConfigs = tagConfigs;
 	}
 	
 	public WorkBucketDataConfig(String json) {
@@ -53,6 +56,7 @@ public class WorkBucketDataConfig {
 		this.userTags = c.userTags;
 		this.familyRiBreakout = c.familyRiBreakout;
 		this.tagCoverage = c.tagCoverage;
+		this.tagConfigs = c.tagConfigs;
 	}
 
 	public String getStartMonth() {
@@ -77,6 +81,10 @@ public class WorkBucketDataConfig {
 	
 	public TagCoverage getTagCoverage() {
 		return tagCoverage;
+	}
+	
+	public Map<String, Map<String, TagConfig>> getTagConfigs() {
+		return tagConfigs;
 	}
 	
 	public String toJSON() {

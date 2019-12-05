@@ -18,7 +18,6 @@
 package com.netflix.ice.common;
 
 import com.amazonaws.services.ec2.model.Tag;
-import com.netflix.ice.processor.config.TagConfig;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
@@ -43,6 +42,8 @@ public abstract class ResourceService {
     abstract public String[] getCustomTags();
     abstract public List<String> getUserTags();
 
+    abstract public Map<String, Map<String, TagConfig>> getTagConfigs();
+    
     /**
      * Get resource group. Subclass can maintain a mapping of resource ids and resource group names.
      * Users can also choose to add user-defined tags in the billing file. E.g. in SampleMapDbResourceService,

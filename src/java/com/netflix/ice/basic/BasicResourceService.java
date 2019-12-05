@@ -25,13 +25,15 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
+
+
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
-import com.netflix.ice.processor.config.TagConfig;
+import com.netflix.ice.common.TagConfig;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -59,8 +61,18 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
     
+    // Map containing values to assign to destination tags based on a match with a value
+    // in a source tag. These are returned if the requested resource doesn't have a tag value.
+    private Map<String, Map<String, Map<Integer, Map<String, String>>>> mappedTags;
+    //           ^            ^           ^           ^
+    //           |            |           |           +-- match
+    //           |            |           +-- source tag index
+    //           |            +-- destination tag
+    //           +-- payer account ID
+    
+
     // Map of default user tag values for each account. These are returned if the requested resource doesn't
-    // have a tag value. Outer key is the account ID, inner map key is the tag name.
+    // have a tag value nor a mapped value. Outer key is the account ID, inner map key is the tag name.
     private Map<String, Map<String, String>> defaultTags;
 
     public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags) {
@@ -84,7 +96,14 @@ public class BasicResourceService extends ResourceService {
 		this.defaultTags = Maps.newHashMap();
 		this.tagConfigs = Maps.newHashMap();
 		this.tagValuesInverted = Maps.newHashMap();
+		this.mappedTags = Maps.newHashMap();
 	}
+    
+    @Override
+    public Map<String, Map<String, TagConfig>> getTagConfigs() {
+    	return tagConfigs;
+    }
+
     
     @Override
     public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {
@@ -119,6 +138,31 @@ public class BasicResourceService extends ResourceService {
 			indecies.put(config.name, invertedIndex);
 		}
 		this.tagValuesInverted.put(payerAccountId, indecies);
+		
+		// Create the maps setting tags based on the values of other tags
+		Map<String, Map<Integer, Map<String, String>>> mapped = Maps.newHashMap();
+		for (TagConfig config: tagConfigs) {
+			if (config.mapped == null || config.mapped.isEmpty())
+				continue;
+			
+			Map<Integer, Map<String, String>> tagSources = Maps.newHashMap();
+			for (String mappedValue: config.mapped.keySet()) {
+				Map<String, List<String>> configValueMaps = config.mapped.get(mappedValue);
+				for (String sourceTag: configValueMaps.keySet()) {
+					Integer sourceTagIndex = tagResourceGroupIndecies.get(sourceTag);
+					Map<String, String> mappedValues = tagSources.get(sourceTagIndex);
+					if (mappedValues == null) {
+						mappedValues = Maps.newHashMap();
+						tagSources.put(sourceTagIndex, mappedValues);
+					}
+					for (String target: configValueMaps.get(sourceTag)) {
+						mappedValues.put(target.toLowerCase(), mappedValue);
+					}
+				}
+			}
+			mapped.put(config.name, tagSources);
+		}
+		this.mappedTags.put(payerAccountId, mapped);
     }
 
 	@Override
@@ -146,7 +190,13 @@ public class BasicResourceService extends ResourceService {
     	String[] tags = new String[customTags.length];
        	boolean hasTag = false;
        	for (int i = 0; i < customTags.length; i++) {
-        	String v = getUserTagValue(lineItem, customTags[i]);
+       		tags[i] = getUserTagValue(lineItem, customTags[i]);
+       	}
+       	
+       	for (int i = 0; i < customTags.length; i++) {
+       		String v = tags[i];
+        	if (v == null || v.isEmpty())
+        		v = getMappedUserTagValue(lineItem.getPayerAccountId(), customTags[i], tags);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags[i]);
         	tags[i] = v;
@@ -189,6 +239,29 @@ public class BasicResourceService extends ResourceService {
     	// return the default user tag value for the specified account if there is one.
     	Map<String, String> defaults = defaultTags.get(account.getId());
     	return defaults == null ? null : defaults.get(tag);
+    }
+    
+    private String getMappedUserTagValue(String payerAccount, String tag, String[] tags) {
+    	// return the default user tag value for the specified account if there is one.
+    	Map<String, Map<Integer, Map<String, String>>> mappedTagsForAccount = mappedTags.get(payerAccount);
+    	if (mappedTagsForAccount == null)
+    		return null;
+    	
+    	Map<Integer, Map<String, String>> sourceTags = mappedTagsForAccount.get(tag);
+    	if (sourceTags == null)
+    		return null;
+    	
+    	for (Integer sourceTagIndex: sourceTags.keySet()) {
+    		String have = tags[sourceTagIndex];
+    		if (have == null)
+    			continue;
+    		Map<String, String> values = sourceTags.get(sourceTagIndex);
+    		String v = values.get(have.toLowerCase());
+    		if (v != null)
+    			return v;
+    	}
+    	
+    	return null;
     }
     
     @Override

@@ -58,7 +58,7 @@ public class WorkBucketDataConfigTest {
 		userTags.add("Tag2");
 		userTags.add("Tag3");
 		
-		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, false, TagCoverage.basic);
+		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, false, TagCoverage.basic, null);
 		
 		String json = wbdc.toJSON();
 		WorkBucketDataConfig got = new WorkBucketDataConfig(json);

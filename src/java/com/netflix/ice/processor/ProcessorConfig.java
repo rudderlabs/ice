@@ -328,7 +328,7 @@ public class ProcessorConfig extends Config {
     		zones.put(r.name, zlist);
     	}
     	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), zones,
-    			resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout, getTagCoverage());
+    			resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout, getTagCoverage(), resourceService.getTagConfigs());
         File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);

@@ -2218,7 +2218,7 @@ function resourceInfoCtrl($scope, $location, $http) {
   }
 }
 
-function accountsCtrl($scope, $location, $http, usage_db) {
+function accountsCtrl($scope, $location, $http) {
   $scope.accounts = [];
   $scope.revs = {
     name: false,
@@ -2311,5 +2311,114 @@ function accountsCtrl($scope, $location, $http, usage_db) {
       }
     }
     $scope.order($scope.accounts, 'name');
+  });
+}
+
+function tagconfigsCtrl($scope, $location, $http) {
+  $scope.payers = [];
+  $scope.tagConfigs = {};
+  $scope.mappedValues = {};
+  $scope.consolidations = {};
+  $scope.revs = {
+    destKey: false,
+    destValue: false,
+    srcKey: false,
+    srcValue: false,
+    key: false,
+    value: false
+  };
+  $scope.predicate = null;
+
+  $scope.order = function (data, name) {
+
+    if ($scope.predicate != name) {
+      $scope.rev = $scope.revs[name];
+      $scope.predicate = name;
+    }
+    else {
+      $scope.rev = $scope.revs[name] = !$scope.revs[name];
+    }
+
+    var compare = function (a, b) {
+      if (a[name] < b[name])
+        return $scope.rev ? 1 : -1;
+      if (a[name] > b[name])
+        return $scope.rev ? -1 : 1;
+      return 0;
+    }
+
+    data.sort(compare);
+  }
+
+  var getTagconfigs = function ($scope, fn) {
+    var params = {};
+
+    $http({
+      method: "GET",
+      url: "getTagConfigs",
+      params: params
+    }).success(function (result) {
+      if (result.status === 200 && result.data) {
+        $scope.tagConfigs = result.data;
+        if (fn)
+          fn(result.data);
+      }
+    }).error(function (result, status) {
+      if (status === 401 || status === 0)
+        $window.location.reload();
+    });
+  }
+
+  getTagconfigs($scope, function (data) {
+    $scope.mappedValues = {};
+    var tagConfigsForPayer;
+    var values;
+    var tagConsolidations;
+    Object.keys($scope.tagConfigs).forEach(function(payer) {
+      $scope.payers.push(payer);
+      tagConfigsForPayer = $scope.tagConfigs[payer];
+      values = [];
+      $scope.mappedValues[payer] = values;
+      tagConsolidations = [];
+      $scope.consolidations[payer] = tagConsolidations;
+      var tagConfigsForDestKey;
+      Object.keys(tagConfigsForPayer).forEach(function(destKey) {
+        tagConfigsForDestKey = tagConfigsForPayer[destKey];
+        if (tagConfigsForDestKey.mapped) {
+          // handle mappings
+          var tagConfigsForDestValue;
+          Object.keys(tagConfigsForDestKey.mapped).forEach(function(destValue) {
+            tagConfigsForDestValue = tagConfigsForDestKey.mapped[destValue];
+            var tagConfigsForSrcKey;
+            Object.keys(tagConfigsForDestValue).forEach(function(srcKey) {
+              var srcValues = tagConfigsForDestValue[srcKey];
+              for (var i = 0; i < srcValues.length; i++) {
+                values.push({
+                  destKey: destKey,
+                  destValue: destValue,
+                  srcKey: srcKey,
+                  srcValue: srcValues[i]
+                });
+              }
+            });
+          });
+        }
+        if (tagConfigsForDestKey.values) {
+          // handle consolidations
+          Object.keys(tagConfigsForDestKey.values).forEach(function(value) {
+            tagConsolidations.push({
+              key: destKey,
+              keyAliases: tagConfigsForDestKey.aliases.join(', '),
+              value: value,
+              valueAliases: tagConfigsForDestKey.values[value].join(', ')
+            })
+          });
+        }
+      });
+      $scope.order(values, 'srcValue');
+      $scope.order(values, 'srcKey');
+      $scope.order(values, 'destValue');
+      $scope.order(values, 'destKey');
+    });
   });
 }
