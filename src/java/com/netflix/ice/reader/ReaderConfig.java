@@ -66,7 +66,7 @@ public class ReaderConfig extends Config {
     public final boolean familyRiBreakout;
     public final String dashboardNotice;
     public final boolean hourlyData;
-    public final Map<String, Map<String, TagConfig>> tagConfigs;
+    public Map<String, Map<String, TagConfig>> tagConfigs;
 
     /**
      *
@@ -236,6 +236,7 @@ public class ReaderConfig extends Config {
     	
     	accountService.updateAccounts(config.getAccounts());
     	updateZones(config.getZones());
+        tagConfigs = config.getTagConfigs();
         productService.initReader(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }
     

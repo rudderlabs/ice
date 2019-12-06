@@ -402,11 +402,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
                 }
-                lineNumber++;
-
-                if (lineNumber % 500000 == 0) {
-                    logger.info("processed " + lineNumber + " lines...");
-                }
             }
         }
         catch (IOException e ) {

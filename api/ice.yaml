@@ -311,7 +311,7 @@ paths:
               groupBy:
                 description: Dimension to use for aggregation buckets (default = none)
                 type: string
-                enum: [None, Account, Region, Zone, Product, Operation, UsageType, Tag]
+                enum: [None, OrgUnit, Account, Region, Zone, Product, Operation, UsageType, Tag]
               consolidate:
                 type: string
                 description: default = hourly

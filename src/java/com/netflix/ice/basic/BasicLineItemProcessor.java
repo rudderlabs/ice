@@ -79,6 +79,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         if (product.isSupport()) {
         	// Don't try and deal with support. Line items have lots of craziness
+        	logger.info("Support: " + lineItem);
         	return true;
         }
         
