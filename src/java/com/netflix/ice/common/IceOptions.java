@@ -144,7 +144,7 @@ public class IceOptions {
     public static final String CUSTOM_TAGS = "ice.customTags";
 
     /**
-     * User can configure their additional tags to add to custom tags displayed in code coverage dashboard.
+     * User can configure their additional tags to add to custom tags displayed in tag coverage dashboard.
      */
     public static final String ADDITIONAL_TAGS = "ice.additionalTags";
 

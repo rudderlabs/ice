@@ -34,6 +34,7 @@
 	      <th ng-click="order(mappedValues[payer], 'destValue')">Destination Value</th>
 	      <th ng-click="order(mappedValues[payer], 'srcKey')">Source Tag</th>
 	      <th ng-click="order(mappedValues[payer], 'srcValue')">Source Value</th>
+	      <th>Account Filter</th>
 	    </tr>
 	  </thead>
 	  <tbody>
@@ -42,6 +43,7 @@
 	      <td>{{mappedValue.destValue}}</td>
 	      <td>{{mappedValue.srcKey}}</td>
 	      <td>{{mappedValue.srcValue}}</td>
+	      <td>{{mappedValue.filter}}</td>
 	    </tr>
 	  </tbody>
 	</table>

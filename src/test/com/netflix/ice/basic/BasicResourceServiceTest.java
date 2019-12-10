@@ -68,13 +68,13 @@ public class BasicResourceServiceTest {
 		String[] customTags = new String[]{
 				"Environment", "Product", "CostCenter"
 			};
+		BasicAccountService as = new BasicAccountService();
 		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
 		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
 		Map<String, String> defaultTags = Maps.newHashMap();
 		defaultTags.put("CostCenter", "1234");
 		rs.putDefaultTags("123456789012", defaultTags);
 		
-		BasicAccountService as = new BasicAccountService();
 		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI" + ResourceGroup.separator + "1234", resource.name);
 	}
@@ -267,23 +267,25 @@ public class BasicResourceServiceTest {
 	}
 	
 	@Test
-	public void testGetTagGroupComputed() throws JsonParseException, JsonMappingException, IOException {
+	public void testGetTagGroupMapped() throws JsonParseException, JsonMappingException, IOException {
 		String yaml = "" +
 		"name: Env\n" +
 		"aliases: [Environment]\n" +
 		"values:\n" +
 		"  Prod: [production]\n" +
 		"mapped:\n" +
-		"  QA:\n" +
-		"    Product: [serviceAPI]\n" +
-		"  1234567:\n" +
-		"    Product: [webServer]\n";
+		"  - maps:\n" +
+		"      QA:\n" +
+		"        Product: [serviceAPI]\n" +
+		"      1234567:\n" +
+		"        Product: [webServer]\n";
 
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		TagConfig tc = new TagConfig();
 		tc = mapper.readValue(yaml, tc.getClass());
 		List<TagConfig> tagConfigs = Lists.newArrayList(tc);
 		
+		BasicAccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{});
 		rs.setTagConfigs("123456789012", tagConfigs);
@@ -304,13 +306,12 @@ public class BasicResourceServiceTest {
 		};
 
 		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
-
-		BasicAccountService as = new BasicAccountService();
 		
 		// Test with mapped value
 		li.setItems(item);
 		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
 		// Test with value on resource
 		item[3] = "test";
 		li.setItems(item);
@@ -323,5 +324,36 @@ public class BasicResourceServiceTest {
 		li.setItems(item);
 		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "", resource.name);
+		
+		// Test include filtering
+		String yamlWithFilters = yaml +
+				"    include: [123456789012]\n";
+		tc = new TagConfig();
+		tc = mapper.readValue(yamlWithFilters, tc.getClass());
+		tagConfigs = Lists.newArrayList(tc);
+		rs.setTagConfigs("123456789012", tagConfigs);
+		item[5] = "serviceAPI";
+		li.setItems(item);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		// Test exclude filtering
+		yamlWithFilters = yaml +
+				"    exclude: [123456789012]\n";
+		tc = new TagConfig();
+		tc = mapper.readValue(yamlWithFilters, tc.getClass());
+		tagConfigs = Lists.newArrayList(tc);
+		rs.setTagConfigs("123456789012", tagConfigs);
+		li.setItems(item);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 	}
 }

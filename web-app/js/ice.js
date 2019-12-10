@@ -2391,21 +2391,35 @@ function tagconfigsCtrl($scope, $location, $http) {
         tagConfigsForDestKey = tagConfigsForPayer[destKey];
         if (tagConfigsForDestKey.mapped) {
           // handle mappings
-          var tagConfigsForDestValue;
-          Object.keys(tagConfigsForDestKey.mapped).forEach(function(destValue) {
-            tagConfigsForDestValue = tagConfigsForDestKey.mapped[destValue];
-            var tagConfigsForSrcKey;
-            Object.keys(tagConfigsForDestValue).forEach(function(srcKey) {
-              var srcValues = tagConfigsForDestValue[srcKey];
-              for (var i = 0; i < srcValues.length; i++) {
-                values.push({
-                  destKey: destKey,
-                  destValue: destValue,
-                  srcKey: srcKey,
-                  srcValue: srcValues[i]
-                });
+          var tagConfigsForMapsItem;
+          Object.keys(tagConfigsForDestKey.mapped).forEach(function(i) {
+            tagConfigsForMapsItem = tagConfigsForDestKey.mapped[i];
+            if (tagConfigsForMapsItem.maps) {
+              var tagConfigsForDestValue;
+              var filter = 'None';
+              if (tagConfigsForMapsItem.include) {
+                filter = 'Include: ' + tagConfigsForMapsItem.include.join(", ");
               }
-            });
+              if (tagConfigsForMapsItem.exclude) {
+                filter = 'Exclude: ' + tagConfigsForMapsItem.exclude.join(", ");
+              }
+              Object.keys(tagConfigsForMapsItem.maps).forEach(function(destValue) {
+                tagConfigsForDestValue = tagConfigsForMapsItem.maps[destValue];
+                var tagConfigsForSrcKey;
+                Object.keys(tagConfigsForDestValue).forEach(function(srcKey) {
+                  var srcValues = tagConfigsForDestValue[srcKey];
+                  for (var i = 0; i < srcValues.length; i++) {
+                    values.push({
+                      destKey: destKey,
+                      destValue: destValue,
+                      srcKey: srcKey,
+                      srcValue: srcValues[i],
+                      filter: filter
+                    });
+                  }
+                });  
+              });
+            }
           });
         }
         if (tagConfigsForDestKey.values) {

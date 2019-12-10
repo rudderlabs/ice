@@ -356,7 +356,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	@Override
 	public Region getProductRegion() {
 		String region = items[productRegionIndex];
-		return (region.isEmpty() || region.equals("global")) ? Region.US_EAST_1 : Region.getRegionByName(region);
+		return region.isEmpty() ? Region.US_EAST_1 : Region.getRegionByName(region);
 	}
 
 	public String getPricingUnit() {

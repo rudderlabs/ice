@@ -45,8 +45,10 @@ public class TagConfigTest {
 		"values:\n" +
 		"  Prod: [production]\n" +
 		"mapped:\n" +
-		"  QA:\n" +
-		"    Application: [test-web-server]\n";
+		"  - maps:\n" +
+		"      QA:\n" +
+		"        Application: [test-web-server]\n" +
+		"    include: [123456789012]\n";
 
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		TagConfig tc = new TagConfig();
@@ -60,10 +62,17 @@ public class TagConfigTest {
 		assertEquals("wrong number of value aliases", 1, tc.values.get("Prod").size());
 		assertEquals("wrong value alias", "production", tc.values.get("Prod").get(0));
 		assertEquals("wrong number of computed values", 1, tc.mapped.size());
-		assertTrue("wrong computed value name", tc.mapped.containsKey("QA"));
-		assertEquals("wrong number of matches", 1, tc.mapped.get("QA").size());
-		assertTrue("wrong computed value key", tc.mapped.get("QA").containsKey("Application"));
-		assertEquals("wrong number of computed value key matches", 1, tc.mapped.get("QA").get("Application").size());
-		assertEquals("wrong computed value mapped value", "test-web-server", tc.mapped.get("QA").get("Application").get(0));		
+		
+		Map<String, Map<String, List<String>>> maps = tc.mapped.get(0).maps;
+		assertTrue("wrong computed value name", maps.containsKey("QA"));
+		assertEquals("wrong number of matches", 1, maps.get("QA").size());
+		assertTrue("wrong computed value key", maps.get("QA").containsKey("Application"));
+		assertEquals("wrong number of computed value key matches", 1, maps.get("QA").get("Application").size());
+		assertEquals("wrong computed value mapped value", "test-web-server", maps.get("QA").get("Application").get(0));
+		
+		List<String> include = tc.mapped.get(0).include;
+		assertTrue("No include map", include != null);
+		assertEquals("Incorrect include accounts list size", 1, include.size());
+		assertEquals("Incorrect include account", "123456789012", include.get(0));
 	}
 }

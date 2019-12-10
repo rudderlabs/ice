@@ -231,7 +231,22 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
 
     public Collection<Region> getRegions(Interval interval, TagLists tagLists) {
-        Set<Region> result = Sets.newTreeSet();
+    	class RegionComparator implements Comparator<Region> {
+
+			@Override
+			public int compare(Region o1, Region o2) {
+				if (o1 == o2)
+					return 0;
+				if (o1 == Region.GLOBAL)
+					return -1;
+				if (o2 == Region.GLOBAL)
+					return 1;
+				
+				return o1.compareTo(o2);
+			}    		
+    	}
+    	
+        Set<Region> result = Sets.newTreeSet(new RegionComparator());
         Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
 
         for (TagGroup tagGroup: tagGroupsInRange) {

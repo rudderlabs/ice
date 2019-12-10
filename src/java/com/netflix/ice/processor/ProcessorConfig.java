@@ -31,6 +31,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
+import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.config.BillingDataConfig;
@@ -110,7 +111,6 @@ public class ProcessorConfig extends Config {
             AWSCredentialsProvider credentialsProvider,
             ProductService productService,
             ReservationService reservationService,
-            ResourceService resourceService,
             PriceListService priceListService,
             boolean compress) throws Exception {
 
@@ -128,8 +128,12 @@ public class ProcessorConfig extends Config {
 
         this.reservationService = reservationService;
         this.priceListService = priceListService;
-        this.resourceService = resourceService;
-
+        
+		String customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "");
+		String additionalTags = properties.getProperty(IceOptions.ADDITIONAL_TAGS, "");
+        resourceService = customTags.isEmpty() ? null :
+        	new BasicResourceService(productService, customTags.split(","), additionalTags.split(","));
+        
     	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);
         processBillingDataConfig(accountConfigs);
@@ -137,8 +141,8 @@ public class ProcessorConfig extends Config {
         for (AccountConfig ac: accountConfigs.values())
         	logger.info("  Account " + ac.toString());
         	
-        this.accountService = new BasicAccountService(accountConfigs);
-
+        accountService = new BasicAccountService(accountConfigs);
+               
         if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
         this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
@@ -472,10 +476,12 @@ public class ProcessorConfig extends Config {
         		}
         		accountConfigs.put(account.id, account);
         		logger.info("Adding billing data config account: " + account.toString());
-            	resourceService.putDefaultTags(account.id, account.tags);        			
+        		if (resourceService != null)
+        			resourceService.putDefaultTags(account.id, account.tags);        			
         	}
         	
-        	resourceService.setTagConfigs(bb.accountId, billingDataConfig.tags);
+        	if (resourceService != null)
+        		resourceService.setTagConfigs(bb.accountId, billingDataConfig.tags);
         	List<KubernetesConfig> k = billingDataConfig.getKubernetes();
         	if (k != null)
         		kubernetesConfigs.addAll(k);

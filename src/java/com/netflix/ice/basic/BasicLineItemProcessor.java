@@ -107,7 +107,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return false;
     }
     
-    protected String getUsageTypeStr(String usageTypeStr) {
+    protected String getUsageTypeStr(String usageTypeStr, Product product) {
+    	if (product.isCloudFront()) {
+    		// Don't strip the edge location from the usage type
+    		return usageTypeStr;
+    	}
         int index = usageTypeStr.indexOf("-");
         String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
         Region region = regionShortName.isEmpty() ? null : Region.getRegionByShortName(regionShortName);
@@ -498,7 +502,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         InstanceOs os = null;
         InstanceDb db = null;
 
-        String usageTypeStr = getUsageTypeStr(lineItem.getUsageType());
+        String usageTypeStr = getUsageTypeStr(lineItem.getUsageType(), product);
         final String operationStr = lineItem.getOperation();
         boolean reservationUsage = lineItem.isReserved();
 

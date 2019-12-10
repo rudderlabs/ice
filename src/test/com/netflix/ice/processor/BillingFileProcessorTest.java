@@ -166,10 +166,9 @@ public class BillingFileProcessorTest {
 		            Properties properties,
 		            ProductService productService,
 		            ReservationService reservationService,
-		            ResourceService resourceService,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, null, productService, reservationService, resourceService, priceListService, compress);
+				super(properties, null, productService, reservationService, priceListService, compress);
 			}
 			
 			@Override
@@ -198,7 +197,6 @@ public class BillingFileProcessorTest {
 										properties,
 										productService,
 										reservationService,
-										resourceService,
 										priceListService,
 										false);
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
