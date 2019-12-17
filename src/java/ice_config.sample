@@ -1,5 +1,5 @@
 #
-# Example YAML config file for account, tag, and kubernetes settings
+# Example YAML config file for account, tag, kubernetes, and postprocrules settings
 #
 accounts:
   - name: account1
@@ -57,3 +57,50 @@ kubernetes:
     # assign the following kubernetes labels to the matching user tags
     tags: [ userTag1, userTag2 ]
 
+#
+#
+# PostProcessor rules
+#
+# Allows generation of arbitrary cost and usage data from the existing cost and usage data
+# This is useful to compute out-of-cycle-billing data based on usage for privately negotiated
+# pricing not reflected in the cost and usage reports.
+#
+postprocrules:
+  - name: OCBProduct
+    start: <start-month> # e.g. 2018-10
+    end: <end-month> # e.g. 2019-10
+    operands:
+      #
+      # Operands require a type of "cost" or "usage" to specify which data collection to use
+      # The remaining optional values are as follows:
+      #   accounts: [list-of-account-ids]
+      #   regions: [list-of-regions]
+      #   zones: [list-of-zones]
+      #   product: <product service code>
+      #   operation: <regex>  regex with 1 capture group, e.g. (..)-Operation[12].*
+      #   usageType: <regex>  regex with 1 capture group, e.g. (..)-UsageType[12].*
+      #
+      # There must be one "in" and one "out" operand. The in operand drives what data is
+      # captured to apply the calculations. Other operands can be provided that have
+      # whatever names you chose. The "in" and other operands can be referenced in the
+      # "out" expression by enclosing the operand name in "${}".
+      # The reserved name "group" is assigned the value of the capture group for the
+      # "in" operation and usageType regex expressions. It can be used in the "out"
+      # operand as well as other optional operands.
+      # Values not specified for additional operands and copied from the "in" parameter.
+      #
+      out: # required output operand
+        type: cost
+        product: <Product Service Code>
+        usageType: ${group}-Requests
+      in:
+        type: usage
+        product: <Product Service Code>
+        usageType: (..)-Requests-[12].*
+      data:
+        type: usage
+        usageType: ${group}-DataTransfer-Out-Bytes
+    #
+    # out is the computation that gets evaluated to produce a value saved using the out operand specification.
+    #
+    out: <expression>  # e.g. ${in} - (${data} * 1024 / 5) * 0.01 / 1000

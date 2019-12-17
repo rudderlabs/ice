@@ -199,17 +199,17 @@ public class BillingFileProcessorTest {
 										reservationService,
 										priceListService,
 										false);
+		Long startMilli = config.startDate.getMillis();
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
-		bfp.init();
+		bfp.init(startMilli);
 		
 		// Debug settings
 		//bfp.reservationProcessor.setDebugHour(0);
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
-		CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, null, productService);
+		CostAndUsageData costAndUsageData = new CostAndUsageData(startMilli, null, null, TagCoverage.none, null, productService);
         Instances instances = new Instances(null, null, null);
         
-		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		ReservationCapacityPoller rcp = new ReservationCapacityPoller(config);
 		rcp.updateReservations(reservations, config.accountService, startMilli, productService, resourceService, reservationService);

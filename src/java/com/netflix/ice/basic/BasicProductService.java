@@ -170,7 +170,7 @@ public class BasicProductService implements ProductService {
     	// Look up the product by the AWS service code
     	Product product = productsByServiceCode.get(serviceCode);
     	if (product == null) {
-    		product = new Product(serviceCode, serviceCode, null);
+    		product = new Product(serviceCode, serviceCode, Source.code);
     		product = addProduct(product);
             logger.warn("created product by service code: " + serviceCode + ", name: "+ product.name + ", code: " + product.getServiceCode());
     	}
@@ -193,7 +193,7 @@ public class BasicProductService implements ProductService {
     public Product getProductByName(String name) {
         Product product = productsByName.get(name);
         if (product == null) {
-            product = new Product(name, name.replace(" ", "_"), null);
+            product = new Product(name, name.replace(" ", "_"), Source.code);
             product = addProduct(product);
             logger.warn("created product by name: " + product.name + " for code: " + product.getServiceCode());
         }

@@ -45,7 +45,6 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
     private ProcessorConfig config;
     private LineItemProcessor lineItemProcessor;
     private DetailedBillingReservationProcessor reservationProcessor;
-    private long startMilli;
     private long endMilli;
 
 	public DetailedBillingReportProcessor(ProcessorConfig config) throws IOException {
@@ -122,7 +121,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 			CostAndUsageData costAndUsageData,
 		    Instances instances) throws Exception {
 		
-		startMilli = endMilli = dataTime.getMillis();
+		endMilli = dataTime.getMillis();
 		reservationProcessor.clearBorrowers();
 		
         processBillingZipFile(dataTime, file, report.hasTags(), report.billingBucket.rootName, costAndUsageData, instances, report.getBillingBucket().accountId);
@@ -231,7 +230,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
     private void processOneLine(List<String[]> delayedItems, String root, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
 
-        LineItemProcessor.Result result = lineItemProcessor.process(startMilli, delayedItems == null, root, false, lineItem, costAndUsageData, instances, 0.0);
+        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, false, lineItem, costAndUsageData, instances, 0.0);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

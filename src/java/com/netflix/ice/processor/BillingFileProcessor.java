@@ -28,6 +28,7 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
+import com.netflix.ice.processor.postproc.PostProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation.ReservationOperation;
@@ -84,7 +85,7 @@ public class BillingFileProcessor extends Poller {
         
         for (DateTime dataTime: reportsToProcess.keySet()) {
             startMilli = endMilli = dataTime.getMillis();
-            init();
+            init(startMilli);
             
             long lastProcessed = lastProcessTime(AwsUtils.monthDateFormat.print(dataTime));
             long processTime = new DateTime(DateTimeZone.UTC).getMillis();
@@ -169,6 +170,10 @@ public class BillingFileProcessor extends Poller {
             
             KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
+            
+            // Run the post processor
+            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService);
+            pp.process(costAndUsageData);
 
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
@@ -177,7 +182,7 @@ public class BillingFileProcessor extends Poller {
             config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(startMilli, config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
+            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
             
             logger.info("archiving instance data...");
             archiveInstances();
@@ -246,8 +251,8 @@ public class BillingFileProcessor extends Poller {
     }
     
 
-    void init() {
-    	costAndUsageData = new CostAndUsageData(config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(),
+    void init(long startMilli) {
+    	costAndUsageData = new CostAndUsageData(startMilli, config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(),
     			config.getTagCoverage(), config.accountService, config.productService);
         instances = new Instances(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }

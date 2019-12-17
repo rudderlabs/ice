@@ -515,7 +515,7 @@ public class BasicLineItemProcessorTest {
 		
 		public void runProcessTest(LineItem lineItem, String reportName, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
-			CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, accountService, productService);
+			CostAndUsageData costAndUsageData = new CostAndUsageData(startMilli, null, null, TagCoverage.none, accountService, productService);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
 			
@@ -525,14 +525,14 @@ public class BasicLineItemProcessorTest {
 				costAndUsageData.getUsage(null).getData(0);
 			}
 	        
-			Result result = lineItemProc.process(startMilli, delayed, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+			Result result = lineItemProc.process(delayed, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
 			
 			if (result == Result.delay) {
 				// Expand the data by number of hours in month
 				costAndUsageData.getUsage(null).getData(daysInMonth * 24 - 1);
 				costAndUsageData.getCost(null).getData(daysInMonth * 24 - 1);
-				result = lineItemProc.process(startMilli, true, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+				result = lineItemProc.process(true, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
 			}
 			
 			// Check usage data

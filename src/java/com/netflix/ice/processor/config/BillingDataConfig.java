@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
 import com.netflix.ice.common.TagConfig;
+import com.netflix.ice.processor.postproc.RuleConfig;
 
 /*
  *  BillingDataConfig loads and holds AWS account name and default tagging configuration data
@@ -91,6 +92,23 @@ kubernetes:
         value: Prod
         patterns: [ ".*prod.*", ".*production.*", ".*prd.*" ]
     tags: [ userTag1, userTag2 ]
+postprocrules:
+  - name: ComputedCost
+    product: Product
+    start: 2019-11
+    end: 2022-11
+    operands:
+      out:
+        type: cost
+        product: ComputedCost
+        usageType: ${group}-Requests
+      in:
+        type: usage
+        usageType: (..)-Requests-[12].*
+      data:
+        type: usage
+        usageType: ${group}-DataTransfer-Out-Bytes
+    out: '${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000'
             
  *  
  */
@@ -98,14 +116,16 @@ public class BillingDataConfig {
 	public List<AccountConfig> accounts;
     public List<TagConfig> tags;
     public List<KubernetesConfig> kubernetes;
+    public List<RuleConfig> postprocrules;
 
     public BillingDataConfig() {    	
     }
     
-	public BillingDataConfig(List<AccountConfig> accounts, List<TagConfig> tags, List<KubernetesConfig> kubernetes) {
+	public BillingDataConfig(List<AccountConfig> accounts, List<TagConfig> tags, List<KubernetesConfig> kubernetes, List<RuleConfig> ruleConfigs) {
 		this.accounts = accounts;
 		this.tags = tags;
 		this.kubernetes = kubernetes;
+		this.postprocrules = ruleConfigs;
 	}
 
 	public BillingDataConfig(String in) throws JsonParseException, JsonMappingException, IOException {
@@ -122,6 +142,7 @@ public class BillingDataConfig {
 		this.accounts = config.accounts;
 		this.tags = config.tags;
 		this.kubernetes = config.kubernetes;
+		this.postprocrules = config.postprocrules;
 	}
 	
 	public String toJSON() {
@@ -151,6 +172,14 @@ public class BillingDataConfig {
 
 	public void setKubernetes(List<KubernetesConfig> kubernetes) {
 		this.kubernetes = kubernetes;
+	}
+
+	public List<RuleConfig> getPostprocrules() {
+		return postprocrules;
+	}
+
+	public void setPostprocrules(List<RuleConfig> postprocrules) {
+		this.postprocrules = postprocrules;
 	}
 	
 }

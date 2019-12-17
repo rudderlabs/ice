@@ -36,6 +36,7 @@ import com.netflix.ice.common.*;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.config.BillingDataConfig;
 import com.netflix.ice.processor.config.KubernetesConfig;
+import com.netflix.ice.processor.postproc.RuleConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
@@ -95,8 +96,11 @@ public class ProcessorConfig extends Config {
     
     // Kubernetes configuration data keyed by payer account ID
     public List<KubernetesConfig> kubernetesConfigs;
+    // Post=processor configuration rules
+    public List<RuleConfig> postProcessorRules;
     
     private static final String billingDataConfigBasename = "ice_config.";
+    private static final String billingDataConfigBasenameV2 = "ice_config_v2.";
 
     /**
      *
@@ -457,34 +461,47 @@ public class ProcessorConfig extends Config {
      */
     protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
     	kubernetesConfigs = Lists.newArrayList();
+    	postProcessorRules = Lists.newArrayList();
     	
         for (BillingBucket bb: billingBuckets) {
             
-        	BillingDataConfig billingDataConfig = readBillingDataConfig(bb);
-        	if (billingDataConfig == null)
+        	BillingDataConfig bdc = readBillingDataConfig(bb);
+        	if (bdc == null)
         		continue;
-           	
-        	for (AccountConfig account: billingDataConfig.accounts) {
-        		if (account.id == null || account.id.isEmpty()) {
-        			logger.warn("Ignoring billing data config for account with no id: " + account.name);
-        			continue;
-        		}
-        		
-        		if (accountConfigs.containsKey(account.id)) {
-        			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
-        			continue;
-        		}
-        		accountConfigs.put(account.id, account);
-        		logger.info("Adding billing data config account: " + account.toString());
-        		if (resourceService != null)
-        			resourceService.putDefaultTags(account.id, account.tags);        			
+
+        	logger.info("Billing Data Configuration: Found " +
+        			(bdc.getAccounts() == null ? "null" : bdc.getAccounts().size()) + " accounts, " +
+        			(bdc.getTags() == null ? "null" : bdc.getTags().size()) + " tags, " +
+        			(bdc.getKubernetes() == null ? "null" : bdc.getKubernetes().size()) + " kubernetes, " +
+        			(bdc.getPostprocrules() == null ? "null" : bdc.getPostprocrules().size()) + " post-proc");
+
+        	if (bdc.getAccounts() != null) {
+	        	for (AccountConfig account: bdc.getAccounts()) {
+	        		if (account.id == null || account.id.isEmpty()) {
+	        			logger.warn("Ignoring billing data config for account with no id: " + account.name);
+	        			continue;
+	        		}
+	        		
+	        		if (accountConfigs.containsKey(account.id)) {
+	        			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
+	        			continue;
+	        		}
+	        		accountConfigs.put(account.id, account);
+	        		logger.info("Adding billing data config account: " + account.toString());
+	        		if (resourceService != null)
+	        			resourceService.putDefaultTags(account.id, account.tags);        			
+	        	}
         	}
         	
-        	if (resourceService != null)
-        		resourceService.setTagConfigs(bb.accountId, billingDataConfig.tags);
-        	List<KubernetesConfig> k = billingDataConfig.getKubernetes();
+        	if (resourceService != null && bdc.getTags() != null)
+        		resourceService.setTagConfigs(bb.accountId, bdc.getTags());
+        	List<KubernetesConfig> k = bdc.getKubernetes();
         	if (k != null)
         		kubernetesConfigs.addAll(k);
+        	
+        	List<RuleConfig> ruleConfigs = bdc.getPostprocrules();
+        	if (ruleConfigs != null)
+        		postProcessorRules.addAll(ruleConfigs);
         }
     }
     
@@ -492,10 +509,15 @@ public class ProcessorConfig extends Config {
     	// Make sure prefix ends with /
     	String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
     	
-    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
-    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
-    	if (configFiles.size() == 0)
-    		return null;
+    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasenameV2 + ", " + bb.accountId);
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasenameV2, bb.accountId, bb.accessRoleName, bb.accessExternalId);
+    	if (configFiles.size() == 0) {
+        	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
+        	configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
+        	if (configFiles.size() == 0) {
+        		return null;
+        	}
+    	}
     	
     	String fileKey = configFiles.get(0).getKey();
         File file = new File(workBucketConfig.localDir, fileKey.substring(prefix.length()));

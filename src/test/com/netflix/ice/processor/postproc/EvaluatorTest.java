@@ -15,29 +15,20 @@
  *     limitations under the License.
  *
  */
-package com.netflix.ice.processor;
+package com.netflix.ice.processor.postproc;
 
-import com.netflix.ice.common.LineItem;
+import static org.junit.Assert.*;
 
-/**
- * Interface to process each line item in billing file.
- */
-public interface LineItemProcessor {
-    Result process(
-    		boolean processAll,
-    		String root,
-    		boolean isCostAndUsageReport,
-    		LineItem lineItem, 
-    		CostAndUsageData costAndUsageData,
-    		Instances instances,
-    		double edpDiscount);
+import org.junit.Test;
 
-    public static enum Result {
-        delay,
-        ignore,
-        hourly,
-        monthly,
-        daily
-    }
+public class EvaluatorTest {
+
+	@Test
+	public void test() throws Exception {
+		String expr = "5.0 * ((4 / 2 + 4.3E-2) + 12.2 * (3 + 1) + 1)";
+		Double expect = 5.0 * ((4 / 2 + 4.3E-2) + 12.2 * (3 + 1) + 1);
+		
+		assertEquals("Wrong evaluator result", expect, new Evaluator().eval(expr), 0.001);
+	}
+
 }
-

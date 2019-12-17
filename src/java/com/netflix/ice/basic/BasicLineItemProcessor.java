@@ -137,7 +137,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
     
     public Result process(
-    		long startMilli,
     		boolean processDelayed,
     		String root,
     		boolean isCostAndUsageReport,
@@ -146,6 +145,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		Instances instances,
     		double edpDiscount) {
     	
+    	long startMilli = costAndUsageData.getStartMilli();
     	if (ignore(startMilli, root, lineItem))
     		return Result.ignore;
     	

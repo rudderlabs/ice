@@ -185,7 +185,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		long endMilli;
 		
 		FileData() {
-			costAndUsageData = new CostAndUsageData(config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(), config.getTagCoverage(), config.accountService, config.productService);
+			costAndUsageData = new CostAndUsageData(startMilli, config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(), config.getTagCoverage(), config.accountService, config.productService);
 			delayedItems = Lists.newArrayList();
 			endMilli = startMilli;
 		}
@@ -425,7 +425,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     		return endMilli;
     	}
     	
-        LineItemProcessor.Result result = lineItemProcessor.process(startMilli, delayedItems == null, root, true, lineItem, costAndUsageData, instances, edpDiscount);
+        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, true, lineItem, costAndUsageData, instances, edpDiscount);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
