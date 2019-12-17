@@ -180,7 +180,7 @@ public class DataJsonWriter extends DataFile {
             if (costMap.size() == 0)
             	continue;
         	
-            Map<TagGroup, Double> usageMap = dailyUsage.get(day);
+            Map<TagGroup, Double> usageMap = dailyUsage.size() > day ? dailyUsage.get(day) : null;
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
             	Item item = new Item(dtf.print(monthDateTime.plusDays(day)), costEntry.getKey(), costEntry.getValue(), usageValue, false);
