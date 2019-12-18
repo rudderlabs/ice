@@ -36,7 +36,6 @@ public class RuleConfigTest {
 		"end: 2022-11\n" + 
 		"operands:\n" + 
 		"  out:\n" + 
-		"    type: cost\n" + 
 		"    product: ComputedCost\n" + 
 		"    usageType: ${group}-Requests\n" + 
 		"  in:\n" + 
@@ -46,7 +45,7 @@ public class RuleConfigTest {
 		"  data:\n" + 
 		"    type: usage\n" + 
 		"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
-		"out: '${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000'\n" + 
+		"cost: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
 		"";
 		
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -55,11 +54,11 @@ public class RuleConfigTest {
 		
 		assertEquals("Wrong rule name", "ComputedCost", rc.getName());
 		assertEquals("Wrong number of operands", 3, rc.getOperands().size());
-		assertEquals("Wrong out operand type", OperandType.cost, rc.getOperands().get("out").getType());
+		assertEquals("Wrong in operand type", OperandType.usage, rc.getOperands().get("in").getType());
 		OperandConfig out = rc.getOperand("out");
 		assertEquals("Wrong product in out operand", "ComputedCost", out.getProduct());
 		assertEquals("Wrong usageType in out operand", "${group}-Requests", out.getUsageType());
-		assertEquals("Wrong out function", "${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000", rc.getOut());
+		assertEquals("Wrong out function", "(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000", rc.getCost());
 	}
 
 }

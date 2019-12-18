@@ -24,7 +24,8 @@ public class RuleConfig {
 	private String start;
 	private String end;
 	private Map<String, OperandConfig> operandConfigs;
-	private String out;
+	private String cost;
+	private String usage;
 	
 	public String getName() {
 		return name;
@@ -37,14 +38,19 @@ public class RuleConfig {
 	}
 	public void setOperands(Map<String, OperandConfig> operandConfigs) {
 		this.operandConfigs = operandConfigs;
+	}	
+	public String getCost() {
+		return cost;
 	}
-	public String getOut() {
-		return out;
+	public void setCost(String cost) {
+		this.cost = cost;
 	}
-	public void setOut(String out) {
-		this.out = out;
+	public String getUsage() {
+		return usage;
 	}
-	
+	public void setUsage(String usage) {
+		this.usage = usage;
+	}
 	public OperandConfig getInOperand() {
 		return operandConfigs.get("in");
 	}

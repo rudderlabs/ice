@@ -51,10 +51,10 @@ public class Rule {
 		if (StringUtils.isEmpty(config.getName()) ||
 				StringUtils.isEmpty(config.getStart()) ||
 				StringUtils.isEmpty(config.getEnd()) ||
-				StringUtils.isEmpty(config.getOut()) ||
+				(StringUtils.isEmpty(config.getCost()) && StringUtils.isEmpty(config.getUsage())) ||
 				config.getInOperand() == null ||
 				config.getOutOperand() == null) {
-			String err = "Missing required parameters in post processor rule config for " + config.getName() + ". Must have: [name, start, end, out, operands:in, operands:out";
+			String err = "Missing required parameters in post processor rule config for " + config.getName() + ". Must have: name, start, end, operands:in, operands:out, with cost and/or usage";
 			logger.error(err);
 			throw new Exception(err);
 		}
@@ -75,8 +75,8 @@ public class Rule {
 		return operands;
 	}
 	
-	public String getOut() {
-		return config.getOut();
+	public String getExpr(OperandType type) {
+		return type == OperandType.cost ? config.getCost() : config.getUsage();
 	}
 	
 	public class Operand {

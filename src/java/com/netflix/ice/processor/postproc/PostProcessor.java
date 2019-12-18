@@ -158,27 +158,35 @@ public class PostProcessor {
 		
 		for (TagGroup tg: in.keySet()) {
 			Operand out = rule.getOperand("out");
-			TagGroup outTagGroup = out.getTagGroup(tg);			
-			String outExpr = rule.getOut();
+			TagGroup outTagGroup = out.getTagGroup(tg);
 			
-			// Replace variables
-			for (String op: rule.getOperands().keySet()) {
-				if (op.equals("out"))
-					continue;
-				
-				// Get the operand value from the proper data source
-				Double opValue = op.equals("in") ? in.get(tg) : getOperandValue(rule.getOperand(op), tg, usageData.get(op).getData(hour), costData.get(op).getData(hour));
-				outExpr = outExpr.replace("${" + op + "}", opValue.toString());
+			// Process for Cost
+			String expr = rule.getExpr(OperandType.cost);
+			if (expr != null && !expr.isEmpty()) {
+				outCostMap.put(outTagGroup, eval(rule, expr, tg, in, hour, usageData, costData));
 			}
-			
-			Double value = new Evaluator().eval(outExpr);		
-			
-			//logger.debug(outExpr + " = " + value + " for in: " + tg + ", out: " + outTagGroup);
-			
-			if (out.getType() == OperandType.cost)
-				outCostMap.put(outTagGroup, value);
-			else
-				outUsageMap.put(outTagGroup, value);
+			// Process for Usage
+			expr = rule.getExpr(OperandType.usage);
+			if (expr != null && !expr.isEmpty()) {
+				outUsageMap.put(outTagGroup, eval(rule, expr, tg, in, hour, usageData, costData));
+			}
 		}
+	}
+	
+	private Double eval(Rule rule, String outExpr, TagGroup tg, Map<TagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData) throws Exception {		
+		// Replace variables
+		for (String op: rule.getOperands().keySet()) {
+			if (op.equals("out"))
+				continue;
+			
+			// Get the operand value from the proper data source
+			Double opValue = op.equals("in") ? in.get(tg) : getOperandValue(rule.getOperand(op), tg, usageData.get(op).getData(hour), costData.get(op).getData(hour));
+			outExpr = outExpr.replace("${" + op + "}", opValue.toString());
+		}
+		
+		Double value = new Evaluator().eval(outExpr);		
+		
+		//logger.debug(outExpr + " = " + value + " for in: " + tg + ", out: " + outTagGroup);
+		return value;
 	}
 }

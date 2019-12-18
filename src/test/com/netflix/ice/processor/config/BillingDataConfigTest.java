@@ -63,21 +63,20 @@ public class BillingDataConfigTest {
 		"    tags: [ userTag1, userTag2 ]\n" + 
 		"postprocrules:\n" + 
 		"  - name: ComputedCost\n" + 
-		"    product: Product\n" + 
 		"    start: 2019-11\n" + 
 		"    end: 2022-11\n" + 
 		"    operands:\n" + 
 		"      out:\n" + 
-		"        type: cost\n" + 
 		"        product: ComputedCost\n" + 
 		"        usageType: ${group}-Requests\n" + 
 		"      in:\n" + 
 		"        type: usage\n" + 
+		"        product: Product\n" + 
 		"        usageType: (..)-Requests-[12].*\n" + 
 		"      data:\n" + 
 		"        type: usage\n" + 
 		"        usageType: ${group}-DataTransfer-Out-Bytes\n" + 
-		"    out: '${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000'\n" + 
+		"    cost: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
 		"";
 		
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());

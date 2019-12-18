@@ -107,7 +107,6 @@ public class PostProcessorTest {
 		"end: 2022-11\n" + 
 		"operands:\n" + 
 		"  out:\n" + 
-		"    type: cost\n" + 
 		"    product: ComputedCost\n" + 
 		"    usageType: ${group}-Requests\n" + 
 		"  in:\n" + 
@@ -117,8 +116,8 @@ public class PostProcessorTest {
 		"  data:\n" + 
 		"    type: usage\n" + 
 		"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
-		"out: '${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000'\n" + 
-		"";
+		"cost: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
+		"usage: '${in} - (${data} * 4 * 8 / 2)'\n";
 		
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		RuleConfig rc = new RuleConfig();
@@ -178,20 +177,28 @@ public class PostProcessorTest {
 		Rule rule = new Rule(getConfig(), as, ps);
 		pp.processReadWriteData(rule, data, true);
 		
-		// out: 'in - (data * 4 * 8 / 2) * 0.01 / 1000'
+		// cost: 'in - (data * 4 * 8 / 2) * 0.01 / 1000'
 		// 'in' is the sum of the two request values
 		//
-		// US: (1000 + 2000) - (4000 * 4 * 8 / 2) * 0.01 / 1000 == 3000 - 64000 * 0.00001 == 2999.36
+		// US: ((1000 + 2000) - (4000 * 4 * 8 / 2)) * 0.01 / 1000 == (3000 - 64000) * 0.00001 == 2999.36
 		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup("ComputedCost");
 		Double value = costData.getData(0).get(usReqs);
-		assertNotNull("No value for US-Requests", value);
-		assertEquals("Wrong value for US-Requests", 2999.36, value, .0001);
+		assertNotNull("No cost value for US-Requests", value);
+		assertEquals("Wrong cost value for US-Requests", -0.61, value, .0001);
 		
-		// EU:  (10000 + 20000) - (40000 * 4 * 8 / 2) * 0.01 / 1000 == 30000 - 640000 * 0.00001 == 29993.6
+		value = usageData.getData(0).get(usReqs);
+		assertNotNull("No usage value for US-Requests", value);
+		assertEquals("Wrong usage value for US-Requests", -61000.0, value, .0001);
+		
+		// EU:  ((10000 + 20000) - (40000 * 4 * 8 / 2)) * 0.01 / 1000 == (30000 - 640000) * 0.00001 == 29993.6
 		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup("ComputedCost");
 		Double euValue = costData.getData(0).get(euReqs);
-		assertNotNull("No value for EU-Requests", euValue);
-		assertEquals("Wrong value for EU-Requests", 29993.6, euValue, .0001);
+		assertNotNull("No cost value for EU-Requests", euValue);
+		assertEquals("Wrong cost value for EU-Requests", -6.1, euValue, .0001);
+		
+		euValue = usageData.getData(0).get(euReqs);
+		assertNotNull("No usage value for EU-Requests", euValue);
+		assertEquals("Wrong usage value for EU-Requests", -610000.0, euValue, .0001);
 	}
 	
 	@Test
@@ -220,13 +227,13 @@ public class PostProcessorTest {
 		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup("ComputedCost");
 		Double value = outCostData.getData(0).get(usReqs);
 		assertNotNull("No value for US-Requests", value);
-		assertEquals("Wrong value for US-Requests", 2999.36, value, .0001);
+		assertEquals("Wrong value for US-Requests", -0.61, value, .0001);
 		
 		// EU:  (10000 + 20000) - (40000 * 4 * 8 / 2) * 0.01 / 1000 == 30000 - 640000 * 0.00001 == 29993.6
 		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup("ComputedCost");
 		Double euValue = outCostData.getData(0).get(euReqs);
 		assertNotNull("No value for EU-Requests", euValue);
-		assertEquals("Wrong value for EU-Requests", 29993.6, euValue, .0001);
+		assertEquals("Wrong value for EU-Requests", -6.1, euValue, .0001);
 	}
 
 }

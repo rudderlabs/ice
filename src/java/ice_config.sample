@@ -90,7 +90,6 @@ postprocrules:
       # Values not specified for additional operands and copied from the "in" parameter.
       #
       out: # required output operand
-        type: cost
         product: <Product Service Code>
         usageType: ${group}-Requests
       in:
@@ -101,6 +100,10 @@ postprocrules:
         type: usage
         usageType: ${group}-DataTransfer-Out-Bytes
     #
-    # out is the computation that gets evaluated to produce a value saved using the out operand specification.
+    # cost is the computation that gets evaluated to produce a value saved using the out operand specification.
     #
-    out: <expression>  # e.g. ${in} - (${data} * 1024 / 5) * 0.01 / 1000
+    cost: <expression>  # e.g. '(${in} - (${data} * 1024 / 5)) * 0.01 / 1000'
+    #
+    # usage is the computation that gets evaluated to product a value saved using the out operand specification.
+    #
+    usage: <expression> # e.g. '${in} - (${data} * 1024 / 5)'

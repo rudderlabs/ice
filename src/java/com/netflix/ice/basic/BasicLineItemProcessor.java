@@ -158,7 +158,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 		} catch (BadZone e) {
 			zone = null;
 			String usageType = lineItem.getUsageType();
-			if (usageType.contains("AWS-Out-Bytes")) // AWS has occassional bad zone data for RDS data transfer
+			if (usageType.contains("AWS-Out-Bytes")) // AWS has occasional bad zone data for RDS data transfer
 				logger.info("LineItem with mismatched regions: UsageType=" + usageType + ", AvailabilityZone=" + lineItem.getZone());
 			else
 				logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
