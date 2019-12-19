@@ -53,6 +53,7 @@ import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Tag;
 
@@ -122,6 +123,36 @@ public class BasicLineItemProcessorTest {
 		CostAndUsageReportLineItem lineItem = newCurLineItem(manifest2017, null);
 		lineItem.setItems(line.getCauLine(lineItem));
 		return newBasicLineItemProcessor().reform(0L, lineItem, utilization);
+    }
+    
+    @Test
+    public void testGetRegion() throws IOException {
+    	CostAndUsageReportLineItemProcessor lineItemProcessor = new CostAndUsageReportLineItemProcessor(accountService, productService, null, resourceService);
+    	CostAndUsageReportLineItem lineItem = newCurLineItem(manifest2017, null);
+    	
+    	// Test case where region is in usage-type prefix
+    	Line line = new Line(LineItemType.Usage, "global", "us-west-2", "AWS Systems Manager", "USW2-AWS-Auto-Steps-Tier1", null, null, null, null, null, null, null, null);
+    	lineItem.setItems(line.getCauLine(lineItem));
+    	Region r = lineItemProcessor.getRegion(lineItem);    	
+    	assertEquals("Wrong region from usage type", Region.US_WEST_2, r);
+    	
+    	// Case where region should be pulled from the availability zone
+    	line = new Line(LineItemType.Usage, "global", "us-west-2", "AWS Systems Manager", "AWS-Auto-Steps-Tier1", null, null, null, null, null, null, null, null);
+    	lineItem.setItems(line.getCauLine(lineItem));
+    	r = lineItemProcessor.getRegion(lineItem);    	
+    	assertEquals("Wrong region from availability zone", Region.US_WEST_2, r);
+    	
+    	// Case where region should default to us-east-1
+    	line = new Line(LineItemType.Usage, "", "", "AWS Systems Manager", "AWS-Auto-Steps-Tier1", null, null, null, null, null, null, null, null);
+    	lineItem.setItems(line.getCauLine(lineItem));
+    	r = lineItemProcessor.getRegion(lineItem);    	
+    	assertEquals("Wrong region from availability zone", Region.US_EAST_1, r);
+    	
+    	// Case where region should come from product/region
+    	line = new Line(LineItemType.Usage, "eu-west-1", "", "AWS Systems Manager", "AWS-Auto-Steps-Tier1", null, null, null, null, null, null, null, null);
+    	lineItem.setItems(line.getCauLine(lineItem));
+    	r = lineItemProcessor.getRegion(lineItem);    	
+    	assertEquals("Wrong region from availability zone", Region.EU_WEST_1, r);
     }
     
 	@Test
@@ -525,14 +556,14 @@ public class BasicLineItemProcessorTest {
 				costAndUsageData.getUsage(null).getData(0);
 			}
 	        
-			Result result = lineItemProc.process(delayed, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+			Result result = lineItemProc.process(delayed, "", lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
 			
 			if (result == Result.delay) {
 				// Expand the data by number of hours in month
 				costAndUsageData.getUsage(null).getData(daysInMonth * 24 - 1);
 				costAndUsageData.getCost(null).getData(daysInMonth * 24 - 1);
-				result = lineItemProc.process(true, "", isCostAndUsageReport, lineItem, costAndUsageData, instances, 0.0);
+				result = lineItemProc.process(true, "", lineItem, costAndUsageData, instances, 0.0);
 			}
 			
 			// Check usage data

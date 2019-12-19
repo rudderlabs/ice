@@ -26,7 +26,6 @@ public interface LineItemProcessor {
     Result process(
     		boolean processAll,
     		String root,
-    		boolean isCostAndUsageReport,
     		LineItem lineItem, 
     		CostAndUsageData costAndUsageData,
     		Instances instances,

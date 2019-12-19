@@ -126,6 +126,26 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return region == null ? Region.US_EAST_1 : region;
     }
     
+    protected Zone getZone(Region region, LineItem lineItem) {
+    	String zoneStr = lineItem.getZone();
+    	if (zoneStr.isEmpty() || region.name.equals(zoneStr))
+    		return null;
+    	
+    	if (!zoneStr.startsWith(region.name)) {
+			logger.warn("LineItem with mismatched regions: Product=" + lineItem.getProduct() + ", UsageType=" + lineItem.getUsageType() + ", AvailabilityZone=" + lineItem.getZone() + ", Region=" + region + ", Description=" + lineItem.getDescription());
+    		return null;
+    	}
+    	
+    	Zone zone;
+		try {
+			zone = region.getZone(zoneStr);
+		} catch (BadZone e) {
+			logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
+			return null;
+		}     
+		return zone;
+    }
+    
     protected void addResourceInstance(LineItem lineItem, Instances instances, TagGroup tg) {
         // Add all resources to the instance catalog
         if (instances != null && lineItem.hasResources() && !tg.product.isDataTransfer() && !tg.product.isCloudWatch())
@@ -139,7 +159,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     public Result process(
     		boolean processDelayed,
     		String root,
-    		boolean isCostAndUsageReport,
     		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
     		Instances instances,
@@ -152,17 +171,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         Region region = getRegion(lineItem);
-        Zone zone;
-		try {
-			zone = region.getZone(lineItem.getZone());
-		} catch (BadZone e) {
-			zone = null;
-			String usageType = lineItem.getUsageType();
-			if (usageType.contains("AWS-Out-Bytes")) // AWS has occasional bad zone data for RDS data transfer
-				logger.info("LineItem with mismatched regions: UsageType=" + usageType + ", AvailabilityZone=" + lineItem.getZone());
-			else
-				logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
-		}       
+        Zone zone = getZone(region, lineItem);
 
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();

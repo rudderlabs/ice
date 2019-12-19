@@ -71,8 +71,36 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     }
 
 	@Override
-    protected Region getRegion(LineItem lineItem) {
-        return lineItem.getProductRegion();
+	public Region getRegion(LineItem lineItem) {
+		// Region can be obtained from the following sources with the following precedence:
+		//  1. lineItem/UsageType prefix (us-east-1 has no prefix)
+		//  2. lineItem/AvailabilityZone
+		//  3. product/region
+    	String usageTypeStr = lineItem.getUsageType();
+        int index = usageTypeStr.indexOf("-");
+        String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
+        
+        Region region = null;
+        if (!regionShortName.isEmpty()) {
+        	// Try to get region from usage type prefix. Value may not be a region code, so can come back null
+        	region = Region.getRegionByShortName(regionShortName);
+        }
+        if (region == null) {
+        	String zone = lineItem.getZone();
+        	if (zone.isEmpty()) {
+        		region = lineItem.getProductRegion();
+        	}
+        	else {
+        		for (Region r: Region.getAllRegions()) {
+        			if (zone.startsWith(r.name)) {
+        				region = r;
+        				break;
+        			}
+        		}
+        	}
+        }
+        
+        return region == null ? Region.US_EAST_1 : region;
     }
 
 	@Override

@@ -230,7 +230,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
     private void processOneLine(List<String[]> delayedItems, String root, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
 
-        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, false, lineItem, costAndUsageData, instances, 0.0);
+        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, lineItem, costAndUsageData, instances, 0.0);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

@@ -425,7 +425,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     		return endMilli;
     	}
     	
-        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, true, lineItem, costAndUsageData, instances, edpDiscount);
+        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
