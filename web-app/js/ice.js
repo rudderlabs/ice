@@ -1284,6 +1284,11 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     }
 
     var compare = function (a, b) {
+      if (a['name'] === 'aggregated')
+        return -1;
+      if (b['name'] === 'aggregated')
+        return 1;
+
       if (!stats) {
         if (a[name] < b[name])
           return !$scope.reservse ? 1 : -1;
