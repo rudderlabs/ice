@@ -17,50 +17,22 @@
  */
 package com.netflix.ice.processor.postproc;
 
+import java.util.List;
 import java.util.Map;
 
 public class RuleConfig {
 	private String name;
 	private String start;
 	private String end;
-	private Map<String, OperandConfig> operandConfigs;
-	private String cost;
-	private String usage;
+	private Map<String, OperandConfig> operands;
+	private OperandConfig in;
+	private List<ResultConfig> results;
 	
 	public String getName() {
 		return name;
 	}
 	public void setName(String name) {
 		this.name = name;
-	}
-	public Map<String, OperandConfig> getOperands() {
-		return operandConfigs;
-	}
-	public void setOperands(Map<String, OperandConfig> operandConfigs) {
-		this.operandConfigs = operandConfigs;
-	}	
-	public String getCost() {
-		return cost;
-	}
-	public void setCost(String cost) {
-		this.cost = cost;
-	}
-	public String getUsage() {
-		return usage;
-	}
-	public void setUsage(String usage) {
-		this.usage = usage;
-	}
-	public OperandConfig getInOperand() {
-		return operandConfigs.get("in");
-	}
-	
-	public OperandConfig getOutOperand() {
-		return operandConfigs.get("out");
-	}
-	
-	public OperandConfig getOperand(String name) {
-		return operandConfigs.get(name);
 	}
 	public String getStart() {
 		return start;
@@ -73,5 +45,27 @@ public class RuleConfig {
 	}
 	public void setEnd(String end) {
 		this.end = end;
+	}
+	public Map<String, OperandConfig> getOperands() {
+		return operands;
+	}
+	public void setOperands(Map<String, OperandConfig> operands) {
+		this.operands = operands;
+	}
+	public OperandConfig getOperand(String name) {
+		return this.operands.get(name);
+	}
+	public OperandConfig getIn() {
+		return in;
+	}
+	public void setIn(OperandConfig in) {
+		this.in = in;
+	}
+	
+	public List<ResultConfig> getResults() {
+		return results;
+	}
+	public void setResults(List<ResultConfig> results) {
+		this.results = results;
 	}
 }

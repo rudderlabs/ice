@@ -26,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
@@ -43,6 +44,8 @@ public class Rule {
 
 	private RuleConfig config;
 	private Map<String, Operand> operands;
+	private Operand in;
+	private List<Operand> results;
 	
 	public Rule(RuleConfig config, AccountService accountService, ProductService productService) throws Exception {
 		this.config = config;
@@ -51,10 +54,9 @@ public class Rule {
 		if (StringUtils.isEmpty(config.getName()) ||
 				StringUtils.isEmpty(config.getStart()) ||
 				StringUtils.isEmpty(config.getEnd()) ||
-				(StringUtils.isEmpty(config.getCost()) && StringUtils.isEmpty(config.getUsage())) ||
-				config.getInOperand() == null ||
-				config.getOutOperand() == null) {
-			String err = "Missing required parameters in post processor rule config for " + config.getName() + ". Must have: name, start, end, operands:in, operands:out, with cost and/or usage";
+				config.getIn() == null ||
+				config.getResults() == null) {
+			String err = "Missing required parameters in post processor rule config for " + config.getName() + ". Must have: name, start, end, in, and results";
 			logger.error(err);
 			throw new Exception(err);
 		}
@@ -64,7 +66,11 @@ public class Rule {
 			operands.put(oc, new Operand(config.getOperand(oc), accountService, productService));
 		}
 		
-		
+		in = new Operand(config.getIn(), accountService, productService);
+		results = Lists.newArrayList();
+		for (ResultConfig rc: config.getResults()) {
+			results.add(new Operand(rc.getResult(), accountService, productService));
+		}
 	}
 	
 	public Operand getOperand(String name) {
@@ -75,8 +81,20 @@ public class Rule {
 		return operands;
 	}
 	
-	public String getExpr(OperandType type) {
-		return type == OperandType.cost ? config.getCost() : config.getUsage();
+	public Operand getIn() {
+		return in;
+	}
+	
+	public List<Operand> getResults() {
+		return results;
+	}
+	
+	public Operand getResult(int index) {
+		return results.get(index);
+	}
+	
+	public String getResultValue(int index) {
+		return config.getResults().get(index).getValue();
 	}
 	
 	public class Operand {

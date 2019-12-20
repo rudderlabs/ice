@@ -25,6 +25,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
@@ -73,7 +74,7 @@ public class PostProcessor {
 			return;
 		}
 		
-		if (rc.getInOperand().getProduct() == null) {
+		if (rc.getIn().getProduct() == null) {
 			logger.error("Post processing rule " + rc.getName() + " has no product specified for the 'in' operand");
 			return;
 		}
@@ -86,29 +87,38 @@ public class PostProcessor {
 	}
 	
 	protected void processReadWriteData(Rule rule, CostAndUsageData data, boolean isNonResource) throws Exception {
-		Product inProduct = rule.getOperands().get("in").getProduct();
+		Product inProduct = rule.getIn().getProduct();
 		ReadWriteData inUsageData = data.getUsage(isNonResource ? null : inProduct);
 		ReadWriteData inCostData = data.getCost(isNonResource ? null : inProduct);
 		
+		// Get data maps for operands
 		Map<String, ReadWriteData> usageData = Maps.newHashMap();
 		Map<String, ReadWriteData> costData = Maps.newHashMap();
 		for (String name: rule.getOperands().keySet()) {
-			if (name.equals("in"))
-				continue;
-			
 			Product p = rule.getOperands().get(name).getProduct();
-			ReadWriteData usage = (isNonResource || p == null) ? inUsageData : data.getUsage(p);
-			ReadWriteData cost = (isNonResource || p == null) ? inCostData : data.getCost(p);
-			if (usage == null) {
-				data.putUsage(p, new ReadWriteData());
-				usage = data.getUsage(p);
+			usageData.put(name, (isNonResource || p == null) ? inUsageData : data.getUsage(p));
+			costData.put(name, (isNonResource || p == null) ? inCostData : data.getCost(p));		
+		}
+		// Get data maps for results. Handle case where we're creating a new product
+		List<ReadWriteData> resultData = Lists.newArrayList();
+		for (Operand result: rule.getResults()) {
+			Product p = result.getProduct();
+			ReadWriteData rwd;
+			if (result.getType() == OperandType.usage) {
+				rwd = (isNonResource || p == null) ? inUsageData : data.getUsage(p);
+				if (rwd == null) {
+					data.putUsage(p, new ReadWriteData());
+					rwd = data.getUsage(p);
+				}
 			}
-			if (cost == null) {
-				data.putCost(p, new ReadWriteData());
-				cost = data.getCost(p);
+			else {
+				rwd = (isNonResource || p == null) ? inCostData : data.getCost(p);
+				if (rwd == null) {
+					data.putCost(p, new ReadWriteData());
+					rwd = data.getCost(p);
+				}
 			}
-			usageData.put(name, usage);
-			costData.put(name, cost);		
+			resultData.add(rwd);
 		}
 		
 		for (int i = 0; i < inUsageData.getNum(); i++) {
@@ -121,7 +131,7 @@ public class PostProcessor {
 			if (inValues.size() == 0)
 				continue;
 				
-			applyRule(rule, inValues, i, usageData, costData);
+			applyRule(rule, inValues, i, usageData, costData, resultData);
 		}
 	}
 	
@@ -129,7 +139,7 @@ public class PostProcessor {
 	 * Aggregate the data using the regex groups contained in the input filters
 	 */
 	protected Map<TagGroup, Double> getInValues(Rule rule, Map<TagGroup, Double> usageMap, Map<TagGroup, Double> costMap, boolean isNonResource) {
-		Operand in = rule.getOperand("in");
+		Operand in = rule.getIn();
 		Map<TagGroup, Double> inValues = Maps.newHashMap();
 		for (TagGroup tg: usageMap.keySet()) {
 			if (isNonResource && tg.product != in.getProduct())
@@ -152,35 +162,28 @@ public class PostProcessor {
 		return value == null ? 0.0 : value;
 	}
 	
-	protected void applyRule(Rule rule, Map<TagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData) throws Exception {
-	    Map<TagGroup, Double> outUsageMap = usageData.get("out").getData(hour);
-	    Map<TagGroup, Double> outCostMap = costData.get("out").getData(hour);
-		
+	protected void applyRule(Rule rule, Map<TagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData, List<ReadWriteData> resultData) throws Exception {
 		for (TagGroup tg: in.keySet()) {
-			Operand out = rule.getOperand("out");
-			TagGroup outTagGroup = out.getTagGroup(tg);
-			
-			// Process for Cost
-			String expr = rule.getExpr(OperandType.cost);
-			if (expr != null && !expr.isEmpty()) {
-				outCostMap.put(outTagGroup, eval(rule, expr, tg, in, hour, usageData, costData));
-			}
-			// Process for Usage
-			expr = rule.getExpr(OperandType.usage);
-			if (expr != null && !expr.isEmpty()) {
-				outUsageMap.put(outTagGroup, eval(rule, expr, tg, in, hour, usageData, costData));
+			for (int i = 0; i < rule.getResults().size(); i++) {
+				
+				Operand result = rule.getResult(i);
+				TagGroup outTagGroup = result.getTagGroup(tg);
+				
+				String expr = rule.getResultValue(i);
+				if (expr != null && !expr.isEmpty()) {
+					resultData.get(i).getData(hour).put(outTagGroup, eval(rule, expr, tg, in, hour, usageData, costData));
+				}
 			}
 		}
 	}
 	
 	private Double eval(Rule rule, String outExpr, TagGroup tg, Map<TagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData) throws Exception {		
 		// Replace variables
-		for (String op: rule.getOperands().keySet()) {
-			if (op.equals("out"))
-				continue;
-			
+		outExpr = outExpr.replace("${in}", in.get(tg).toString());
+		
+		for (String op: rule.getOperands().keySet()) {			
 			// Get the operand value from the proper data source
-			Double opValue = op.equals("in") ? in.get(tg) : getOperandValue(rule.getOperand(op), tg, usageData.get(op).getData(hour), costData.get(op).getData(hour));
+			Double opValue = getOperandValue(rule.getOperand(op), tg, usageData.get(op).getData(hour), costData.get(op).getData(hour));
 			outExpr = outExpr.replace("${" + op + "}", opValue.toString());
 		}
 		

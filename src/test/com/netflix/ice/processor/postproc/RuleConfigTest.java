@@ -35,17 +35,19 @@ public class RuleConfigTest {
 		"start: 2019-11\n" + 
 		"end: 2022-11\n" + 
 		"operands:\n" + 
-		"  out:\n" + 
-		"    product: ComputedCost\n" + 
-		"    usageType: ${group}-Requests\n" + 
-		"  in:\n" + 
-		"    type: usage\n" + 
-		"    product: Product\n" + 
-		"    usageType: (..)-Requests-[12].*\n" + 
 		"  data:\n" + 
 		"    type: usage\n" + 
 		"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
-		"cost: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
+		"in:\n" + 
+		"  type: usage\n" + 
+		"  product: Product\n" + 
+		"  usageType: (..)-Requests-[12].*\n" + 
+		"results:\n" + 
+		"  - result:\n" + 
+		"      type: cost\n" + 
+		"      product: ComputedCost\n" + 
+		"      usageType: ${group}-Requests\n" + 
+		"    value: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
 		"";
 		
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -53,12 +55,12 @@ public class RuleConfigTest {
 		rc = mapper.readValue(yaml, rc.getClass());
 		
 		assertEquals("Wrong rule name", "ComputedCost", rc.getName());
-		assertEquals("Wrong number of operands", 3, rc.getOperands().size());
-		assertEquals("Wrong in operand type", OperandType.usage, rc.getOperands().get("in").getType());
-		OperandConfig out = rc.getOperand("out");
-		assertEquals("Wrong product in out operand", "ComputedCost", out.getProduct());
-		assertEquals("Wrong usageType in out operand", "${group}-Requests", out.getUsageType());
-		assertEquals("Wrong out function", "(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000", rc.getCost());
+		assertEquals("Wrong number of operands", 1, rc.getOperands().size());
+		assertEquals("Wrong in operand type", OperandType.usage, rc.getIn().getType());
+		OperandConfig out = rc.getResults().get(0).getResult();
+		assertEquals("Wrong product in result", "ComputedCost", out.getProduct());
+		assertEquals("Wrong usageType in result", "${group}-Requests", out.getUsageType());
+		assertEquals("Wrong out function", "(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000", rc.getResults().get(0).getValue());
 	}
 
 }
