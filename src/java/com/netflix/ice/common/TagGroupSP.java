@@ -26,45 +26,40 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.SavingsPlanArn;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 import com.netflix.ice.tag.Zone.BadZone;
 
 /*
- * TagGroupRI adds the reservationArn for usage of a reserved instance to a TagGroup.
- * The reservationArn is used by the ReservationProcessor to properly associate usage
- * of an RI to the reservation so that lending/borrowing, amortization, reassignment of usage
- * and calculation of unused RIs can be done correctly.
- * 
- * reservationArns are only available when processing the new Cost and Usage Reports, not the old
- * Detailed Billing Reports. TagGroupRIs are converted to TagGroups by the ReservationProcessor
- * once RI usage calculations are done, so only TagGroups are serialized to external data files.
+ * TagGroupSP adds the SavingsPlanArn for covered usage of an instance to a TagGroup.
+ * The SavingsPlanArn is used by the SavingsPlanProcessor to split amortization and
+ * recurring fees from the effective cost values.
  */
-public class TagGroupRI extends TagGroupArn {
+public class TagGroupSP extends TagGroupArn {
 	private static final long serialVersionUID = 1L;
 	
-	private TagGroupRI(Account account, Region region, Zone zone,
+	private TagGroupSP(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
-			ResourceGroup resourceGroup, ReservationArn reservationArn) {
+			ResourceGroup resourceGroup, SavingsPlanArn savingsPlanArn) {
 		super(account, region, zone, product, operation, usageType,
-				resourceGroup, reservationArn);
+				resourceGroup, savingsPlanArn);
 	}
     
-    private static Map<TagGroupRI, TagGroupRI> tagGroups = Maps.newConcurrentMap();
+    private static Map<TagGroupSP, TagGroupSP> tagGroups = Maps.newConcurrentMap();
     
-    public ReservationArn getArn() {
-    	return (ReservationArn) arn;
+    public SavingsPlanArn getArn() {
+    	return (SavingsPlanArn) arn;
     }
-
-    public static TagGroupRI get(TagGroup tg) {
-    	if (tg instanceof TagGroupRI)
-    		return (TagGroupRI) tg;
+    
+    public static TagGroupSP get(TagGroup tg) {
+    	if (tg instanceof TagGroupSP)
+    		return (TagGroupSP) tg;
     	return get(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup, null);
     }
     
-    public static TagGroupRI get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String reservationArn, AccountService accountService, ProductService productService) throws BadZone {
+    public static TagGroupSP get(String account, String region, String zone, String product, String operation, String usageTypeName, String usageTypeUnit, String resourceGroup, String savingsPlanArn, AccountService accountService, ProductService productService) throws BadZone {
         Region r = Region.getRegionByName(region);
         return get(
     		accountService.getAccountByName(account),
@@ -73,12 +68,12 @@ public class TagGroupRI extends TagGroupArn {
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
             StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)),
-            ReservationArn.get(reservationArn));   	
+            SavingsPlanArn.get(savingsPlanArn));   	
     }
     
-    public static TagGroupRI get(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup, ReservationArn reservationArn) {
-        TagGroupRI newOne = new TagGroupRI(account, region, zone, product, operation, usageType, resourceGroup, reservationArn);
-        TagGroupRI oldOne = tagGroups.get(newOne);
+    public static TagGroupSP get(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup, SavingsPlanArn savingsPlanArn) {
+        TagGroupSP newOne = new TagGroupSP(account, region, zone, product, operation, usageType, resourceGroup, savingsPlanArn);
+        TagGroupSP oldOne = tagGroups.get(newOne);
         if (oldOne != null) {
             return oldOne;
         }

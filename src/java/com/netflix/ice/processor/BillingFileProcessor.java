@@ -134,7 +134,16 @@ public class BillingFileProcessor extends Poller {
             
             // Get the reservation processor from the first report
             ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
-            ReservationService reservationService = costAndUsageData.hasReservations() ? new BasicReservationService(costAndUsageData.getReservations()) : config.reservationService;
+            ReservationService reservationService = config.reservationService;
+            if (costAndUsageData.hasReservations()) {
+            	// Use the reservations pulled from the CUR rather than those pulled by the capacity poller from the individual accounts.
+            	logger.info("Process " + costAndUsageData.getReservations().size() + " reservations pulled from the CUR");
+            	reservationService = new BasicReservationService(costAndUsageData.getReservations());
+            }
+            else {
+            	logger.info("Process reservations pulled from the accounts");
+            }
+            SavingsPlanProcessor savingsPlanProcessor = new SavingsPlanProcessor(costAndUsageData, config.accountService);
 
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
@@ -160,9 +169,11 @@ public class BillingFileProcessor extends Poller {
             		}
                 	reservationProcessor.process(reservationService, costAndUsageData, prod, dataTime, prices);
             	}
+            	savingsPlanProcessor.process(prod);
         	}
         	
         	reservationProcessor.process(reservationService, costAndUsageData, null, dataTime, prices);
+        	savingsPlanProcessor.process(null);
         	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));

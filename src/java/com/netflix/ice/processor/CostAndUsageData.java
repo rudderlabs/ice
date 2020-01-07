@@ -46,6 +46,7 @@ import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 
@@ -62,6 +63,7 @@ public class CostAndUsageData {
     private List<String> userTags;
     private boolean collectTagCoverageWithUserTags;
     private Map<ReservationArn, Reservation> reservations;
+    private Map<String, SavingsPlan> savingsPlans;
     
 	public CostAndUsageData(long startMilli, WorkBucketConfig workBucketConfig, List<String> userTags, Config.TagCoverage tagCoverage, AccountService accountService, ProductService productService) {
 		this.startMilli = startMilli;
@@ -80,6 +82,7 @@ public class CostAndUsageData {
         	this.tagCoverage.put(null, new ReadWriteTagCoverageData(userTags.size()));
         }
         this.reservations = Maps.newHashMap();
+        this.savingsPlans = Maps.newHashMap();
 	}
 	
 	public long getStartMilli() {
@@ -143,6 +146,8 @@ public class CostAndUsageData {
 				}
 			}	
 		}
+		reservations.putAll(data.reservations);
+		savingsPlans.putAll(data.savingsPlans);
 	}
 	
     public void cutData(int hours) {
@@ -155,7 +160,7 @@ public class CostAndUsageData {
     }
     
     public void addReservation(Reservation reservation) {
-    	reservations.put(reservation.tagGroup.reservationArn, reservation);
+    	reservations.put(reservation.tagGroup.getArn(), reservation);
     }
     
     public Map<ReservationArn, Reservation> getReservations() {
@@ -164,6 +169,24 @@ public class CostAndUsageData {
     
     public boolean hasReservations() {
     	return reservations != null && reservations.size() > 0;
+    }
+    
+    public void addSavingsPlan(String arn, SavingsPlanPaymentOption paymentOption, String hourlyRecurringFee, String hourlyAmortization) {
+    	if (savingsPlans.containsKey(arn))
+    		return;
+		SavingsPlan plan = new SavingsPlan(arn,
+				paymentOption,
+				Double.parseDouble(hourlyRecurringFee), 
+				Double.parseDouble(hourlyAmortization));
+    	savingsPlans.put(arn, plan);
+    }
+    
+    public Map<String, SavingsPlan> getSavingsPlans() {
+    	return savingsPlans;
+    }
+    
+    public boolean hasSavingsPlans() {
+    	return savingsPlans != null && savingsPlans.size() > 0;
     }
     
     /**

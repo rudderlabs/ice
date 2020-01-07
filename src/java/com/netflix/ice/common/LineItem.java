@@ -239,7 +239,11 @@ public abstract class LineItem {
 		RIFee,
 		RiVolumeDiscount,
 		Tax,
-		Usage;
+		Usage,
+		SavingsPlanUpfrontFee,
+		SavingsPlanRecurringFee,
+		SavingsPlanCoveredUsage,
+		SavingsPlanNegation;
 	}
 	
 	public LineItemType getLineItemType() {
@@ -330,6 +334,41 @@ public abstract class LineItem {
 	}
 	
 	public String getLineItemNormalizationFactor() {
+		return null;
+	}
+	
+	/**
+	 * Savings Plans began 2019-11
+	 */
+	public String getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod() {
+		return null;
+	}
+	
+	public String getSavingsPlanRecurringCommitmentForBillingPeriod() {
+		return null;
+	}
+
+	public String getSavingsPlanStartTime() {
+		return null;
+	}
+
+	public String getSavingsPlanEndTime() {
+		return null;
+	}
+
+	public String getSavingsPlanArn() {
+		return null;
+	}
+
+	public String getSavingsPlanEffectiveCost() {
+		return null;
+	}
+
+	public Double getSavingsPlanNormalizedUsage() {
+		return null;
+	}
+	
+	public String getSavingsPlanPaymentOption() {
 		return null;
 	}
 }

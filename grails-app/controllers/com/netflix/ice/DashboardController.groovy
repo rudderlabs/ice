@@ -117,11 +117,13 @@ class DashboardController {
     }
 	
 	def getReservationOps = {
-		List<Operation> resOps = Operation.getReservationOperations();
 		def data = [];
-		for (Operation op: resOps) {
+		for (Operation op: Operation.getReservationOperations()) {
 			if (!op.isFamily() || getConfig().familyRiBreakout)
 				data.add(op.name);
+		}		
+		for (Operation op: Operation.getSavingsPlanOperations()) {
+			data.add(op.name);
 		}
 		
         def result = [status: 200, data: data]

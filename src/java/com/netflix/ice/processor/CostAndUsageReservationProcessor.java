@@ -136,7 +136,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
             }
             
 		    for (TagGroupRI tg: riTagGroups) {
-		    	if (tg.reservationArn != reservationArn)
+		    	if (tg.getArn() != reservationArn)
 		    		continue;
 		    	
 			    // grab the RI tag group value and add it to the remove list
@@ -157,13 +157,13 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    amort = null;
 				    if (utilization != ReservationUtilization.NO) {
 					    // See if we have amortization in the map already
-					    TagGroupRI atg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(utilization), tg.usageType, tg.resourceGroup, tg.reservationArn);
+					    TagGroupRI atg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(utilization), tg.usageType, tg.resourceGroup, tg.getArn());
 					    amort = costMap.remove(atg);
 					    if (hour == 0 && amort == null)
 					    	logger.warn("No amortization in map for tagGroup: " + atg);
 				    }
 				    
-				    TagGroupRI stg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getSavings(utilization), tg.usageType, tg.resourceGroup, tg.reservationArn);
+				    TagGroupRI stg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getSavings(utilization), tg.usageType, tg.resourceGroup, tg.getArn());
 				    savings = costMap.remove(stg);
 				    if (hour == 0 && savings == null)
 				    	logger.warn("No savings in map for tagGroup: " + stg);

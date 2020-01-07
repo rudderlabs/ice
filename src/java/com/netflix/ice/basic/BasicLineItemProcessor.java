@@ -25,6 +25,7 @@ import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationInfo;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.*;
+import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Zone.BadZone;
 
 import org.apache.commons.lang.StringUtils;
@@ -84,7 +85,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         
     	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-            StringUtils.isEmpty(lineItem.getOperation()) ||
+            (StringUtils.isEmpty(lineItem.getOperation()) && lineItem.getLineItemType() != LineItemType.SavingsPlanRecurringFee) ||
             StringUtils.isEmpty(lineItem.getUsageQuantity())) {
     		return true;
     	}
@@ -218,12 +219,36 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
         }
         
-        // If processing an RIFee from a CUR, grab the unused rates for the reservation processor.
-        if (processDelayed && lineItem.getLineItemType() == LineItemType.RIFee) {
-        	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, resourceGroup, reservationArn);
-        	addReservation(lineItem, costAndUsageData, tgri, startMilli);
+        // Do line-item-specific processing
+        LineItemType lineItemType = lineItem.getLineItemType();
+        if (lineItemType != null) {
+        	switch (lineItem.getLineItemType()) {
+	        case RIFee:
+	        	if (processDelayed) {
+	                // Grab the unused rates for the reservation processor.
+	            	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, resourceGroup, reservationArn);
+	            	addReservation(lineItem, costAndUsageData, tgri, startMilli);
+	        	}
+	        	break;
+	        	
+	        case SavingsPlanRecurringFee:
+	        	// Grab the amortization and recurring fee for the savings plan processor.
+	        	costAndUsageData.addSavingsPlan(lineItem.getSavingsPlanArn(),
+	        					SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption()),
+	        					lineItem.getSavingsPlanRecurringCommitmentForBillingPeriod(), 
+	        					lineItem.getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod());
+	        	break;
+	        	
+	        case SavingsPlanCoveredUsage:
+	        	costValue = Double.parseDouble(lineItem.getSavingsPlanEffectiveCost());
+	        	break;
+	        	
+	        default:
+	        	
+	        	break;
+	        }
         }
-
+        
         if (result == Result.ignore || result == Result.delay)
             return result;
 
@@ -341,6 +366,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		CostAndUsageData costAndUsageData,
     		TagGroupRI tg, long startMilli) {    	
         return;        
+    }
+    
+    protected void addSavingsPlan(LineItem lineItem, CostAndUsageData costAndUsageData) {
+    	return;
     }
 
     protected Result getResult(LineItem lineItem, long startMilli, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {
@@ -664,6 +693,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 //            if (StringUtils.isEmpty(usageType.unit)) {
 //            	logger.info("No units for " + usageTypeStr + ", " + operation + ", " + description + ", " + product);
 //            }
+        }
+        
+        // Override operation if this is savings plan covered usage
+        if (lineItem.getLineItemType() == LineItemType.SavingsPlanCoveredUsage) {
+        	operation = Operation.getSavingsPlanBonus(Operation.SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption()));
         }
 
         return new ReformedMetaData(product, operation, usageType);

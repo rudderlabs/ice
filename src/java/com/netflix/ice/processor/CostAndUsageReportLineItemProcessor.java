@@ -31,14 +31,18 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
+import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Operation.SavingsPlanOperation;
+import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.SavingsPlanArn;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
@@ -64,8 +68,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     	LineItemType lit = lineItem.getLineItemType();
     	if (lit == LineItemType.Tax ||
     		lit == LineItemType.EdpDiscount ||
-    		lit == LineItemType.RiVolumeDiscount)
+    		lit == LineItemType.RiVolumeDiscount ||
+    		lit == LineItemType.SavingsPlanNegation ||
+    		lit == LineItemType.SavingsPlanUpfrontFee) {
     		return true;
+    	}
     	
     	return super.ignore(startMilli, root, lineItem);
     }
@@ -105,6 +112,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 
 	@Override
     protected TagGroup getTagGroup(LineItem lineItem, Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup rg) {
+        if (operation.isSavingsPlan()) {
+        	SavingsPlanArn savingsPlanArn = SavingsPlanArn.get(lineItem.getSavingsPlanArn());
+        	return TagGroupSP.get(account, region, zone, product, operation, usageType, rg, savingsPlanArn);
+        }
+
         ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
         if (operation instanceof Operation.ReservationOperation && !reservationArn.name.isEmpty()) {
         	return TagGroupRI.get(account, region, zone, product, operation, usageType, rg, reservationArn);
@@ -154,11 +166,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         Reservation r = new Reservation(tg, count, start, end, utilization, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
-        if (ReservationArn.debugReservationArn != null && tg.reservationArn == ReservationArn.debugReservationArn) {
+        if (ReservationArn.debugReservationArn != null && tg.getArn() == ReservationArn.debugReservationArn) {
         	logger.info("RI: count=" + r.count + ", tg=" + tg);
         }
     }
-	
+		
 	private boolean applyMonthlyUsage(LineItemType lineItemType, boolean monthly, Product product) {
         // For CAU reports, EC2, Redshift, and RDS have cost as a monthly charge, but usage appears hourly.
         // 	so unlike EC2, we have to process the monthly line item to capture the cost,
@@ -173,6 +185,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 			double usage, double cost, double edpDiscount,
 			Map<TagGroup, Double> usages, Map<TagGroup, Double> costs,
 			String amort, String publicOnDemandCost, boolean isFirstHour, long startMilli) {
+		
+		if (lineItemType == LineItemType.SavingsPlanRecurringFee) {
+			
+			return;
+		}
 		
 		boolean debug = isReservationUsage && ReservationArn.debugReservationArn != null && isFirstHour && reservationArn == ReservationArn.debugReservationArn;
 		
@@ -200,31 +217,74 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
             addValue(costs, tagGroup, cost);
         }
 	}
+	
+	private void addUnusedSavingsPlanData(LineItem lineItem, TagGroup tagGroup, Product product, CostAndUsageData costAndUsageData, int index) {
+		double normalizedUsage = lineItem.getSavingsPlanNormalizedUsage();
+		if (normalizedUsage >= 1.0)
+			return;
+		
+		double amortization = Double.parseDouble(lineItem.getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod());
+		double recurring = Double.parseDouble(lineItem.getSavingsPlanRecurringCommitmentForBillingPeriod());
+		double unusedAmort = amortization * (1.0 - normalizedUsage);
+		double unusedRecurring = recurring * (1.0 - normalizedUsage);
+
+        Map<TagGroup, Double> costs = costAndUsageData.getCost(null).getData(index);
+        
+        SavingsPlanPaymentOption paymentOption = SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption());
+
+        if (unusedAmort > 0.0) {
+    		SavingsPlanOperation amortOp = Operation.getSavingsPlanUnusedAmortized(paymentOption);
+    		TagGroup tgAmort = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, amortOp, tagGroup.usageType, tagGroup.resourceGroup);
+    		addValue(costs, tgAmort, unusedAmort);
+    		if (resourceService != null) {
+    	        Map<TagGroup, Double> costsOfProduct = costAndUsageData.getCost(product).getData(index);
+    	        addValue(costsOfProduct, tgAmort, unusedAmort);
+    		}
+        }
+        if (unusedRecurring > 0.0) {
+        	SavingsPlanOperation unusedOp = Operation.getSavingsPlanUnused(paymentOption);
+    		TagGroup tgRecurring = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, unusedOp, tagGroup.usageType, tagGroup.resourceGroup);
+    		addValue(costs, tgRecurring, unusedRecurring);
+    		if (resourceService != null) {
+    	        Map<TagGroup, Double> costsOfProduct = costAndUsageData.getCost(product).getData(index);
+    	        addValue(costsOfProduct, tgRecurring, unusedRecurring);
+    		}
+        }
+	}
 
 	@Override
     protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup, CostAndUsageData costAndUsageData, 
     		double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount, long startMilli) {
 		
-        final ReadWriteData usageData = costAndUsageData.getUsage(null);
-        final ReadWriteData costData = costAndUsageData.getCost(null);
-        ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(tagGroup.product);
-        ReadWriteData costDataOfProduct = costAndUsageData.getCost(tagGroup.product);
-        boolean reservationUsage = lineItem.isReserved();
         final Product product = tagGroup.product;
-        ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
-        LineItemType lineItemType = lineItem.getLineItemType();
-    	String amort = lineItem.getAmortizedUpfrontCostForUsage();
-    	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
-
+        final LineItemType lineItemType = lineItem.getLineItemType();
+        ReadWriteData usageDataOfProduct = costAndUsageData.getUsage(product);
+        ReadWriteData costDataOfProduct = costAndUsageData.getCost(product);
+        
         if (resourceService != null) {
             if (usageDataOfProduct == null) {
                 usageDataOfProduct = new ReadWriteData();
                 costDataOfProduct = new ReadWriteData();
-                costAndUsageData.putUsage(tagGroup.product, usageDataOfProduct);
-                costAndUsageData.putCost(tagGroup.product, costDataOfProduct);
+                costAndUsageData.putUsage(product, usageDataOfProduct);
+                costAndUsageData.putCost(product, costDataOfProduct);
             }
         }
+                
+        if (lineItemType == LineItemType.SavingsPlanRecurringFee) {
+        	if (indexes.length > 1) {
+        		logger.error("SavingsPlanRecurringFee with more than one hour of data");
+        	}
+        	addUnusedSavingsPlanData(lineItem, tagGroup, product, costAndUsageData, indexes[0]);
+        	return;
+        }
         
+        final ReadWriteData usageData = costAndUsageData.getUsage(null);
+        final ReadWriteData costData = costAndUsageData.getCost(null);
+        boolean reservationUsage = lineItem.isReserved();
+        ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
+    	String amort = lineItem.getAmortizedUpfrontCostForUsage();
+    	String publicOnDemandCost = lineItem.getPublicOnDemandCost();
+
         if (lineItemType == LineItemType.Credit && ReservationArn.debugReservationArn != null && reservationArn == ReservationArn.debugReservationArn)
         	logger.info("Credit: " + lineItem);
         
@@ -305,14 +365,16 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	            // We use the RIFee line items to extract the reservation info
 		        return processDelayed ? Result.ignore : Result.delay;
         	}
-        	else {
-        		return processDelayed ? Result.monthly : Result.delay;
-        	}
-	        
+        	return processDelayed ? Result.monthly : Result.delay;
+        	
         case DiscountedUsage:
+        case SavingsPlanCoveredUsage:
+        case SavingsPlanRecurringFee:	        
         	return Result.hourly;
+        	
         case Credit:
         	return processDelayed ? Result.monthly : Result.delay;
+        	
         default:
         	break;
         		
