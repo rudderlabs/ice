@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
 public class ReadOnlyData extends ReadOnlyGenericData<Double> {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     
-    public ReadOnlyData() {
-        super(new Double[][]{}, Lists.<TagGroup>newArrayList(), 0);
+    public ReadOnlyData(int numUserTags) {
+        super(new Double[][]{}, Lists.<TagGroup>newArrayList(), numUserTags);
     }
     
     public ReadOnlyData(Double[][] data, List<TagGroup> tagGroups, int numUserTags) {
