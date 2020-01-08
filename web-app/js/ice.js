@@ -1035,8 +1035,27 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }).error(function (result, status) {
         if (status === 401 || status === 0)
           $window.location.reload();
+      });    
+    },
+
+    getSavingsPlanOps: function ($scope, fn, params) {
+      if (!params) {
+        params = {};
+      }
+      $http({
+        method: "GET",
+        url: "getSavingsPlanOps",
+        params: params
+      }).success(function (result) {
+        if (result.status === 200 && result.data) {
+          $scope.savingsPlanOps = result.data;
+        }
+        if (fn)
+          fn(result.data);
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
+          $window.location.reload();
       });
-    
     },
 
     getUtilizationOps: function ($scope, fn, params) {
@@ -1528,6 +1547,161 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   usage_db.getReservationOps($scope, fn);
+}
+
+function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
+
+  $scope.init($scope);
+  $scope.consolidate = "hourly";
+  $scope.predefinedQuery = null;
+  $scope.usageUnit = "Instances";
+  $scope.groupBys = [
+    { name: "OrgUnit" },
+    { name: "Account" },
+    { name: "Region" },
+    { name: "Zone" },
+    { name: "Product" },
+    { name: "Operation" },
+    { name: "UsageType" }
+  ];
+  $scope.groupBy = $scope.groupBys[5];
+  var startMonth = $scope.end.getUTCMonth() - 1;
+  var startYear = $scope.end.getUTCFullYear();
+  if (startMonth < 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+  $scope.start.setUTCFullYear(startYear);
+  $scope.start.setUTCMonth(startMonth);
+  $scope.start.setUTCDate(1);
+  $scope.start.setUTCHours(0);
+
+  $scope.end = highchart.dateFormat($scope.end); //$filter('date')($scope.end, "y-MM-dd hha");
+  $scope.start = highchart.dateFormat($scope.start); //$filter('date')($scope.start, "y-MM-dd hha");
+
+  $scope.updateUrl = function () {
+    $scope.end = jQuery('#end').datetimepicker().val();
+    $scope.start = jQuery('#start').datetimepicker().val();
+    var params = {};
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
+    usage_db.updateUrl($location, params);
+  }
+
+  $scope.download = function () {
+    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    if ($scope.showZones)
+      query.showZones = true;
+    usage_db.getData($scope, null, query, true);
+  }
+
+  $scope.getData = function () {
+    $scope.loading = true;
+    $scope.errorMessage = null;
+    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    if ($scope.showZones)
+      query.showZones = true;
+    usage_db.getData($scope, function (result) {
+      var hourlydata = [];
+      for (var key in result.data) {
+        hourlydata.push({ name: key, data: result.data[key] });
+      }
+      result.data = hourlydata;
+      $scope.legends = [];
+      $scope.stats = result.stats;
+      highchart.drawGraph(result, $scope);
+      $scope.loading = false;
+
+      $scope.legendPrecision = $scope.usage_cost == "cost" ? 2 : 0;
+      $scope.legendName = $scope.groupBy.name;
+      $scope.legend_usage_cost = $scope.usage_cost;
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
+    });
+  }
+
+  $scope.accountsEnabled = function () {
+    $scope.updateAccounts($scope);
+  }
+  
+  $scope.regionsEnabled = function () {
+    $scope.updateRegions($scope);
+  }
+  
+  $scope.zonesEnabled = function () {
+    $scope.updateZones($scope);
+  }
+  
+  $scope.productsEnabled = function () {
+    $scope.updateProducts($scope);
+  }
+  
+  $scope.operationsEnabled = function () {
+    $scope.updateOperations($scope);
+  }
+  
+  $scope.usageTypesEnabled = function () {
+    $scope.updateUsageTypes($scope);
+  }
+
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
+  }
+
+  $scope.accountsChanged = function () {
+    if ($scope.showZones)
+      $scope.updateZones($scope);
+    else
+      $scope.updateRegions($scope);
+  }
+
+  $scope.regionsChanged = function () {
+    $scope.updateProducts($scope);
+  }
+
+  $scope.zonesChanged = function () {
+    $scope.updateProducts($scope);
+  }
+
+  $scope.productsChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
+  $scope.operationsChanged = function () {
+    $scope.updateUsageTypes($scope);
+  }
+
+  $scope.usageCostChanged = function () {
+    updateOperations($scope);
+  }
+
+  var fn = function () {
+    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(",") };
+
+    usage_db.getParams($location.hash(), $scope);
+    usage_db.processParams($scope);
+
+    $scope.updateAccounts($scope);
+    $scope.getData();
+
+    jQuery("#start, #end").datetimepicker({
+      showTime: false,
+      showMinute: false,
+      ampm: true,
+      timeFormat: 'hhTT',
+      dateFormat: 'yy-mm-dd'
+    });
+    jQuery('#end').datetimepicker().val($scope.end);
+    jQuery('#start').datetimepicker().val($scope.start);
+  }
+
+  usage_db.getSavingsPlanOps($scope, fn);
 }
 
 function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {

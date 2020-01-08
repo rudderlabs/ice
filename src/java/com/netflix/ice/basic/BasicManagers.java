@@ -205,7 +205,7 @@ public class BasicManagers extends Poller implements Managers {
             		if (product != null)
             			continue;
             		
-            		// Create hourly cost and usage managers only for reservation operations
+            		// Create hourly cost and usage managers only for reservation and savings plan operations
 	                costManagers.put(key, new BasicDataManager(config.startDate, "cost_hourly_all", consolidateType, tagGroupManager, compress, 0,
 	                		config.monthlyCacheSize, config.workBucketConfig, config.accountService, config.productService, null, true));
 	                usageManagers.put(key, new BasicDataManager(config.startDate, "usage_hourly_all", consolidateType, tagGroupManager, compress, 0,

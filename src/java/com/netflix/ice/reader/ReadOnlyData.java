@@ -22,6 +22,7 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Operation.SavingsPlanOperation;
 import com.netflix.ice.tag.Zone.BadZone;
 
 import java.io.DataInput;
@@ -63,12 +64,12 @@ public class ReadOnlyData extends ReadOnlyGenericData<Double> {
     	super.deserialize(accountService, productService, numUserTags, in, !forReservations);
     	
     	if (forReservations) {
-    		//Strip out all data that isn't for a reservation operation
+    		//Strip out all data that isn't for a reservation or savings plan operation
     		
     		// Build a column map index
     		List<Integer> columnMap = Lists.newArrayList();
             for (int i = 0; i < tagGroups.size(); i++) {
-            	if (tagGroups.get(i).operation instanceof ReservationOperation)
+            	if (tagGroups.get(i).operation instanceof ReservationOperation || tagGroups.get(i).operation instanceof SavingsPlanOperation)
             		columnMap.add(i);
             }
 

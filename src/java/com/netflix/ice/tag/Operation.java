@@ -333,10 +333,23 @@ public class Operation extends Tag {
     	}
     }
     
+    public static List<SavingsPlanOperation> getSavingsPlanAmortizedOperations() {
+        return Lists.newArrayList(savingsPlanAmortizedPartialUpfront, savingsPlanAmortizedAllUpfront,
+        		savingsPlanUnusedAmortizedPartialUpfront, savingsPlanUnusedAmortizedAllUpfront);
+    }
+    
     public static SavingsPlanOperation getSavingsPlanAmortized(SavingsPlanPaymentOption paymentOption) {
     	switch(paymentOption) {
     	case PartialUpfront: return savingsPlanAmortizedPartialUpfront;
     	case AllUpfront: return savingsPlanAmortizedAllUpfront;
+    	default: throw new RuntimeException("Unknown SavingsPlanPaymentOption " + paymentOption);
+    	}
+    }
+    
+    public static SavingsPlanOperation getSavingsPlanUnusedAmortized(SavingsPlanPaymentOption paymentOption) {
+    	switch(paymentOption) {
+    	case PartialUpfront: return savingsPlanUnusedAmortizedPartialUpfront;
+    	case AllUpfront: return savingsPlanUnusedAmortizedAllUpfront;
     	default: throw new RuntimeException("Unknown SavingsPlanPaymentOption " + paymentOption);
     	}
     }
@@ -368,19 +381,15 @@ public class Operation extends Tag {
     	}
     }
     
+    public static List<SavingsPlanOperation> getSavingsPlanLentOperations() {
+        return Lists.newArrayList(savingsPlanLentNoUpfront, savingsPlanLentPartialUpfront, savingsPlanLentAllUpfront);
+    }
+    
     public static SavingsPlanOperation getSavingsPlanLent(SavingsPlanPaymentOption paymentOption) {
     	switch(paymentOption) {
     	case NoUpfront: return savingsPlanLentNoUpfront;
     	case PartialUpfront: return savingsPlanLentPartialUpfront;
     	case AllUpfront: return savingsPlanLentAllUpfront;
-    	default: throw new RuntimeException("Unknown SavingsPlanPaymentOption " + paymentOption);
-    	}
-    }
-    
-    public static SavingsPlanOperation getSavingsPlanUnusedAmortized(SavingsPlanPaymentOption paymentOption) {
-    	switch(paymentOption) {
-    	case PartialUpfront: return savingsPlanUnusedAmortizedPartialUpfront;
-    	case AllUpfront: return savingsPlanUnusedAmortizedAllUpfront;
     	default: throw new RuntimeException("Unknown SavingsPlanPaymentOption " + paymentOption);
     	}
     }
@@ -402,6 +411,10 @@ public class Operation extends Tag {
     	return name.startsWith("SavingsPlan Unused - ");
     }
     
+    public boolean isSavingsPlanLent() {
+    	return name.startsWith("SavingsPlan Lent - ");
+    }
+    
     public boolean isSavingsPlanUnusedAmortized() {
     	return name.startsWith("SavingsPlan UnusedAmortized - ");
     }
@@ -409,7 +422,6 @@ public class Operation extends Tag {
     public boolean isSavingsPlanBonus() {
     	return name.startsWith("SavingsPlan Bonus - ");
     }
-    
     
     public static class SavingsPlanOperation extends Operation {
 		private static final long serialVersionUID = 1L;

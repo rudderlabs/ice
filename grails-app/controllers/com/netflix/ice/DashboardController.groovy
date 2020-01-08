@@ -77,6 +77,7 @@ class DashboardController {
 	static allowedMethods = [
 		index: "GET",
 		getReservationOps: "GET",
+		getSavingsPlanOps: "GET",
 		getUtilizationOps: "GET",
 		getTagConfigs: "GET",
 		getAccounts: "GET",
@@ -95,6 +96,7 @@ class DashboardController {
 		detail: "GET",
 		tagcoverage: "GET",
 		reservation: "GET",
+		savingsplans: "GET",
 		utilization: "GET",
 	];
 			
@@ -122,12 +124,20 @@ class DashboardController {
 			if (!op.isFamily() || getConfig().familyRiBreakout)
 				data.add(op.name);
 		}		
-		for (Operation op: Operation.getSavingsPlanOperations()) {
-			data.add(op.name);
-		}
 		
         def result = [status: 200, data: data]
         render result as JSON
+	}
+	
+	def getSavingsPlanOps = {
+		def data = [];
+		data.add(Operation.spotInstances.name);
+		data.add(Operation.ondemandInstances.name);
+		for (Operation op: Operation.getSavingsPlanOperations()) {
+			data.add(op.name);
+		}
+		def result = [status: 200, data: data]
+		render result as JSON
 	}
 	
 	def getUtilizationOps = {
@@ -232,7 +242,8 @@ class DashboardController {
         List<Operation> operations = Operation.getOperations(listParams(query, "operation"));
         boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
-
+		boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
+		
         Collection<Operation> data;
         if (resources) {
             data = Sets.newTreeSet();
@@ -268,12 +279,27 @@ class DashboardController {
 					data.remove(savingsOp);
 			}
         }
+		else if (forSavingsPlans) {
+			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
+			if (isCost) {
+				// Remove Lent from cost operations
+				for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
+					data.remove(lentOp);
+			}
+			else {
+				// Remove Amortization and savings from the usage operations
+				for (Operation.SavingsPlanOperation amortOp: Operation.getSavingsPlanAmortizedOperations())
+					data.remove(amortOp);
+			}
+		}
 		else {
 			// Don't show Lent and Savings operations unless it's the reservations dashboard
             for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
                 data.remove(lentOp);
 			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
 				data.remove(savingsOp);
+			for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
+				data.remove(lentOp);
         }
 		
 		logger.debug("operations: " + operations);
@@ -498,6 +524,8 @@ class DashboardController {
 
     def reservation = {}
 
+    def savingsplans = {}
+
     def utilization = {}
 
 	def resourceinfo = {}
@@ -541,6 +569,7 @@ class DashboardController {
         DateTime end = query.has("spans") ? dayFormatter.parseDateTime(query.getString("end")) : dateFormatter.parseDateTime(query.getString("end"));
         ConsolidateType consolidateType = query.has("consolidate") ? ConsolidateType.valueOf(query.getString("consolidate")) : ConsolidateType.hourly;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
+        boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
 		boolean consolidateGroups = query.has("consolidateGroups") ? query.getBoolean("consolidateGroups") : false;
@@ -579,7 +608,7 @@ class DashboardController {
 			consolidateType = consolidateType == ConsolidateType.hourly ? ConsolidateType.daily : consolidateType;
 		}
 		
-		if (consolidateType == ConsolidateType.hourly && !getConfig().hourlyData && !forReservation)
+		if (consolidateType == ConsolidateType.hourly && !getConfig().hourlyData && !(forReservation || forSavingsPlans))
 			consolidateType = ConsolidateType.daily;
 
         DateTime start;
@@ -665,13 +694,13 @@ class DashboardController {
 				consolidateType,
 				groupBy,
 				aggregate,
-				forReservation,
+				forReservation || forSavingsPlans,
 				usageUnit,
 				userTagLists,
 				userTagGroupByIndex);			
         }
         else {
-			logger.debug("doGetData: " + operations + ", forReservation: " + forReservation);
+			logger.debug("doGetData: " + operations + ", forReservation: " + (forReservation || forSavingsPlans));
 			
             DataManager dataManager = isCost ? getManagers().getCostManager(null, consolidateType) : getManagers().getUsageManager(null, consolidateType);
             data = dataManager.getData(
@@ -679,7 +708,7 @@ class DashboardController {
                 new TagLists(accounts, regions, zones, products, operations, usageTypes),
                 groupBy,
                 aggregate,
-                forReservation,
+				forReservation || forSavingsPlans,
 				usageUnit,
 				userTagGroupByIndex
             );
