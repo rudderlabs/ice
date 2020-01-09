@@ -38,7 +38,15 @@ public class ConsolidatedOperation extends Tag {
 		consolidatedName.put("Used RIs", "RIs");
 		consolidatedName.put("Spot Instances", "Spot Instances");
 		consolidatedName.put("On-Demand Instances", "On-Demand Instances");
-		
+
+		consolidatedName.put("SavingsPlan Amortized", "SavingsPlan Amortized");
+		consolidatedName.put("SavingsPlan UnusedAmortized", "SavingsPlan Amortized");
+		consolidatedName.put("SavingsPlan Bonus", "SavingsPlan Used");
+		consolidatedName.put("SavingsPlan Used", "SavingsPlan Used");
+		consolidatedName.put("SavingsPlan Borrowed", "SavingsPlan Used");
+		consolidatedName.put("SavingsPlan Lent", "SavingsPlan Lent");
+		consolidatedName.put("SavingsPlan Unused", "SavingsPlan Unused");
+
 		seqMap.put("Savings", 0);
 		seqMap.put("Spot Instances", 1);
 		seqMap.put("On-Demand Instances", 2);
@@ -46,6 +54,11 @@ public class ConsolidatedOperation extends Tag {
 		seqMap.put("Amortized RIs", 4);
 		seqMap.put("Unused RIs", 5);
 		seqMap.put("Lent RIs", 7);
+		
+		seqMap.put("SavingsPlan Used", 8);
+		seqMap.put("SavingsPlan Amortized", 9);
+		seqMap.put("SavingsPlan Unused", 10);
+		seqMap.put("SavingsPlan Lent", 11);
 	}
 
 	public ConsolidatedOperation(String name) {
