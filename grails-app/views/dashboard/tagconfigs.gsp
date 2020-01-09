@@ -26,7 +26,8 @@
 <div class="" style="margin: auto; width: 1200px; padding: 20px 30px" ng-controller="tagconfigsCtrl">
   <div ng-repeat="payer in payers" class="list">
     <h1>Tag Settings for {{payer}}</h1>
-    <h2>Mappings<input ng-model="filter_mappings" type="text" class="resourcesFilter" placeholder="Filter"/></h2>   
+    <h2>Mappings<span class="resourcesButtons"><input ng-model="filter_mappings" type="text" class="resourcesFilter" placeholder="Filter"/>
+    </span></h2>   
 	<table style="width: 100%;">
 	  <thead>
 	    <tr>
@@ -47,7 +48,8 @@
 	    </tr>
 	  </tbody>
 	</table>
-	<h2>Consolidations<input ng-model="filter_consolidations" type="text" class="resourcesFilter" placeholder="Filter"/></h2>
+	<h2>Consolidations<span class="resourcesButtons"><input ng-model="filter_consolidations" type="text" class="resourcesFilter" placeholder="Filter"/>
+	</span></h2>
 	<table style="width: 100%;">
 	  <thead>
 	    <tr>
