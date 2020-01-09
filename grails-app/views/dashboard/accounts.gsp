@@ -24,6 +24,7 @@
 </head>
 <body>
 <div class="" style="margin: auto; width: 1200px; padding: 20px 30px" ng-controller="accountsCtrl">
+  <h1>Accounts<input ng-model="filter_accounts" type="text" class="resourcesFilter" placeholder="Filter"/></h1>
   <div class="list">
 	  <table style="width: 100%;">
 	    <thead>
@@ -38,7 +39,7 @@
 	    </tr>
 	    </thead>
 	    <tbody>
-	    <tr ng-repeat="account in accounts" class="{{getTrClass($index)}}">
+	    <tr ng-repeat="account in accounts | filter:filter_accounts" class="{{getTrClass($index)}}">
 	      <td>{{account.name}}</td>
 	      <td>{{account.awsName}}</td>
 	      <td>{{account.id}}</td>
