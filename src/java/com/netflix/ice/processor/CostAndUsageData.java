@@ -160,7 +160,7 @@ public class CostAndUsageData {
     }
     
     public void addReservation(Reservation reservation) {
-    	reservations.put(reservation.tagGroup.getArn(), reservation);
+    	reservations.put(reservation.tagGroup.arn, reservation);
     }
     
     public Map<ReservationArn, Reservation> getReservations() {

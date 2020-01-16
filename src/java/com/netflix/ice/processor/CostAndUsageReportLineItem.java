@@ -194,15 +194,20 @@ public class CostAndUsageReportLineItem extends LineItem {
         try {
         	lineItemType = LineItemType.valueOf(items[lineItemTypeIndex]);
         } catch (Exception e) {
-        }
-        if (lineItemType == null)
         	logger.error("Unknown lineItemType: " + items[lineItemTypeIndex]);
+        	lineItemType = null;
+        }
     }
     
     public int size() {
     	return resourceTagStartIndex + resourceTagsHeader.length;
     }
-        
+     
+    public int getBillTypeIndex() {
+    	return billTypeIndex;
+    }
+    
+    @Override
     public BillType getBillType() {
     	return BillType.valueOf(items[billTypeIndex]);
     }
@@ -506,6 +511,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 				return quantity == 0.0 ? 0.0 : fee / quantity;
 		}
 		return null;
+	}
+	
+	public int getLineItemProductCodeIndex() {
+		return lineItemProductCodeIndex;
 	}
 	
 	@Override

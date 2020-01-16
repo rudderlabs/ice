@@ -42,7 +42,7 @@ import com.netflix.ice.tag.Zone.BadZone;
  * Detailed Billing Reports. TagGroupRIs are converted to TagGroups by the ReservationProcessor
  * once RI usage calculations are done, so only TagGroups are serialized to external data files.
  */
-public class TagGroupRI extends TagGroupArn {
+public class TagGroupRI extends TagGroupArn<ReservationArn> {
 	private static final long serialVersionUID = 1L;
 	
 	private TagGroupRI(Account account, Region region, Zone zone,
@@ -54,10 +54,6 @@ public class TagGroupRI extends TagGroupArn {
     
     private static Map<TagGroupRI, TagGroupRI> tagGroups = Maps.newConcurrentMap();
     
-    public ReservationArn getArn() {
-    	return (ReservationArn) arn;
-    }
-
     public static TagGroupRI get(TagGroup tg) {
     	if (tg instanceof TagGroupRI)
     		return (TagGroupRI) tg;

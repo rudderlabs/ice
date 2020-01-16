@@ -20,6 +20,19 @@ package com.netflix.ice.processor.postproc;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Post Processor Rule Configuration
+ * 
+ * The post processor provides a way to generate arbitrary cost and usage records based on existing cost and usage data processed from the reports.
+ * Each rule can be given a name which is used only by the processor for logging purposes. Start and end dates inform the processor when in time
+ * the rule is active. The rule will not be applied to data outside of the active window.
+ * 
+ * Inputs to the rule are specified using Operands. The 'in' operand drives the process while additional operands can be used to get values for
+ * the result value expressions.
+ * 
+ * The 'results' list holds the expression and tag group information for the values to be computed and written to the cost and usage data sets.
+ *
+ */
 public class RuleConfig {
 	private String name;
 	private String start;

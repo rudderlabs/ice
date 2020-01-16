@@ -44,6 +44,7 @@ public class CostAndUsageReport extends MonthlyReport {
     public static final DateTimeFormatter billingPeriodDateFormat = DateTimeFormat.forPattern("yyyyMMdd'T'HHmmss.SSSZ").withZone(DateTimeZone.UTC);
     
 	private Manifest manifest = null;
+	private String reportDirectoryKey;
 	
 	public CostAndUsageReport(S3ObjectSummary s3ObjectSummary, BillingBucket billingBucket, MonthlyReportProcessor processor) {
 		super(s3ObjectSummary, billingBucket, processor);
@@ -64,6 +65,8 @@ public class CostAndUsageReport extends MonthlyReport {
         }
         if (downloaded)
         	logger.info("downloaded " + fileKey);
+        
+        reportDirectoryKey = fileKey.substring(0, fileKey.lastIndexOf("/") + 1) + manifest.assemblyId + "/";
 	}
 		
 	/**
@@ -85,6 +88,10 @@ public class CostAndUsageReport extends MonthlyReport {
 		}
 	}
 	
+	public String getReportDirKey() {
+		return reportDirectoryKey;
+	}
+	
 	public class Column {
 		public String category;
 		public String name;
@@ -96,7 +103,7 @@ public class CostAndUsageReport extends MonthlyReport {
 	}
 	
 	public class Manifest {
-		public String assemplyId;
+		public String assemblyId;
 		public String account;
 		public Column[] columns;
 		public String charset;

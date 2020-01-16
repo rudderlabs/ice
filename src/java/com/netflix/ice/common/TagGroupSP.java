@@ -37,7 +37,7 @@ import com.netflix.ice.tag.Zone.BadZone;
  * The SavingsPlanArn is used by the SavingsPlanProcessor to split amortization and
  * recurring fees from the effective cost values.
  */
-public class TagGroupSP extends TagGroupArn {
+public class TagGroupSP extends TagGroupArn<SavingsPlanArn> {
 	private static final long serialVersionUID = 1L;
 	
 	private TagGroupSP(Account account, Region region, Zone zone,
@@ -48,10 +48,6 @@ public class TagGroupSP extends TagGroupArn {
 	}
     
     private static Map<TagGroupSP, TagGroupSP> tagGroups = Maps.newConcurrentMap();
-    
-    public SavingsPlanArn getArn() {
-    	return (SavingsPlanArn) arn;
-    }
     
     public static TagGroupSP get(TagGroup tg) {
     	if (tg instanceof TagGroupSP)

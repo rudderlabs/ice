@@ -73,7 +73,7 @@ public class SavingsPlanProcessor {
 	    	    
 	    for (TagGroupSP bonusTg: spTagGroups) {	    	
 	    	// Split the effective cost into recurring and amortization pieces if appropriate.
-	    	SavingsPlan sp = savingsPlans.get(bonusTg.getArn().name);
+	    	SavingsPlan sp = savingsPlans.get(bonusTg.arn.name);
 	    	
 	    	if (sp == null) {
 	    		logger.error("No savings plan in the map at hour " + hour + " for tagGroup: " + bonusTg);

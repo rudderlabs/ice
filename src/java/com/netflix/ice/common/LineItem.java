@@ -371,4 +371,8 @@ public abstract class LineItem {
 	public String getSavingsPlanPaymentOption() {
 		return null;
 	}
+	
+	public BillType getBillType() {
+		return null;
+	}
 }

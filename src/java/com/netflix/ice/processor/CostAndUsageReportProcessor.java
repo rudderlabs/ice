@@ -48,7 +48,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.LineItem;
-import com.netflix.ice.common.LineItem.BillType;
 
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -65,8 +64,10 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	// For example:
 	//     ice.debug.curMonth=20190101-20190201
 	//     ice.debug.manifest=34d6d421-ef62-40f8-854c-b5181a123b1b
+	//     ice.debug.reportKeys=report-01.csv.gz,report-02.csv.gz
     private final String debugMonthKey = "curMonth";
     private final String debugManifestKey = "manifest";
+    private final String debugReportKeys = "reportKeys"; // report keys can be the full key or just the report name in which case the manifest path is used to build the key
 
     private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
 
@@ -258,10 +259,23 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		// Queue up all the files
 		List<Future<FileData>> fileData = Lists.newArrayList();
 		
-		for (int i = 0; i < reportKeys.length; i++) {
-			// Queue up the files for download and processing
-	        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKeys[i], lastProcessed, edpDiscount));
-	    }
+        String debugReportKeys = config.debugProperties.get(this.debugReportKeys);
+		if (debugReportKeys != null) {
+			// Queue up the debug reports
+			for (String reportKey: debugReportKeys.split(",")) {
+				if (!reportKey.contains("/")) {
+					// add the full key to the name
+					reportKey = ((CostAndUsageReport) report).getReportDirKey() + reportKey;
+				}
+		        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKey, lastProcessed, edpDiscount));
+			}
+		}
+		else {
+			for (int i = 0; i < reportKeys.length; i++) {
+				// Queue up the files for download and processing
+		        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKeys[i], lastProcessed, edpDiscount));
+		    }
+		}
 
 		// Wait for completion and merge the results together
 		for (Future<FileData> ffd: fileData) {
@@ -419,12 +433,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	}
 
     private long processOneLine(List<String[]> delayedItems, String root, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, double edpDiscount) {
-    	BillType billType = lineItem.getBillType();
-    	if (billType == BillType.Purchase || billType == BillType.Refund) {
-        	// Skip purchases and refunds
-    		return endMilli;
-    	}
-    	
         LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
 
         if (result == LineItemProcessor.Result.delay) {

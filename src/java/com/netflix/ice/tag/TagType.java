@@ -26,7 +26,6 @@ public enum TagType {
     Operation,
     UsageType,
     ResourceGroup,
-    ApplicationGroup,
     TagKey,
     Tag;
 }

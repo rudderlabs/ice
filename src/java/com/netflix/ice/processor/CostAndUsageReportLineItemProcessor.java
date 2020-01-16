@@ -26,6 +26,7 @@ import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.LineItem.BillType;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
@@ -63,7 +64,17 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(long startMilli, String root, LineItem lineItem) {
+    protected boolean ignore(long startMilli, String root, LineItem lineItem) {    	
+    	BillType billType = lineItem.getBillType();
+    	if (billType == BillType.Purchase || billType == BillType.Refund) {
+            Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
+            if (!product.isSupport()) {
+	        	// Skip purchases and refunds for everything except support
+	    		logger.info("Skip Purchase/Refund: " + lineItem);
+	    		return true;
+            }
+    	}
+    	
     	// Cost and Usage report-specific checks
     	LineItemType lit = lineItem.getLineItemType();
     	if (lit == LineItemType.Tax ||
@@ -166,7 +177,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         Reservation r = new Reservation(tg, count, start, end, utilization, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
-        if (ReservationArn.debugReservationArn != null && tg.getArn() == ReservationArn.debugReservationArn) {
+        if (ReservationArn.debugReservationArn != null && tg.arn == ReservationArn.debugReservationArn) {
         	logger.info("RI: count=" + r.count + ", tg=" + tg);
         }
     }

@@ -32,17 +32,21 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.AggregationTagGroup;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public class PostProcessorTest {
     static private ProductService ps;
 	static private AccountService as;
 	static private String a1 = "0123456789012";
+	static private String a2 = "1234567890123";
+	static private String productStr = "ProductForPPT";
 	
 	@BeforeClass
 	static public void init() {
@@ -65,12 +69,12 @@ public class PostProcessorTest {
     		this.value = value;
     	}
     	
-    	public TagGroup getTagGroup() throws BadZone {
-    		return TagGroup.getTagGroup(a1, region, null, "Product", operation, usageType, null, null, as, ps);
+    	public TagGroup getTagGroup(String account) throws BadZone {
+    		return TagGroup.getTagGroup(account, region, null, productStr, operation, usageType, null, null, as, ps);
     	}
     	
-    	public TagGroup getTagGroup(String product) throws BadZone {
-    		return TagGroup.getTagGroup(a1, region, null, product, operation, usageType, null, null, as, ps);
+    	public TagGroup getTagGroup(String account, String product) throws BadZone {
+    		return TagGroup.getTagGroup(account, region, null, product, operation, usageType, null, null, as, ps);
     	}
     }
     
@@ -94,9 +98,9 @@ public class PostProcessorTest {
         
         for (TagGroupSpec spec: dataSpecs) {
         	if (spec.isCost)
-        		costs.put(spec.getTagGroup(), spec.value);
+        		costs.put(spec.getTagGroup(a1), spec.value);
         	else
-        		usages.put(spec.getTagGroup(), spec.value);
+        		usages.put(spec.getTagGroup(a1), spec.value);
         }
 	}
 	
@@ -111,7 +115,7 @@ public class PostProcessorTest {
 		"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
 		"in:\n" + 
 		"  type: usage\n" + 
-		"  product: Product\n" + 
+		"  product: " + productStr + "\n" + 
 		"  usageType: (..)-Requests-[12].*\n" + 
 		"results:\n" + 
 		"  - result:\n" + 
@@ -141,16 +145,16 @@ public class PostProcessorTest {
 		
 	    Map<TagGroup, Double> usageMap = usageData.getData(0);
 	    Map<TagGroup, Double> costMap = costData.getData(0);
-		Map<TagGroup, Double> inMap = pp.getInValues(rule, usageMap, costMap, true);
+		Map<AggregationTagGroup, Double> inMap = pp.getInValues(rule, usageMap, costMap, true);
 		
 		assertEquals("Wrong number of matched tags", 3, inMap.size());
 		// Scan map and make sure we have 2 US and 1 EU
 		int us = 0;
 		int eu = 0;
-		for (TagGroup tg: inMap.keySet()) {
-			if (tg.usageType.name.equals("US"))
+		for (AggregationTagGroup atg: inMap.keySet()) {
+			if (atg.getUsageType().name.equals("US"))
 				us++;
-			else if (tg.usageType.name.equals("EU"))
+			else if (atg.getUsageType().name.equals("EU"))
 				eu++;
 		}
 		assertEquals("Wrong number of US tagGroups", 2, us);
@@ -163,8 +167,9 @@ public class PostProcessorTest {
 		};
 		
 		for (TagGroupSpec spec: specs) {
-			TagGroup tg = spec.getTagGroup();
-			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(tg), 0.001);
+			TagGroup tg = spec.getTagGroup(a1);
+			AggregationTagGroup atg = rule.getIn().aggregation.getAggregationTagGroup(tg);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
 		}
 	}
 	
@@ -187,7 +192,7 @@ public class PostProcessorTest {
 		// 'in' is the sum of the two request values
 		//
 		// US: ((1000 + 2000) - (4000 * 4 * 8 / 2)) * 0.01 / 1000 == (3000 - 64000) * 0.00001 == 2999.36
-		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup("ComputedCost");
+		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup(a1, "ComputedCost");
 		Double value = costData.getData(0).get(usReqs);
 		assertNotNull("No cost value for US-Requests", value);
 		assertEquals("Wrong cost value for US-Requests", -0.61, value, .0001);
@@ -197,7 +202,7 @@ public class PostProcessorTest {
 		assertEquals("Wrong usage value for US-Requests", -61000.0, value, .0001);
 		
 		// EU:  ((10000 + 20000) - (40000 * 4 * 8 / 2)) * 0.01 / 1000 == (30000 - 640000) * 0.00001 == 29993.6
-		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup("ComputedCost");
+		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup(a1, "ComputedCost");
 		Double euValue = costData.getData(0).get(euReqs);
 		assertNotNull("No cost value for EU-Requests", euValue);
 		assertEquals("Wrong cost value for EU-Requests", -6.1, euValue, .0001);
@@ -213,7 +218,7 @@ public class PostProcessorTest {
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
 		loadData(usageData, costData);
-		Product product = ps.getProductByServiceCode("Product");
+		Product product = ps.getProductByServiceCode(productStr);
 		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
         data.putUsage(product, usageData);
         data.putCost(product, costData);
@@ -230,16 +235,116 @@ public class PostProcessorTest {
 		// 'in' is the sum of the two request values
 		//
 		// US: (1000 + 2000) - (4000 * 4 * 8 / 2) * 0.01 / 1000 == 3000 - 64000 * 0.00001 == 2999.36
-		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup("ComputedCost");
+		TagGroup usReqs = new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests", null).getTagGroup(a1, "ComputedCost");
 		Double value = outCostData.getData(0).get(usReqs);
 		assertNotNull("No value for US-Requests", value);
 		assertEquals("Wrong value for US-Requests", -0.61, value, .0001);
 		
 		// EU:  (10000 + 20000) - (40000 * 4 * 8 / 2) * 0.01 / 1000 == 30000 - 640000 * 0.00001 == 29993.6
-		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup("ComputedCost");
+		TagGroup euReqs = new TagGroupSpec(true, "eu-west-1", "OP1", "EU-Requests", null).getTagGroup(a1, "ComputedCost");
 		Double euValue = outCostData.getData(0).get(euReqs);
 		assertNotNull("No value for EU-Requests", euValue);
 		assertEquals("Wrong value for EU-Requests", -6.1, euValue, .0001);
 	}
 
+	private RuleConfig getSurchargeConfig() throws JsonParseException, JsonMappingException, IOException {
+		// Config to add a surcharge of 3% to all costs split out by account, region, and zone
+		// usage is the aggregated cost and cost is the 3% charge
+		String yaml = "" +
+		"name: ComputedCost\n" + 
+		"start: 2019-11\n" + 
+		"end: 2022-11\n" + 
+		"in:\n" + 
+		"  type: cost\n" +
+		"  aggregate: [Product, Operation, UsageType]\n" + 
+		"results:\n" + 
+		"  - result:\n" + 
+		"      type: cost\n" + 
+		"      product: ComputedCost\n" + 
+		"      operation: \n" + 
+		"      usageType: Dollar\n" + 
+		"    value: '${in} * 0.03'\n" + 
+		"  - result:\n" + 
+		"      type: usage\n" + 
+		"      product: ComputedCost\n" + 
+		"      operation: \n" + 
+		"      usageType: Dollar\n" + 
+		"    value: '${in}'\n";
+		
+		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+		RuleConfig rc = new RuleConfig();
+		return mapper.readValue(yaml, rc.getClass());
+	}
+	
+	private void loadSurchargeData(ReadWriteData usageData, ReadWriteData costData) throws BadZone {
+        Map<TagGroup, Double> usages = usageData.getData(0);
+        Map<TagGroup, Double> costs = costData.getData(0);
+        
+        TagGroupSpec[] dataSpecs = new TagGroupSpec[]{
+        		new TagGroupSpec(true, "us-east-1", "OP1", "US-Requests-1", 1000.0),
+        		new TagGroupSpec(true, "us-east-1", "OP2", "US-Requests-2", 2000.0),
+        		new TagGroupSpec(true, "us-east-1", "OP3", "US-DataTransfer-Out-Bytes", 4000.0),
+        		
+        		new TagGroupSpec(true, "us-east-1", "OP4", "US-Requests-1", 8000.0),
+        		new TagGroupSpec(true, "us-east-1", "OP5", "US-Requests-2", 16000.0),
+        		new TagGroupSpec(true, "us-east-1", "OP6", "US-DataTransfer-Out-Bytes", 32000.0),
+        		
+        		new TagGroupSpec(true, "eu-west-1", "OP7", "EU-Requests-1", 10000.0),
+        		new TagGroupSpec(true, "eu-west-1", "OP8", "EU-Requests-2", 20000.0),
+        		new TagGroupSpec(true, "eu-west-1", "OP9", "EU-DataTransfer-Out-Bytes", 40000.0),
+        };
+        
+        for (TagGroupSpec spec: dataSpecs) {
+        	if (spec.isCost) {
+        		costs.put(spec.getTagGroup(a1), spec.value);
+        		costs.put(spec.getTagGroup(a2), spec.value);
+        	}
+        	else {
+        		usages.put(spec.getTagGroup(a1), spec.value);
+        		usages.put(spec.getTagGroup(a2), spec.value);
+        	}
+        }
+	}
+	
+	@Test
+	public void testSurchargeGetInValues() throws Exception {
+		ReadWriteData usageData = new ReadWriteData();
+		ReadWriteData costData = new ReadWriteData();
+		loadSurchargeData(usageData, costData);
+				
+		PostProcessor pp = new PostProcessor(null, as, ps);
+		Rule rule = new Rule(getSurchargeConfig(), as, ps);
+		
+	    Map<TagGroup, Double> usageMap = usageData.getData(0);
+	    Map<TagGroup, Double> costMap = costData.getData(0);
+		Map<AggregationTagGroup, Double> inMap = pp.getInValues(rule, usageMap, costMap, true);
+		
+		assertEquals("Wrong number of matched tags", 4, inMap.size());
+		// Scan map and make sure we have 2 us-east-1 and 2 eu-west-1
+		int us = 0;
+		int eu = 0;
+		for (AggregationTagGroup atg: inMap.keySet()) {
+			Region r = atg.getRegion();
+			if (r == Region.US_EAST_1)
+				us++;
+			else if (r == Region.EU_WEST_1)
+				eu++;
+		}
+		assertEquals("Wrong number of US tagGroups", 2, us);
+		assertEquals("Wrong number of EU tagGroups", 2, eu);
+		
+		TagGroupSpec[] specs = new TagGroupSpec[]{
+				new TagGroupSpec(false, "us-east-1", "", "", 63000.0),
+				new TagGroupSpec(false, "eu-west-1", "", "", 70000.0),
+		};
+		
+		for (TagGroupSpec spec: specs) {
+			TagGroup tg = spec.getTagGroup(a1);
+			AggregationTagGroup atg = rule.getIn().aggregation.getAggregationTagGroup(tg);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
+			tg = spec.getTagGroup(a2);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
+		}
+	}
+	
 }

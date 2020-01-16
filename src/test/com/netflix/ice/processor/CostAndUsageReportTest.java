@@ -37,16 +37,20 @@ public class CostAndUsageReportTest {
 
 	@Test
 	public void testReadManifest() {
-		File manifest = new File(resourcesDir + "/manifestTest.json");
+		File file = new File(resourcesDir + "/manifestTest.json");
         Reader reader;
         
+        Manifest manifest = null;
+        
         try {
-			reader = new BufferedReader(new FileReader(manifest));
+			reader = new BufferedReader(new FileReader(file));
 	        Gson gson = new GsonBuilder().create();
-		    gson.fromJson(reader, Manifest.class);
+		    manifest = gson.fromJson(reader, Manifest.class);
 		} catch (FileNotFoundException e) {
 			fail("Failed to parse manifest file" + e);
 		}
+        
+        assertEquals("assembly ID is wrong", "abcdefgh-e98d-48d6-86b4-29967358fe6c", manifest.assemblyId);
 	}
 	
 	@Test

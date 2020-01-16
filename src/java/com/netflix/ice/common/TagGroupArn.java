@@ -26,14 +26,14 @@ import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
 
-public abstract class TagGroupArn extends TagGroup {
+public abstract class TagGroupArn<T extends Tag> extends TagGroup {
 	private static final long serialVersionUID = 1L;
 	
-	protected final Tag arn;
+	public final T arn;
 
 	protected TagGroupArn(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
-			ResourceGroup resourceGroup, Tag arn) {
+			ResourceGroup resourceGroup, T arn) {
 		super(account, region, zone, product, operation, usageType,
 				resourceGroup);
 		this.arn = arn;
@@ -57,7 +57,7 @@ public abstract class TagGroupArn extends TagGroup {
             return false;
         if (!super.equals(o))
         	return false;
-        TagGroupArn other = (TagGroupArn)o;
+        TagGroupArn<?> other = (TagGroupArn<?>)o;
         return this.arn == other.arn;
     }
 

@@ -67,7 +67,7 @@ public class BasicReservationService implements ReservationService {
 
     // For testing
     public void injectReservation(Reservation res) {
-    	reservationsByArn.put(res.tagGroup.getArn(), res);
+    	reservationsByArn.put(res.tagGroup.arn, res);
     }
     
     public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsByArn) {
@@ -142,7 +142,7 @@ public class BasicReservationService implements ReservationService {
     	Set<ReservationArn> arns = Sets.newHashSet();
     	for (Reservation r: reservationsByArn.values()) {
     		if (time >= r.start && time < r.end && (product == null || r.tagGroup.product == product))
-    			arns.add(r.tagGroup.getArn());
+    			arns.add(r.tagGroup.arn);
     	}
     	return arns;
     }

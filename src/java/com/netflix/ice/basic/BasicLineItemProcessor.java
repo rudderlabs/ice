@@ -66,7 +66,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(long startMilli, String root, LineItem lineItem) {    	
+    protected boolean ignore(long startMilli, String root, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))

@@ -97,19 +97,25 @@ postprocrules:
     product: Product
     start: 2019-11
     end: 2022-11
-    operands:
-      out:
+    operands: 
+      data:
+        type: usage
+		usageType: ${group}-DataTransfer-Out-Bytes
+    in:
+      type: usage
+      product: Product
+      usageType: (..)-Requests-[12].*
+    results:
+      - result:
         type: cost
         product: ComputedCost
         usageType: ${group}-Requests
-      in:
+        value: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'
+      - result:
         type: usage
-        usageType: (..)-Requests-[12].*
-      data:
-        type: usage
-        usageType: ${group}-DataTransfer-Out-Bytes
-    out: '${in} - (${data} * 4 * 8 / 2) * 0.01 / 1000'
-            
+        product: ComputedCost
+        usageType: ${group}-Requests
+        value: '${in} - (${data} * 4 * 8 / 2)'
  *  
  */
 public class BillingDataConfig {

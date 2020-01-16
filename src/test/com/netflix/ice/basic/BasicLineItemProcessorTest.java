@@ -33,6 +33,7 @@ import com.netflix.ice.basic.BasicLineItemProcessor.ReformedMetaData;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
+import com.netflix.ice.common.LineItem.BillType;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.common.LineItem.LineItemType;
@@ -242,11 +243,13 @@ public class BasicLineItemProcessorTest {
 	public class Line {
 		static final int numDbrItems = 21;
 		
+		public BillType billType = BillType.Anniversary;
 		public LineItemType lineItemType;
 		public String account;
 		public String region;
 		public String zone;
 		public String product;
+		public String productCode = "";
 		public String operation;
 		public String type;
 		public String description;
@@ -348,6 +351,12 @@ public class BasicLineItemProcessorTest {
 		public void setNormalizationFactor(String normalizationFactor) {
 			this.normalizationFactor = normalizationFactor;
 		}
+		public void setProductCode(String productCode) {
+			this.productCode = productCode;
+		}
+		public void setBillType(BillType billType) {
+			this.billType = billType;
+		}
 		
 		// For SavingsPlan testing
 		public void setSavingsPlanRecurringFeeFields(
@@ -405,8 +414,10 @@ public class BasicLineItemProcessorTest {
 	        String[] items = new String[lineItem.size()];
 			for (int i = 0; i < items.length; i++)
 				items[i] = "";
+			items[lineItem.getBillTypeIndex()] = billType.name();
 			items[lineItem.getPayerAccountIdIndex()] = account;
 			items[lineItem.getAccountIdIndex()] = account;
+			items[lineItem.getLineItemProductCodeIndex()] = productCode;
 			items[lineItem.getZoneIndex()] = zone;
 			items[lineItem.getProductRegionIndex()] = region;
 			items[lineItem.getProductIndex()] = product;
@@ -1188,5 +1199,15 @@ public class BasicLineItemProcessorTest {
 		test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	
+	}
+	
+	@Test
+	public void testOCBPremiumSupport() throws Exception {
+		Line line = new Line(LineItemType.Fee, "global", "", "AWS Premium Support", "Dollar", "", "AWS Support (Enterprise)", PricingTerm.none, "2019-11-01T00:00:00Z", "2019-12-01T00:00:00Z", "1000000.00", "64500.00", "");
+		line.setProductCode("OCBPremiumSupport");
+		line.setBillType(BillType.Purchase);
+		String[] tag = new String[] { "global", null, "Premium Support", "", "", null };
+		ProcessTest test = new ProcessTest(line, tag, null, null, Result.ignore, 30);
+		test.run(Which.cau, "2019-11-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }
