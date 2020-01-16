@@ -383,12 +383,14 @@ public class BasicLineItemProcessorTest {
 				String savingsPlanEndTime,
 				String savingsPlanArn,
 				String savingsPlanEffectiveCost,
-				String savingsPlanPaymentOption) {
+				String savingsPlanPaymentOption,
+				String publicOnDemandCost) {
 			this.savingsPlanStartTime = savingsPlanStartTime;
 			this.savingsPlanEndTime = savingsPlanEndTime;
 			this.savingsPlanArn = savingsPlanArn;
 			this.savingsPlanEffectiveCost = savingsPlanEffectiveCost;
 			this.savingsPlanPaymentOption = savingsPlanPaymentOption;
+			this.publicOnDemandCost = publicOnDemandCost;
 		}
 		
 		String[] getDbrLine() {
@@ -484,6 +486,7 @@ public class BasicLineItemProcessorTest {
 				set(lineItem.getSavingsPlanArnIndex(), items, savingsPlanArn);
 				set(lineItem.getSavingsPlanEffectiveCostIndex(), items, savingsPlanEffectiveCost);
 				set(lineItem.getSavingsPlanPaymentOptionIndex(), items, savingsPlanPaymentOption);
+				set(lineItem.getPublicOnDemandCostIndex(), items, publicOnDemandCost);
 				break;
 				
 			default:
@@ -617,7 +620,7 @@ public class BasicLineItemProcessorTest {
 		
 		public void runProcessTest(LineItem lineItem, Which which, boolean isCostAndUsageReport, long startMilli) throws Exception {
 			Instances instances = null;
-			String reportName = which == Which.dbr ? "Detailed Billing" : "Cost and Usage";
+			String reportName = which == Which.dbr ? "DBR" : "CUR";
 			CostAndUsageData costAndUsageData = new CostAndUsageData(startMilli, null, null, TagCoverage.none, accountService, productService);
 			
 			BasicLineItemProcessor lineItemProc = newBasicLineItemProcessor(lineItem, reservation);
@@ -687,7 +690,7 @@ public class BasicLineItemProcessorTest {
 			for (TagGroup tg: costData.getTagGroups()) {
 				// check for proper TagGroup type
 				if (tg.operation.isSavingsPlan()) {
-					if (!tg.operation.isSavingsPlanUnused() && !tg.operation.isSavingsPlanUnusedAmortized())
+					if (!tg.operation.isSavingsPlanUnused() && !tg.operation.isSavingsPlanUnusedAmortized() && !tg.operation.isSavingsPlanSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
 				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB()) {
@@ -710,6 +713,14 @@ public class BasicLineItemProcessorTest {
 					assertTrue(reportName + " Amortization Tag is not correct: " + errors, errors.length() == 0);
 					double cost = costData.getData(0).get(tg);
 					assertEquals(reportName + " Cost is incorrect", amortization, cost, 0.001);				
+				}
+				else if (tg.operation.isSavingsPlanSavings() && savings != null) {
+					String[] savingsTag = expectedTag.clone();
+					savingsTag[operationIndex] = Operation.getSavingsPlanSavings(((Operation.SavingsPlanOperation) tg.operation).getPaymentOption()).name;
+					String errors = checkTag(tg, savingsTag);
+					assertTrue(reportName + " Savings Tag is not correct: " + errors, errors.length() == 0);
+					double cost = costData.getData(0).get(tg);
+					assertEquals(reportName + " Cost is incorrect", savings, cost, 0.001);				
 				}
 				else if (tg.operation.isSavings() && savings != null) {
 					String[] savingsTag = expectedTag.clone();
@@ -1175,30 +1186,30 @@ public class BasicLineItemProcessorTest {
 	
 	@Test
 	public void testSavingsPlanCoveredUsage() throws Exception {
+		// Should produce two cost items and one usage item for each case.
+		// The cost items should have the effective cost, not the unblended OnDemand cost and the savings.
+		// Bonus operations will be split apart by the savings plan processor.
+
 		// No Upfront
 		Line line = new Line(LineItemType.SavingsPlanCoveredUsage, "us-east-1", "us-east-1a", "Amazon Elastic Compute Cloud", "BoxUsage:t2.micro", "RunInstances", "$0.0116 per On Demand Linux t2.micro Instance Hour", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-01T01:00:00Z", "1", "0.0116", "");
-		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "NoUpfront");
+		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "NoUpfront", "0.0116");
 		String[] tag = new String[] { "us-east-1", "us-east-1a", "EC2 Instance", "SavingsPlan Bonus - NoUpfront", "t2.micro", null };
-		// Should produce one cost item and one usage item. The cost item should have the effective cost, not the unblended OnDemand cost. Bonus operations will be split apart by the savings plan processor.
-		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31);
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31, 0.0, 0.0033);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
 
 		// Partial Upfront
 		line = new Line(LineItemType.SavingsPlanCoveredUsage, "us-east-1", "us-east-1a", "Amazon Elastic Compute Cloud", "BoxUsage:t2.micro", "RunInstances", "$0.0116 per On Demand Linux t2.micro Instance Hour", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-01T01:00:00Z", "1", "0.0116", "");
-		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "PartialUpfront");
+		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "PartialUpfront", "0.0116");
 		tag = new String[] { "us-east-1", "us-east-1a", "EC2 Instance", "SavingsPlan Bonus - PartialUpfront", "t2.micro", null };
-		// Should produce one cost item and one usage item. The cost item should have the effective cost, not the unblended OnDemand cost. Bonus operations will be split apart by the savings plan processor.
-		test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31);
+		test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31, 0.0, 0.0033);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
 		// All Upfront
 		line = new Line(LineItemType.SavingsPlanCoveredUsage, "us-east-1", "us-east-1a", "Amazon Elastic Compute Cloud", "BoxUsage:t2.micro", "RunInstances", "$0.0116 per On Demand Linux t2.micro Instance Hour", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-01T01:00:00Z", "1", "0.0116", "");
-		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "AllUpfront");
+		line.setSavingsPlanCoveredUsageFields("2019-11-08T00:11:15:04.000Z", "2020-11-07T11:15:03.000Z", "arn:aws:savingsplans::123456789012:savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555", "0.0083", "AllUpfront", "0.0116");
 		tag = new String[] { "us-east-1", "us-east-1a", "EC2 Instance", "SavingsPlan Bonus - AllUpfront", "t2.micro", null };
-		// Should produce one cost item and one usage item. The cost item should have the effective cost, not the unblended OnDemand cost. Bonus operations will be split apart by the savings plan processor.
-		test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31);
-		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
-	
+		test = new ProcessTest(line, tag, 1.0, 0.0083, Result.hourly, 31, 0.0, 0.0033);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");	
 	}
 	
 	@Test

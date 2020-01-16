@@ -394,7 +394,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         if (!forReservation && (tagListsForTag.operations == null || tagListsForTag.operations.size() == 0)) {
         	List<Operation> ops = Lists.newArrayList();
         	for (Operation op: getOperations(interval, tagListsForTag)) {
-        		if (op.isLent() || op.isSavings() || op.isSavingsPlanLent())
+        		if (op.isLent() || op.isSavings() || op.isSavingsPlanLent() || op.isSavingsPlanSavings())
         			continue;
         		ops.add(op);
         	}
@@ -453,6 +453,8 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
 				groupByTags.remove(savingsOp);
 			for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
 				groupByTags.remove(lentOp);
+			for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
+				groupByTags.remove(savingsOp);
         }
         for (Tag tag: groupByTags) {
             if (tagLists.contains(tag, groupBy, userTagGroupByIndex)) {
@@ -473,6 +475,8 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         				tmp.operations.remove(savingsOp);
         			for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
         				tmp.operations.remove(lentOp);
+        			for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
+        				tmp.operations.remove(savingsOp);
         			
         			//logger.info("          taglists: " + tmp);
                 }

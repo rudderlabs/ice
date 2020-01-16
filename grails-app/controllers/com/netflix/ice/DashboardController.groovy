@@ -290,6 +290,8 @@ class DashboardController {
 				// Remove Amortization and savings from the usage operations
 				for (Operation.SavingsPlanOperation amortOp: Operation.getSavingsPlanAmortizedOperations())
 					data.remove(amortOp);
+				for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
+					data.remove(savingsOp);
 			}
 		}
 		else {
@@ -300,6 +302,8 @@ class DashboardController {
 				data.remove(savingsOp);
 			for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
 				data.remove(lentOp);
+			for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
+				data.remove(savingsOp);
         }
 		
 		logger.debug("operations: " + operations);

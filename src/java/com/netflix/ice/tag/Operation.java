@@ -42,6 +42,7 @@ public class Operation extends Tag {
     private static List<Operation> savingsPlanOperations = Lists.newArrayList();
     
     private enum Category {
+    	Savings,
     	Used,
     	Bonus,
     	Borrowed,
@@ -108,27 +109,30 @@ public class Operation extends Tag {
 
     public static final ReservationOperation reservedInstancesCredits = new ReservationOperation("RI Credits", 48, null);
     
-    public static final SavingsPlanOperation savingsPlanUsedNoUpfront = new SavingsPlanOperation(Category.Used, 100, SavingsPlanPaymentOption.NoUpfront);
-    public static final SavingsPlanOperation savingsPlanBonusNoUpfront = new SavingsPlanOperation(Category.Bonus, 101, SavingsPlanPaymentOption.NoUpfront);
-    public static final SavingsPlanOperation savingsPlanBorrowedNoUpfront = new SavingsPlanOperation(Category.Borrowed, 102, SavingsPlanPaymentOption.NoUpfront);
-    public static final SavingsPlanOperation savingsPlanLentNoUpfront = new SavingsPlanOperation(Category.Lent, 103, SavingsPlanPaymentOption.NoUpfront);
-    public static final SavingsPlanOperation savingsPlanUnusedNoUpfront = new SavingsPlanOperation(Category.Unused, 104, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanSavingsNoUpfront = new SavingsPlanOperation(Category.Savings, 100, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanUsedNoUpfront = new SavingsPlanOperation(Category.Used, 101, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanBonusNoUpfront = new SavingsPlanOperation(Category.Bonus, 102, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanBorrowedNoUpfront = new SavingsPlanOperation(Category.Borrowed, 103, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanLentNoUpfront = new SavingsPlanOperation(Category.Lent, 104, SavingsPlanPaymentOption.NoUpfront);
+    public static final SavingsPlanOperation savingsPlanUnusedNoUpfront = new SavingsPlanOperation(Category.Unused, 105, SavingsPlanPaymentOption.NoUpfront);
 
-    public static final SavingsPlanOperation savingsPlanUsedPartialUpfront = new SavingsPlanOperation(Category.Used, 105, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanBonusPartialUpfront = new SavingsPlanOperation(Category.Bonus, 106, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanBorrowedPartialUpfront = new SavingsPlanOperation(Category.Borrowed, 107, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanLentPartialUpfront = new SavingsPlanOperation(Category.Lent, 108, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanAmortizedPartialUpfront = new SavingsPlanOperation(Category.Amortized, 109, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanUnusedPartialUpfront = new SavingsPlanOperation(Category.Unused, 110, SavingsPlanPaymentOption.PartialUpfront);
-    public static final SavingsPlanOperation savingsPlanUnusedAmortizedPartialUpfront = new SavingsPlanOperation(Category.UnusedAmortized, 110, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanSavingsPartialUpfront = new SavingsPlanOperation(Category.Savings, 106, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanUsedPartialUpfront = new SavingsPlanOperation(Category.Used, 107, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanBonusPartialUpfront = new SavingsPlanOperation(Category.Bonus, 108, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanBorrowedPartialUpfront = new SavingsPlanOperation(Category.Borrowed, 109, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanLentPartialUpfront = new SavingsPlanOperation(Category.Lent, 110, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanAmortizedPartialUpfront = new SavingsPlanOperation(Category.Amortized, 111, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanUnusedPartialUpfront = new SavingsPlanOperation(Category.Unused, 112, SavingsPlanPaymentOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanUnusedAmortizedPartialUpfront = new SavingsPlanOperation(Category.UnusedAmortized, 113, SavingsPlanPaymentOption.PartialUpfront);
 
-    public static final SavingsPlanOperation savingsPlanUsedAllUpfront = new SavingsPlanOperation(Category.Used, 111, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanBonusAllUpfront = new SavingsPlanOperation(Category.Bonus, 112, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanBorrowedAllUpfront = new SavingsPlanOperation(Category.Borrowed, 113, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanLentAllUpfront = new SavingsPlanOperation(Category.Lent, 114, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanAmortizedAllUpfront = new SavingsPlanOperation(Category.Amortized, 115, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanUnusedAllUpfront = new SavingsPlanOperation(Category.Unused, 116, SavingsPlanPaymentOption.AllUpfront);
-    public static final SavingsPlanOperation savingsPlanUnusedAmortizedAllUpfront = new SavingsPlanOperation(Category.UnusedAmortized, 116, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanSavingsAllUpfront = new SavingsPlanOperation(Category.Savings, 114, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanUsedAllUpfront = new SavingsPlanOperation(Category.Used, 115, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanBonusAllUpfront = new SavingsPlanOperation(Category.Bonus, 116, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanBorrowedAllUpfront = new SavingsPlanOperation(Category.Borrowed, 117, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanLentAllUpfront = new SavingsPlanOperation(Category.Lent, 118, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanAmortizedAllUpfront = new SavingsPlanOperation(Category.Amortized, 119, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanUnusedAllUpfront = new SavingsPlanOperation(Category.Unused, 120, SavingsPlanPaymentOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanUnusedAmortizedAllUpfront = new SavingsPlanOperation(Category.UnusedAmortized, 121, SavingsPlanPaymentOption.AllUpfront);
 
     public static ReservationOperation getReservedInstances(ReservationUtilization utilization) {
         switch (utilization) {
@@ -403,8 +407,26 @@ public class Operation extends Tag {
     	}
     }
     
+    public static List<SavingsPlanOperation> getSavingsPlanSavingsOperations() {
+        return Lists.newArrayList(savingsPlanSavingsNoUpfront, savingsPlanSavingsPartialUpfront, savingsPlanSavingsAllUpfront);
+    }
+    
+    public static SavingsPlanOperation getSavingsPlanSavings(SavingsPlanPaymentOption paymentOption) {
+    	switch(paymentOption) {
+    	case NoUpfront: return savingsPlanSavingsNoUpfront;
+    	case PartialUpfront: return savingsPlanSavingsPartialUpfront;
+    	case AllUpfront: return savingsPlanSavingsAllUpfront;
+    	default: throw new RuntimeException("Unknown SavingsPlanPaymentOption " + paymentOption);
+    	}
+    }
+    
+    
     public boolean isSavingsPlan() {
     	return name.startsWith("SavingsPlan ");
+    }
+    
+    public boolean isSavingsPlanSavings() {
+    	return name.startsWith("SavingsPlan Savings - ");
     }
     
     public boolean isSavingsPlanUnused() {
