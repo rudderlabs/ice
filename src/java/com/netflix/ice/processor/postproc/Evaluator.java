@@ -26,10 +26,14 @@ import com.google.common.collect.Maps;
 
 /**
  * Expression evaluator implementing the Shunting-Yard algorithm.
- * Supports basic arithmetic operations: + - * / and use of parenthesis.
+ * Supports the following:
+ * 		arithmetic operators:  + - * /
+ * 		functions: MIN(), MAX()
+ *   	use of parenthesis
  */
 public class Evaluator {
 	static Map<String, Operator> ops;
+	static Map<String, Function> funcs;
 	
 	static {
 		ops = Maps.newHashMap();
@@ -39,6 +43,10 @@ public class Evaluator {
 		ops.put("/", Operator.Divide);
 		ops.put("(", Operator.Left);
 		ops.put(")", Operator.Right);
+		
+		funcs = Maps.newHashMap();
+		funcs.put("MAX", Function.MAX);
+		funcs.put("MIN", Function.MIN);
 	}
 	
 	private List<String> parse(String expr) {
@@ -66,6 +74,7 @@ public class Evaluator {
 				tokens.add(c.toString());
 				break;
 				
+			case ',':
 			case ' ':
 			case '\t':
 				if (!operand.isEmpty()) {
@@ -100,6 +109,11 @@ public class Evaluator {
 			this.precedence = precedence;
 		}
 	}
+	
+	public enum Function {
+		MIN,
+		MAX;
+	}
 		
 	Double eval(String expr) throws Exception {
 		// Convert to RPN using simplified shunting-yard algorithm
@@ -111,6 +125,7 @@ public class Evaluator {
 				// operator
 				Operator op = ops.get(token);
 				Operator topOp = null;
+				Function topFunc = null;
 				
 				switch (op) {
 				case Left:
@@ -129,14 +144,21 @@ public class Evaluator {
 					break;
 					
 				default:
-					for (topOp = ops.get(operators.peek());
-								topOp != null && topOp.precedence >= op.precedence && topOp != Operator.Left;
-								topOp = ops.get(operators.peek())) {
+					// token is an operator
+					topOp = ops.get(operators.peek());
+					topFunc = funcs.get(operators.peek());
+					while ((topFunc != null || (topOp != null && topOp.precedence >= op.precedence)) && topOp != Operator.Left) {
 						output.push(operators.pop());
+						
+						topOp = ops.get(operators.peek());
+						topFunc = funcs.get(operators.peek());
 					}
 					operators.push(token);
 					break;
 				}
+			}
+			else if (funcs.containsKey(token)) {
+				operators.push(token);
 			}
 			else {
 				// number
@@ -156,11 +178,12 @@ public class Evaluator {
 	
 	private Double evalRpn(Deque<String> tokens) throws Exception {
 		String token = tokens.pop();
-		Double x;
+		Double x = null;
+		Double y = null;
 		
 		if (ops.containsKey(token)) {
 			Operator op = ops.get(token);
-			Double y = evalRpn(tokens);
+			y = evalRpn(tokens);
 			x = evalRpn(tokens);
 			switch(op) {
 			case Add:		x += y; break;
@@ -169,6 +192,20 @@ public class Evaluator {
 			case Divide:	x /= y; break;
 			default:
 				throw new Exception("Error in RPN expression");
+			}
+		}
+		else if (funcs.containsKey(token)) {
+			switch (Function.valueOf(token)) {
+			case MIN:
+				y = evalRpn(tokens);
+				x = evalRpn(tokens);
+				x = Math.min(x, y);
+				break;
+			case MAX:
+				y = evalRpn(tokens);
+				x = evalRpn(tokens);
+				x = Math.max(x, y);
+				break;
 			}
 		}
 		else {

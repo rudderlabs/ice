@@ -24,11 +24,18 @@ import org.junit.Test;
 public class EvaluatorTest {
 
 	@Test
-	public void test() throws Exception {
+	public void testBasic() throws Exception {
 		String expr = "5.0 * ((4 / 2 + 4.3E-2) + 12.2 * (3 + 1) + 1)";
 		Double expect = 5.0 * ((4 / 2 + 4.3E-2) + 12.2 * (3 + 1) + 1);
 		
 		assertEquals("Wrong evaluator result", expect, new Evaluator().eval(expr), 0.001);
+	}
+	
+	@Test
+	public void testMinMax() throws Exception {
+		String expr = "MIN(0.0, 3.0) + MAX(2.0, 4.0) * 3.0";
+		Double expect = Math.min(0.0, 3.0) + Math.max(2.0, 4.0) * 3.0;
+		assertEquals("Wrong evaluator result", expect, new Evaluator().eval(expr), 0.001);		
 	}
 
 }
