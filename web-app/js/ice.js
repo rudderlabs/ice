@@ -1195,6 +1195,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.groupByTag = {}
     $scope.initialGroupByTag = '';
     $scope.showUserTags = false;
+    $scope.predefinedQuery = null;
   }
 
   $scope.initUserTagVars = function ($scope) {
@@ -1368,7 +1369,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
   }
 
   $scope.updateOperations = function ($scope) {
-    var query = $scope.predefinedQuery ? jQuery.extend({ usage_cost: $scope.usage_cost, forReservation: true }, $scope.predefinedQuery) : null;
+    var query = $scope.predefinedQuery ? jQuery.extend({}, $scope.predefinedQuery) : null;
 
     usage_db.getOperations($scope, function (data) {
       $scope.updateUsageTypes($scope);
@@ -1398,7 +1399,6 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.consolidate = "hourly";
-  $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "OrgUnit" },
@@ -1527,7 +1527,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.reservationOps.join(",") };
+    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1553,7 +1553,6 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.consolidate = "hourly";
-  $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "OrgUnit" },
@@ -1682,7 +1681,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(",") };
+    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), usage_cost: $scope.usage_cost, forSavingsPlans: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1885,7 +1884,6 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
 function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
-  $scope.predefinedQuery = null;
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
@@ -2000,7 +1998,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function (data) {
-    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(",") };
+    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
 

@@ -51,6 +51,11 @@ public class SavingsPlanProcessor {
 		ReadWriteData usageData = data.getUsage(product);
 		ReadWriteData costData = data.getCost(product);
 
+		if (usageData == null || costData == null) {
+			logger.warn("   No data for " + product);
+			return;
+		}
+		
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
 		    Map<TagGroup, Double> usageMap = usageData.getData(i);
@@ -79,37 +84,34 @@ public class SavingsPlanProcessor {
 	    		logger.error("No savings plan in the map at hour " + hour + " for tagGroup: " + bonusTg);
 	    		continue;
 	    	}
-	    	double cost = costMap.get(bonusTg);
-	    	double usage = usageMap.get(bonusTg);
+	    	double cost = costMap.remove(bonusTg);
+	    	double usage = usageMap.remove(bonusTg);
 	    	
 	    	if (sp.paymentOption != SavingsPlanPaymentOption.NoUpfront) {
+	    		// Add amortization
 	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
 	    		add(costMap, tg, cost * sp.normalizedAmortization);
 	    	}
 	    	
     		Operation op = null;
     		String accountId = sp.arn.getAccountId();
-    		if (accountId.equals(bonusTg.account.name)) {
+    		if (accountId.equals(bonusTg.account.getId())) {
     			op = Operation.getSavingsPlanUsed(sp.paymentOption);
     		}
     		else {
     			op = Operation.getSavingsPlanBorrowed(sp.paymentOption);
-    			// Create Lent record for account that owns the savings plan
+    			
+    			// Create Lent records for account that owns the savings plan
         		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLent(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
         		add(usageMap, tg, usage);
-    	    	if (sp.paymentOption != SavingsPlanPaymentOption.AllUpfront) {
-    	    		add(costMap, tg, cost * sp.normalizedRecurring);
-    	    	}
+        		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
+    	    	add(costMap, tg, cost * sp.normalizedRecurring);
     		}
-	    	
+    		
     		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, op, bonusTg.usageType, bonusTg.resourceGroup);
     		add(usageMap, tg, usage);
-	    	if (sp.paymentOption != SavingsPlanPaymentOption.AllUpfront) {
-	    		add(costMap, tg, cost * sp.normalizedRecurring);
-	    	}
-    		
-	    	costMap.remove(bonusTg);
-	    	usageMap.remove(bonusTg);
+    		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
+	    	add(costMap, tg, cost * sp.normalizedRecurring);
 	    }
 	}
 	

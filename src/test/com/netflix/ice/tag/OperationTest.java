@@ -19,7 +19,11 @@ package com.netflix.ice.tag;
 
 import static org.junit.Assert.*;
 
+import java.util.List;
+
 import org.junit.Test;
+
+import com.google.common.collect.Lists;
 
 public class OperationTest {
 
@@ -28,4 +32,15 @@ public class OperationTest {
 		assertTrue(Operation.savingsPlanBonusNoUpfront.isSavingsPlanBonus());
 	}
 
+	@Test
+	public void testGetSavingsPlanOperations() {
+		assertEquals("wrong number of savings plan operations", 22, Operation.getSavingsPlanOperations().size());
+	}
+	
+	@Test
+	public void testGetOperations() {
+		String op = "SavingsPlan Used - AllUpfront";
+		List<String> ops = Lists.newArrayList(op);
+		assertEquals("missing operation", op, Operation.getOperations(ops).get(0).name);
+	}
 }

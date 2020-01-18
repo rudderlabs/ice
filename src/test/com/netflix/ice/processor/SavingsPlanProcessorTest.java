@@ -195,6 +195,7 @@ public class SavingsPlanProcessorTest {
 				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanUsedAllUpfront, "t3.micro", null, 1.0),
 			};
 		Datum[] expectedCostData = new Datum[]{
+				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanUsedAllUpfront, "t3.micro", null, 0.0),
 				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanAmortizedAllUpfront, "t3.micro", null, 0.012),
 			};
 		runTest(sp, usageData, costData, expectedUsageData, expectedCostData);

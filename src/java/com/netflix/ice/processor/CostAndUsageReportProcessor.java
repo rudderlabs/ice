@@ -262,10 +262,11 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         String debugReportKeys = config.debugProperties.get(this.debugReportKeys);
 		if (debugReportKeys != null) {
 			// Queue up the debug reports
+			String reportDir = reportKeys[0].substring(0, reportKeys[0].lastIndexOf("/") + 1);
 			for (String reportKey: debugReportKeys.split(",")) {
 				if (!reportKey.contains("/")) {
 					// add the full key to the name
-					reportKey = ((CostAndUsageReport) report).getReportDirKey() + reportKey;
+					reportKey =  reportDir + reportKey;
 				}
 		        fileData.add(downloadAndProcessOneFile(cau, localDir, reportKey, lastProcessed, edpDiscount));
 			}
