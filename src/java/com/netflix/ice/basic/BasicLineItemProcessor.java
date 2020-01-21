@@ -78,14 +78,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
         
-        if (product.isSupport()) {
-        	// Don't try and deal with support. Line items have lots of craziness
-        	logger.info("Support: " + lineItem);
-        	return true;
-        }
-        
     	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-            (StringUtils.isEmpty(lineItem.getOperation()) && lineItem.getLineItemType() != LineItemType.SavingsPlanRecurringFee) ||
+            (StringUtils.isEmpty(lineItem.getOperation()) && lineItem.getLineItemType() != LineItemType.SavingsPlanRecurringFee && !product.isSupport()) ||
             StringUtils.isEmpty(lineItem.getUsageQuantity())) {
     		return true;
     	}
@@ -177,7 +171,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();
         
-        if (productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode()).isRegistrar()) {
+        Product origProduct = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
+        if (origProduct.isRegistrar()) {
         	// Put all out-of-month registrar fees at the start of the month
 	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
         	if (millisStart > nextMonthStartMillis) {
@@ -185,6 +180,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	}
         	// Put the whole fee in the first hour
         	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
+        }
+        else if (origProduct.isSupport()) {
+        	// Put the whole fee in the first hour
+        	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
+        	logger.info("Support: " + lineItem);
         }
         
         ReservationUtilization defaultReservationUtilization = reservationService.getDefaultReservationUtilization(millisStart);

@@ -693,7 +693,7 @@ public class BasicLineItemProcessorTest {
 					if (!tg.operation.isSavingsPlanUnused() && !tg.operation.isSavingsPlanUnusedAmortized() && !tg.operation.isSavingsPlanSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
-				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB()) {
+				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport()) {
 					assertTrue(reportName + " TagGroup is not instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
 
@@ -1217,8 +1217,8 @@ public class BasicLineItemProcessorTest {
 		Line line = new Line(LineItemType.Fee, "global", "", "AWS Premium Support", "Dollar", "", "AWS Support (Enterprise)", PricingTerm.none, "2019-11-01T00:00:00Z", "2019-12-01T00:00:00Z", "1000000.00", "64500.00", "");
 		line.setProductCode("OCBPremiumSupport");
 		line.setBillType(BillType.Purchase);
-		String[] tag = new String[] { "global", null, "Premium Support", "", "", null };
-		ProcessTest test = new ProcessTest(line, tag, null, null, Result.ignore, 30);
+		String[] tag = new String[] { "global", null, "Premium Support", "None", "Dollar", null };
+		ProcessTest test = new ProcessTest(line, tag, 1000000.0, 64500.0, Result.hourly, 30);
 		test.run(Which.cau, "2019-11-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }

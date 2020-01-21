@@ -136,9 +136,9 @@ public class Product extends Tag {
     		s = s.substring("Amazon".length()).trim();
     	else if (s.startsWith("AWS"))
     		s = s.substring("AWS".length()).trim();
-    	// Strip off any parenthetical portions
+    	// Strip off any parenthetical portions unless it's a support product
     	//   e.g. "EC2 Container Registry (ECR)" or "Contact Center Telecommunications (service sold by AMCS, LLC)"
-    	if (s.indexOf("(") > 0) {
+    	if (s.indexOf("(") > 0 && !s.startsWith("Support")) {
     		s = s.substring(0, s.indexOf("(")).trim();
     	}
     	// Make sure there are no commas
