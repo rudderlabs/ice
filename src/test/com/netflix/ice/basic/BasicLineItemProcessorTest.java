@@ -1221,4 +1221,13 @@ public class BasicLineItemProcessorTest {
 		ProcessTest test = new ProcessTest(line, tag, 1000000.0, 64500.0, Result.hourly, 30);
 		test.run(Which.cau, "2019-11-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
+	@Test
+	public void testOCBPremiumSupportRefund() throws Exception {
+		Line line = new Line(LineItemType.Refund, "global", "", "AWS Premium Support", "Dollar", "", "Discount", PricingTerm.none, "2019-11-01T00:00:00Z", "2019-12-01T00:00:00Z", "0", "-645.00", "");
+		line.setProductCode("OCBPremiumSupport");
+		line.setBillType(BillType.Refund);
+		String[] tag = new String[] { "global", null, "Premium Support", "None", "Dollar", null };
+		ProcessTest test = new ProcessTest(line, tag, 0.0, -645.0, Result.hourly, 30);
+		test.run(Which.cau, "2019-11-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
 }

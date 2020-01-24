@@ -35,7 +35,7 @@ import com.google.common.collect.Lists;
  * If the aggregate attribute is provided, any attribute names listed will be merged and not broken
  * out as separate values in the result.
  * 
- * Allowed aggregate values are: Account, Region, Zone, Product, Operation, UsageType
+ * Allowed aggregate values are: Account, Region, Zone, Product, Operation, UsageType, ResourceGroup
  * 
  * If the exclude attribute is provided, then for each list of attributes, the specified values
  * for each of that attribute are excluded from the aggregation.
@@ -52,6 +52,9 @@ public class OperandConfig {
 	private List<String> accounts;
 	private List<String> regions;
 	private List<String> zones;
+	private String account;
+	private String region;
+	private String zone;
 	private String product;
 	private String operation;
 	private String usageType;
@@ -88,6 +91,26 @@ public class OperandConfig {
 	public void setZones(List<String> zones) {
 		this.zones = zones;
 	}
+	public String getAccount() {
+		return account;
+	}
+	public void setAccount(String account) {
+		this.account = account;
+	}	
+	public String getRegion() {
+		return region;
+	}
+	public void setRegion(String region) {
+		this.region = region;
+	}
+	public String getZone() {
+		return zone;
+	}
+
+	public void setZone(String zone) {
+		this.zone = zone;
+	}
+
 	public String getProduct() {
 		return product;
 	}
@@ -122,5 +145,5 @@ public class OperandConfig {
 	public void setExclude(List<String> exclude) {
 		this.exclude = exclude;
 	}
-	
+
 }

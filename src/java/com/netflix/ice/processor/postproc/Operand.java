@@ -31,19 +31,31 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
 
 public abstract class Operand {
+	protected final String groupToken = "${group}";
+	
 	protected final OperandType type;
 	protected final List<Account> accounts;
 	protected final List<Region> regions;
 	protected final List<Zone> zones;
+	protected final TagFilter accountTagFilter;
+	protected final TagFilter regionTagFilter;
+	protected final TagFilter zoneTagFilter;
 	protected final TagFilter productTagFilter;
 	protected final TagFilter operationTagFilter;
 	protected final TagFilter usageTypeTagFilter;
 	
 	public Operand(OperandConfig opConfig, AccountService accountService) {
 		this.type = opConfig.getType();
-		this.accounts = accountService.getAccounts(opConfig.getAccounts());
+		List<Account> accts = Lists.newArrayList();
+		for (String a: opConfig.getAccounts()) {
+			accts.add(accountService.getAccountById(a));
+		}
+		this.accounts = accts.size() > 0 ? accts : null;
 		this.regions = Region.getRegions(opConfig.getRegions());
 		this.zones = Zone.getZones(opConfig.getZones());
+		this.accountTagFilter = opConfig.getAccount() == null ? null : new TagFilter(opConfig.getAccount());
+		this.regionTagFilter = opConfig.getRegion() == null ? null : new TagFilter(opConfig.getRegion());
+		this.zoneTagFilter = opConfig.getZone() == null ? null : new TagFilter(opConfig.getZone());
 		this.productTagFilter = opConfig.getProduct() == null ? null : new TagFilter(opConfig.getProduct());
 		this.operationTagFilter = opConfig.getOperation() == null ? null : new TagFilter(opConfig.getOperation());
 		this.usageTypeTagFilter = opConfig.getUsageType() == null ? null : new TagFilter(opConfig.getUsageType());
@@ -102,7 +114,7 @@ public abstract class Operand {
 		 * Build the out tag by replacing any group reference with the group value provided.
 		 */
 		public String getTag(String group) {
-			return regex.replace("${group}", group);
+			return regex.replace(groupToken, group);
 		}
 		
 		public String toString() {

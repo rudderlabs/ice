@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -143,6 +144,7 @@ public class BillingDataConfig {
 		}
 		else {
 			ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+			mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 			config = mapper.readValue(in, getClass());			
 		}
 		this.accounts = config.accounts;
