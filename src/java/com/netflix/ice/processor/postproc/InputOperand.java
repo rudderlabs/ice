@@ -25,10 +25,13 @@ import com.netflix.ice.common.Aggregation;
 import com.netflix.ice.common.AggregationTagGroup;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.Zone;
 
 public class InputOperand extends Operand {
 	protected Aggregation aggregation;
@@ -68,20 +71,41 @@ public class InputOperand extends Operand {
 	/**
 	 * Used by the In operand when aggregating the input data
 	 */
-	public AggregationTagGroup aggregateTagGroup(TagGroup tg, ProductService productService) throws Exception {
+	public AggregationTagGroup aggregateTagGroup(TagGroup tg, AccountService accountService, ProductService productService) throws Exception {
+		Account account = tg.account;
+		Region region = tg.region;
+		Zone zone = tg.zone;
 		Product product = tg.product;
 		Operation operation = tg.operation;
 		UsageType usageType = tg.usageType;
 		
 		// Handle filtering
         if (accounts != null && accounts.size() > 0 && !(accounts.contains(tg.account) ^ excludeAccount)) {
-        		return null;
+        	return null;
         }
         if (regions != null && regions.size() > 0 && !(regions.contains(tg.region) ^ excludeRegion)) {
         	return null;
         }
         if (zones != null && zones.size() > 0 && !(zones.contains(tg.zone) ^ excludeZone)) {
         	return null;
+        }
+        if (accountTagFilter != null) {
+        	String a = accountTagFilter.getGroup(tg.account.getId());
+        	if (a == null)
+        		return null;
+        	account = a.isEmpty() ? null : accountService.getAccountById(a);
+        }
+        if (regionTagFilter != null) {
+        	String r = regionTagFilter.getGroup(tg.region.name);
+        	if (r == null)
+        		return null;
+        	region = r.isEmpty() ? null : Region.getRegionByName(r);
+        }
+        if (zoneTagFilter != null) {
+        	String z = zoneTagFilter.getGroup(tg.zone.name);
+        	if (z == null)
+        		return null;
+        	zone = z.isEmpty() ? null : region.getZone(z);
         }
         if (productTagFilter != null) {
         	String p = productTagFilter.getGroup(tg.product.name);
@@ -104,20 +128,44 @@ public class InputOperand extends Operand {
         	usageType = ut.isEmpty() ? null : UsageType.getUsageType(ut, tg.usageType.unit);
         }
         
-		return aggregation.getAggregationTagGroup(tg.account, tg.region, tg.zone, product, operation, usageType, tg.resourceGroup);
+		return aggregation.getAggregationTagGroup(account, region, zone, product, operation, usageType, tg.resourceGroup);
 	}
 	
 	/**
 	 *  Determine if the supplied TagGroup is a match for the given input aggregation.
 	 */
 	public boolean matches(AggregationTagGroup atg, TagGroup tg) {
-        if (accounts != null && accounts.size() > 0 && !accounts.contains(tg.account)) {
+        if (accounts != null && accounts.size() > 0 && !(accounts.contains(tg.account) ^ excludeAccount)) {
         	return false;
         }
-        if (regions != null && regions.size() > 0 && !regions.contains(tg.region)) {
+        if (regions != null && regions.size() > 0 && !(regions.contains(tg.region) ^ excludeRegion)) {
         	return false;
         }
-        if (zones != null && zones.size() > 0 && !zones.contains(tg.zone)) {
+        if (zones != null && zones.size() > 0 && !(zones.contains(tg.zone) ^ excludeZone)) {
+        	return false;
+        }
+        if (accountTagFilter != null) {
+        	Account a = atg.getAccount();
+        	if (a != null && !accountTagFilter.getTag(a.getId()).equals(tg.account.getId()))
+        		return false;
+        }
+        else if (accounts == null && atg.getAccount() != tg.account) {
+        	return false;
+        }
+        if (regionTagFilter != null) {
+        	Region r = atg.getRegion();
+        	if (r != null && !regionTagFilter.getTag(r.name).equals(tg.region.name))
+        		return false;
+        }
+        else if (regions == null && atg.getRegion() != tg.region) {
+        	return false;
+        }
+        if (zoneTagFilter != null) {
+        	Zone z = atg.getZone();
+        	if (z != null && !productTagFilter.getTag(z.name).equals(tg.zone.name))
+        		return false;
+        }
+        else if (zones == null && atg.getZone() != tg.zone) {
         	return false;
         }
         if (productTagFilter != null) {
@@ -146,4 +194,39 @@ public class InputOperand extends Operand {
 		}
 		return true;
 	}
+	
+	public String key(AggregationTagGroup atg) {
+		StringBuilder sb = new StringBuilder(32);
+		sb.append(type.name() + ",");
+        if (accounts != null && accounts.size() > 0) {
+        	sb.append(accounts.toString() + "," + (excludeAccount ? "true," : "false,"));
+        }
+        if (regions != null && regions.size() > 0) {
+        	sb.append(regions.toString() + "," + (excludeRegion ? "true," : "false,"));
+        }
+        if (zones != null && zones.size() > 0) {
+        	sb.append(zones.toString() + "," + (excludeZone ? "true," : "false,"));
+        }
+		if (accountTagFilter != null && atg.getAccount() != null) {
+			sb.append(accountTagFilter.getTag(atg.getAccount().getId()) + ",");
+		}
+		if (regionTagFilter != null && atg.getRegion() != null) {
+			sb.append(regionTagFilter.getTag(atg.getRegion().name) + ",");
+		}
+		if (zoneTagFilter != null && atg.getZone() != null) {
+			sb.append(zoneTagFilter.getTag(atg.getZone().name) + ",");
+		}
+		if (productTagFilter != null && atg.getProduct() != null) {
+			sb.append(productTagFilter.getTag(atg.getProduct().name) + ",");
+		}
+		if (operationTagFilter != null && atg.getOperation() != null) {
+			sb.append(operationTagFilter.getTag(atg.getOperation().name) + ",");
+		}
+		if (usageTypeTagFilter != null && atg.getUsageType() != null) {
+			sb.append(usageTypeTagFilter.getTag(atg.getUsageType().name) + ",");
+		}
+		
+		return sb.toString();
+	}
+	
 }

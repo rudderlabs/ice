@@ -42,11 +42,13 @@ public class PostProcessor {
 	private List<RuleConfig> rules;
 	private AccountService accountService;
 	private ProductService productService;
+	private Map<String, Double> operandValueCache;
 	
 	public PostProcessor(List<RuleConfig> rules, AccountService accountService, ProductService productService) {
 		this.rules = rules;
 		this.accountService = accountService;
 		this.productService = productService;
+		this.operandValueCache = Maps.newHashMap();
 	}
 	
 	public void process(CostAndUsageData data) {
@@ -165,7 +167,7 @@ public class PostProcessor {
 			if (isNonResource && !inProducts.contains(tg.product))
 				continue;
 			
-			AggregationTagGroup aggregatedTagGroup = in.aggregateTagGroup(tg, productService);
+			AggregationTagGroup aggregatedTagGroup = in.aggregateTagGroup(tg, accountService, productService);
 			if (aggregatedTagGroup == null)
 				continue;
 			
@@ -176,15 +178,25 @@ public class PostProcessor {
 	}
 	
 	protected Double getOperandValue(InputOperand operand, AggregationTagGroup aggregationTagGroup, Map<TagGroup, Double> usageMap, Map<TagGroup, Double> costMap) {
+		String key = operand.key(aggregationTagGroup);
+		Double value = operandValueCache.get(key);
+		if (value != null)
+			return value;
+		
 		// Aggregate the values matching the operand
 		Map<TagGroup, Double> map = operand.getType() == OperandType.cost ? costMap : usageMap;
-		Double value = 0.0;
+		value = 0.0;
 		for (TagGroup tg: map.keySet()) {
 			if (operand.matches(aggregationTagGroup, tg)) {
 				value += map.get(tg);
 			}
 		}
+		operandValueCache.put(key, value);
 		return value;
+	}
+	
+	protected Map<String, Double> getOperandValueCache() {
+		return operandValueCache;
 	}
 	
 	protected void applyRule(Rule rule, Map<AggregationTagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData, List<ReadWriteData> resultData) throws Exception {
@@ -196,7 +208,9 @@ public class PostProcessor {
 				
 				String expr = rule.getResultValue(i);
 				if (expr != null && !expr.isEmpty()) {
-					resultData.get(i).getData(hour).put(outTagGroup, eval(rule, expr, atg, in, hour, usageData, costData));
+					Double value = eval(rule, expr, atg, in, hour, usageData, costData);
+					//logger.info("put: " + hour + ", " + outTagGroup + ", " + value);
+					resultData.get(i).getData(hour).put(outTagGroup, value);
 				}
 			}
 		}
