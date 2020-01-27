@@ -41,12 +41,12 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 
@@ -171,7 +171,7 @@ public class CostAndUsageData {
     	return reservations != null && reservations.size() > 0;
     }
     
-    public void addSavingsPlan(String arn, SavingsPlanPaymentOption paymentOption, String hourlyRecurringFee, String hourlyAmortization) {
+    public void addSavingsPlan(String arn, PurchaseOption paymentOption, String hourlyRecurringFee, String hourlyAmortization) {
     	if (savingsPlans.containsKey(arn))
     		return;
 		SavingsPlan plan = new SavingsPlan(arn,

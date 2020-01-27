@@ -30,8 +30,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
@@ -50,7 +50,7 @@ public abstract class ReservationProcessor {
     public final String reservationHour = "reservationHour";
     public final String reservationFamily = "reservationFamily";
     public final String reservationAccounts = "reservationAccounts";
-    public final String reservationUtilization = "reservationUtilization";
+    public final String reservationPurchaseOption = "reservationPurchaseOption";
     public final String reservationRegions = "reservationRegions";
     public final String reservationArn = "reservationArn";
 
@@ -60,7 +60,7 @@ public abstract class ReservationProcessor {
     // debugAccounts - will print all accounts if null
     protected String[] debugAccounts = null;
     // debugUtilization - will print all utilization if null
-    protected ReservationUtilization debugUtilization = null; // ReservationUtilization.PARTIAL;
+    protected PurchaseOption debugPurchaseOption = null; // PurchaseOption.PartialUpfront;
     // debugRegion - will print all regions if null
     protected Region[] debugRegions = null;
     
@@ -71,14 +71,11 @@ public abstract class ReservationProcessor {
     protected InstanceMetrics instanceMetrics = null;
     protected Map<Product, InstancePrices> prices;
     protected Product product;
-    protected boolean familyBreakout;
 
     public ReservationProcessor(Set<Account> reservationOwners,
-    		ProductService productService, PriceListService priceListService, boolean familyBreakout) throws IOException {
+    		ProductService productService, PriceListService priceListService) throws IOException {
     	this.productService = productService;
-    	this.priceListService = priceListService;
-    	this.familyBreakout = familyBreakout;
-    	
+    	this.priceListService = priceListService;    	
     }
     
     public void setDebugProperties(Map<String, String> debugProperties) {
@@ -88,16 +85,16 @@ public abstract class ReservationProcessor {
     		setDebugFamily(debugProperties.get(reservationFamily));
     	if (debugProperties.containsKey(reservationAccounts))
     		setDebugAccounts(debugProperties.get(reservationAccounts).split(","));
-    	if (debugProperties.containsKey(reservationUtilization))
-    		setDebugUtilization(ReservationUtilization.get(debugProperties.get(reservationUtilization)));
+    	if (debugProperties.containsKey(reservationPurchaseOption))
+    		setDebugUtilization(PurchaseOption.get(debugProperties.get(reservationPurchaseOption)));
     	if (debugProperties.containsKey(reservationRegions)) {
     		List<Region> regions = Lists.newArrayList();
     		for (String name: debugProperties.get(reservationRegions).split(","))
     			regions.add(Region.getRegionByName(name));
     		setDebugRegions(regions.toArray(new Region[]{}));
     	}
-    	if (debugProperties.containsKey(reservationUtilization))
-    		setDebugUtilization(ReservationUtilization.get(debugProperties.get(reservationUtilization)));
+    	if (debugProperties.containsKey(reservationPurchaseOption))
+    		setDebugUtilization(PurchaseOption.get(debugProperties.get(reservationPurchaseOption)));
     	if (debugProperties.containsKey(reservationArn))
     		ReservationArn.debugReservationArn = ReservationArn.get(debugProperties.get(reservationArn));
     }
@@ -126,8 +123,8 @@ public abstract class ReservationProcessor {
     	return debugAccounts;
     }
     
-    public void setDebugUtilization(ReservationUtilization utilization) {
-    	debugUtilization = utilization;
+    public void setDebugUtilization(PurchaseOption purchaseOption) {
+    	debugPurchaseOption = purchaseOption;
     }
     
     public void setDebugRegions(Region[] regions) {
@@ -138,13 +135,13 @@ public abstract class ReservationProcessor {
     	return debugRegions;
     }
     
-	protected boolean debugReservations(int i, TagGroup tg, ReservationUtilization utilization) {
+	protected boolean debugReservations(int i, TagGroup tg, PurchaseOption purchaseOption) {
 		// Must have match on debugHour
 		if (i != debugHour)
 			return false;
 		
 		// Must have match on debugUtilization if it isn't null
-		if (debugUtilization != null && utilization != debugUtilization)
+		if (debugPurchaseOption != null && purchaseOption != debugPurchaseOption)
 			return false;
 		
 		// Must have match on region if debugRegions isn't null
@@ -281,7 +278,7 @@ public abstract class ReservationProcessor {
 				continue;
 			if ((tagGroup.product.hasReservations())
 					&& usageMap.get(tagGroup) != null 
-					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
+					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getPurchaseOption())) {
 				logger.info("usage " + usageMap.get(tagGroup) + " for tagGroup: " + tagGroup);
 			}
 		}
@@ -297,7 +294,7 @@ public abstract class ReservationProcessor {
 				continue;
 			if ((tagGroup.product.hasReservations())
 					&& costMap.get(tagGroup) != null 
-					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getUtilization())) {
+					&& debugReservations(debugHour, tagGroup, ((Operation.ReservationOperation) tagGroup.operation).getPurchaseOption())) {
 				logger.info("cost " + costMap.get(tagGroup) + " for tagGroup: " + tagGroup);
 			}
 		}

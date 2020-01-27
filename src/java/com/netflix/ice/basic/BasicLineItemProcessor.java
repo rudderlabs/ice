@@ -23,9 +23,7 @@ import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationInfo;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.*;
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Zone.BadZone;
 
 import org.apache.commons.lang.StringUtils;
@@ -187,17 +185,17 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	logger.info("Support: " + lineItem);
         }
         
-        ReservationUtilization defaultReservationUtilization = reservationService.getDefaultReservationUtilization(millisStart);
+        PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(millisStart);
         String purchaseOption = lineItem.getPurchaseOption();
         ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
         if (StringUtils.isEmpty(purchaseOption) && !reservationArn.name.isEmpty()) {
         	ReservationInfo resInfo = reservationService.getReservation(reservationArn);
         	if (resInfo != null)
-        		defaultReservationUtilization = ((Operation.ReservationOperation) resInfo.tagGroup.operation).getUtilization();
+        		defaultReservationPurchaseOption = ((Operation.ReservationOperation) resInfo.tagGroup.operation).getPurchaseOption();
         }
         		       
         // Remap assignments for product, operation, and usageType to break out reserved instances and split out a couple EC2 types like ebs and eip
-        ReformedMetaData reformedMetaData = reform(millisStart, lineItem, defaultReservationUtilization);
+        ReformedMetaData reformedMetaData = reform(millisStart, lineItem, defaultReservationPurchaseOption);
         
         final Product product = reformedMetaData.product;
         final Operation operation = reformedMetaData.operation;
@@ -226,7 +224,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        case RIFee:
 	        	if (processDelayed) {
 	                // Grab the unused rates for the reservation processor.
-	            	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getUtilization()), usageType, resourceGroup, reservationArn);
+	            	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getPurchaseOption()), usageType, resourceGroup, reservationArn);
 	            	addReservation(lineItem, costAndUsageData, tgri, startMilli);
 	        	}
 	        	break;
@@ -234,7 +232,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        case SavingsPlanRecurringFee:
 	        	// Grab the amortization and recurring fee for the savings plan processor.
 	        	costAndUsageData.addSavingsPlan(lineItem.getSavingsPlanArn(),
-	        					SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption()),
+	        					PurchaseOption.get(lineItem.getSavingsPlanPaymentOption()),
 	        					lineItem.getSavingsPlanRecurringCommitmentForBillingPeriod(), 
 	        					lineItem.getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod());
 	        	break;
@@ -480,14 +478,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
 
 
-    private Operation getReservationOperation(LineItem lineItem, Product product, ReservationUtilization defaultReservationUtilization) {    	
+    private Operation getReservationOperation(LineItem lineItem, Product product, PurchaseOption defaultReservationPurchaseOption) {    	
     	String purchaseOption = lineItem.getPurchaseOption();
     	
     	if (lineItem.getLineItemType() == LineItemType.Credit) {
     		return Operation.reservedInstancesCredits;
     	}
     	if (StringUtils.isNotEmpty(purchaseOption)) {
-    		return Operation.getBonusReservedInstances(ReservationUtilization.get(purchaseOption));
+    		return Operation.getBonusReservedInstances(PurchaseOption.get(purchaseOption));
     	}
     	
         double cost = Double.parseDouble(lineItem.getCost());
@@ -501,11 +499,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         		List<String> legacyInstanceFamilies = Lists.newArrayList("m1", "m2", "m3", "m4", "t1", "t2", "r1", "r2", "r3", "r4");
         		if (legacyInstanceFamilies.contains(family)) {
         			if (usage[0].contains("HeavyUsage"))
-        				return Operation.getBonusReservedInstances(ReservationUtilization.HEAVY);
+        				return Operation.getBonusReservedInstances(PurchaseOption.Heavy);
         			if (usage[0].contains("MediumUsage"))
-        				return Operation.getBonusReservedInstances(ReservationUtilization.MEDIUM);
+        				return Operation.getBonusReservedInstances(PurchaseOption.Medium);
         			if (usage[0].contains("LightUsage"))
-        				return Operation.getBonusReservedInstances(ReservationUtilization.LIGHT);
+        				return Operation.getBonusReservedInstances(PurchaseOption.Light);
         		}
         	}
         	
@@ -528,10 +526,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 		if (cost == 0 && (product.isEc2() || lineItem.getDescription().contains(" 0.0 "))) {
         	return Operation.bonusReservedInstancesAllUpfront;
         }
-        return Operation.getBonusReservedInstances(defaultReservationUtilization);
+        return Operation.getBonusReservedInstances(defaultReservationPurchaseOption);
     }
     
-    protected ReformedMetaData reform(long millisStart, LineItem lineItem, ReservationUtilization defaultReservationUtilization) {
+    protected ReformedMetaData reform(long millisStart, LineItem lineItem, PurchaseOption defaultReservationPurchaseOption) {
 
     	Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
     	
@@ -565,7 +563,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = index < 0 ? "m1.small" : usageTypeStr.substring(index+1);
 
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else if (spot)
             	operation = Operation.spotInstances;
@@ -578,7 +576,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageTypeStr = currentRedshiftUsageType(usageTypeStr.split(":")[1]);
             
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
 	            operation = Operation.ondemandInstances;
@@ -595,7 +593,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             }
             
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
             	operation = Operation.ondemandInstances;
@@ -605,7 +603,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (product.isElasticsearch() && usageTypeStr.startsWith("ESInstance") && operationStr.startsWith("ESDomain")) {
         	// Line item for hourly Elasticsearch instance usage both On-Demand and Reserved.
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
             	operation = Operation.ondemandInstances;
@@ -614,7 +612,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (product.isElastiCache() && usageTypeStr.startsWith("NodeUsage") && operationStr.startsWith("CreateCacheCluster")) {
         	// Line item for hourly ElastiCache node usage both On-Demand and Reserved.
             if (reservationUsage) {
-            	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+            	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
 	        }
 	        else {
 	        	operation = Operation.ondemandInstances;
@@ -648,7 +646,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
                 	}
                 }
             }
-        	operation = getReservationOperation(lineItem, product, defaultReservationUtilization);
+        	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             os = getInstanceOs(operationStr);
         }
         
@@ -697,7 +695,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         // Override operation if this is savings plan covered usage
         if (lineItem.getLineItemType() == LineItemType.SavingsPlanCoveredUsage) {
-        	operation = Operation.getSavingsPlanBonus(Operation.SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption()));
+        	operation = Operation.getSavingsPlanBonus(PurchaseOption.get(lineItem.getSavingsPlanPaymentOption()));
         }
 
         return new ReformedMetaData(product, operation, usageType);
@@ -721,12 +719,12 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return InstanceCache.withCode(cacheStr);
     }
 
-    protected Operation getOperation(String operationStr, boolean reservationUsage, ReservationUtilization utilization) {
+    protected Operation getOperation(String operationStr, boolean reservationUsage, PurchaseOption purchaseOption) {
         if (operationStr.startsWith("RunInstances") ||
         		operationStr.startsWith("RunComputeNode") ||
         		operationStr.startsWith("CreateDBInstance") ||
         		operationStr.equals("ESDomain")) {
-            return (reservationUsage ? Operation.getBonusReservedInstances(utilization) : Operation.ondemandInstances);
+            return (reservationUsage ? Operation.getBonusReservedInstances(purchaseOption) : Operation.ondemandInstances);
         }
         return null;
     }

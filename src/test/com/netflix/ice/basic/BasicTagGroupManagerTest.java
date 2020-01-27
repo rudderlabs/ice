@@ -71,7 +71,7 @@ public class BasicTagGroupManagerTest {
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagX", 	accountService, productService),
 				// Savings and Lent operation tags that should be filtered if not for reservations
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - Spot", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Lent RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
 		};
 		

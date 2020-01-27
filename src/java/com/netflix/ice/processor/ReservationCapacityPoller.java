@@ -74,16 +74,15 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.Poller;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
-import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Account;
@@ -345,13 +344,13 @@ public class ReservationCapacityPoller extends Poller {
     		CanonicalReservedInstances reservedInstances = ec2Reservations.get(key);
     		
 	        double fixedPrice = reservedInstances.getFixedPrice();
-	        ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
+	        PurchaseOption purchaseOption = PurchaseOption.get(reservedInstances.getOfferingType());
 	
 	        logger.debug("Reservation: " + reservedInstances.getReservationId() + ", type: " + reservedInstances.getInstanceType() + ", fixedPrice: " + fixedPrice);
 	        
 	        if (fixedPrice == 0.0 && 
-	        		(utilization == ReservationUtilization.ALL ||
-	        		 utilization == ReservationUtilization.PARTIAL))  {
+	        		(purchaseOption == PurchaseOption.AllUpfront ||
+	        				purchaseOption == PurchaseOption.PartialUpfront))  {
 	        	// Reservation was likely modified and AWS doesn't carry forward the fixed price from the parent reservation
 	        	// Get the reservation modification for this RI
 	        	String parentReservationId = mods.getOriginalReservationId(reservedInstances.getReservationId());
@@ -384,7 +383,7 @@ public class ReservationCapacityPoller extends Poller {
 		try {
 			InstancePrices prices = pls.getPrices(new DateTime(ri.getStart()), ServiceCode.AmazonEC2);
 			LeaseContractLength lcl = ri.getDuration() > 24 * 365 ? LeaseContractLength.threeyear : LeaseContractLength.oneyear;
-			PurchaseOption po = PurchaseOption.getByName(ri.getOfferingType());
+			PurchaseOption po = PurchaseOption.get(ri.getOfferingType());
 			OfferingClass oc = OfferingClass.valueOf(ri.getOfferingClass());
 			UsageType ut = UsageType.getUsageType(ri.getInstanceType(), "hours");
 			Rate rate = prices.getReservationRate(region, ut, lcl, po, oc);
@@ -500,9 +499,9 @@ public class ReservationCapacityPoller extends Poller {
     }
 
     protected void updateReservations(Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi, AccountService accountService, long startMillis, ProductService productService, ResourceService resourceService, ReservationService reservationService) throws Exception {
-        Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
-        for (ReservationUtilization utilization: ReservationUtilization.values()) {
-            reservationMap.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
+        Map<PurchaseOption, Map<TagGroup, List<Reservation>>> reservationMap = Maps.newTreeMap();
+        for (PurchaseOption purchaseOption: PurchaseOption.values()) {
+            reservationMap.put(purchaseOption, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
         Map<ReservationArn, Reservation> reservationsByArn = Maps.newHashMap();
 
@@ -515,7 +514,7 @@ public class ReservationCapacityPoller extends Poller {
 
             Account account = accountService.getAccountById(key.account);
 
-            ReservationUtilization utilization = ReservationUtilization.get(reservedInstances.getOfferingType());
+            PurchaseOption utilization = PurchaseOption.get(reservedInstances.getOfferingType());
             
             long startTime = 0;
             long endTime = 0;

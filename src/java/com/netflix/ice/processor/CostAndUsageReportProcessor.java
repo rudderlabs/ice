@@ -78,8 +78,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	        reservationProcessor = new CostAndUsageReservationProcessor(
 					config.accountService.getReservationAccounts().keySet(),
 					config.productService,
-					config.priceListService,
-					config.familyRiBreakout);
+					config.priceListService);
 	        reservationProcessor.setDebugProperties(config.debugProperties);
 	        lineItemProcessor = new CostAndUsageReportLineItemProcessor(config.accountService, config.productService, config.reservationService, config.resourceService);
 		}

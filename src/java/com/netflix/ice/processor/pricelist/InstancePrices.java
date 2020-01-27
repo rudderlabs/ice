@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.pricelist.PriceList.Product.Attributes;
 import com.netflix.ice.processor.pricelist.PriceList.Term;
 import com.netflix.ice.tag.InstanceCache;
@@ -338,7 +339,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	
     	public RateKey(String leaseContractLength, String purchaseOption, String offeringClass) {
     		this.leaseContractLength = LeaseContractLength.getByName(leaseContractLength);
-    		this.purchaseOption = PurchaseOption.getByName(purchaseOption);
+    		this.purchaseOption = PurchaseOption.get(purchaseOption);
     		this.offeringClass = OfferingClass.valueOf(offeringClass);
     	}
     	
@@ -613,30 +614,6 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	}
         	return none;
         }
-    }
-    
-    public static enum PurchaseOption {
-    	none("none"),
-    	noUpfront("No Upfront"),
-    	partialUpfront("Partial Upfront"),
-    	allUpfront("All Upfront"),
-    	heavy("Heavy Utilization"),
-    	medium("Medium Utilization"),
-    	light("Light Utilization");
-    	
-    	public final String name;
-    	
-    	private PurchaseOption(String name) {
-    		this.name = name;
-    	}
-    	
-    	public static PurchaseOption getByName(String name) {
-        	for (PurchaseOption po: PurchaseOption.values()) {
-        		if (po.name.equals(name))
-        			return po;
-        	}
-        	return none;
-    	}
     }
     
     public static enum OfferingClass {

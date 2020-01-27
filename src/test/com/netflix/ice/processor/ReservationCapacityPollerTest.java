@@ -39,12 +39,12 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.CanonicalReservedInstances;
 import com.netflix.ice.processor.ReservationCapacityPoller;
 import com.netflix.ice.processor.ReservationCapacityPoller.Ec2Mods;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 
@@ -196,7 +196,7 @@ public class ReservationCapacityPollerTest {
 	
 	@Test
 	public void testUpdateReservations() throws Exception {
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.threeyear, ReservationUtilization.PARTIAL);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.threeyear, PurchaseOption.PartialUpfront);
 		ReservationCapacityPoller poller = new ReservationCapacityPoller(null);
 		ProductService ps = new BasicProductService();
 		AccountService as = new BasicAccountService();

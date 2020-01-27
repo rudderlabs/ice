@@ -17,18 +17,18 @@
  */
 package com.netflix.ice.processor;
 
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.tag.SavingsPlanArn;
 
 public class SavingsPlan {
 	final public SavingsPlanArn arn;
-	final public SavingsPlanPaymentOption paymentOption;
+	final public PurchaseOption paymentOption;
 	final public double hourlyRecurringFee;
 	final public double hourlyAmortization;
 	final public double normalizedRecurring;
 	final public double normalizedAmortization;
 	
-	public SavingsPlan(String arn, SavingsPlanPaymentOption paymentOption, double hourlyRecurringFee, double hourlyAmortization) {
+	public SavingsPlan(String arn, PurchaseOption paymentOption, double hourlyRecurringFee, double hourlyAmortization) {
 		this.arn = SavingsPlanArn.get(arn);
 		this.paymentOption = paymentOption;
 		this.hourlyRecurringFee = hourlyRecurringFee;

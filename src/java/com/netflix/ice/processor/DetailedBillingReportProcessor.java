@@ -53,8 +53,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
         reservationProcessor = new DetailedBillingReservationProcessor(
 				config.accountService.getReservationAccounts().keySet(),
 				config.productService,
-				config.priceListService,
-				config.familyRiBreakout);
+				config.priceListService);
 	}
 	
 	@Override

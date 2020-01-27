@@ -30,6 +30,7 @@ public class ConsolidatedOperation extends Tag {
 	
 	static {
 		consolidatedName.put("Amortized RIs", "Amortized RIs");
+		consolidatedName.put("UnusedAmortized RIs", "Amortized RIs");
 		consolidatedName.put("Bonus RIs", "RIs");
 		consolidatedName.put("Borrowed RIs", "RIs");
 		consolidatedName.put("Lent RIs", "Lent RIs");

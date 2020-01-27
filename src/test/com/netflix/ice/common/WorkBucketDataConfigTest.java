@@ -58,7 +58,7 @@ public class WorkBucketDataConfigTest {
 		userTags.add("Tag2");
 		userTags.add("Tag3");
 		
-		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, false, TagCoverage.basic, null);
+		WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accounts, zones, userTags, TagCoverage.basic, null);
 		
 		String json = wbdc.toJSON();
 		WorkBucketDataConfig got = new WorkBucketDataConfig(json);
@@ -67,7 +67,6 @@ public class WorkBucketDataConfigTest {
 		assertEquals("Bad accounts", accounts, got.getAccounts());
 		assertEquals("Bad zones", zones, got.getZones());
 		assertEquals("Bad user tags", userTags, got.getUserTags());
-		assertEquals("Bad familyRiBreakout value", false, got.getFamilyRiBreakout());
 		assertEquals("Bad tagCoverage value", TagCoverage.basic, got.getTagCoverage());
 	}
 

@@ -29,16 +29,15 @@ import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.LineItem.BillType;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.common.TagGroupSP;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Operation.SavingsPlanOperation;
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ReservationArn;
@@ -159,7 +158,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         int count = Integer.parseInt(lineItem.getReservationNumberOfReservations());
         long start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).getMillis();
         long end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).getMillis();
-        ReservationUtilization utilization = ((ReservationOperation) tg.operation).getUtilization();
+        PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();
         
         
         Double usageQuantity = Double.parseDouble(lineItem.getUsageQuantity());
@@ -174,7 +173,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         if (unusedUsagePrice > 0.0 && Math.abs(unusedUsagePrice - usagePrice) > 0.0001)
         	logger.info(" used and unused usage prices are different, used: " + usagePrice + ", unused: " + unusedUsagePrice + ", tg: " + tg);
 		
-        Reservation r = new Reservation(tg, count, start, end, utilization, hourlyFixedPrice, usagePrice);
+        Reservation r = new Reservation(tg, count, start, end, purchaseOption, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
         if (ReservationArn.debugReservationArn != null && tg.arn == ReservationArn.debugReservationArn) {
@@ -245,7 +244,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		logger.warn(lineItemType + " No public onDemand cost in line item for tg=" + tagGroup);
     		return;
     	}
-        SavingsPlanPaymentOption paymentOption = SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption());
+        PurchaseOption paymentOption = PurchaseOption.get(lineItem.getSavingsPlanPaymentOption());
 		SavingsPlanOperation savingsOp = Operation.getSavingsPlanSavings(paymentOption);
 		TagGroup tg = TagGroup.getTagGroup(tagGroup.account,  tagGroup.region, tagGroup.zone, tagGroup.product, savingsOp, tagGroup.usageType, tagGroup.resourceGroup);
 		double publicCost = Double.parseDouble(publicOnDemandCost);
@@ -266,7 +265,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 
         Map<TagGroup, Double> costs = costAndUsageData.getCost(null).getData(index);
         
-        SavingsPlanPaymentOption paymentOption = SavingsPlanPaymentOption.get(lineItem.getSavingsPlanPaymentOption());
+        PurchaseOption paymentOption = PurchaseOption.get(lineItem.getSavingsPlanPaymentOption());
 
         if (unusedAmort > 0.0) {
     		SavingsPlanOperation amortOp = Operation.getSavingsPlanUnusedAmortized(paymentOption);
@@ -362,7 +361,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     	}
 		amortCost = Double.parseDouble(amort);
 		if (amortCost > 0.0) {
-    		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getUtilization());
+    		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getPurchaseOption());
     		TagGroupRI tg = TagGroupRI.get(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
     		addValue(costs, tg, amortCost);
             if (debug) {
@@ -377,7 +376,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     			logger.warn(lineItemType + " No public onDemand cost in line item for tg=" + tagGroup);
     		return;
     	}
-		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getUtilization());
+		ReservationOperation savingsOp = ReservationOperation.getSavings(((ReservationOperation) tagGroup.operation).getPurchaseOption());
 		TagGroupRI tg = TagGroupRI.get(tagGroup.account,  tagGroup.region, tagGroup.zone, product, savingsOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
 		double publicCost = Double.parseDouble(publicOnDemandCost);
 		double edpCost = publicCost * (1 - edpDiscount);

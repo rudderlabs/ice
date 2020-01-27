@@ -35,6 +35,7 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.config.AccountConfig;
@@ -46,7 +47,6 @@ import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.SavingsPlanArn;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone;
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 
 public class SavingsPlanProcessorTest {
 	private static ProductService productService;
@@ -145,7 +145,7 @@ public class SavingsPlanProcessorTest {
 	@Test
 	public void testCoveredUsageNoUpfront() {
 		String arn = "arn:aws:savingsplans::" + a1.name + ":savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555";
-		SavingsPlan sp = new SavingsPlan(arn, SavingsPlanPaymentOption.NoUpfront, 0.10, 0);
+		SavingsPlan sp = new SavingsPlan(arn, PurchaseOption.NoUpfront, 0.10, 0);
 		Datum[] usageData = new Datum[]{
 				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanBonusNoUpfront, "t3.micro", null, arn, 1.0),
 			};
@@ -164,7 +164,7 @@ public class SavingsPlanProcessorTest {
 	@Test
 	public void testCoveredUsagePartialUpfront() {
 		String arn = "arn:aws:savingsplans::" + a1.name + ":savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555";
-		SavingsPlan sp = new SavingsPlan(arn, SavingsPlanPaymentOption.PartialUpfront, 0.055, 0.045);
+		SavingsPlan sp = new SavingsPlan(arn, PurchaseOption.PartialUpfront, 0.055, 0.045);
 		Datum[] usageData = new Datum[]{
 				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanBonusPartialUpfront, "t3.micro", null, arn, 1.0),
 			};
@@ -184,7 +184,7 @@ public class SavingsPlanProcessorTest {
 	@Test
 	public void testCoveredUsageAllUpfront() {
 		String arn = "arn:aws:savingsplans::" + a1.name + ":savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555";
-		SavingsPlan sp = new SavingsPlan(arn, SavingsPlanPaymentOption.AllUpfront, 0.0, 0.10);
+		SavingsPlan sp = new SavingsPlan(arn, PurchaseOption.AllUpfront, 0.0, 0.10);
 		Datum[] usageData = new Datum[]{
 				new Datum(a1, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanBonusAllUpfront, "t3.micro", null, arn, 1.0),
 			};
@@ -204,7 +204,7 @@ public class SavingsPlanProcessorTest {
 	@Test
 	public void testCoveredUsagePartialUpfrontBorrowed() {
 		String arn = "arn:aws:savingsplans::" + a1.name + ":savingsplan/abcdef70-abcd-5abc-4k4k-01236ab65555";
-		SavingsPlan sp = new SavingsPlan(arn, SavingsPlanPaymentOption.PartialUpfront, 0.055, 0.045);
+		SavingsPlan sp = new SavingsPlan(arn, PurchaseOption.PartialUpfront, 0.055, 0.045);
 		Datum[] usageData = new Datum[]{
 				new Datum(a2, Region.US_EAST_1, null, ec2Instance, Operation.savingsPlanBonusPartialUpfront, "t3.micro", null, arn, 1.0),
 			};

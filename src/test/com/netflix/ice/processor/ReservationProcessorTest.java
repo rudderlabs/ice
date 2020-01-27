@@ -43,13 +43,13 @@ import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
@@ -139,7 +139,7 @@ public class ReservationProcessorTest {
 	@Test
 	public void testConstructor() throws IOException {
 		assertEquals("Number of accounts should be " + numAccounts, numAccounts, accounts.size());
-		ReservationProcessor rp = new DetailedBillingReservationProcessor(reservationOwners.keySet(), null, null, true);
+		ReservationProcessor rp = new DetailedBillingReservationProcessor(reservationOwners.keySet(), null, null);
 		assertNotNull("Contructor returned null", rp);
 	}
 	
@@ -198,7 +198,7 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		DetailedBillingReservationProcessor rp = new DetailedBillingReservationProcessor(rsvOwners, new BasicProductService(), priceListService, true);
+		DetailedBillingReservationProcessor rp = new DetailedBillingReservationProcessor(rsvOwners, new BasicProductService(), priceListService);
 		// Populate the accounts list in the reservation processor for borrowing
 		for (Account a: accounts)
 			rp.addBorrower(a);
@@ -217,7 +217,7 @@ public class ReservationProcessorTest {
 			String debugFamily,
 			Set<Account> rsvOwners,
 			Product product) throws Exception {
-		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(), priceListService, true);
+		ReservationProcessor rp = new CostAndUsageReservationProcessor(rsvOwners, new BasicProductService(), priceListService);
 		runOneHourTestWithOwnersAndProcessor(startMillis, reservationsCSV, usageData, costData, expectedUsage, expectedCost, debugFamily, rp, product);
 	}
 	
@@ -299,7 +299,7 @@ public class ReservationProcessorTest {
 			reservations.put(new ReservationKey(fields[0], fields[2], fields[3]), new CanonicalReservedInstances(res));
 		}
 				
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, ReservationUtilization.ALL);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.oneyear, PurchaseOption.AllUpfront);
 		new ReservationCapacityPoller(null).updateReservations(reservations, accountService, startMillis, productService, resourceService, reservationService);
 		
 		if (startMillis >= CostAndUsageReservationProcessor.jan1_2018) {
@@ -414,7 +414,13 @@ public class ReservationProcessorTest {
 		};
 
 		runOneHourTest(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
-		
+
+		expectedCostData = new Datum[]{
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAllUpfront, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontUnusedAmortizedAllUpfront, "m1.large", 1.3345),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.large", -1.3345),
+		};
+
 		/* Cost and Usage version */
 		runOneHourTestCostAndUsage(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "m1");
 	}
@@ -580,7 +586,8 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.small", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.lentInstancesAllUpfront, "m1.small", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.unusedInstancesAllUpfront, "m1.small", 0.0),
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.09406),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontUnusedAmortizedAllUpfront, "m1.small", 0.07054),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.small", 0.044 * 1.0 - 0.09406), // penalty for unused all goes to owner
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.small", 0.044 * 1.0 - 0.02352),
@@ -655,7 +662,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAllUpfront, "m1.small", 2.0 * 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontUnusedAmortizedAllUpfront, "m1.small", 2.0 * 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.small", 0.044 - 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1b, Operation.savingsAllUpfront, "m1.small", 0.044 - 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1c, Operation.savingsAllUpfront, "m1.small", 0.044 - 0.02352),
@@ -948,13 +955,13 @@ public class ReservationProcessorTest {
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAllUpfront, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAllUpfront, "m1.large", 0.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.large", 0.0),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.094),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAllUpfront, "m1.small", 0.044 * 4.0 - 0.094),
 		};
@@ -966,7 +973,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesAllUpfront, "m1.large", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesAllUpfront, "m1.large", 0.0),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.large", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.large", 0.094),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.large", 0.044 * 4.0 - 0.094),
 			};
@@ -1002,13 +1009,13 @@ public class ReservationProcessorTest {
 		};
 				
 		Datum[] expectedUsageData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesPartialUpfront, "m1.large", 1.0),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartialUpfront, "m1.large", 1.0),
 		};
 		
 		Datum[] costData = new Datum[]{				
 		};
 		Datum[] expectedCostData = new Datum[]{
-			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesPartialUpfront, "m1.large", 4.0 * 0.01),
+			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartialUpfront, "m1.large", 4.0 * 0.01),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartialUpfront, "m1.small", 4.0 * 0.014),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartialUpfront, "m1.small", 4.0 * (0.044 - 0.014 - 0.01)),
 		};
@@ -1020,7 +1027,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.bonusReservedInstancesPartialUpfront, "m1.large", null, arn1, 1.0),
 		};
 		expectedCostData = new Datum[]{
-				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.familyReservedInstancesPartialUpfront, "m1.large", 4.0 * 0.01),
+				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartialUpfront, "m1.large", 4.0 * 0.01),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedPartialUpfront, "m1.large", 4.0 * 0.014),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsPartialUpfront, "m1.large", 4.0 * (0.044 - 0.014 - 0.01)),
 			};
@@ -1086,7 +1093,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesAllUpfront, "m1.small", 0.0),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedAllUpfront, "m1.small", 0.02352),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedAllUpfront, "m1.small", 3.0 * 0.02352),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontUnusedAmortizedAllUpfront, "m1.small", 3.0 * 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.small", 0.044 - 0.02352),
 				new Datum(accounts.get(1), Region.US_EAST_1, us_east_1a, Operation.savingsAllUpfront, "m1.small", 0.044 - 0.02352),
 				new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsAllUpfront, "m1.small", 3.0 * -0.02352),
@@ -1461,7 +1468,7 @@ public class ReservationProcessorTest {
 		expectedCostData = new Datum[]{
 				new Datum(accounts.get(0), Region.EU_WEST_1, eu_west_1b, Operation.borrowedInstancesPartialUpfront, "c4.2xlarge", 0.039 * 0.50),
 				new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.unusedInstancesPartialUpfront, "c4.large", 0.0285 * 20.0),
-				new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontAmortizedPartialUpfront, "c4.large", 0.0285 * 20.0),
+				new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.upfrontUnusedAmortizedPartialUpfront, "c4.large", 0.0285 * 20.0),
 				new Datum(accounts.get(0), Region.US_WEST_2, null, Operation.savingsPartialUpfront, "c4.large", -(0.0285 + 0.0285) * 20.0),
 				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, Operation.reservedInstancesPartialUpfront, "c4.xlarge", 0.039 * 1.5),
 				new Datum(accounts.get(1), Region.EU_WEST_1, eu_west_1c, Operation.upfrontAmortizedPartialUpfront, "c4.xlarge", 0.039 * 1.5),
@@ -1776,7 +1783,7 @@ public class ReservationProcessorTest {
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", rg, 0.121),
 				new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", rg, 0.398 - 0.121 - 0.121),
 				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.unusedInstancesPartialUpfront, "c4.2xlarge", unusedRg, 0.121),
-				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontAmortizedPartialUpfront, "c4.2xlarge", unusedRg, 0.121),
+				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.upfrontUnusedAmortizedPartialUpfront, "c4.2xlarge", unusedRg, 0.121),
 				new Datum(accounts.get(0), Region.US_EAST_1, null, ec2Instance, Operation.savingsPartialUpfront, "c4.2xlarge", unusedRg, -0.121 - 0.121),
 			};
 		runOneHourTestCostAndUsageWithOwners(startMillis, resCSV, usageData, costData, expectedUsageData, expectedCostData, "c4", reservationOwners.keySet(), ec2Instance);		
@@ -1843,7 +1850,7 @@ public class ReservationProcessorTest {
 		Datum[] expectedCostData = new Datum[]{
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.reservedInstancesPartialUpfront, "m1.small", 0.024),
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.upfrontAmortizedPartialUpfront, "m1.small", 0.014),
-			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontAmortizedPartialUpfront, "m1.small", 0.014),
+			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.upfrontUnusedAmortizedPartialUpfront, "m1.small", 0.014),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.unusedInstancesPartialUpfront, "m1.small", 0.010),
 			new Datum(accounts.get(0), Region.US_EAST_1, us_east_1a, Operation.savingsPartialUpfront, "m1.small", 0.020),
 			new Datum(accounts.get(0), Region.US_EAST_1, null, Operation.savingsPartialUpfront, "m1.small", -(0.010 + 0.014)),

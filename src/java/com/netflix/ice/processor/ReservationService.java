@@ -18,10 +18,10 @@
 package com.netflix.ice.processor;
 
 import com.netflix.ice.basic.BasicReservationService.Reservation;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
-import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 
@@ -37,16 +37,16 @@ public interface ReservationService {
 
     /**
      * Get all tag groups with reservations (Used only for Detailed Billing Report Processing)
-     * @param utilization
+     * @param purchaseOption
      * @return
      */
-    Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli, Product product);
+    Collection<TagGroup> getTagGroups(PurchaseOption purchaseOption, Long startMilli, Product product);
 
     /**
      *
      * @return
      */
-    ReservationUtilization getDefaultReservationUtilization(long time);
+    PurchaseOption getDefaultPurchaseOption(long time);
     
     /*
      * Get ReservationInfo for the given reservation ARN
@@ -68,7 +68,7 @@ public interface ReservationService {
     ReservationInfo getReservation(
             long time,
             TagGroup tagGroup,
-            ReservationUtilization utilization,
+            PurchaseOption purchaseOption,
             InstancePrices instancePrices);
 
     /**
@@ -76,7 +76,7 @@ public interface ReservationService {
      */
     boolean hasReservations(Product product);
     
-    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsById);
+    public void setReservations(Map<PurchaseOption, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsById);
 
     public static class ReservationInfo {
     	public final TagGroupRI tagGroup;
@@ -139,49 +139,4 @@ public interface ReservationService {
         }
 
     }
-
-    public static enum ReservationUtilization {
-        NO, 		// The new "No Upfront" Reservations
-        PARTIAL,	// The new "Partial Upfront" Reservations
-        ALL,		// The new "Full Upfront" Reservations
-        HEAVY,		// Heavy utilization still used by ElastiCache
-        MEDIUM,		// Medium utilization still used by ElastiCache
-        LIGHT;		// Light utilization still used by ElastiCache
-
-        public static ReservationUtilization get(String offeringType) {
-            int idx = offeringType.indexOf(" ");
-            if (idx > 0) {
-            	// We've been called with a reservationInstance record offering type field
-                offeringType = offeringType.substring(0, idx).toUpperCase();
-                return valueOf(offeringType);
-            }
-            else {
-            	// We've been called with a billing report line item usage type field
-                for (ReservationUtilization utilization: values()) {
-                    if (offeringType.toUpperCase().startsWith(utilization.name()))
-                        return utilization;
-                }
-                throw new RuntimeException("Unknown ReservationUtilization " + offeringType);
-            }
-        }
-        
-        public PurchaseOption getPurchaseOption() {
-            switch (this) {
-            case NO:
-            	return PurchaseOption.noUpfront;
-            case PARTIAL:
-            	return PurchaseOption.partialUpfront;
-            case ALL:
-            	return PurchaseOption.allUpfront;
-            case HEAVY:
-            	return PurchaseOption.heavy;
-            case MEDIUM:
-            	return PurchaseOption.medium;
-            case LIGHT:
-            	return PurchaseOption.light;
-            }
-            return null;
-        }
-    }
-
 }

@@ -70,7 +70,6 @@ public class ProcessorConfig extends Config {
     public final DateTime startDate;
     public final AccountService accountService;
     public final ResourceService resourceService;
-    public final boolean familyRiBreakout;
     public final List<BillingBucket> billingBuckets;
     public final List<BillingBucket> kubernetesBuckets;
     public final DateTime costAndUsageStartDate;
@@ -151,10 +150,6 @@ public class ProcessorConfig extends Config {
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
         this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
         
-        // whether to separate out the family RI usage into its own operation category
-        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
-        
-
         String[] yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_START_DATE, "").split("-");
         if (yearMonth.length < 2)
             costAndUsageStartDate = new DateTime(3000, 1, 1, 0, 0, DateTimeZone.UTC); // Arbitrary year in the future
@@ -336,7 +331,7 @@ public class ProcessorConfig extends Config {
     		zones.put(r.name, zlist);
     	}
     	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), zones,
-    			resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout, getTagCoverage(), resourceService.getTagConfigs());
+    			resourceService == null ? null : resourceService.getUserTags(), getTagCoverage(), resourceService.getTagConfigs());
         File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);

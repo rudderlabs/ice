@@ -46,6 +46,7 @@ import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.WorkBucketDataConfig;
 import com.netflix.ice.common.Config.TagCoverage;
@@ -53,7 +54,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -158,8 +158,8 @@ public class BillingFileProcessorTest {
 	
 	public void testFileData(ReportTest reportTest, String prefix, ProductService productService) throws Exception {
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
-        ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
-		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+        PurchaseOption reservationPurchaseOption = PurchaseOption.valueOf(properties.getProperty(IceOptions.RESERVATION_PURCHASE_OPTION, "PartialUpfront"));
+		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationPurchaseOption);
 		
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
@@ -303,7 +303,7 @@ public class BillingFileProcessorTest {
 		
 		
 		// See that number of hours matches
-		assertEquals(dataType+" number of hours doesn't match, expected " + expectedData.getNum() + ", got " + data.getNum(), expectedData.getNum(), data.getNum());
+		assertEquals(dataType+" number of hours doesn't match", expectedData.getNum(), data.getNum());
 		// For each hour see that the length and entries match
 		for (int i = 0; i < data.getNum(); i++) {
 			Map<TagGroup, Double> expected = expectedData.getData(i);

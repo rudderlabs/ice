@@ -39,7 +39,7 @@ public class OperationTest {
 	
 	@Test
 	public void testGetOperations() {
-		String op = "SavingsPlan Used - AllUpfront";
+		String op = "SavingsPlan Used - All Upfront";
 		List<String> ops = Lists.newArrayList(op);
 		assertEquals("missing operation", op, Operation.getOperations(ops).get(0).name);
 	}

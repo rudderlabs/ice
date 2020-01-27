@@ -25,11 +25,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
-import com.netflix.ice.tag.Operation.SavingsPlanPaymentOption;
 
 public class SavingsPlanProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -87,7 +87,7 @@ public class SavingsPlanProcessor {
 	    	double cost = costMap.remove(bonusTg);
 	    	double usage = usageMap.remove(bonusTg);
 	    	
-	    	if (sp.paymentOption != SavingsPlanPaymentOption.NoUpfront) {
+	    	if (sp.paymentOption != PurchaseOption.NoUpfront) {
 	    		// Add amortization
 	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
 	    		add(costMap, tg, cost * sp.normalizedAmortization);
