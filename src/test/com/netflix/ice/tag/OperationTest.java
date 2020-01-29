@@ -29,7 +29,7 @@ public class OperationTest {
 
 	@Test
 	public void testIsSavingsPlanBonus() {
-		assertTrue(Operation.savingsPlanBonusNoUpfront.isSavingsPlanBonus());
+		assertTrue(Operation.savingsPlanBonusNoUpfront.isBonus());
 	}
 
 	@Test

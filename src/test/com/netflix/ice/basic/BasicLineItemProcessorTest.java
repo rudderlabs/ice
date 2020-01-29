@@ -690,7 +690,7 @@ public class BasicLineItemProcessorTest {
 			for (TagGroup tg: costData.getTagGroups()) {
 				// check for proper TagGroup type
 				if (tg.operation.isSavingsPlan()) {
-					if (!tg.operation.isSavingsPlanUnused() && !tg.operation.isSavingsPlanUnusedAmortized() && !tg.operation.isSavingsPlanSavings())
+					if (!tg.operation.isUnused() && !tg.operation.isUnusedAmortized() && !tg.operation.isSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
 				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport()) {
@@ -706,7 +706,7 @@ public class BasicLineItemProcessorTest {
 					double cost = costData.getData(0).get(tg);
 					assertEquals(reportName + " Cost is incorrect", amortization, cost, 0.001);				
 				}
-				else if (tg.operation.isSavingsPlanUnusedAmortized() && amortization != null) {
+				else if (tg.operation.isUnusedAmortized() && amortization != null) {
 					String[] amortizedTag = expectedTag.clone();
 					amortizedTag[operationIndex] = Operation.getSavingsPlanUnusedAmortized(((Operation.SavingsPlanOperation) tg.operation).getPaymentOption()).name;
 					String errors = checkTag(tg, amortizedTag);
@@ -714,7 +714,7 @@ public class BasicLineItemProcessorTest {
 					double cost = costData.getData(0).get(tg);
 					assertEquals(reportName + " Cost is incorrect", amortization, cost, 0.001);				
 				}
-				else if (tg.operation.isSavingsPlanSavings() && savings != null) {
+				else if (tg.operation.isSavingsPlan() && tg.operation.isSavings() && savings != null) {
 					String[] savingsTag = expectedTag.clone();
 					savingsTag[operationIndex] = Operation.getSavingsPlanSavings(((Operation.SavingsPlanOperation) tg.operation).getPaymentOption()).name;
 					String errors = checkTag(tg, savingsTag);
@@ -730,7 +730,7 @@ public class BasicLineItemProcessorTest {
 					double cost = costData.getData(0).get(tg);
 					assertEquals(reportName + " Cost is incorrect", savings, cost, 0.001);				
 				}
-				else if ((tg.operation.isUnused() || tg.operation.isSavingsPlanUnused()) && unusedCost != null) {
+				else if ((tg.operation.isUnused() || tg.operation.isUnused()) && unusedCost != null) {
 					String errors = checkTag(tg, expectedTag);
 					assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);					
 					double cost = costData.getData(0).get(tg);

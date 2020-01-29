@@ -41,7 +41,7 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit);
 
     /**
      * Get map of data.
@@ -52,7 +52,7 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, UsageUnit usageUnit, int userTagGroupByIndex);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit, int userTagGroupByIndex);
 
     Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, int userTagGroupByIndex, List<UserTag> tagKeys);
 

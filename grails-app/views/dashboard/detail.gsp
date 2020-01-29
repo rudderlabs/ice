@@ -76,6 +76,12 @@
             <option>column</option>
           </select>
         </div>
+        <div style="padding-top: 5px">RI/SP Sharing
+          <select ng-model="reservationSharing" ng-change="reservationSharingChanged()">
+            <option>borrowed</option>
+            <option>lent</option>
+          </select>
+        </div>
         <div style="padding-top: 5px" ng-show="throughput_metricname">
           <input type="checkbox" ng-model="showsps" id="showsps">
           <label for="showsps">Show {{throughput_metricname}}</label>

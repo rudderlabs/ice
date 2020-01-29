@@ -237,6 +237,6 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	}
     
     public Map<Tag, TagCoverageMetrics[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, int userTagGroupByIndex) {
-    	return getRawData(interval, tagLists, groupBy, aggregate, false, null, userTagGroupByIndex);
+    	return getRawData(interval, tagLists, groupBy, aggregate, false, false, null, userTagGroupByIndex);
     }
 }

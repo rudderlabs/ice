@@ -70,7 +70,7 @@ public class SavingsPlanProcessor {
 
 		List<TagGroupSP> spTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: usageMap.keySet()) {
-	    	if (!(tagGroup instanceof TagGroupSP) || (product != null && product != tagGroup.product) || !tagGroup.operation.isSavingsPlanBonus())
+	    	if (!(tagGroup instanceof TagGroupSP) || (product != null && product != tagGroup.product) || !tagGroup.operation.isBonus())
 	    		continue;
 	    	
 	    	spTagGroups.add((TagGroupSP) tagGroup);

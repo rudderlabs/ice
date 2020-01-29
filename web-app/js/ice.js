@@ -554,6 +554,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("plotType=") === 0) {
             $scope.plotType = params[i].substr(9);
           }
+          else if (params[i].indexOf("reservationSharing=") === 0) {
+            $scope.reservationSharing = params[i].substr(19);
+          }
           else if (params[i].indexOf("consolidate=") === 0) {
             $scope.consolidate = params[i].substr(12);
           }
@@ -947,6 +950,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       if ($scope.dimensions[$scope.REGION_INDEX])
@@ -1094,6 +1098,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         factorsps: $scope.factorsps ? true : false,
         consolidateGroups: $scope.consolidateGroups ? true : false,
         tagCoverage: $scope.tagCoverage ? true : false,
+        showLent: $scope.reservationSharing === "lent",
       }, params);
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
@@ -1186,6 +1191,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.factorsps = false;
     $scope.consolidateGroups = false;
     $scope.plotType = 'area';
+    $scope.reservationSharing = 'borrowed';
     $scope.consolidate = "daily";
     $scope.legends = [];
     $scope.showZones = false;
@@ -1216,6 +1222,8 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
       params.usageUnit = $scope.usageUnit;
     if ($scope.plotType)
       params.plotType = $scope.plotType;
+    if ($scope.reservationSharing)
+      params.reservationSharing = $scope.reservationSharing;
     if ($scope.showsps)
       params.showsps = "" + $scope.showsps;
     if ($scope.factorsps)
@@ -1494,6 +1502,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     return usage_db.filterAccount($scope, filter_accounts);
   }
 
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.orgUnitChanged = function () {
     usage_db.updateOrganizationalUnit($scope);
     $scope.accountsChanged();
@@ -1651,6 +1663,10 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.orgUnitChanged = function () {
     usage_db.updateOrganizationalUnit($scope);
     $scope.accountsChanged();
+  }
+
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
   }
 
   $scope.accountsChanged = function () {
@@ -2127,6 +2143,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.orgUnitChanged = function () {
     usage_db.updateOrganizationalUnit($scope);
     $scope.accountsChanged();
+  }
+
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
   }
 
   $scope.accountsChanged = function () {

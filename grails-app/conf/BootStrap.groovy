@@ -177,7 +177,7 @@ class BootStrap {
 				properties.setProperty(IceOptions.WRITE_JSON_FILES, prop.getProperty(IceOptions.WRITE_JSON_FILES, ""));
 				
 				
-				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationPurchaseOption);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
 					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 

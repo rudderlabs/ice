@@ -121,8 +121,7 @@ class DashboardController {
 	def getReservationOps = {
 		def data = [];
 		for (Operation op: Operation.getReservationOperations()) {
-			if (!op.isFamily() || getConfig().familyRiBreakout)
-				data.add(op.name);
+			data.add(op.name);
 		}		
 		
         def result = [status: 200, data: data]
@@ -144,8 +143,7 @@ class DashboardController {
 		List<Operation> resOps = Operation.getReservationOperations();
 		def data = [];
 		for (Operation op: resOps) {
-			if (op.isOnDemand() || op.isSpot() || op.isUsed() || op.isBorrowed() ||
-						(op.isFamily() && getConfig().familyRiBreakout)) {
+			if (op.isOnDemand() || op.isSpot() || op.isUsed() || op.isBorrowed()) {
 				data.add(op.name);
 			}
 		}
@@ -243,6 +241,7 @@ class DashboardController {
         boolean resources = query.has("resources") ? query.getBoolean("resources") : false;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 		boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
+		boolean showLent = query.has("showLent") ? query.getBoolean("showLent") : false;
 		
         Collection<Operation> data;
         if (resources) {
@@ -264,45 +263,27 @@ class DashboardController {
             data = tagGroupManager == null ? [] : tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
         }
 
-        if (forReservation) {
-			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
-			if (isCost) {
-				// Remove Lent from cost operations
-				for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
-                	data.remove(lentOp);
+        if (forReservation || forSavingsPlans) {
+			// Remove Lent or Borrowed operations
+			for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations) {
+            	data.remove(op);
 			}
-			else {
+				
+			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
+			if (!isCost) {
 				// Remove Amortization and savings from the usage operations
-				for (Operation.ReservationOperation amortOp: Operation.getAmortizationOperations())
+				for (Operation amortOp: Operation.amortizationOperations)
 					data.remove(amortOp);
-				for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
+				for (Operation savingsOp: Operation.savingsOperations)
 					data.remove(savingsOp);
 			}
         }
-		else if (forSavingsPlans) {
-			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
-			if (isCost) {
-				// Remove Lent from cost operations
-				for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
-					data.remove(lentOp);
-			}
-			else {
-				// Remove Amortization and savings from the usage operations
-				for (Operation.SavingsPlanOperation amortOp: Operation.getSavingsPlanAmortizedOperations())
-					data.remove(amortOp);
-				for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
-					data.remove(savingsOp);
-			}
-		}
 		else {
-			// Don't show Lent and Savings operations unless it's the reservations dashboard
-            for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
-                data.remove(lentOp);
-			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
-				data.remove(savingsOp);
-			for (Operation.SavingsPlanOperation lentOp: Operation.getSavingsPlanLentOperations())
-				data.remove(lentOp);
-			for (Operation.SavingsPlanOperation savingsOp: Operation.getSavingsPlanSavingsOperations())
+			// Don't show Savings operations unless it's the reservations dashboard
+			// and only show one of lent or borrowed based on query params
+            for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
+                data.remove(op);
+			for (Operation savingsOp: Operation.savingsOperations)
 				data.remove(savingsOp);
         }
 		
@@ -574,6 +555,7 @@ class DashboardController {
         ConsolidateType consolidateType = query.has("consolidate") ? ConsolidateType.valueOf(query.getString("consolidate")) : ConsolidateType.hourly;
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
         boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
+		boolean showLent = query.has("showLent") ? query.getBoolean("showLent") : false;
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
 		boolean consolidateGroups = query.has("consolidateGroups") ? query.getBoolean("consolidateGroups") : false;
@@ -699,6 +681,7 @@ class DashboardController {
 				groupBy,
 				aggregate,
 				forReservation || forSavingsPlans,
+				showLent,
 				usageUnit,
 				userTagLists,
 				userTagGroupByIndex);			
@@ -713,6 +696,7 @@ class DashboardController {
                 groupBy,
                 aggregate,
 				forReservation || forSavingsPlans,
+				showLent,
 				usageUnit,
 				userTagGroupByIndex
             );

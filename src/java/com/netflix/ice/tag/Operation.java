@@ -31,10 +31,19 @@ public class Operation extends Tag {
 	 */
 	private static final long serialVersionUID = 2L;
 
-	protected int seq = Integer.MAX_VALUE;
+	protected final int seq;
+	protected final Category category;
 	
-    private Operation (String name) {
+    private Operation(String name) {
         super(name);
+        this.seq = Integer.MAX_VALUE;
+        this.category = Category.None;
+    }
+    
+    private Operation(String name, int seq, Category category) {
+        super(name);
+        this.seq = seq;
+        this.category = category;
     }
     
     private static ConcurrentMap<String, Operation> operations = Maps.newConcurrentMap();
@@ -42,6 +51,7 @@ public class Operation extends Tag {
     private static List<Operation> savingsPlanOperations = Lists.newArrayList();
     
     private enum Category {
+    	None,
     	Savings,
     	Used,
     	Bonus,
@@ -83,29 +93,23 @@ public class Operation extends Tag {
     public static final ReservationOperation upfrontUnusedAmortizedAllUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
 
     // Legacy Heavy/Medium/Light Utilization types used only by ElastiCache. No family sharing or account borrowing
-    public static final ReservationOperation savingsHeavy = new ReservationOperation("Savings - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation("Used RIs - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation("Bonus RIs - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation("Borrowed RIs - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation lentInstancesHeavy = new ReservationOperation("Lent RIs - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation("Amortized RIs - Heavy Utilization", PurchaseOption.Heavy);
-    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation("Unused RIs - Heavy Utilization", PurchaseOption.Heavy);
+    public static final ReservationOperation savingsHeavy = new ReservationOperation(Category.Savings, PurchaseOption.Heavy);
+    public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation(Category.Used, PurchaseOption.Heavy);
+    public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation(Category.Bonus, PurchaseOption.Heavy);
+    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation(Category.Amortized, PurchaseOption.Heavy);
+    public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation(Category.Unused, PurchaseOption.Heavy);
 
-    public static final ReservationOperation savingsMedium = new ReservationOperation("Savings - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation("Used RIs - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation("Bonus RIs - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation borrowedInstancesMedium = new ReservationOperation("Borrowed RIs - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation lentInstancesMedium = new ReservationOperation("Lent RIs - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation("Amortized RIs - Medium Utilization", PurchaseOption.Medium);
-    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation("Unused RIs - Medium Utilization", PurchaseOption.Medium);
+    public static final ReservationOperation savingsMedium = new ReservationOperation(Category.Savings, PurchaseOption.Medium);
+    public static final ReservationOperation reservedInstancesMedium = new ReservationOperation(Category.Used, PurchaseOption.Medium);
+    public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation(Category.Bonus, PurchaseOption.Medium);
+    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation(Category.Amortized, PurchaseOption.Medium);
+    public static final ReservationOperation unusedInstancesMedium = new ReservationOperation(Category.Unused, PurchaseOption.Medium);
 
-    public static final ReservationOperation savingsLight = new ReservationOperation("Savings - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation reservedInstancesLight = new ReservationOperation("Used RIs - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation("Bonus RIs - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation borrowedInstancesLight = new ReservationOperation("Borrowed RIs - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation lentInstancesLight = new ReservationOperation("Lent RIs - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation("Amortized RIs - Light Utilization", PurchaseOption.Light);
-    public static final ReservationOperation unusedInstancesLight = new ReservationOperation("Unused RIs - Light Utilization", PurchaseOption.Light);
+    public static final ReservationOperation savingsLight = new ReservationOperation(Category.Savings, PurchaseOption.Light);
+    public static final ReservationOperation reservedInstancesLight = new ReservationOperation(Category.Used, PurchaseOption.Light);
+    public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation(Category.Bonus, PurchaseOption.Light);
+    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation(Category.Amortized, PurchaseOption.Light);
+    public static final ReservationOperation unusedInstancesLight = new ReservationOperation(Category.Unused, PurchaseOption.Light);
 
     public static final ReservationOperation reservedInstancesCredits = new ReservationOperation("RI Credits", null);
     
@@ -133,7 +137,86 @@ public class Operation extends Tag {
     public static final SavingsPlanOperation savingsPlanAmortizedAllUpfront = new SavingsPlanOperation(Category.Amortized, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedAllUpfront = new SavingsPlanOperation(Category.Unused, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedAmortizedAllUpfront = new SavingsPlanOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
+    
+    public static final Operation[] lentOperations = new Operation[] {
+    	lentInstancesNoUpfront,
+    	lentInstancesPartialUpfront,
+    	lentInstancesAllUpfront,
+    	savingsPlanLentNoUpfront,
+    	savingsPlanLentPartialUpfront,
+    	savingsPlanLentAllUpfront,
+    };
+    
+    public static final Operation[] borrowedOperations = new Operation[] {
+    	borrowedInstancesNoUpfront,
+    	borrowedInstancesPartialUpfront,
+    	borrowedInstancesAllUpfront,
+    	savingsPlanBorrowedNoUpfront,
+    	savingsPlanBorrowedPartialUpfront,
+    	savingsPlanBorrowedAllUpfront,
+    };
+    
+    public static final Operation[] savingsOperations = new Operation[] {
+    	spotInstanceSavings,
+    	savingsAllUpfront,
+    	savingsNoUpfront,
+    	savingsPartialUpfront,
+    	savingsHeavy,
+    	savingsMedium,
+    	savingsLight,
+    	savingsPlanSavingsNoUpfront,
+    	savingsPlanSavingsPartialUpfront,
+    	savingsPlanSavingsAllUpfront,
+    };
+    
+    public static final Operation[] amortizationOperations = new Operation[] {
+    	upfrontAmortizedPartialUpfront,
+    	upfrontAmortizedAllUpfront,
+    	upfrontAmortizedHeavy,
+    	upfrontAmortizedMedium,
+    	upfrontAmortizedLight,
+    	savingsPlanAmortizedPartialUpfront,
+    	savingsPlanAmortizedAllUpfront,
+    };
 
+    public static final Operation[] unusedAmortizationOperations = new Operation[] {
+    	upfrontUnusedAmortizedPartialUpfront,
+    	upfrontUnusedAmortizedAllUpfront,
+    	savingsPlanUnusedAmortizedPartialUpfront,
+    	savingsPlanUnusedAmortizedAllUpfront,
+    };
+
+    public boolean isBonus() {
+    	return category == Category.Bonus;
+    }
+    public boolean isLent() {
+    	return category == Category.Lent;
+    }
+    public boolean isBorrowed() {
+    	return category == Category.Borrowed;
+    }
+    public boolean isUsed() {
+    	return category == Category.Used;
+    }
+    public boolean isUnused() {
+    	return category == Category.Unused;
+    }
+    public boolean isAmortized() {
+    	return category == Category.Amortized;
+    }
+    public boolean isUnusedAmortized() {
+    	return category == Category.UnusedAmortized;
+    }
+    public boolean isOnDemand() {
+    	return this == ondemandInstances;
+    }
+    public boolean isSpot() {
+    	return this == spotInstances;
+    }
+    public boolean isSavings() {
+    	return category == Category.Savings || this == spotInstanceSavings;
+    }
+    
     public static ReservationOperation getReservedInstances(PurchaseOption purchaseOption) {
         switch (purchaseOption) {
             case AllUpfront: return reservedInstancesAllUpfront;
@@ -163,15 +246,8 @@ public class Operation extends Tag {
             case AllUpfront: return borrowedInstancesAllUpfront;
             case NoUpfront: return borrowedInstancesNoUpfront;
             case PartialUpfront: return borrowedInstancesPartialUpfront;
-            case Heavy: return borrowedInstancesHeavy;
-            case Medium: return borrowedInstancesMedium;
-            case Light: return borrowedInstancesLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
-    }
-
-    public static List<ReservationOperation> getLentOperations() {
-        return Lists.newArrayList(lentInstancesAllUpfront, lentInstancesNoUpfront, lentInstancesPartialUpfront);
     }
 
     public static ReservationOperation getLentInstances(PurchaseOption purchaseOption) {
@@ -179,9 +255,6 @@ public class Operation extends Tag {
             case AllUpfront: return lentInstancesAllUpfront;
             case NoUpfront: return lentInstancesNoUpfront;
             case PartialUpfront: return lentInstancesPartialUpfront;
-            case Heavy: return lentInstancesHeavy;
-            case Medium: return lentInstancesMedium;
-            case Light: return lentInstancesLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
@@ -196,10 +269,6 @@ public class Operation extends Tag {
             case Light: return unusedInstancesLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
-    }
-
-    public static List<ReservationOperation> getAmortizationOperations() {
-        return Lists.newArrayList(upfrontAmortizedPartialUpfront, upfrontAmortizedAllUpfront, upfrontAmortizedHeavy, upfrontAmortizedMedium, upfrontAmortizedLight);
     }
 
     public static ReservationOperation getUpfrontAmortized(PurchaseOption purchaseOption) {
@@ -222,10 +291,6 @@ public class Operation extends Tag {
             case Light: return upfrontAmortizedLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
-    }
-
-    public static List<ReservationOperation> getSavingsOperations() {
-        return Lists.newArrayList(spotInstanceSavings, savingsAllUpfront, savingsNoUpfront, savingsPartialUpfront, savingsHeavy, savingsMedium, savingsLight);
     }
 
     public static ReservationOperation getSavings(PurchaseOption purchaseOption) {
@@ -270,16 +335,14 @@ public class Operation extends Tag {
 		private PurchaseOption purchaseOption = null;
 
 		private ReservationOperation(String name, PurchaseOption purchaseOption) {
-            super(name);
-            this.seq = sequence++;
+            super(name, sequence++, Category.None);
             this.purchaseOption = purchaseOption;
             operations.put(name, this);
             reservationOperations.add(this);
         }
 		
 		private ReservationOperation(Category category, PurchaseOption purchaseOption) {
-            super(category.name() + " RIs - " + purchaseOption.name);
-            this.seq = sequence++;
+            super(category.name() + " RIs - " + purchaseOption.name, sequence++, category);
             this.purchaseOption = purchaseOption;
             operations.put(name, this);
             reservationOperations.add(this);
@@ -300,45 +363,11 @@ public class Operation extends Tag {
         else
             return super.compareTo(t);
     }
-    
-    public boolean isBonus() {
-    	return name.startsWith("Bonus RIs - ");
-    }
-    public boolean isLent() {
-    	return name.startsWith("Lent RIs - ");
-    }
-    public boolean isBorrowed() {
-    	return name.startsWith("Borrowed RIs - ");
-    }
-    public boolean isUsed() {
-    	return name.startsWith("Used RIs -");
-    }
-    public boolean isUnused() {
-    	return name.startsWith("Unused RIs - ");
-    }
-    public boolean isAmortized() {
-    	return name.startsWith("Amortized RIs - ");
-    }
-    public boolean isOnDemand() {
-    	return this == ondemandInstances;
-    }
-    public boolean isSpot() {
-    	return this == spotInstances;
-    }
-    public boolean isSavings() {
-    	return name.startsWith("Savings ");
-    }
-    
-    
+        
     public static List<Operation> getSavingsPlanOperations() {
         return savingsPlanOperations;
     }
 
-    public static List<SavingsPlanOperation> getSavingsPlanAmortizedOperations() {
-        return Lists.newArrayList(savingsPlanAmortizedPartialUpfront, savingsPlanAmortizedAllUpfront,
-        		savingsPlanUnusedAmortizedPartialUpfront, savingsPlanUnusedAmortizedAllUpfront);
-    }
-    
     public static SavingsPlanOperation getSavingsPlanAmortized(PurchaseOption paymentOption) {
     	switch(paymentOption) {
     	case PartialUpfront: return savingsPlanAmortizedPartialUpfront;
@@ -382,10 +411,6 @@ public class Operation extends Tag {
     	}
     }
     
-    public static List<SavingsPlanOperation> getSavingsPlanLentOperations() {
-        return Lists.newArrayList(savingsPlanLentNoUpfront, savingsPlanLentPartialUpfront, savingsPlanLentAllUpfront);
-    }
-    
     public static SavingsPlanOperation getSavingsPlanLent(PurchaseOption paymentOption) {
     	switch(paymentOption) {
     	case NoUpfront: return savingsPlanLentNoUpfront;
@@ -404,10 +429,6 @@ public class Operation extends Tag {
     	}
     }
     
-    public static List<SavingsPlanOperation> getSavingsPlanSavingsOperations() {
-        return Lists.newArrayList(savingsPlanSavingsNoUpfront, savingsPlanSavingsPartialUpfront, savingsPlanSavingsAllUpfront);
-    }
-    
     public static SavingsPlanOperation getSavingsPlanSavings(PurchaseOption paymentOption) {
     	switch(paymentOption) {
     	case NoUpfront: return savingsPlanSavingsNoUpfront;
@@ -416,39 +437,17 @@ public class Operation extends Tag {
     	default: throw new RuntimeException("Unknown PurchaseOption " + paymentOption);
     	}
     }
-    
-    
+     
     public boolean isSavingsPlan() {
-    	return name.startsWith("SavingsPlan ");
+    	return this instanceof SavingsPlanOperation;
     }
-    
-    public boolean isSavingsPlanSavings() {
-    	return name.startsWith("SavingsPlan Savings - ");
-    }
-    
-    public boolean isSavingsPlanUnused() {
-    	return name.startsWith("SavingsPlan Unused - ");
-    }
-    
-    public boolean isSavingsPlanLent() {
-    	return name.startsWith("SavingsPlan Lent - ");
-    }
-    
-    public boolean isSavingsPlanUnusedAmortized() {
-    	return name.startsWith("SavingsPlan UnusedAmortized - ");
-    }
-    
-    public boolean isSavingsPlanBonus() {
-    	return name.startsWith("SavingsPlan Bonus - ");
-    }
-    
+        
     public static class SavingsPlanOperation extends Operation {
 		private static final long serialVersionUID = 1L;
 		private final PurchaseOption paymentOption;
 		
 		private SavingsPlanOperation(Category category, PurchaseOption paymentOption) {
-			super("SavingsPlan " + category.name() + " - " + paymentOption.name);
-			this.seq = sequence++;
+			super("SavingsPlan " + category.name() + " - " + paymentOption.name, sequence++, category);
 			this.paymentOption = paymentOption;
             operations.put(name, this);
             savingsPlanOperations.add(this);
