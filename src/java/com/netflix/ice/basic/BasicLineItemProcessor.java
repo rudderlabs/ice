@@ -24,7 +24,6 @@ import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
 import com.netflix.ice.processor.ReservationService.ReservationInfo;
 import com.netflix.ice.tag.*;
-import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.Zone.BadZone;
 
 import org.apache.commons.lang.StringUtils;
@@ -204,10 +203,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         final TagGroup tagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, null);
         
-    	if (lineItem.isReserved() && !(tagGroup.operation instanceof ReservationOperation)) {
-    		logger.error("Operation is wrong type in tagGroup: " + tagGroup);
-    	}
-
         int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
         int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
 
