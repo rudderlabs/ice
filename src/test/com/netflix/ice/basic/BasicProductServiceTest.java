@@ -77,4 +77,11 @@ public class BasicProductServiceTest {
 		assertTrue("Got different products", s3 == s3got);		
 	}
 
+	@Test
+	public void testGetProductWithEmptyName() {
+		BasicProductService ps = new BasicProductService();
+		Product rds = ps.addProduct(new Product("Amazon Relational Database Service", "AmazonRDS", Source.pricing));
+		Product rdsEmptyName = ps.getProduct("", "AmazonRDS");
+		assertEquals("Changed product name to empty string", rds.name, rdsEmptyName.name);
+	}
 }

@@ -155,7 +155,7 @@ public class BasicProductService implements ProductService {
             	logger.error("new service code " + serviceCode + " for product: " + product.name + " for: " + serviceName + " with code: " + product.getServiceCode());
             }
         }
-        if (!product.getServiceName().equals(serviceName) && product.getSource() == Source.pricing) {
+        if (!serviceName.isEmpty() && !product.getServiceName().equals(serviceName) && product.getSource() == Source.pricing) {
         	// Service name doesn't match, update the product with the proper service name
         	// assuming that billing reports always have more accurate names than the pricing service
         	product = addProduct(new Product(serviceName, product.getServiceCode(), serviceCode == null ? Source.dbr : Source.cur));
