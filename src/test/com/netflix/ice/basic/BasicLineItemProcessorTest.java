@@ -816,7 +816,7 @@ public class BasicLineItemProcessorTest {
 		line.setResources("i-0184b2c6d0325157b", "Prod", "john.doe@foobar.com");
 		String[] resourceTag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - No Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		test = new ProcessTest(line, tag, 1.0, 0.45, Result.hourly, 31, null, 0.15);
-		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 2);
+		test.setResources(resourceTag, productService.getProduct(Product.Code.Ec2Instance), 0.0, 2);
 		test.run(Which.cau, "2019-01-01T00:00:00Z", "2019-01-01T00:00:00Z");
 	}
 	
@@ -844,7 +844,7 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", null };
 		String[] resourceTag = new String[] { "ap-southeast-2", "ap-southeast-2a", "EC2 Instance", "Bonus RIs - Partial Upfront", "c4.2xlarge.windows", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.34, Result.hourly, 30);
-		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
+		test.setResources(resourceTag, productService.getProduct(Product.Code.Ec2Instance), 0.0, 1);
 		test.run(Which.cau);
 	}
 	
@@ -973,7 +973,7 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", null };
 		String[] resourceTag = new String[] { "ap-northeast-2", null, "EC2 Instance", "Spot Instances", "c4.xlarge", "Prod" + ResourceGroup.separator + "john.doe@foobar.com" };
 		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.349, Result.hourly, 30);
-		test.setResources(resourceTag, productService.getProductByName(Product.ec2Instance), 0.0, 1);
+		test.setResources(resourceTag, productService.getProduct(Product.Code.Ec2Instance), 0.0, 1);
 		test.run(Which.cau);
 	}
 	

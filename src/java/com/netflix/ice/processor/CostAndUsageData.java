@@ -193,7 +193,7 @@ public class CostAndUsageData {
      * Add an entry to the tag coverage statistics for the given TagGroup
      */
     public void addTagCoverage(Product product, int index, TagGroup tagGroup, boolean[] userTagCoverage) {
-    	if (tagCoverage == null || !tagGroup.product.hasResourceTags()) {
+    	if (tagCoverage == null || !tagGroup.product.enableTagCoverage()) {
     		return;
     	}
     	

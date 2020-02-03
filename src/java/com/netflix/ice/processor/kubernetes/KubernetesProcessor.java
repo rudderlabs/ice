@@ -110,16 +110,16 @@ public class KubernetesProcessor {
 			report.loadReport(config.workBucketConfig.localDir);
 		}
 		
-		String[] products = new String[]{
-			Product.ec2Instance,
-			Product.cloudWatch,
-			Product.ebs,
-			Product.dataTransfer,
+		Product.Code[] productCodes = new Product.Code[]{
+			Product.Code.Ec2Instance,
+			Product.Code.CloudWatch,
+			Product.Code.Ebs,
+			Product.Code.DataTransfer,
 		};
 		
-		for (String productName: products) {
-			Product p = config.productService.getProductByName(productName);
-			logger.info("Process kubernetes data for " + productName);
+		for (Product.Code productCode: productCodes) {
+			Product p = config.productService.getProduct(productCode);
+			logger.info("Process kubernetes data for " + productCode.serviceCode);
 			process(data.getCost(p));
 		}
 	}
@@ -191,8 +191,8 @@ public class KubernetesProcessor {
 	}
 	
 	private double getAllocatedCost(TagGroup tg, double cost, KubernetesReport report, String[] item) {
-		String productName = tg.product.name;
-		if (productName.equals(Product.ec2Instance) || productName.equals(Product.cloudWatch)) {
+		Product product = tg.product;
+		if (product.isEc2Instance() || product.isCloudWatch()) {
 			double cpuCores = report.getDouble(item, KubernetesColumn.RequestsCPUCores);
 			double clusterCores = report.getDouble(item, KubernetesColumn.ClusterCPUCores);
 			double memoryGiB = report.getDouble(item, KubernetesColumn.RequestsMemoryGiB);
@@ -201,12 +201,12 @@ public class KubernetesProcessor {
 			double ratePerUnit = cost / unitsPerCluster;
 			return ratePerUnit * (cpuCores * vCpuToMemoryCostRatio + memoryGiB);
 		}
-		else if (productName.equals(Product.ebs)) {
+		else if (product.isEbs()) {
 			double pvcGiB = report.getDouble(item, KubernetesColumn.PersistentVolumeClaimGiB);
 			double clusterPvcGiB = report.getDouble(item, KubernetesColumn.ClusterPersistentVolumeClaimGiB);
 			return cost * pvcGiB / clusterPvcGiB;
 		}
-		else if (productName.equals(Product.dataTransfer)) {
+		else if (product.isDataTransfer()) {
 			double networkGiB = report.getDouble(item, KubernetesColumn.NetworkInGiB) + report.getDouble(item, KubernetesColumn.NetworkOutGiB);
 			double clusterNetworkGiB = report.getDouble(item, KubernetesColumn.ClusterNetworkInGiB) + report.getDouble(item, KubernetesColumn.ClusterNetworkOutGiB);
 			return cost * networkGiB / clusterNetworkGiB;

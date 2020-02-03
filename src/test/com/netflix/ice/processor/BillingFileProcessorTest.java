@@ -222,12 +222,12 @@ public class BillingFileProcessorTest {
         		
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
-    	Product p = productService.getProductByName(Product.ec2Instance);
+    	Product p = productService.getProduct(Product.Code.Ec2Instance);
     	prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
-    	p = productService.getProductByName(Product.rdsInstance);
+    	p = productService.getProduct(Product.Code.RdsInstance);
     	if (reservationService.hasReservations(p))
     		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
-    	p = productService.getProductByName(Product.redshift);
+    	p = productService.getProduct(Product.Code.Redshift);
     	if (reservationService.hasReservations(p))
     		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
 
@@ -434,23 +434,23 @@ public class BillingFileProcessorTest {
 		init(resourcesReportDir + "ice.properties");
 		ProductService productService = new BasicProductService();
 		// Load products since DBRs don't have product codes (we normally pull them from the pricing service)
-		productService.getProduct("EC2 Instance", "EC2_Instance");
-		productService.getProduct("RDS Instance", "RDS_Instance");
+		productService.getProduct(Product.Code.Ec2Instance);
+		productService.getProduct(Product.Code.RdsInstance);
 		productService.getProduct("AWS Support (Developer)", "AWSDeveloperSupport");
 		productService.getProduct("AWS CloudTrail", "AWSCloudTrail");
 		productService.getProduct("AWS Config", "AWSConfig");
 		productService.getProduct("AWS Lambda", "AWSLambda");
-		productService.getProduct("Data Transfer", "Data_Transfer");
+		productService.getProduct(Product.Code.DataTransfer);
 		productService.getProduct("Amazon Simple Queue Service", "AWSQueueService");
-		productService.getProduct("Amazon API Gateway", "AmazonApiGateway");
-		productService.getProduct("AmazonCloudWatch", "AmazonCloudWatch");
+		productService.getProduct(Product.Code.ApiGateway);
+		productService.getProduct(Product.Code.CloudWatch);
 		productService.getProduct("Amazon DynamoDB", "AmazonDynamoDB");
-		productService.getProduct("Amazon Elastic Compute Cloud", "AmazonEC2");
-		productService.getProduct("Elastic Block Storage", "Elastic_Block_Storage");
-		productService.getProduct("Elastic IP", "Elastic_IP");
-		productService.getProduct("Amazon ElastiCache", "AmazonElastiCache");
-		productService.getProduct("Amazon RDS Service", "AmazonRDS");
-		productService.getProduct("Amazon Simple Storage Service", "AmazonS3");
+		productService.getProduct(Product.Code.Ec2);
+		productService.getProduct(Product.Code.Ebs);
+		productService.getProduct(Product.Code.Eip);
+		productService.getProduct(Product.Code.ElastiCache);
+		productService.getProduct(Product.Code.Rds);
+		productService.getProduct(Product.Code.S3);
 		productService.getProduct("Amazon Simple Notification Service", "AmazonSNS");
 		productService.getProduct("Amazon Virtual Private Cloud", "AmazonVPC");
 		productService.getProduct("AWS Key Management Service", "awskms");
@@ -459,19 +459,19 @@ public class BillingFileProcessorTest {
 		productService.getProduct("Amazon Route 53", "AmazonRoute53");
 		productService.getProduct("Amazon Simple Email Service", "AmazonSES");
 		productService.getProduct("Amazon Glacier", "AmazonGlacier");
-		productService.getProduct("Amazon CloudFront", "AmazonCloudFront");
+		productService.getProduct(Product.Code.CloudFront);
 		productService.getProduct("Amazon EC2 Container Registry (ECR)", "AmazonECR");
-		productService.getProduct("Amazon Elasticsearch Service", "AmazonES");
+		productService.getProduct(Product.Code.Elasticsearch);
 		productService.getProduct("AWS Service Catalog", "AWSServiceCatalog");
 		productService.getProduct("Amazon WorkSpaces", "AmazonWorkSpaces");
 		productService.getProduct("AWS Data Pipeline", "datapipeline");
 		productService.getProduct("Amazon WorkDocs", "AmazonWorkDocs");
-		productService.getProduct("Amazon Elastic MapReduce", "ElasticMapReduce");
+		productService.getProduct(Product.Code.Emr);
 		productService.getProduct("Amazon Mobile Analytics", "mobileanalytics");
 		productService.getProduct("AWS Directory Service", "AWSDirectoryService");
 		productService.getProduct("Amazon Elastic File System", "AmazonEFS");
 		productService.getProduct("Amazon Kinesis", "AmazonKinesis");
-		productService.getProduct("Amazon Redshift", "Redshift");
+		productService.getProduct(Product.Code.Redshift);
 				
 		testFileData(new DetailedBillingReportTest(), "dbr-", productService);
 	}

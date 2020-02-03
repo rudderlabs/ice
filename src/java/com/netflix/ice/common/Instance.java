@@ -72,7 +72,7 @@ public class Instance {
         this.account = accountService.getAccountById(values[2]);
         this.region = Region.getRegionByName(values[4]);
         this.zone = (values.length > 5 && !values[5].isEmpty()) ? this.region.getZone(values[5]) : null;
-        this.product = productService.getProductByName(values[6]);
+        this.product = productService.getProductByServiceCode(values[6]);
 
         final int TAGS_INDEX = 7;
         Map<String, String> tags = Maps.newHashMap();
@@ -107,7 +107,7 @@ public class Instance {
 			account.getIceName(),
 			region.toString(),
 			zone == null ? "" : zone.toString(),
-			product.name,
+			product.getServiceCode(),
 			resourceTagsToString(tags),
 		};
 	}

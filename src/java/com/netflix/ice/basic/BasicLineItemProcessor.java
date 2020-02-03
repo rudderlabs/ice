@@ -548,13 +548,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         
         if (usageTypeStr.startsWith("ElasticIP:")) {
-            product = productService.getProductByName(Product.eip);
+            product = productService.getProduct(Product.Code.Eip);
         }
         else if (usageTypeStr.startsWith("EBS:") || operationStr.equals("EBS Snapshot Copy") || usageTypeStr.startsWith("EBSOptimized:")) {
-            product = productService.getProductByName(Product.ebs);
+            product = productService.getProduct(Product.Code.Ebs);
         }
         else if (usageTypeStr.startsWith("CW:")) {
-            product = productService.getProductByName(Product.cloudWatch);
+            product = productService.getProduct(Product.Code.CloudWatch);
         }
         else if ((product.isEc2() || product.isEmr()) && (usageTypeStr.startsWith("BoxUsage") || usageTypeStr.startsWith("SpotUsage")) && operationStr.startsWith("RunInstances")) {
         	// Line item for hourly "All Upfront", "Spot", or "On-Demand" EC2 instance usage
@@ -653,7 +653,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         // Re-map all Data Transfer costs except API Gateway and CouldFront to Data Transfer (same as the AWS Billing Page Breakout)
         if (!product.isCloudFront() && !product.isApiGateway()) {
         	if (usageTypeStr.equals("DataTransfer-Regional-Bytes") || usageTypeStr.endsWith("-In-Bytes") || usageTypeStr.endsWith("-Out-Bytes"))
-        		product = productService.getProductByName(Product.dataTransfer);
+        		product = productService.getProduct(Product.Code.DataTransfer);
         }
 
         // Usage type string is empty for Support recurring fees.
@@ -667,11 +667,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         if (operation instanceof Operation.ReservationOperation) {
 	        if (product.isEc2()) {
-	            product = productService.getProductByName(Product.ec2Instance);
+	            product = productService.getProduct(Product.Code.Ec2Instance);
 	            usageTypeStr = usageTypeStr + os.usageType;
 	        }
 	        else if (product.isRds()) {
-	            product = productService.getProductByName(Product.rdsInstance);
+	            product = productService.getProduct(Product.Code.RdsInstance);
 	            usageTypeStr = usageTypeStr + "." + db;
 	            operation = operation.isBonus() ? operation : Operation.ondemandInstances;
 	        }

@@ -24,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.Map;
@@ -36,12 +37,17 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.csvreader.CsvReader;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.processor.pricelist.Index.Offer;
+import com.netflix.ice.processor.pricelist.InstancePrices.Key;
+import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.OperatingSystem;
 import com.netflix.ice.processor.pricelist.InstancePrices.Product;
+import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
+import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.InstancePrices.Tenancy;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
@@ -225,12 +231,26 @@ public class PriceListService {
 	        }
     	}
 
-        ip = fetch(serviceCode, versionId, version);
+        ip = fetchCSV(serviceCode, versionId, version);
        	versionedPriceLists.get(serviceCode).put(versionId, ip);
         return ip;
     }
     
-    protected InstancePrices fetch(ServiceCode serviceCode, String versionId, Version version) throws Exception {
+    protected InstancePrices fetchCSV(ServiceCode serviceCode, String versionId, Version version) throws Exception {
+    	final String domain = "https://pricing.us-east-1.amazonaws.com";
+    	String offerVersionUrl = version.offerVersionUrl.replace(".json", ".csv");
+        logger.info("fetching price list for " + serviceCode + " from " + domain + offerVersionUrl + "...");
+        InputStream stream = new URL(domain + offerVersionUrl).openStream();
+        
+       	InstancePrices prices = new InstancePrices(serviceCode, versionId, version.getBeginDate(), version.getEndDate());
+        boolean hasErrors = importPriceList(stream, prices);
+        if (!hasErrors)
+        	archive(prices, getFilename(serviceCode, versionId));
+
+        return prices;
+    }
+    
+    protected InstancePrices fetchJSON(ServiceCode serviceCode, String versionId, Version version) throws Exception {
         logger.info("fetching price list for " + serviceCode + " from " + domain + version.offerVersionUrl + "...");
         InputStream stream = new URL(domain + version.offerVersionUrl).openStream();
         PriceList priceList = new PriceList(stream);
@@ -311,5 +331,316 @@ public class PriceListService {
 	        logger.info(InstanceMetrics.dbName + " uploading done.");
         }
     }
+    
+	// Price list columns for EC2, RDS, ES, ElastiCache and Redshift price list CSV files
+	public enum Column {
+		SKU,
+		OfferTermCode,
+		RateCode,
+		TermType,
+		PriceDescription,
+		EffectiveDate,
+		StartingRange,
+		EndingRange,
+		Unit,
+		PricePerUnit,
+		Currency,
+		RelatedTo, // RDS, ElastiCache and Redshift only
+		LeaseContractLength,
+		PurchaseOption,
+		OfferingClass,
+		ProductFamily("Product Family"),
+		ServiceCode("serviceCode"),
+		Description, // Redshift only
+		Location,
+		LocationType("Location Type"),
+		InstanceType("Instance Type"),
+		CurrentGeneration("Current Generation"),
+		InstanceFamily("Instance Family"), // EC2 and RDS only
+		vCPU,
+		PhysicalProcessor("Physical Processor"), // EC2 and RDS only
+		ClockSpeed("Clock Speed"),  // EC2 and RDS only
+		Memory, // EC2, RDS, ElastiCache and Redshift only
+		Storage, // EC2, RDS, ES and Redshift only
+		NetworkPerformance("Network Performance"), // EC2, ElastiCache, and RDS only
+		ProcessorArchitecture("Processor Architecture"), // EC2 and RDS only
+		CacheEngine("Cache Engine"), // ElastiCache only
+		IO("I/O"), // Redshift only
+		StorageMedia("Storage Media"),
+		VolumeType("Volume Type"), // EC2 and RDS only
+		MinVolumeSize("Min Volume Size"), // RDS only
+		MaxVolumeSize("Max Volume Size"), // EC2 and RDS only
+		MaxIopsPerVolume("Max IOPS/volume"), // EC2 only
+		MaxIopsBurstPerformance("Max IOPS Burst Performance"), // EC2 only
+		MaxThroughputPerVolume("Max throughput/volume"), // EC2 only
+		Provisioned, // EC2 only
+		Tenancy, // EC2 only
+		EbsOptimized("EBS Optimized"), // EC2 only
+		OperatingSystem("Operating System"), // EC2 only
+		EngineCode("Engine Code"), // RDS only
+		DatabaseEngine("Database Engine"), // RDS only
+		DatabaseEdition("Database Edition"), // RDS only
+		LicenseModel("License Model"), // EC2 and RDS only
+		DeploymentOption("Deployment Option"), // RDS only
+		Group, // EC2, RDS, Redshift, ElastiCache only
+		GroupDescription("Group Description"), // EC2, RDS, Redshift, ElastiCache only
+		TransferType("Transfer Type"), // EC2 only
+		FromLocation("From Location"), // EC2 only
+		FromLocationType("From Location Type"), // EC2 only
+		ToLocation("To Location"), // EC2 only
+		ToLocationType("To Location Type"), // EC2 only
+		UsageType("usageType"),
+		Operation("operation"),
+		CapacityStatus, // EC2 only
+		ConcurrencyScalingFreeUsage, // Redshift only
+		DedicatedEbsThroughput("Dedicated EBS Throughput"), // EC2 and RDS only
+		ECU, // EC2 and Redshift only
+		ElasticGraphicsType("Elastic Graphics Type"), // EC2 only
+		MemoryGiB("Memory (GiB)"), // ES only
+		EnhancedNetworkingSupported("Enhanced Networking Supported"), // EC2 and RDS only
+		GPU, // EC2 only
+		InstanceTypeFamily("Instance Type Family"), // RDS only
+		
+		// EC2 only
+		GpuMemory("GPU Memory"),
+		Instance,
+		InstanceCapacity10xlarge("Instance Capacity - 10xlarge"),
+		InstanceCapacity12xlarge("Instance Capacity - 12xlarge"),
+		InstanceCapacity16xlarge("Instance Capacity - 16xlarge"),
+		InstanceCapacity18xlarge("Instance Capacity - 18xlarge"),
+		InstanceCapacity24xlarge("Instance Capacity - 24xlarge"),
+		InstanceCapacity2xlarge("Instance Capacity - 2xlarge"),		
+		InstanceCapacity32xlarge("Instance Capacity - 32xlarge"),
+		InstanceCapacity4xlarge("Instance Capacity - 4xlarge"),
+		InstanceCapacity8xlarge("Instance Capacity - 8xlarge"),
+		InstanceCapacity9xlarge("Instance Capacity - 9xlarge"),
+		InstanceCapacityLarge("Instance Capacity - large"),
+		InstanceCapacityMedium("Instance Capacity - medium"),
+		InstanceCapacityXlarge("Instance Capacity - xlarge"),
+		InstanceSKU("instanceSKU"),
+		IntelAvxAvailable("Intel AVX Available"),
+		IntelAvx2Available("Intel AVX2 Available"),
+		IntelTurboAvailable("Intel Turbo Available"),
+		
+		NormalizationSizeFactor("Normalization Size Factor"), // EC2 and RDS only
+		PhysicalCores("Physical Cores"), // EC2 only
+		PreInstalledSw("Pre Installed S/W"), // EC2 only
+		ProcessorFeatures("Processor Features"), // EC2 and RDS only
+		ProductType("Product Type"), // EC2 only
+		ResourceType("Resource Type"), // EC2 only
+		ServiceName("serviceName"),
+		VolumeApiName("Volume API Name"), // EC2 only
+		UsageFamily("Usage Family"), // Redshift only
+		
+		// Old EC2 columns
+		ElasticGpuType("Elastic GPU Type"),
+		Comments,
+		Sockets;
+		
+		private final String header;
+		private static Map<String, Column> byHeaderName;
+		
+		static {
+			byHeaderName = Maps.newHashMap();
+			for (Column v: Column.values()) {
+				byHeaderName.put(v.header, v);
+			}
+		}
+		
+		Column() {
+			this.header = this.name();
+		}
+		Column(String header) {
+			this.header = header;
+		}
+		
+		static Column get(String header) {
+			return byHeaderName.get(header);
+		}
+	}
+	
+	public class Getter {
+		private int[] index;
+		
+		public Getter(String[] headerNames) {
+	    	index = new int[Column.values().length];
+	    	
+	    	for (int i = 0; i < index.length; i++) {
+	    		index[i] = -1;
+	    	}
+	    	
+	    	for (int i = 0; i < headerNames.length; i++) {
+	    		Column col = Column.get(headerNames[i]);
+	    		if (col == null) {
+	    			logger.error("No enum for column header: " + headerNames[i]);
+	    			continue;
+	    		}
+	    		index[col.ordinal()] = i;
+	    	}
+		}
+		
+		public String value(String[] items, Column col) {
+			int i = index[col.ordinal()];
+	    	return i < 0 ? null : items[i];
+		}
+	}
+
+	private void checkHeader(int index, String[] items) throws Exception {
+		String[] lines = new String[]{
+				"FormatVersion",
+				"Disclaimer",
+				"Publication Date",
+				"Version",
+				"OfferCode",
+		};
+		
+		if (items.length != 2) {
+			throw new Exception("Wrong number of items in header line. Expected 2: " + items);
+		}
+		if (!lines[index].equals(items[0])) {
+			throw new Exception("Wrong header line. Expected " + lines[index] + ", got: " + items);
+		}
+		switch(index) {
+		case 0:
+			if (!items[1].equals("v1.0")) {
+				throw new Exception("Wrong pricelist file version, should be v1.0, got: " + items[1]);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+		
+	        
+    private InstancePrices.Product getProduct(InstancePrices prices, Getter getter, String[] items) {
+    	// Get the product key
+    	String location = getter.value(items, Column.Location);
+    	String productFamily = getter.value(items, Column.ProductFamily);
+    	String tenancy = getter.value(items, Column.Tenancy);
+    	String operation = getter.value(items, Column.Operation);
+    	String operatingSystem = getter.value(items, Column.OperatingSystem);
+    	String usageType = getter.value(items, Column.UsageType);
+    	String deploymentOption = getter.value(items, Column.DeploymentOption);
+    	String instanceType = getter.value(items, Column.InstanceType);
+    	
+    	Key key = prices.getKey(location, productFamily, tenancy, operation, operatingSystem, usageType, instanceType, deploymentOption, PriceListService.tenancies);
+    	if (key == null)
+    		return null;
+    	
+    	// Create the Product
+    	String sku = getter.value(items, Column.SKU);
+    	
+    	Product product = prices.getProduct(key);
+    	if (product == null) {
+	    	String memory = getter.value(items, Column.Memory);
+			if (memory != null) {
+				String[] memoryParts = memory.split(" ");
+				if (!memoryParts[1].toLowerCase().equals("gib")) {
+					logger.error("Found PriceList entry with product memory using non-GiB units: " + memoryParts[1] + ", usageType: " + usageType);
+				}
+				memory = memoryParts[0].replace(",", "");
+			}
+			else {
+				memory = getter.value(items, Column.MemoryGiB);
+			}
+
+	    	String ecu = getter.value(items, Column.ECU);
+	    	String nsf = getter.value(items, Column.NormalizationSizeFactor);
+	    	String vcpu = getter.value(items, Column.vCPU);
+	    	String preinstalledSw = getter.value(items, Column.PreInstalledSw);
+	    	String databaseEngine = getter.value(items, Column.DatabaseEngine);
+	    	String databaseEdition = getter.value(items, Column.DatabaseEdition);
+	    	
+	    	product = new InstancePrices.Product(sku, memory, ecu, nsf, vcpu, instanceType, operatingSystem, operation, usageType, preinstalledSw, databaseEngine, databaseEdition);
+	    	if (key.usageType.name.endsWith(".others")) {
+	    		logger.error("Pricelist entry with unknown usage type: " + product);
+	    	}
+    		prices.setProduct(key, product);
+    	}
+    	else if (!product.sku.equals(sku)) {
+    		logger.error("Pricelist product has two SKUs with same product key: " + product.sku + ", " + sku + ". Existing product: " + product + ", Ignored conflicting product: " + items);
+    		product = null;
+    	}
+    	return product;
+    }
+    
+    private void addTerm(Product product, Getter getter, String[] items) {
+    	String termType = getter.value(items, Column.TermType);
+    	if (termType.equals("OnDemand")) {
+    		product.setOnDemandRate(Double.parseDouble(getter.value(items, Column.PricePerUnit)));
+    	}
+    	else if (termType.equals("Reserved")) {
+    		String leaseContractLength = getter.value(items, Column.LeaseContractLength);
+    		String purchaseOption = getter.value(items, Column.PurchaseOption);
+    		
+    		String offeringClass = getter.value(items, Column.OfferingClass);
+    		if (offeringClass.isEmpty()) {
+				// only standard offering class was available before March 2017
+				offeringClass = OfferingClass.standard.name();
+    		}
+    		
+			RateKey rateKey = new RateKey(leaseContractLength, purchaseOption, offeringClass);
+			
+			Rate rate = product.getReservationRate(rateKey);
+			if (rate == null) {
+				rate = new Rate();
+				product.setReserationRate(rateKey, rate);
+			}
+			String unit = getter.value(items, Column.Unit);
+			double pricePerUnit = Double.parseDouble(getter.value(items, Column.PricePerUnit));
+			if (unit.equals("Quantity"))
+				rate.fixed = pricePerUnit;
+			else if (unit.equals("Hrs"))
+				rate.hourly = pricePerUnit;				
+    	}
+    }
+    
+    private boolean importPriceList(InputStream stream, InstancePrices prices) {
+        boolean hasErrors = false;
+        CsvReader reader = new CsvReader(new InputStreamReader(stream), ',');
+
+        try {            
+            // process multi-line header
+            for (int i = 0; i < 5; i++) {
+                reader.readRecord();
+            	checkHeader(i, reader.getValues());
+            }
+            
+            reader.readRecord();
+            Getter getter = new Getter(reader.getValues());
+
+            while (reader.readRecord()) {
+                String[] items = reader.getValues();
+                try {
+                	// Only process USD prices
+                	if (!getter.value(items, Column.Currency).equals("USD"))
+                		continue;
+                	
+                	Product product = getProduct(prices, getter, items);
+                	if (product == null)
+                		continue;
+                	
+                	addTerm(product, getter, items);
+                }
+                catch (Exception e) {
+                    logger.error(StringUtils.join(items, ","), e);
+                }
+            }
+        }
+        catch (Exception e ) {
+        	logger.error("Error processing price list data: ", e);
+        	hasErrors = true;
+        }
+        finally {
+            try {
+                reader.close();
+            }
+            catch (Exception e) {
+                logger.error("Cannot close BufferedReader...", e);
+            }
+        }
+        return hasErrors;
+    }
+    
     
 }

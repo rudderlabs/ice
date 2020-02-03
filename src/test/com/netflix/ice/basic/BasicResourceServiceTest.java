@@ -75,7 +75,7 @@ public class BasicResourceServiceTest {
 		defaultTags.put("CostCenter", "1234");
 		rs.putDefaultTags("123456789012", defaultTags);
 		
-		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI" + ResourceGroup.separator + "1234", resource.name);
 	}
 	
@@ -192,7 +192,7 @@ public class BasicResourceServiceTest {
 		rs.putDefaultTags("12345", defaultTags);
 		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
-		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProductByName(Product.ec2Instance), li, 0);
+		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		UserTag[] userTags = resourceGroup.getUserTags();
 		assertEquals("default resource group not set", userTags[0].name, "Prod");
 	}
@@ -309,20 +309,20 @@ public class BasicResourceServiceTest {
 		
 		// Test with mapped value
 		li.setItems(item);
-		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test with value on resource
 		item[3] = "test";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "test" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test without mapped value or resource tag - should use account default
 		item[3] = "";
 		item[5] = "";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "", resource.name);
 		
 		// Test include filtering
@@ -335,10 +335,10 @@ public class BasicResourceServiceTest {
 		item[5] = "serviceAPI";
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test exclude filtering
@@ -350,10 +350,10 @@ public class BasicResourceServiceTest {
 		rs.setTagConfigs("123456789012", tagConfigs);
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProductByName(Product.ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 	}
 }

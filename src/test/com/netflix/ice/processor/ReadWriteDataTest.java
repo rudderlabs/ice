@@ -50,6 +50,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.Zone.BadZone;
@@ -120,13 +121,10 @@ public class ReadWriteDataTest {
 	
 	@Test
 	public void testSerializeDeserializeRDS() throws IOException, BadZone {
-		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("RDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProduct(Product.Code.Rds), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		testSerializeDeserialize(tg, 1.0);
 		
-		tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("RDS Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
-		testSerializeDeserialize(tg, 1.0);
-
-		tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Relational Database Service"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProduct(Product.Code.RdsFull), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		testSerializeDeserialize(tg, 1.0);
 	}
 	
@@ -149,7 +147,7 @@ public class ReadWriteDataTest {
 	public void testSerializeDeserializeTwice() throws IOException, BadZone {
 		ReadWriteData data = new ReadWriteData();
 		
-		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Simple Storage Service"), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
+		TagGroup tg = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProduct(Product.Code.S3), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
         map.put(tg, 1.0);
@@ -157,7 +155,7 @@ public class ReadWriteDataTest {
 		
 		data = serializeDeserialize(as, ps, data);
 		
-		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProductByName("Simple Storage Service"), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
+		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProduct(Product.Code.S3), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
 
 		list = Lists.newArrayList();
 		map = ReadWriteData.getCreateData(list, 0);

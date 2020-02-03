@@ -86,8 +86,11 @@ public class ProductTest {
 	
 	@Test
 	public void testIsEc2() {
-		Product product = new Product(Product.ec2, "AmazonEC2", Source.pricing);
+		Product product = new Product(Product.Code.Ec2);
 		assertTrue("isEc2() returned false, but should be true", product.isEc2());
+		
+		product = new Product("Amazon Elastic Compute Cloud", "AmazonEC2", Source.pricing);
+		assertTrue("isEc2() returned false, but should be true", product.isEc2());		
 	}
 	
 	@Test
@@ -101,17 +104,22 @@ public class ProductTest {
 	
 	@Test
 	public void testIsRds() {
-		Product productRds = new Product(Product.rds, "AmazonRDS", Source.pricing);
-		Product productRdsFull = new Product(Product.rdsFull, "AmazonRDS", Source.pricing);
+		Product productRds = new Product(Product.Code.Rds);
+		Product productRdsFull = new Product(Product.Code.RdsFull);
+		assertTrue("isRDS() returned false, but should be true", productRds.isRds());
+		assertTrue("isRDS() returned false, but should be true", productRdsFull.isRds());
+
+		productRds = new Product("Amazon RDS Service", "AmazonRDS", Source.pricing);
+		productRdsFull = new Product("Amazon Relational Database Service", "AmazonRDS", Source.pricing);
 		assertTrue("isRDS() returned false, but should be true", productRds.isRds());
 		assertTrue("isRDS() returned false, but should be true", productRdsFull.isRds());
 	}
 	
 	@Test
-	public void testHasResourceTag() {
-		Product productRds = new Product(Product.rds, "AmazonRDS", Source.pricing);
-		Product productCloudWatch = new Product(Product.cloudWatch, "AmazonCloudWatch", Source.pricing);
-		assertTrue("RDS should have resource tags", productRds.hasResourceTags());
-		assertFalse("CloudWatch should not have resource tags", productCloudWatch.hasResourceTags());
+	public void testEnableTagCoverage() {
+		Product productRds = new Product(Product.Code.Rds);
+		Product productCloudWatch = new Product(Product.Code.CloudWatch);
+		assertTrue("RDS should have resource tags", productRds.enableTagCoverage());
+		assertFalse("CloudWatch should not have resource tags", productCloudWatch.enableTagCoverage());
 	}
 }

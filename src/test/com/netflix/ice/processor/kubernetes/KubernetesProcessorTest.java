@@ -182,7 +182,7 @@ public class KubernetesProcessorTest {
         List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1", null));
 
 		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
-		Product ec2Instance = productService.getProductByName(Product.ec2Instance);
+		Product ec2Instance = productService.getProduct(Product.Code.Ec2Instance);
 		UsageType usageType = UsageType.getUsageType("r5.4xlarge", "hours");
 		
 		String[] tags = new String[]{ clusterName, "compute", "", "Dev", };

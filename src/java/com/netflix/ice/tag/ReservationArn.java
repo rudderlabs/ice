@@ -24,31 +24,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.netflix.ice.tag.Product.Code;
 
 public class ReservationArn extends Tag {
 	private static final long serialVersionUID = 1L;
     protected static Logger logger = LoggerFactory.getLogger(ReservationArn.class);
 
     private static ConcurrentMap<String, ReservationArn> tagsByName = Maps.newConcurrentMap();
-    private static Map<String, String> prefixes = Maps.newHashMap();
-    private static Map<String, String> products = Maps.newHashMap();
+    private static Map<Product.Code, String> prefixes = Maps.newHashMap();
+    private static Map<Product.Code, String> products = Maps.newHashMap();
     
 	public static ReservationArn debugReservationArn = null; // Set to a valid reservation ARN for debugging
     
     static {
-    	products.put(Product.dynamoDB, "dynamodb");
-    	products.put(Product.ec2Instance, "ec2");
-    	products.put(Product.elastiCache, "elasticache");
-    	products.put(Product.elasticsearch, "es");
-    	products.put(Product.rdsInstance, "rds");
-    	products.put(Product.redshift, "redshift");
+    	products.put(Code.DynamoDB, "dynamodb");
+    	products.put(Code.Ec2Instance, "ec2");
+    	products.put(Code.ElastiCache, "elasticache");
+    	products.put(Code.Elasticsearch, "es");
+    	products.put(Code.RdsInstance, "rds");
+    	products.put(Code.Redshift, "redshift");
     	
-    	prefixes.put(Product.dynamoDB, "reserved-instances/");
-    	prefixes.put(Product.ec2Instance, "reserved-instances/");
-    	prefixes.put(Product.elastiCache, "reserved-instance:");
-    	prefixes.put(Product.elasticsearch, "reserved-instances/");
-    	prefixes.put(Product.rdsInstance, "ri:");
-    	prefixes.put(Product.redshift, "reserved-instances/");
+    	prefixes.put(Code.DynamoDB, "reserved-instances/");
+    	prefixes.put(Code.Ec2Instance, "reserved-instances/");
+    	prefixes.put(Code.ElastiCache, "reserved-instance:");
+    	prefixes.put(Code.Elasticsearch, "reserved-instances/");
+    	prefixes.put(Code.RdsInstance, "ri:");
+    	prefixes.put(Code.Redshift, "reserved-instances/");
     	
     }
 
@@ -57,14 +58,14 @@ public class ReservationArn extends Tag {
 	}
 	
 	public static ReservationArn get(Account account, Region region, Product product, String id) throws Exception {
-		String prod = products.get(product.getCanonicalName());
+		String prod = products.get(product.getCode());
 		if (prod == null) {
-			logger.error("Could not find product string for " + product.getCanonicalName());
+			logger.error("Could not find product string for " + product.getCode());
 			throw new Exception("Product is null");
 		}
-		String prefix = prefixes.get(product.getCanonicalName());
+		String prefix = prefixes.get(product.getCode());
 		if (prefix == null) {
-			logger.error("Could not find prefix string for " + product.getCanonicalName());
+			logger.error("Could not find prefix string for " + product.getCode());
 			throw new Exception("Prefix is null");
 		}
 		

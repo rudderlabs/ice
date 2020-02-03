@@ -544,7 +544,7 @@ public class ReservationCapacityPoller extends Poller {
             Zone zone = null;
             Region region = Region.getRegionByName(reservedInstances.getRegion());
             
-            if (reservedInstances.isProduct(Product.ec2)) {
+            if (reservedInstances.isProduct(Product.Code.Ec2.serviceCode)) {
             	if (reservedInstances.getScope().equals("Availability Zone")) {
 	                zone = region.getZone(reservedInstances.getAvailabilityZone());
 	                if (zone == null)
@@ -556,26 +556,26 @@ public class ReservationCapacityPoller extends Poller {
                 String osStr = reservedInstances.getProductDescription();
                 InstanceOs os = InstanceOs.withDescription(osStr);
                 usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + os.usageType, "hours");
-                product = productService.getProductByName(Product.ec2Instance);
+                product = productService.getProduct(Product.Code.Ec2Instance);
             }
-            else if (reservedInstances.isProduct(Product.rds)) {
+            else if (reservedInstances.isProduct(Product.Code.Rds.serviceCode)) {
             	InstanceDb db = InstanceDb.withDescription(reservedInstances.getProductDescription());
             	String multiAZ = reservedInstances.getMultiAZ() ? UsageType.multiAZ : "";
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + multiAZ + db.usageType, "hours");
-            	product = productService.getProductByName(Product.rdsInstance);
+            	product = productService.getProduct(Product.Code.RdsInstance);
             }
-            else if (reservedInstances.isProduct(Product.redshift)){
+            else if (reservedInstances.isProduct(Product.Code.Redshift.serviceCode)){
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType(), "hours");
-            	product = productService.getProductByName(Product.redshift);
+            	product = productService.getProduct(Product.Code.Redshift);
             }
-            else if (reservedInstances.isProduct(Product.elasticsearch)){
+            else if (reservedInstances.isProduct(Product.Code.Elasticsearch.serviceCode)){
             	usageType = UsageType.getUsageType("es." + reservedInstances.getInstanceType(), "hours");
-            	product = productService.getProductByName(Product.elasticsearch);
+            	product = productService.getProduct(Product.Code.Elasticsearch);
             }
-            else if (reservedInstances.isProduct(Product.elastiCache)){
+            else if (reservedInstances.isProduct(Product.Code.ElastiCache.serviceCode)){
             	InstanceCache cache = InstanceCache.withDescription(reservedInstances.getProductDescription());
             	usageType = UsageType.getUsageType(reservedInstances.getInstanceType() + cache.usageType, "hours");
-            	product = productService.getProductByName(Product.elastiCache);
+            	product = productService.getProduct(Product.Code.ElastiCache);
             }
             else {
             	logger.error("Unknown reserved instance type: " + reservedInstances.getProduct() + ", " + reservedInstances.toString());

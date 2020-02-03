@@ -51,7 +51,7 @@ import com.netflix.ice.tag.Zone;
 public class SavingsPlanProcessorTest {
 	private static ProductService productService;
 	public static AccountService accountService;
-	private final Product ec2Instance = productService.getProductByName(Product.ec2Instance);
+	private final Product ec2Instance = productService.getProduct(Product.Code.Ec2Instance);
 	private static Account a1;
 	private static Account a2;
 	

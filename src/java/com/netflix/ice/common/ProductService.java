@@ -33,18 +33,18 @@ public interface ProductService {
     Product getProduct(String serviceName, String serviceCode);
 
     /**
+     * Get product by service name, e.g. "Amazon Elastic Compute Cloud", "AWS Elastic MapReduce"
+     * @param name
+     * @return product
+     */
+    Product getProduct(Product.Code code);
+
+    /**
      * Get product by service name, e.g. "AWS CloudFront", "Amazon Elastic Compute Cloud (EC2)"
      * @param name
      * @return product
      */
     Product getProductByServiceName(String serviceName);
-
-    /**
-     * Get product by name, e.g. CloudFront, "Elastic Compute Cloud (EC2)"
-     * @param name
-     * @return product
-     */
-    Product getProductByName(String name);
 
     /**
      * Get product by AWS service code, e.g. AmazonEC2

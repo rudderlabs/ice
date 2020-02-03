@@ -135,10 +135,10 @@ public class BasicProductService implements ProductService {
     		addProduct(new Product("AWS Security Hub", "AWSSecurityHub", Source.code));
     	
     	// Add products for the ICE breakouts
-    	addProduct(new Product(Product.ec2Instance, "EC2Instance", Source.code));
-    	addProduct(new Product(Product.rdsInstance, "RDSInstance", Source.code));
-    	addProduct(new Product(Product.ebs, "EBS", Source.code));
-    	addProduct(new Product(Product.eip, "EIP", Source.code));
+    	addProduct(new Product(Product.Code.Ec2Instance));
+    	addProduct(new Product(Product.Code.RdsInstance));
+    	addProduct(new Product(Product.Code.Ebs));
+    	addProduct(new Product(Product.Code.Eip));
     }
 
 	public Product getProduct(String serviceName, String serviceCode) {
@@ -162,6 +162,21 @@ public class BasicProductService implements ProductService {
         }
         return product;
     }
+	
+    public Product getProduct(Product.Code code) {
+    	Product product = productsByServiceCode.get(code.serviceCode);
+    	if (product == null) {
+    		Product newProduct = new Product(code);
+    		product = addProduct(newProduct);
+            if (newProduct == product)
+            	logger.info("created product: " + product.name + " for: " + code.serviceName + " with code: " + product.getServiceCode());
+            else if (!product.getServiceCode().equals(code.serviceCode)) {
+            	logger.error("new service code " + code.serviceCode + " for product: " + product.name + " for: " + code.serviceName + " with code: " + product.getServiceCode());
+            }
+    	}
+    	return product;
+    }
+
     
 	/*
 	 * Called by BasicManagers to manage product list for resource-based cost and usage data files.
@@ -186,20 +201,7 @@ public class BasicProductService implements ProductService {
         }
         return product;
     }
-    
-    /*
-     * Called by TagGroup deserializer and test code
-     */
-    public Product getProductByName(String name) {
-        Product product = productsByName.get(name);
-        if (product == null) {
-            product = new Product(name, name.replace(" ", "_"), Source.code);
-            product = addProduct(product);
-            logger.warn("created product by name: " + product.name + " for code: " + product.getServiceCode());
-        }
-        return product;
-    }
-    
+        
     protected Product addProduct(Product product) {
     	lock.lock();
     	try {    	

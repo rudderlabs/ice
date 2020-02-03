@@ -65,7 +65,7 @@ public class TagGroupRI extends TagGroupArn<ReservationArn> {
         return get(
     		accountService.getAccountByName(account),
         	r, StringUtils.isEmpty(zone) ? null : r.getZone(zone),
-        	productService.getProductByName(product),
+        	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
             StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)),

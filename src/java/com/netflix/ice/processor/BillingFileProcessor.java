@@ -152,10 +152,10 @@ public class BillingFileProcessor extends Poller {
         		Product prod = null;
         		switch (sc) {
         		case AmazonEC2:
-            		prod = config.productService.getProductByName(Product.ec2Instance);
+            		prod = config.productService.getProduct(Product.Code.Ec2Instance);
             		break;
         		case AmazonRDS:
-        			prod = config.productService.getProductByName(Product.rdsInstance);
+        			prod = config.productService.getProduct(Product.Code.RdsInstance);
         			break;
         		default:
         			prod = config.productService.getProductByServiceCode(sc.name());
@@ -177,7 +177,7 @@ public class BillingFileProcessor extends Poller {
         	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
-            addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
+            addSavingsData(dataTime, costAndUsageData, config.productService.getProduct(Product.Code.Ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             
             KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
