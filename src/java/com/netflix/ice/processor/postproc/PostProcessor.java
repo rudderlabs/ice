@@ -139,6 +139,14 @@ public class PostProcessor {
 				resultData.add(rwd);
 			}
 			
+			// Gather some statistics
+			int inMin = Integer.MAX_VALUE;
+			int inMax = 0;
+			int inTotal = 0;
+			int outMin = Integer.MAX_VALUE;
+			int outMax = 0;
+			int outTotal = 0;
+			
 			for (int i = 0; i < inUsageData.getNum(); i++) {
 				// For each hour of usage...
 			    Map<TagGroup, Double> usageMap = inUsageData.getData(i);
@@ -146,11 +154,25 @@ public class PostProcessor {
 			    
 				// Get the aggregated value for the input operand
 			    Map<AggregationTagGroup, Double> inValues = getInValues(rule, usageMap, costMap, isNonResource);
-				if (inValues.size() == 0)
+			    int size = inValues.size();
+			    inTotal += size;
+			    if (size < inMin)
+			    	inMin = size;
+			    if (size > inMax)
+			    	inMax = size;
+				if (size == 0)
 					continue;
 					
-				applyRule(rule, inValues, i, usageData, costData, resultData);
+				int results = applyRule(rule, inValues, i, usageData, costData, resultData);
+				outTotal += results;
+				if (results < outMin)
+					outMin = results;
+				if (results > outMax)
+					outMax = results;
 			}
+			
+			logger.info("  -- data for rule " + rule.config.getName() + " -- inMin=" + inMin + ", inMax=" + inMax + ", inAvg=" + (inTotal / inUsageData.getNum()) +
+					" --- outMin=" + outMin + ", outMax=" + outMax + ", outAvg=" + (outTotal / inUsageData.getNum()));
 		}
 	}
 	
@@ -199,7 +221,8 @@ public class PostProcessor {
 		return operandValueCache;
 	}
 	
-	protected void applyRule(Rule rule, Map<AggregationTagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData, List<ReadWriteData> resultData) throws Exception {
+	protected int applyRule(Rule rule, Map<AggregationTagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData, List<ReadWriteData> resultData) throws Exception {
+		int numResults = 0;
 		for (AggregationTagGroup atg: in.keySet()) {
 			for (int i = 0; i < rule.getResults().size(); i++) {
 				
@@ -211,9 +234,11 @@ public class PostProcessor {
 					Double value = eval(rule, expr, atg, in, hour, usageData, costData);
 					//logger.info("put: " + hour + ", " + outTagGroup + ", " + value);
 					resultData.get(i).getData(hour).put(outTagGroup, value);
+					numResults++;
 				}
 			}
 		}
+		return numResults;
 	}
 	
 	private Double eval(Rule rule, String outExpr, AggregationTagGroup atg, Map<AggregationTagGroup, Double> in, int hour, Map<String, ReadWriteData> usageData, Map<String, ReadWriteData> costData) throws Exception {		

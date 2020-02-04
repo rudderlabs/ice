@@ -48,12 +48,12 @@ public class PostProcessorTest {
 	static private String a1 = "0123456789012";
 	static private String a2 = "1234567890123";
 	static private String a3 = "2345678901234";
-	static private String productStr = "ProductForPPT";
 	
 	@BeforeClass
 	static public void init() {
 		ps = new BasicProductService();
 		as = new BasicAccountService();
+		ps.getProduct(Product.Code.CloudFront);
 	}
 	
 	public enum DataType {
@@ -64,7 +64,7 @@ public class PostProcessorTest {
     	DataType dataType;
     	String account;
     	String region;
-    	String product;
+    	String productServiceCode;
     	String operation;
     	String usageType;
     	Double value;
@@ -73,7 +73,7 @@ public class PostProcessorTest {
     		this.dataType = dataType;
     		this.account = account;
     		this.region = region;
-    		this.product = product;
+    		this.productServiceCode = product;
     		this.operation = operation;
     		this.usageType = usageType;
     		this.value = value;
@@ -83,18 +83,18 @@ public class PostProcessorTest {
     		this.dataType = dataType;
     		this.account = account;
     		this.region = region;
-    		this.product = productStr;
+    		this.productServiceCode = Product.Code.CloudFront.serviceCode;
     		this.operation = operation;
     		this.usageType = usageType;
     		this.value = value;
     	}
 
     	public TagGroup getTagGroup() throws BadZone {
-    		return TagGroup.getTagGroup(account, region, null, product, operation, usageType, null, null, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, null, as, ps);
     	}
     	
     	public TagGroup getTagGroup(String account) throws BadZone {
-    		return TagGroup.getTagGroup(account, region, null, product, operation, usageType, null, null, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, null, as, ps);
     	}
     }
     
@@ -137,7 +137,7 @@ public class PostProcessorTest {
 			"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
 			"in:\n" + 
 			"  type: usage\n" + 
-			"  product: " + productStr + "\n" + 
+			"  product: " + Product.Code.CloudFront.serviceCode + "\n" + 
 			"  usageType: (..)-Requests-[12].*\n" + 
 			"results:\n" + 
 			"  - result:\n" + 
@@ -243,7 +243,7 @@ public class PostProcessorTest {
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
 		loadComputedCostData(usageData, costData);
-		Product product = ps.getProductByServiceCode(productStr);
+		Product product = ps.getProduct(Product.Code.CloudFront);
 		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
         data.putUsage(product, usageData);
         data.putCost(product, costData);

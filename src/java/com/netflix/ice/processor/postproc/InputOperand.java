@@ -108,7 +108,7 @@ public class InputOperand extends Operand {
         	zone = z.isEmpty() ? null : region.getZone(z);
         }
         if (productTagFilter != null) {
-        	String p = productTagFilter.getGroup(tg.product.name);
+        	String p = productTagFilter.getGroup(tg.product.getServiceCode());
         	if (p == null)
         		return null;
         	product = p.isEmpty() ? null : productService.getProductByServiceCode(p);
@@ -201,29 +201,56 @@ public class InputOperand extends Operand {
         if (accounts != null && accounts.size() > 0) {
         	sb.append(accounts.toString() + "," + (excludeAccount ? "true," : "false,"));
         }
+        else if (accountTagFilter != null && atg.getAccount() != null) {
+			sb.append(accountTagFilter.getTag(atg.getAccount().getId()) + ",");
+		}
+        else if (atg.types.contains(TagType.Account)) {
+        	sb.append(atg.getAccount().getId() + ",");
+        }
+        
         if (regions != null && regions.size() > 0) {
         	sb.append(regions.toString() + "," + (excludeRegion ? "true," : "false,"));
         }
+        else if (regionTagFilter != null && atg.getRegion() != null) {
+			sb.append(regionTagFilter.getTag(atg.getRegion().name) + ",");
+		}
+        else if (atg.types.contains(TagType.Region)) {
+        	sb.append(atg.getRegion().name + ",");
+        }
+        
         if (zones != null && zones.size() > 0) {
         	sb.append(zones.toString() + "," + (excludeZone ? "true," : "false,"));
         }
-		if (accountTagFilter != null && atg.getAccount() != null) {
-			sb.append(accountTagFilter.getTag(atg.getAccount().getId()) + ",");
-		}
-		if (regionTagFilter != null && atg.getRegion() != null) {
-			sb.append(regionTagFilter.getTag(atg.getRegion().name) + ",");
-		}
-		if (zoneTagFilter != null && atg.getZone() != null) {
+        else if (zoneTagFilter != null && atg.getZone() != null) {
 			sb.append(zoneTagFilter.getTag(atg.getZone().name) + ",");
 		}
+        else if (atg.types.contains(TagType.Zone)) {
+        	sb.append(atg.getZone() == null ? "null," : atg.getZone().name + ",");
+        }
+        
 		if (productTagFilter != null && atg.getProduct() != null) {
 			sb.append(productTagFilter.getTag(atg.getProduct().name) + ",");
 		}
+		else if (atg.types.contains(TagType.Product)) {
+			sb.append(atg.getProduct().getServiceCode() + ",");
+		}
+		
 		if (operationTagFilter != null && atg.getOperation() != null) {
 			sb.append(operationTagFilter.getTag(atg.getOperation().name) + ",");
 		}
+		else if (atg.types.contains(TagType.Operation)) {
+			sb.append(atg.getOperation().name + ",");
+		}
+		
 		if (usageTypeTagFilter != null && atg.getUsageType() != null) {
 			sb.append(usageTypeTagFilter.getTag(atg.getUsageType().name) + ",");
+		}
+		else if (atg.types.contains(TagType.UsageType)) {
+			sb.append(atg.getUsageType().name + ",");
+		}
+		
+		if (atg.types.contains(TagType.ResourceGroup)) {
+			sb.append(atg.getResourceGroup() == null ? "null" : atg.getResourceGroup().name);
 		}
 		
 		return sb.toString();

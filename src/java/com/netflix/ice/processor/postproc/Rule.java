@@ -31,7 +31,7 @@ import com.netflix.ice.common.ProductService;
 public class Rule {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
-	private RuleConfig config;
+	public RuleConfig config;
 	private Map<String, InputOperand> operands;
 	private InputOperand in;
 	private List<ResultOperand> results;

@@ -29,6 +29,7 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AggregationTagGroup;
 import com.netflix.ice.common.TagGroup;
+import com.netflix.ice.processor.postproc.OperandConfig.OperandType;
 import com.netflix.ice.tag.Account;
 
 public class InputOperandTest {
@@ -79,6 +80,28 @@ public class InputOperandTest {
 		assertTrue("tg should match", io.matches(atg, tg));		
 		TagGroup tg1 = TagGroup.getTagGroup("234567890123", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", null, as, ps);
 		assertFalse("tg should not match", io.matches(atg, tg1));
+	}
+	
+	@Test
+	public void testOperandKey() throws Exception {
+		OperandConfig oc = new OperandConfig();
+		oc.setType(OperandType.usage);
+		InputOperand io = new InputOperand(oc, as);
+		
+		TagGroup tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", null, as, ps);
+		
+		AggregationTagGroup atg = io.aggregateTagGroup(tg, as, ps);		
+		String key = io.key(atg);
+		
+		assertEquals("wrong operand cache key with no aggregation", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,null", key);
+		
+		List<String> agg = Lists.newArrayList(new String[]{"Region","Product"});
+		oc.setAggregate(agg);
+		io = new InputOperand(oc, as);
+		atg = io.aggregateTagGroup(tg, as, ps);
+		key = io.key(atg);
+		
+		assertEquals("wrong operand cache key with aggregation", "usage,123456789012,null,OP1,UT1,null", key);
 	}
 
 }
