@@ -92,22 +92,28 @@ public class Operation extends Tag {
     public static final ReservationOperation unusedInstancesAllUpfront = new ReservationOperation(Category.Unused, PurchaseOption.AllUpfront);
     public static final ReservationOperation upfrontUnusedAmortizedAllUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
 
-    // Legacy Heavy/Medium/Light Utilization types used only by ElastiCache. No family sharing or account borrowing
+    // Legacy Heavy/Medium/Light Utilization types used only by ElastiCache. There is account borrowing at least for ElastiCache.
     public static final ReservationOperation savingsHeavy = new ReservationOperation(Category.Savings, PurchaseOption.Heavy);
     public static final ReservationOperation reservedInstancesHeavy = new ReservationOperation(Category.Used, PurchaseOption.Heavy);
     public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation(Category.Bonus, PurchaseOption.Heavy);
+    public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation(Category.Borrowed, PurchaseOption.Heavy);
+    public static final ReservationOperation lentInstancesHeavy = new ReservationOperation(Category.Lent, PurchaseOption.Heavy);
     public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation(Category.Amortized, PurchaseOption.Heavy);
     public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation(Category.Unused, PurchaseOption.Heavy);
 
     public static final ReservationOperation savingsMedium = new ReservationOperation(Category.Savings, PurchaseOption.Medium);
     public static final ReservationOperation reservedInstancesMedium = new ReservationOperation(Category.Used, PurchaseOption.Medium);
     public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation(Category.Bonus, PurchaseOption.Medium);
+    public static final ReservationOperation borrowedInstancesMedium = new ReservationOperation(Category.Borrowed, PurchaseOption.Medium);
+    public static final ReservationOperation lentInstancesMedium = new ReservationOperation(Category.Lent, PurchaseOption.Medium);
     public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation(Category.Amortized, PurchaseOption.Medium);
     public static final ReservationOperation unusedInstancesMedium = new ReservationOperation(Category.Unused, PurchaseOption.Medium);
 
     public static final ReservationOperation savingsLight = new ReservationOperation(Category.Savings, PurchaseOption.Light);
     public static final ReservationOperation reservedInstancesLight = new ReservationOperation(Category.Used, PurchaseOption.Light);
     public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation(Category.Bonus, PurchaseOption.Light);
+    public static final ReservationOperation borrowedInstancesLight = new ReservationOperation(Category.Borrowed, PurchaseOption.Light);
+    public static final ReservationOperation lentInstancesLight = new ReservationOperation(Category.Lent, PurchaseOption.Light);
     public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation(Category.Amortized, PurchaseOption.Light);
     public static final ReservationOperation unusedInstancesLight = new ReservationOperation(Category.Unused, PurchaseOption.Light);
 
@@ -142,6 +148,9 @@ public class Operation extends Tag {
     	lentInstancesNoUpfront,
     	lentInstancesPartialUpfront,
     	lentInstancesAllUpfront,
+    	lentInstancesHeavy,
+    	lentInstancesMedium,
+    	lentInstancesLight,
     	savingsPlanLentNoUpfront,
     	savingsPlanLentPartialUpfront,
     	savingsPlanLentAllUpfront,
@@ -151,6 +160,9 @@ public class Operation extends Tag {
     	borrowedInstancesNoUpfront,
     	borrowedInstancesPartialUpfront,
     	borrowedInstancesAllUpfront,
+    	borrowedInstancesHeavy,
+    	borrowedInstancesMedium,
+    	borrowedInstancesLight,
     	savingsPlanBorrowedNoUpfront,
     	savingsPlanBorrowedPartialUpfront,
     	savingsPlanBorrowedAllUpfront,
@@ -246,6 +258,9 @@ public class Operation extends Tag {
             case AllUpfront: return borrowedInstancesAllUpfront;
             case NoUpfront: return borrowedInstancesNoUpfront;
             case PartialUpfront: return borrowedInstancesPartialUpfront;
+            case Heavy: return borrowedInstancesHeavy;
+            case Medium: return borrowedInstancesMedium;
+            case Light: return borrowedInstancesLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
@@ -255,6 +270,9 @@ public class Operation extends Tag {
             case AllUpfront: return lentInstancesAllUpfront;
             case NoUpfront: return lentInstancesNoUpfront;
             case PartialUpfront: return lentInstancesPartialUpfront;
+            case Heavy: return lentInstancesHeavy;
+            case Medium: return lentInstancesMedium;
+            case Light: return lentInstancesLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
