@@ -170,7 +170,7 @@ public class InputOperand extends Operand {
         }
         if (productTagFilter != null) {
         	Product p = atg.getProduct();
-        	if (p != null && !productTagFilter.getTag(p.name).equals(tg.product.name))
+        	if (p != null && !productTagFilter.getTag(p.getServiceCode()).equals(tg.product.getServiceCode()))
         		return false;
         }
         else if (atg.getProduct() != tg.product) {

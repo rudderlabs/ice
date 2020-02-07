@@ -24,6 +24,8 @@ import java.util.Map;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -43,17 +45,20 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public class PostProcessorTest {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
     static private ProductService ps;
 	static private AccountService as;
-	static private String a1 = "0123456789012";
-	static private String a2 = "1234567890123";
-	static private String a3 = "2345678901234";
+	static private String a1 = "1111111111111";
+	static private String a2 = "2222222222222";
+	static private String a3 = "3333333333333";
 	
 	@BeforeClass
 	static public void init() {
 		ps = new BasicProductService();
 		as = new BasicAccountService();
 		ps.getProduct(Product.Code.CloudFront);
+		ps.getProduct(Product.Code.CloudWatch);
 	}
 	
 	public enum DataType {
@@ -98,9 +103,9 @@ public class PostProcessorTest {
     	}
     }
     
-    private void loadData(TagGroupSpec[] dataSpecs, ReadWriteData usageData, ReadWriteData costData) throws BadZone {
-        Map<TagGroup, Double> usages = usageData.getData(0);
-        Map<TagGroup, Double> costs = costData.getData(0);
+    private void loadData(TagGroupSpec[] dataSpecs, ReadWriteData usageData, ReadWriteData costData, int hour) throws BadZone {
+        Map<TagGroup, Double> usages = usageData.getData(hour);
+        Map<TagGroup, Double> costs = costData.getData(hour);
     	
         for (TagGroupSpec spec: dataSpecs) {
         	if (spec.dataType == DataType.cost)
@@ -124,7 +129,7 @@ public class PostProcessorTest {
         		new TagGroupSpec(DataType.usage, a1, "eu-west-1", "OP1", "EU-Requests-2", 20000.0),
         		new TagGroupSpec(DataType.usage, a1, "eu-west-1", "OP1", "EU-DataTransfer-Out-Bytes", 40000.0),
         };
-        loadData(dataSpecs, usageData, costData);
+        loadData(dataSpecs, usageData, costData, 0);
 	}
 	
 	private String computedCostYaml = "" +
@@ -161,16 +166,17 @@ public class PostProcessorTest {
 	
 	@Test
 	public void testGetInValue() throws Exception {
+		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
 		loadComputedCostData(usageData, costData);
+		data.putUsage(null, usageData);
+		data.putCost(null, costData);
 				
 		PostProcessor pp = new PostProcessor(null, as, ps);
 		Rule rule = new Rule(getConfig(computedCostYaml), as, ps);
 		
-	    Map<TagGroup, Double> usageMap = usageData.getData(0);
-	    Map<TagGroup, Double> costMap = costData.getData(0);
-		Map<AggregationTagGroup, Double> inMap = pp.getInValues(rule, usageMap, costMap, true);
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true);
 		
 		assertEquals("Wrong number of matched tags", 3, inMap.size());
 		// Scan map and make sure we have 2 US and 1 EU
@@ -194,7 +200,7 @@ public class PostProcessorTest {
 		for (TagGroupSpec spec: specs) {
 			TagGroup tg = spec.getTagGroup(a1);
 			AggregationTagGroup atg = rule.getIn().aggregation.getAggregationTagGroup(tg);
-			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg)[0], 0.001);
 		}
 	}
 	
@@ -322,21 +328,22 @@ public class PostProcessorTest {
         		new TagGroupSpec(DataType.cost, a2, "eu-west-1", "OP9", "EU-DataTransfer-Out-Bytes", 40000.0),
         };
         
-        loadData(dataSpecs, usageData, costData);
+        loadData(dataSpecs, usageData, costData, 0);
 	}
 	
 	@Test
 	public void testSurchargeGetInValues() throws Exception {
+		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
 		loadSurchargeData(usageData, costData);
+        data.putUsage(null, usageData);
+        data.putCost(null, costData);
 				
 		PostProcessor pp = new PostProcessor(null, as, ps);
 		Rule rule = new Rule(getConfig(surchargeConfigYaml), as, ps);
 		
-	    Map<TagGroup, Double> usageMap = usageData.getData(0);
-	    Map<TagGroup, Double> costMap = costData.getData(0);
-		Map<AggregationTagGroup, Double> inMap = pp.getInValues(rule, usageMap, costMap, true);
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true);
 		
 		assertEquals("Wrong number of matched tags", 4, inMap.size());
 		// Scan map and make sure we have 2 us-east-1 and 2 eu-west-1
@@ -360,9 +367,9 @@ public class PostProcessorTest {
 		for (TagGroupSpec spec: specs) {
 			TagGroup tg = spec.getTagGroup(a1);
 			AggregationTagGroup atg = rule.getIn().aggregation.getAggregationTagGroup(tg);
-			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg)[0], 0.001);
 			tg = spec.getTagGroup(a2);
-			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg), 0.001);
+			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg)[0], 0.001);
 		}
 	}
 
@@ -421,10 +428,18 @@ public class PostProcessorTest {
         
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
-		loadData(dataSpecs, usageData, costData);
+		loadData(dataSpecs, usageData, costData, 0);
 		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
         data.putUsage(null, usageData);
         data.putCost(null, costData);
+        
+		Map<TagGroup, Double> in = costData.getData(0);
+		for (TagGroup tg: in.keySet())
+			logger.info("in cost: " + in.get(tg) + ", " + tg);
+		in = usageData.getData(0);
+		for (TagGroup tg: in.keySet())
+			logger.info("in usage: " + in.get(tg) + ", " + tg);
+
 		
 		PostProcessor pp = new PostProcessor(null, as, ps);
 		Rule rule = new Rule(getConfig(splitCostYaml), as, ps);
@@ -438,6 +453,10 @@ public class PostProcessorTest {
 		Double value = outCostData.getData(0).get(globalFee);
 		assertNotNull("No value for global fee", value);
 		assertEquals("Wrong value for global fee", 0.0, value, .001);
+		
+		Map<TagGroup, Double> m = outCostData.getData(0);
+		for (TagGroup tg: m.keySet())
+			logger.info("out: " + m.get(tg) + ", " + tg);
 		
 		// Should have 50/30/15/5% split of $300
 		TagGroup a1split = new TagGroupSpec(DataType.cost, a1, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
@@ -455,4 +474,83 @@ public class PostProcessorTest {
 		value = outCostData.getData(0).get(a3split);
 		assertEquals("wrong value for account 3", 300.0 * 0.05, value, .001);
 	}
+	
+	private CostAndUsageData loadMultiProductComputedCostData() throws BadZone {
+		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
+
+		ReadWriteData usageData = new ReadWriteData();
+		ReadWriteData costData = new ReadWriteData();
+        TagGroupSpec[] cfSpecs = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-1", 1000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-2", 2000.0),
+        };
+        loadData(cfSpecs, usageData, costData, 0);
+        loadData(cfSpecs, usageData, costData, 1);
+		Product cf = ps.getProduct(Product.Code.CloudFront);
+        data.putUsage(cf, usageData);
+        data.putCost(cf, costData);
+                
+		usageData = new ReadWriteData();
+		costData = new ReadWriteData();
+        TagGroupSpec[] cwSpecs = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudWatch.serviceCode, "OP1", "US-DataTransfer-Out-Bytes", 4000.0),
+        };
+        loadData(cwSpecs, usageData, costData, 0);
+        loadData(cwSpecs, usageData, costData, 1);
+		Product cw = ps.getProduct(Product.Code.CloudWatch);
+        data.putUsage(cw, usageData);
+        data.putCost(cw, costData);
+        
+        return data;
+	}
+	
+	private String computedMultiProductCostYaml = "" +
+			"name: ComputedCost\n" + 
+			"start: 2019-11\n" + 
+			"end: 2022-11\n" + 
+			"operands:\n" + 
+			"  data:\n" + 
+			"    type: usage\n" + 
+			"    product: " + Product.Code.CloudWatch.serviceCode + "\n" + 
+			"    usageType: ${group}-DataTransfer-Out-Bytes\n" + 
+			"in:\n" + 
+			"  type: usage\n" + 
+			"  product: " + Product.Code.CloudFront.serviceCode + "\n" + 
+			"  usageType: (..)-Requests-[12].*\n" + 
+			"results:\n" + 
+			"  - result:\n" + 
+			"      type: cost\n" + 
+			"      product: ComputedCost\n" + 
+			"      usageType: ${group}-Requests\n" + 
+			"    value: '(${in} - (${data} * 4 * 8 / 2)) * 0.01 / 1000'\n" + 
+			"  - result:\n" + 
+			"      type: usage\n" + 
+			"      product: ComputedCost\n" + 
+			"      usageType: ${group}-Requests\n" + 
+			"    value: '${in} - (${data} * 4 * 8 / 2)'\n";
+
+	@Test
+	public void testProcessMultiProductReadWriteDataWithResourcesTwoHours() throws Exception {
+		CostAndUsageData data = loadMultiProductComputedCostData();
+		
+		PostProcessor pp = new PostProcessor(null, as, ps);
+		Rule rule = new Rule(getConfig(computedMultiProductCostYaml), as, ps);
+		pp.processReadWriteData(rule, data, false);
+		
+		Product outProduct = ps.getProductByServiceCode("ComputedCost");
+		ReadWriteData outCostData = data.getCost(outProduct);
+		
+		// out: 'in - (data * 4 * 8 / 2) * 0.01 / 1000'
+		// 'in' is the sum of the two request values
+		//
+		// US: (1000 + 2000) - (4000 * 4 * 8 / 2) * 0.01 / 1000 == 3000 - 64000 * 0.00001 == 2999.36
+		TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", null).getTagGroup();
+		Double value = outCostData.getData(0).get(usReqs);
+		assertNotNull("No value for US-Requests hour 0", value);
+		assertEquals("Wrong value for US-Requests hour 0", -0.61, value, .0001);		
+		value = outCostData.getData(1).get(usReqs);
+		assertNotNull("No value for US-Requests hour 1", value);
+		assertEquals("Wrong value for US-Requests hour 1", -0.61, value, .0001);		
+	}
+
 }
