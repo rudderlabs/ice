@@ -86,21 +86,7 @@ public class PostProcessor {
 		logger.info("Post-process with rule " + rc.getName() + " on resource data");
 		processReadWriteData(rule, data, false);
 	}
-	
-	public class OperandKey {
-		final public String name;
-		final public Product product;
 		
-		public OperandKey(String name, Product product) {
-			this.name = name;
-			this.product = product;
-		}
-		
-		public String toString() {
-			return "{" + name + "," + product + "}";
-		}
-	}
-	
 	protected void processReadWriteData(Rule rule, CostAndUsageData data, boolean isNonResource) throws Exception {
 		// Get data maps for operands
 		// We only want to walk each ReadWriteData set once, so collect up all the operands for each
