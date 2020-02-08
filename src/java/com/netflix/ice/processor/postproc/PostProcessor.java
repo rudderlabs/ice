@@ -103,17 +103,27 @@ public class PostProcessor {
 	
 	protected void processReadWriteData(Rule rule, CostAndUsageData data, boolean isNonResource) throws Exception {
 		// Get data maps for operands
-		Map<OperandKey, ReadWriteData> opData = Maps.newHashMap();
+		// We only want to walk each ReadWriteData set once, so collect up all the operands for each
+		int opDataSize = 0;
+		Map<ReadWriteData, Map<String, InputOperand>> dataToOperandMap = Maps.newHashMap();
 		for (String name: rule.getOperands().keySet()) {			
 			List<Product> products = isNonResource ? Lists.newArrayList(new Product[]{null}) : rule.getOperand(name).getProducts(productService);			
 			for (Product p: products) {
-				OperandKey opKey = new OperandKey(name, p);
 				ReadWriteData rwd = rule.getOperand(name).getType() == OperandType.cost ? data.getCost(p) : data.getUsage(p);
-				opData.put(opKey, rwd);
+				if (rwd == null)
+					continue;
+				
+				Map<String, InputOperand> operands = dataToOperandMap.get(rwd);
+				if (operands == null) {
+					operands = Maps.newHashMap();
+					dataToOperandMap.put(rwd, operands);
+				}
+				operands.put(name, rule.getOperand(name));
+				opDataSize++;
 			}
 		}
 		
-		logger.info("opData size: " + opData.size());
+		logger.info("opData size: " + opDataSize);
 		
 		// Get data maps for results. Handle case where we're creating a new product
 		List<ReadWriteData> resultData = Lists.newArrayList();
@@ -137,7 +147,7 @@ public class PostProcessor {
 		operandValueCache = Maps.newHashMap();
 		logger.info("  -- apply rule " + rule.config.getName() + " -- in data size = " + inData.size());
 						
-		Map<AggregationTagGroup, Map<String, Double[]>> opValues = getOperandValues(rule, inData, opData, data.getMaxNum());
+		Map<AggregationTagGroup, Map<String, Double[]>> opValues = getOperandValues(rule, inData, dataToOperandMap, data.getMaxNum());
 		int results = applyRule(rule, inData, opValues, resultData);
 		
 		logger.info("  -- data for rule " + rule.config.getName() + " -- in data size = " + inData.size() + ", --- results size = " + results);
@@ -180,25 +190,10 @@ public class PostProcessor {
 		return inValues;
 	}
 	
-	protected Map<AggregationTagGroup, Map<String, Double[]>> getOperandValues(Rule rule, Map<AggregationTagGroup, Double[]> in, Map<OperandKey, ReadWriteData> opData, int maxHours) {
+	protected Map<AggregationTagGroup, Map<String, Double[]>> getOperandValues(Rule rule, Map<AggregationTagGroup, Double[]> in, Map<ReadWriteData, Map<String, InputOperand>> dataToOperandMap, int maxHours) {
 		//logger.info("get operand values");
 		Map<AggregationTagGroup, Map<String, Double[]>> operandValueMap = Maps.newHashMap();
-		
-		// We only want to walk each ReadWriteData set once, so collect up all the operands for each
-		Map<ReadWriteData, Map<String, InputOperand>> dataToOperandMap = Maps.newHashMap();
-		for (OperandKey opKey: opData.keySet()) {
-			ReadWriteData rwd = opData.get(opKey);
-			if (rwd == null)
-				continue;
-
-			Map<String, InputOperand> operands = dataToOperandMap.get(rwd);
-			if (operands == null) {
-				operands = Maps.newHashMap();
-				dataToOperandMap.put(rwd, operands);
-			}
-			operands.put(opKey.name, rule.getOperand(opKey.name));
-		}
-		
+				
 		// Get what we can from the cache
 		Map<AggregationTagGroup, List<String>> nonCachedOperands = Maps.newHashMap();
 		for (AggregationTagGroup atg: in.keySet()) {

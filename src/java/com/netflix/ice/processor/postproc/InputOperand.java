@@ -192,6 +192,8 @@ public class InputOperand extends Operand {
 		else if (atg.getUsageType() != tg.usageType) {
 			return false;
 		}
+		if (atg.getResourceGroup() != tg.resourceGroup)
+			return false;
 		return true;
 	}
 	

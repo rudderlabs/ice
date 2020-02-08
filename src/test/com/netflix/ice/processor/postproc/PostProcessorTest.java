@@ -72,8 +72,20 @@ public class PostProcessorTest {
     	String productServiceCode;
     	String operation;
     	String usageType;
+    	String resourceGroup;
     	Double value;
     	
+    	public TagGroupSpec(DataType dataType, String account, String region, String product, String operation, String usageType, String resourceGroup, Double value) {
+    		this.dataType = dataType;
+    		this.account = account;
+    		this.region = region;
+    		this.productServiceCode = product;
+    		this.operation = operation;
+    		this.usageType = usageType;
+    		this.value = value;
+    		this.resourceGroup = resourceGroup;
+    	}
+
     	public TagGroupSpec(DataType dataType, String account, String region, String product, String operation, String usageType, Double value) {
     		this.dataType = dataType;
     		this.account = account;
@@ -82,6 +94,7 @@ public class PostProcessorTest {
     		this.operation = operation;
     		this.usageType = usageType;
     		this.value = value;
+    		this.resourceGroup = null;
     	}
 
     	public TagGroupSpec(DataType dataType, String account, String region, String operation, String usageType, Double value) {
@@ -92,14 +105,15 @@ public class PostProcessorTest {
     		this.operation = operation;
     		this.usageType = usageType;
     		this.value = value;
+    		this.resourceGroup = null;
     	}
 
     	public TagGroup getTagGroup() throws BadZone {
-    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, null, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
     	}
     	
     	public TagGroup getTagGroup(String account) throws BadZone {
-    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, null, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
     	}
     }
     
@@ -481,8 +495,10 @@ public class PostProcessorTest {
 		ReadWriteData usageData = new ReadWriteData();
 		ReadWriteData costData = new ReadWriteData();
         TagGroupSpec[] cfSpecs = new TagGroupSpec[]{
-        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-1", 1000.0),
-        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-2", 2000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-1", "Tag1", 1000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-2", "Tag1", 2000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-1", "Tag2", 1000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudFront.serviceCode, "OP1", "US-Requests-2", "Tag2", 2000.0),
         };
         loadData(cfSpecs, usageData, costData, 0);
         loadData(cfSpecs, usageData, costData, 1);
@@ -493,7 +509,8 @@ public class PostProcessorTest {
 		usageData = new ReadWriteData();
 		costData = new ReadWriteData();
         TagGroupSpec[] cwSpecs = new TagGroupSpec[]{
-        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudWatch.serviceCode, "OP1", "US-DataTransfer-Out-Bytes", 4000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudWatch.serviceCode, "OP1", "US-DataTransfer-Out-Bytes", "Tag1", 4000.0),
+        		new TagGroupSpec(DataType.usage, a1, "us-east-1", Product.Code.CloudWatch.serviceCode, "OP1", "US-DataTransfer-Out-Bytes", "Tag2", 4000.0),
         };
         loadData(cwSpecs, usageData, costData, 0);
         loadData(cwSpecs, usageData, costData, 1);
@@ -531,6 +548,7 @@ public class PostProcessorTest {
 
 	@Test
 	public void testProcessMultiProductReadWriteDataWithResourcesTwoHours() throws Exception {
+		// Test two hours of data with two different resource tags
 		CostAndUsageData data = loadMultiProductComputedCostData();
 		
 		PostProcessor pp = new PostProcessor(null, as, ps);
@@ -544,13 +562,14 @@ public class PostProcessorTest {
 		// 'in' is the sum of the two request values
 		//
 		// US: (1000 + 2000) - (4000 * 4 * 8 / 2) * 0.01 / 1000 == 3000 - 64000 * 0.00001 == 2999.36
-		TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", null).getTagGroup();
-		Double value = outCostData.getData(0).get(usReqs);
-		assertNotNull("No value for US-Requests hour 0", value);
-		assertEquals("Wrong value for US-Requests hour 0", -0.61, value, .0001);		
-		value = outCostData.getData(1).get(usReqs);
-		assertNotNull("No value for US-Requests hour 1", value);
-		assertEquals("Wrong value for US-Requests hour 1", -0.61, value, .0001);		
+		for (String tag: new String[]{"Tag1", "Tag2"}) {
+			TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", tag, null).getTagGroup();
+			for (int hour = 0; hour < 2; hour++) {
+				Double value = outCostData.getData(hour).get(usReqs);
+				assertNotNull("No value for US-Requests hour " + hour + ", tag " + tag, value);
+				assertEquals("Wrong value for US-Requests hour " + hour + ", tag " + tag, -0.61, value, .0001);
+			}
+		}
 	}
 
 }
