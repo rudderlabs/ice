@@ -18,10 +18,6 @@
 package com.netflix.ice.tag;
 
 public class FamilyTag extends Tag {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 	public FamilyTag(String name) {
@@ -29,33 +25,42 @@ public class FamilyTag extends Tag {
 	}
 	
 	public static String getFamilyName(String name) {
-		String[] tokens = name.split("\\.");
-		if (tokens[0].equals("db") && tokens.length >= 4) {
-			// RDS instance
-			StringBuilder family = new StringBuilder(32);
-			family.append(tokens[0]);			
-			family.append("." + tokens[1]);
-			
-			int endStartIndex = 3;
-			if (tokens[endStartIndex].equals("multiaz"))			
-				endStartIndex++;
-			
-			InstanceDb db = InstanceDb.valueOf(tokens[endStartIndex]);
-			if (!db.familySharing) {
-				// Don't consolidate if it doesn't support family sharing
+		if (name.contains(".")) {
+			String[] tokens = name.split("\\.");
+			if (tokens[0].equals("db") && tokens.length >= 4) {
+				// RDS instance
+				StringBuilder family = new StringBuilder(32);
+				family.append(tokens[0]);			
+				family.append("." + tokens[1]);
+				
+				int endStartIndex = 3;
+				if (tokens[endStartIndex].equals("multiaz"))			
+					endStartIndex++;
+				
+				InstanceDb db = InstanceDb.valueOf(tokens[endStartIndex]);
+				if (!db.familySharing) {
+					// Don't consolidate if it doesn't support family sharing
+					return name;
+				}
+				
+				for (int i = endStartIndex; i < tokens.length; i++)
+					family.append("." + tokens[i]);
+				
+				return family.toString();		
+			}
+			else if (tokens.length > 2) {
+				// Not a Linux EC2 instance, so don't consolidate
 				return name;
 			}
-			
-			for (int i = endStartIndex; i < tokens.length; i++)
-				family.append("." + tokens[i]);
-			
-			return family.toString();		
+			// EC2 Linux
+			return tokens[0];
 		}
-		else if (tokens.length > 2) {
-			// Not a Linux EC2 instance, so don't consolidate
-			return name;
+		else if (name.contains("-")) {
+	        int index = name.indexOf("-");
+	        if (index == 2 && Region.cloudFrontRegions.contains(name.substring(0, 2))) {
+	        	return name.substring(index+1);
+	        }
 		}
-		// EC2 Linux
-		return tokens[0];		
+		return name;
 	}
 }

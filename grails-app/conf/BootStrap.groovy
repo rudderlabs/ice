@@ -36,6 +36,7 @@ import com.netflix.ice.basic.BasicResourceService
 import com.netflix.ice.common.Config;
 import com.netflix.ice.common.IceOptions
 import com.netflix.ice.common.ProductService
+import com.netflix.ice.common.PurchaseOption
 import com.netflix.ice.common.ResourceService
 import com.netflix.ice.processor.LineItemProcessor
 import com.netflix.ice.processor.ProcessorConfig
@@ -165,22 +166,18 @@ class BootStrap {
 
 				ReservationService.ReservationPeriod reservationPeriod =
                     ReservationService.ReservationPeriod.valueOf(prop.getProperty(IceOptions.RESERVATION_PERIOD, "threeyear"));
-                ReservationService.ReservationUtilization reservationUtilization =
-                    ReservationService.ReservationUtilization.valueOf(prop.getProperty(IceOptions.RESERVATION_UTILIZATION, "HEAVY"));
+				
+                PurchaseOption reservationPurchaseOption = PurchaseOption.valueOf(prop.getProperty(IceOptions.RESERVATION_PURCHASE_OPTION, "AllUpfront"));
 				properties.setProperty(IceOptions.RESERVATION_CAPACITY_POLLER, prop.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER, "false"));
 					
-				// Resource Tagging stuff
-				String[] customTags = prop.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
-				String[] additionalTags = prop.getProperty(IceOptions.ADDITIONAL_TAGS, "").split(",");
-
-                ResourceService resourceService = StringUtils.isEmpty(prop.getProperty(IceOptions.CUSTOM_TAGS)) ? null : new BasicResourceService(productService, customTags, additionalTags);
-
+                properties.setProperty(IceOptions.CUSTOM_TAGS, prop.getProperty(IceOptions.CUSTOM_TAGS, ""));
+				properties.setProperty(IceOptions.ADDITIONAL_TAGS, prop.getProperty(IceOptions.ADDITIONAL_TAGS, ""));
+				
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
-				properties.setProperty(IceOptions.FAMILY_RI_BREAKOUT, prop.getProperty(IceOptions.FAMILY_RI_BREAKOUT, ""));
 				properties.setProperty(IceOptions.WRITE_JSON_FILES, prop.getProperty(IceOptions.WRITE_JSON_FILES, ""));
 				
 				
-				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+				ReservationService reservationService = new BasicReservationService(reservationPeriod, reservationPurchaseOption);
 				PriceListService priceListService = new PriceListService(
 					properties.getProperty(IceOptions.LOCAL_DIR), 
 					properties.getProperty(IceOptions.WORK_S3_BUCKET_NAME), 
@@ -192,7 +189,6 @@ class BootStrap {
                         credentialsProvider,
                         productService,
                         reservationService,
-                        resourceService,
 						priceListService,
 						true)
 				processorConfig.start();

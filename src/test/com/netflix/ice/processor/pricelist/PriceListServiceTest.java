@@ -26,17 +26,16 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-
 import org.joda.time.DateTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.Product;
-import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
@@ -91,21 +90,21 @@ public class PriceListServiceTest {
 	}
 	
 	private void verify(Product p) {
-		assertEquals("OnDemand rate doesn't match, expected 0.023, got " + p.onDemandRate, p.onDemandRate, 0.023, 0.001);
-		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.noUpfront, OfferingClass.standard, 0, 0.0168);
-		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard, 70, 0.008);
-		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.allUpfront, 	OfferingClass.standard, 137, 0);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.noUpfront, 		OfferingClass.standard, 0, 0.012);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.partialUpfront,	OfferingClass.standard, 145, 0.006);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.allUpfront,		OfferingClass.standard, 272, 0);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.noUpfront,		OfferingClass.convertible, 0, 0.0139);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.partialUpfront,	OfferingClass.convertible, 169, 0.0064);
-		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.allUpfront,		OfferingClass.convertible, 332, 0);
+		assertEquals("OnDemand rate doesn't match", 0.023, p.getOnDemandRate(), 0.001);
+		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.NoUpfront, OfferingClass.standard, 0, 0.0168);
+		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard, 70, 0.008);
+		verifyRate(p, LeaseContractLength.oneyear, PurchaseOption.AllUpfront, 	OfferingClass.standard, 137, 0);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.NoUpfront, 		OfferingClass.standard, 0, 0.012);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.PartialUpfront,	OfferingClass.standard, 145, 0.006);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.AllUpfront,		OfferingClass.standard, 272, 0);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.NoUpfront,		OfferingClass.convertible, 0, 0.0139);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.PartialUpfront,	OfferingClass.convertible, 169, 0.0064);
+		verifyRate(p, LeaseContractLength.threeyear, PurchaseOption.AllUpfront,		OfferingClass.convertible, 332, 0);
 	}
 	
 	private void verifyRate(Product p, LeaseContractLength lcl, PurchaseOption po, OfferingClass oc, double fixed, double hourly) {
 		RateKey rateKey = new RateKey(lcl, po, oc);
-		Rate rate = p.reservationRates.get(rateKey);
+		Rate rate = p.getReservationRate(rateKey);
 		assertNotEquals("No rate for " + rateKey, rate, null);
 		assertEquals("Reservation fixed rate for " + rateKey + " doesn't match, expected " + fixed + ", got " + rate.fixed, rate.fixed, fixed, 0.001);
 		assertEquals("Reservation hourly rate for " + rateKey + " doesn't match, expected " + hourly + ", got " + rate.hourly, rate.hourly, hourly, 0.001);		
@@ -151,7 +150,7 @@ public class PriceListServiceTest {
 		//logger.info(ip.toString());
 		
 		// Spot check some reservation rates
-		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c4.2xlarge", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c4.2xlarge", "hours"), LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 1060.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.121, rate.hourly, 0.0001);
 	}
@@ -163,11 +162,11 @@ public class PriceListServiceTest {
 		//logger.info(ip.toString());
 		
 		// Spot check some reservation rates
-		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 2593.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.45, rate.hourly, 0.0001);
 		
-		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.multiaz.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("db.m4.4xlarge.multiaz.mysql", "hours"), LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 5186.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.90, rate.hourly, 0.0001);
 	}
@@ -181,7 +180,7 @@ public class PriceListServiceTest {
 		version.versionEffectiveEndDate = "2019-02-28T23:59:59Z";
 		String versionId = "20190208201402";
 		
-		priceListService.fetch(ServiceCode.AmazonRDS, versionId, version);
+		priceListService.fetchCSV(ServiceCode.AmazonRDS, versionId, version);
 		
 		
 		version.offerVersionUrl = "/offers/v1.0/aws/AmazonRDS/20170116233509/index.json";
@@ -189,7 +188,7 @@ public class PriceListServiceTest {
 		version.versionEffectiveEndDate = "2017-01-31T23:59:59Z";
 		versionId = "20170116233509";
 		
-		priceListService.fetch(ServiceCode.AmazonRDS, versionId, version);			
+		priceListService.fetchCSV(ServiceCode.AmazonRDS, versionId, version);			
 	}
 	
 	@Test
@@ -199,11 +198,11 @@ public class PriceListServiceTest {
 		//logger.info(ip.toString());
 		
 		// Spot check some reservation rates
-		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("m5.large.elasticsearch", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("m5.large.elasticsearch", "hours"), LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 417.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.048, rate.hourly, 0.0001);
 		
-		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c5.4xlarge.elasticsearch", "hours"), LeaseContractLength.threeyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("c5.4xlarge.elasticsearch", "hours"), LeaseContractLength.threeyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 6590.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.251, rate.hourly, 0.0001);
 	}
@@ -215,13 +214,13 @@ public class PriceListServiceTest {
 		//logger.info(ip.toString());
 		
 		// Spot check some reservation rates
-		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.m5.large.redis", "hours"), LeaseContractLength.oneyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		Rate rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.m5.large.redis", "hours"), LeaseContractLength.oneyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 444.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.051, rate.hourly, 0.0001);
 		
-		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.r5.4xlarge.memcached", "hours"), LeaseContractLength.threeyear, PurchaseOption.partialUpfront, OfferingClass.standard);
+		rate = ip.getReservationRate(Region.US_WEST_2, UsageType.getUsageType("cache.r5.4xlarge.memcached", "hours"), LeaseContractLength.threeyear, PurchaseOption.PartialUpfront, OfferingClass.standard);
 		assertEquals("Fixed rate should be ", 10899.0, rate.fixed, 0.0001);
 		assertEquals("Hourly rate should be ", 0.415, rate.hourly, 0.0001);
 	}
-	
+    
 }

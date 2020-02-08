@@ -39,11 +39,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
-import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
@@ -180,7 +180,7 @@ public class DataJsonWriter extends DataFile {
             if (costMap.size() == 0)
             	continue;
         	
-            Map<TagGroup, Double> usageMap = dailyUsage.get(day);
+            Map<TagGroup, Double> usageMap = dailyUsage.size() > day ? dailyUsage.get(day) : null;
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	Double usageValue = usageMap == null ? null : usageMap.get(costEntry.getKey());
             	Item item = new Item(dtf.print(monthDateTime.plusDays(day)), costEntry.getKey(), costEntry.getValue(), usageValue, false);
@@ -223,16 +223,16 @@ public class DataJsonWriter extends DataFile {
 		
 		public NormalizedRate(InstancePrices.Product product, LeaseContractLength lcl, OfferingClass oc) {
 			double nsf = product.normalizationSizeFactor;
-			InstancePrices.Rate rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.noUpfront, oc));
+			InstancePrices.Rate rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.NoUpfront, oc));
 			this.noUpfrontHourly = rate != null && rate.hourly > 0 ? rate.hourly / nsf : null;
 			
-			rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.partialUpfront, oc));
+			rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.PartialUpfront, oc));
 			if (rate != null) {
 				this.partialUpfrontFixed = rate.fixed > 0 ? rate.fixed / nsf : null;
 				this.partialUpfrontHourly = rate.hourly > 0 ? rate.hourly / nsf : null;
 			}
 			
-			rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.allUpfront, oc));
+			rate = product.getReservationRate(new RateKey(lcl, PurchaseOption.AllUpfront, oc));
 			this.allUpfrontFixed = rate != null && rate.fixed > 0 ? rate.fixed / nsf : null;
 		}
 		

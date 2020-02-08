@@ -50,11 +50,11 @@ public class InstancesTest {
 		String id = "i-17f85eef87efb7a53";
 		
 		Instances instances = new Instances(null, null, null);
-		instances.add(id, 0, "c4.2xlarge", tags, account, Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), ps.getProductByName(Product.ec2));
+		instances.add(id, 0, "c4.2xlarge", tags, account, Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), ps.getProduct(Product.Code.Ec2));
 		String[] originalValues = instances.get("i-17f85eef87efb7a53").values();
 		StringWriter writer = new StringWriter();
 		
-		String expected = id + ",c4.2xlarge,123456789012," + account.getIceName() + ",us-east-1,us-east-1a,EC2,\"Name=" + tagValue + "\"\r";
+		String expected = id + ",c4.2xlarge,123456789012," + account.getIceName() + ",us-east-1,us-east-1a,AmazonEC2,\"Name=" + tagValue + "\"\r";
 		instances.writeCsv(writer);
 		String[] lines = writer.toString().split("\n");
 		assertEquals("wrong number of lines", 2, lines.length);

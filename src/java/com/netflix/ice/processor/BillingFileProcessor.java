@@ -28,6 +28,7 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.processor.kubernetes.KubernetesProcessor;
+import com.netflix.ice.processor.postproc.PostProcessor;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Operation.ReservationOperation;
@@ -84,7 +85,7 @@ public class BillingFileProcessor extends Poller {
         
         for (DateTime dataTime: reportsToProcess.keySet()) {
             startMilli = endMilli = dataTime.getMillis();
-            init();
+            init(startMilli);
             
             long lastProcessed = lastProcessTime(AwsUtils.monthDateFormat.print(dataTime));
             long processTime = new DateTime(DateTimeZone.UTC).getMillis();
@@ -133,7 +134,16 @@ public class BillingFileProcessor extends Poller {
             
             // Get the reservation processor from the first report
             ReservationProcessor reservationProcessor = reportsToProcess.get(dataTime).get(0).getProcessor().getReservationProcessor();
-            ReservationService reservationService = costAndUsageData.hasReservations() ? new BasicReservationService(costAndUsageData.getReservations()) : config.reservationService;
+            ReservationService reservationService = config.reservationService;
+            if (costAndUsageData.hasReservations()) {
+            	// Use the reservations pulled from the CUR rather than those pulled by the capacity poller from the individual accounts.
+            	logger.info("Process " + costAndUsageData.getReservations().size() + " reservations pulled from the CUR");
+            	reservationService = new BasicReservationService(costAndUsageData.getReservations());
+            }
+            else {
+            	logger.info("Process reservations pulled from the accounts");
+            }
+            SavingsPlanProcessor savingsPlanProcessor = new SavingsPlanProcessor(costAndUsageData, config.accountService);
 
     		// Initialize the price lists
         	Map<Product, InstancePrices> prices = Maps.newHashMap();
@@ -142,10 +152,10 @@ public class BillingFileProcessor extends Poller {
         		Product prod = null;
         		switch (sc) {
         		case AmazonEC2:
-            		prod = config.productService.getProductByName(Product.ec2Instance);
+            		prod = config.productService.getProduct(Product.Code.Ec2Instance);
             		break;
         		case AmazonRDS:
-        			prod = config.productService.getProductByName(Product.rdsInstance);
+        			prod = config.productService.getProduct(Product.Code.RdsInstance);
         			break;
         		default:
         			prod = config.productService.getProductByServiceCode(sc.name());
@@ -159,16 +169,22 @@ public class BillingFileProcessor extends Poller {
             		}
                 	reservationProcessor.process(reservationService, costAndUsageData, prod, dataTime, prices);
             	}
+            	savingsPlanProcessor.process(prod);
         	}
         	
         	reservationProcessor.process(reservationService, costAndUsageData, null, dataTime, prices);
+        	savingsPlanProcessor.process(null);
         	            
             logger.info("adding savings data for " + dataTime + "...");
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
-            addSavingsData(dataTime, costAndUsageData, config.productService.getProductByName(Product.ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
+            addSavingsData(dataTime, costAndUsageData, config.productService.getProduct(Product.Code.Ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             
             KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
+            
+            // Run the post processor
+            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService);
+            pp.process(costAndUsageData);
 
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
@@ -177,7 +193,7 @@ public class BillingFileProcessor extends Poller {
             config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(startMilli, config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
+            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
             
             logger.info("archiving instance data...");
             archiveInstances();
@@ -246,8 +262,8 @@ public class BillingFileProcessor extends Poller {
     }
     
 
-    void init() {
-    	costAndUsageData = new CostAndUsageData(config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(),
+    void init(long startMilli) {
+    	costAndUsageData = new CostAndUsageData(startMilli, config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(),
     			config.getTagCoverage(), config.accountService, config.productService);
         instances = new Instances(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }

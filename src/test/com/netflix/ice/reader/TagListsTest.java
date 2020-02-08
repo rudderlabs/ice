@@ -68,7 +68,7 @@ public class TagListsTest {
 						resourceGroups
 						);
 				
-				TagGroup tg = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProductByName("Product"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup(resourceGroupName, isProductName));
+				TagGroup tg = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProduct("Product", "ProductCode"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup(resourceGroupName, isProductName));
 				ResourceGroup resourceGroupInTagLists = resourceGroups == null || resourceGroups.size() == 0 ? null : resourceGroups.get(0);
 				if (shouldBeTrue)
 					assertTrue("TagGroup not found in TagLists, resource group name: " + resourceGroupName + ", groups: " + resourceGroupInTagLists, tagLists.contains(tg));

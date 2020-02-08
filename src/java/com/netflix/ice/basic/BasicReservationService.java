@@ -20,6 +20,7 @@ package com.netflix.ice.basic;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -39,20 +40,20 @@ public class BasicReservationService implements ReservationService {
     protected Logger logger = LoggerFactory.getLogger(getClass());
     
     final protected ReservationPeriod term;
-    final protected ReservationUtilization defaultUtilization;
+    final protected PurchaseOption defaultPurchaseOption;
     protected Map<ReservationArn, Reservation> reservationsByArn;
     protected Long futureMillis = new DateTime().withYearOfCentury(99).getMillis();
     private Set<Product> hasReservations;
     // Following map used only for DBR processing
-    protected Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations;
+    protected Map<PurchaseOption, Map<TagGroup, List<Reservation>>> reservations;
 
-    public BasicReservationService(ReservationPeriod term, ReservationUtilization defaultUtilization) {
+    public BasicReservationService(ReservationPeriod term, PurchaseOption defaultPurchaseOption) {
         this.term = term;
-        this.defaultUtilization = defaultUtilization;
+        this.defaultPurchaseOption = defaultPurchaseOption;
 
         reservations = Maps.newHashMap();
-        for (ReservationUtilization utilization: ReservationUtilization.values()) {
-            reservations.put(utilization, Maps.<TagGroup, List<Reservation>>newHashMap());
+        for (PurchaseOption purchaseOption: PurchaseOption.values()) {
+            reservations.put(purchaseOption, Maps.<TagGroup, List<Reservation>>newHashMap());
         }
         reservationsByArn = Maps.newHashMap();
         hasReservations = Sets.newHashSet();
@@ -60,17 +61,17 @@ public class BasicReservationService implements ReservationService {
     
     public BasicReservationService(Map<ReservationArn, Reservation> reservations) {
     	this.term = null;
-    	this.defaultUtilization = null;
+    	this.defaultPurchaseOption = null;
     	this.reservationsByArn = reservations;
     	updateHasSet();
     }
 
     // For testing
     public void injectReservation(Reservation res) {
-    	reservationsByArn.put(res.tagGroup.reservationArn, res);
+    	reservationsByArn.put(res.tagGroup.arn, res);
     }
     
-    public void setReservations(Map<ReservationUtilization, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsByArn) {
+    public void setReservations(Map<PurchaseOption, Map<TagGroup, List<Reservation>>> reservations, Map<ReservationArn, Reservation> reservationsByArn) {
     	this.reservations = reservations;
     	this.reservationsByArn = reservationsByArn;
     	updateHasSet();    	
@@ -95,7 +96,7 @@ public class BasicReservationService implements ReservationService {
     	final public int count;
     	final public long start; // Reservation start time rounded down to starting hour mark where it takes effect
     	final public long end; // Reservation end time rounded down to ending hour mark where reservation actually ends
-    	final public ReservationUtilization utilization;
+    	final public PurchaseOption purchaseOption;
     	final public double hourlyFixedPrice; // Per-hour amortization of any up-front cost per instance
     	final public double usagePrice; // Per-hour cost for each reserved instance
 
@@ -104,14 +105,14 @@ public class BasicReservationService implements ReservationService {
                 int count,
                 long start,
                 long end,
-                ReservationUtilization utilization,
+                PurchaseOption purchaseOption,
                 double hourlyFixedPrice,
                 double usagePrice) {
         	this.tagGroup = tagGroup;
             this.count = count;
             this.start = start;
             this.end = end;
-            this.utilization = utilization;
+            this.purchaseOption = purchaseOption;
             this.hourlyFixedPrice = hourlyFixedPrice;
             this.usagePrice = usagePrice;
         }
@@ -121,8 +122,8 @@ public class BasicReservationService implements ReservationService {
         return 0;
     }
 
-    public ReservationUtilization getDefaultReservationUtilization(long time) {
-        return defaultUtilization;
+    public PurchaseOption getDefaultPurchaseOption(long time) {
+        return defaultPurchaseOption;
     }
     
     /*
@@ -142,7 +143,7 @@ public class BasicReservationService implements ReservationService {
     	Set<ReservationArn> arns = Sets.newHashSet();
     	for (Reservation r: reservationsByArn.values()) {
     		if (time >= r.start && time < r.end && (product == null || r.tagGroup.product == product))
-    			arns.add(r.tagGroup.reservationArn);
+    			arns.add(r.tagGroup.arn);
     	}
     	return arns;
     }
@@ -154,11 +155,11 @@ public class BasicReservationService implements ReservationService {
     /*
      * The following methods are used exclusively by Detailed Billing Report Reservation Processor
      */
-    public Collection<TagGroup> getTagGroups(ReservationUtilization utilization, Long startMilli, Product product) {
+    public Collection<TagGroup> getTagGroups(PurchaseOption purchaseOption, Long startMilli, Product product) {
     	// Only return tagGroups with active reservations for the requested start time
     	Set<TagGroup> tagGroups = Sets.newHashSet();
-    	for (TagGroup t: reservations.get(utilization).keySet()) {
-    		List<Reservation> resList = reservations.get(utilization).get(t);
+    	for (TagGroup t: reservations.get(purchaseOption).keySet()) {
+    		List<Reservation> resList = reservations.get(purchaseOption).get(t);
     		for (Reservation r: resList) {
 	            if (startMilli >= r.start && startMilli < r.end && (product == null || r.tagGroup.product == product)) {
 	            	tagGroups.add(t);
@@ -172,15 +173,15 @@ public class BasicReservationService implements ReservationService {
     public ReservationInfo getReservation(
         long time,
         TagGroup tagGroup,
-        ReservationUtilization utilization,
+        PurchaseOption purchaseOption,
         InstancePrices instancePrices) {
 
 	    double upfrontAmortized = 0;
 	    double hourlyCost = 0;
 	
 	    int count = 0;
-	    if (this.reservations.get(utilization).containsKey(tagGroup)) {
-	        for (Reservation reservation : this.reservations.get(utilization).get(tagGroup)) {
+	    if (this.reservations.get(purchaseOption).containsKey(tagGroup)) {
+	        for (Reservation reservation : this.reservations.get(purchaseOption).get(tagGroup)) {
 	            if (time >= reservation.start && time < reservation.end) {
 	                count += reservation.count;
 	
@@ -190,7 +191,7 @@ public class BasicReservationService implements ReservationService {
 	        }
 	    }
 	    else {
-	        logger.debug("Not able to find " + utilization.name() + " reservation at " + AwsUtils.dateFormatter.print(time) + " for " + tagGroup);
+	        logger.debug("Not able to find " + purchaseOption.name() + " reservation at " + AwsUtils.dateFormatter.print(time) + " for " + tagGroup);
 	    }
 	    
 	    if (count == 0) {
@@ -200,11 +201,11 @@ public class BasicReservationService implements ReservationService {
 	    	// for this usage. Pull the prices from the price list.
 	        if (tagGroup.product.isEc2Instance()) {
 				try {
-					Rate rate = instancePrices.getReservationRate(tagGroup.region, tagGroup.usageType, LeaseContractLength.getByYears(term.years), utilization.getPurchaseOption(), OfferingClass.standard);
+					Rate rate = instancePrices.getReservationRate(tagGroup.region, tagGroup.usageType, LeaseContractLength.getByYears(term.years), purchaseOption, OfferingClass.standard);
 					upfrontAmortized = rate.getHourlyUpfrontAmortized(LeaseContractLength.getByYears(term.years));
 					hourlyCost = rate.hourly;
 				} catch (Exception e) {
-		            logger.error("Not able to find EC2 reservation price for " + utilization.name() + " " + tagGroup.usageType + " in " + tagGroup.region);
+		            logger.error("Not able to find EC2 reservation price for " + purchaseOption.name() + " " + tagGroup.usageType + " in " + tagGroup.region);
 				}
 	    	}
 	    }

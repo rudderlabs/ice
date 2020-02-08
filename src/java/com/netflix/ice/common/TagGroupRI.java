@@ -42,51 +42,18 @@ import com.netflix.ice.tag.Zone.BadZone;
  * Detailed Billing Reports. TagGroupRIs are converted to TagGroups by the ReservationProcessor
  * once RI usage calculations are done, so only TagGroups are serialized to external data files.
  */
-public class TagGroupRI extends TagGroup {
+public class TagGroupRI extends TagGroupArn<ReservationArn> {
 	private static final long serialVersionUID = 1L;
 	
-	public final ReservationArn reservationArn;
-
 	private TagGroupRI(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
 			ResourceGroup resourceGroup, ReservationArn reservationArn) {
 		super(account, region, zone, product, operation, usageType,
-				resourceGroup);
-		this.reservationArn = reservationArn;
+				resourceGroup, reservationArn);
 	}
-
-    @Override
-    public String toString() {
-        return super.toString() + ",\"" + reservationArn + "\"";
-    }
-
-    @Override
-    public String compareKey() {
-    	return reservationArn.name;
-    }
-    
-    @Override
-    public boolean equals(Object o) {
-    	if (this == o)
-    		return true;
-        if (o == null)
-            return false;
-        if (!super.equals(o))
-        	return false;
-        TagGroupRI other = (TagGroupRI)o;
-        return this.reservationArn == other.reservationArn;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + ((this.reservationArn != null) ? this.reservationArn.hashCode() : 0);
-        return result;
-    }
     
     private static Map<TagGroupRI, TagGroupRI> tagGroups = Maps.newConcurrentMap();
-
+    
     public static TagGroupRI get(TagGroup tg) {
     	if (tg instanceof TagGroupRI)
     		return (TagGroupRI) tg;
@@ -98,7 +65,7 @@ public class TagGroupRI extends TagGroup {
         return get(
     		accountService.getAccountByName(account),
         	r, StringUtils.isEmpty(zone) ? null : r.getZone(zone),
-        	productService.getProductByName(product),
+        	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
             StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)),

@@ -41,6 +41,7 @@ import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
@@ -52,6 +53,7 @@ import com.netflix.ice.tag.ReservationArn;
 public class CostAndUsageData {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
+    private final long startMilli;
     private Map<Product, ReadWriteData> usageDataByProduct;
     private Map<Product, ReadWriteData> costDataByProduct;
     private final WorkBucketConfig workBucketConfig;
@@ -61,8 +63,10 @@ public class CostAndUsageData {
     private List<String> userTags;
     private boolean collectTagCoverageWithUserTags;
     private Map<ReservationArn, Reservation> reservations;
+    private Map<String, SavingsPlan> savingsPlans;
     
-	public CostAndUsageData(WorkBucketConfig workBucketConfig, List<String> userTags, Config.TagCoverage tagCoverage, AccountService accountService, ProductService productService) {
+	public CostAndUsageData(long startMilli, WorkBucketConfig workBucketConfig, List<String> userTags, Config.TagCoverage tagCoverage, AccountService accountService, ProductService productService) {
+		this.startMilli = startMilli;
 		this.usageDataByProduct = Maps.newHashMap();
 		this.costDataByProduct = Maps.newHashMap();
         this.usageDataByProduct.put(null, new ReadWriteData());
@@ -78,6 +82,11 @@ public class CostAndUsageData {
         	this.tagCoverage.put(null, new ReadWriteTagCoverageData(userTags.size()));
         }
         this.reservations = Maps.newHashMap();
+        this.savingsPlans = Maps.newHashMap();
+	}
+	
+	public long getStartMilli() {
+		return startMilli;
 	}
 	
 	public ReadWriteData getUsage(Product product) {
@@ -137,6 +146,8 @@ public class CostAndUsageData {
 				}
 			}	
 		}
+		reservations.putAll(data.reservations);
+		savingsPlans.putAll(data.savingsPlans);
 	}
 	
     public void cutData(int hours) {
@@ -148,8 +159,21 @@ public class CostAndUsageData {
         }
     }
     
+    public int getMaxNum() {
+    	// return the maximum number of hours represented in the underlying maps
+    	int max = 0;
+    	
+        for (ReadWriteData data: usageDataByProduct.values()) {
+            max = max < data.getNum() ? data.getNum() : max;
+        }
+        for (ReadWriteData data: costDataByProduct.values()) {
+            max = max < data.getNum() ? data.getNum() : max;
+        }
+        return max;
+    }
+    
     public void addReservation(Reservation reservation) {
-    	reservations.put(reservation.tagGroup.reservationArn, reservation);
+    	reservations.put(reservation.tagGroup.arn, reservation);
     }
     
     public Map<ReservationArn, Reservation> getReservations() {
@@ -160,11 +184,29 @@ public class CostAndUsageData {
     	return reservations != null && reservations.size() > 0;
     }
     
+    public void addSavingsPlan(String arn, PurchaseOption paymentOption, String hourlyRecurringFee, String hourlyAmortization) {
+    	if (savingsPlans.containsKey(arn))
+    		return;
+		SavingsPlan plan = new SavingsPlan(arn,
+				paymentOption,
+				Double.parseDouble(hourlyRecurringFee), 
+				Double.parseDouble(hourlyAmortization));
+    	savingsPlans.put(arn, plan);
+    }
+    
+    public Map<String, SavingsPlan> getSavingsPlans() {
+    	return savingsPlans;
+    }
+    
+    public boolean hasSavingsPlans() {
+    	return savingsPlans != null && savingsPlans.size() > 0;
+    }
+    
     /**
      * Add an entry to the tag coverage statistics for the given TagGroup
      */
     public void addTagCoverage(Product product, int index, TagGroup tagGroup, boolean[] userTagCoverage) {
-    	if (tagCoverage == null || !tagGroup.product.hasResourceTags()) {
+    	if (tagCoverage == null || !tagGroup.product.enableTagCoverage()) {
     		return;
     	}
     	
@@ -182,24 +224,24 @@ public class CostAndUsageData {
     	hourData.put(tagGroup, TagCoverageMetrics.add(hourData.get(tagGroup), userTagCoverage));
     }
 
-    public void archive(long startMilli, DateTime startDate, boolean compress, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, PriceListService priceListService, int numThreads) throws Exception {
+    public void archive(DateTime startDate, boolean compress, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, PriceListService priceListService, int numThreads) throws Exception {
     	ExecutorService pool = Executors.newFixedThreadPool(numThreads);
     	List<Future<Void>> futures = Lists.newArrayList();
     	
     	for (JsonFileType jft: jsonFiles)
-        	futures.add(archiveJson(startMilli, jft, instanceMetrics, priceListService, pool));
+        	futures.add(archiveJson(jft, instanceMetrics, priceListService, pool));
     	
         for (Product product: costDataByProduct.keySet()) {
         	futures.add(archiveTagGroups(startMilli, product, pool));
         }
 
-        archiveSummary(startMilli, startDate, usageDataByProduct, "usage_", compress, pool, futures);
-        archiveSummary(startMilli, startDate, costDataByProduct, "cost_", compress, pool, futures);
-        archiveSummaryTagCoverage(startMilli, startDate, compress, pool, futures);
+        archiveSummary(startDate, usageDataByProduct, "usage_", compress, pool, futures);
+        archiveSummary(startDate, costDataByProduct, "cost_", compress, pool, futures);
+        archiveSummaryTagCoverage(startDate, compress, pool, futures);
 
-        archiveHourly(startMilli, usageDataByProduct, "usage_", compress, pool, futures);
-        archiveHourly(startMilli, costDataByProduct, "cost_", compress, pool, futures);  
-        //archiveHourlyTagCoverage(startMilli, compress);
+        archiveHourly(usageDataByProduct, "usage_", compress, pool, futures);
+        archiveHourly(costDataByProduct, "cost_", compress, pool, futures);  
+        //archiveHourlyTagCoverage(compress);
 
     
 		// Wait for completion
@@ -208,7 +250,7 @@ public class CostAndUsageData {
 		}
     }
     
-    private Future<Void> archiveJson(final long startMilli, final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
+    private Future<Void> archiveJson(final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
     	return pool.submit(new Callable<Void>() {
     		@Override
     		public Void call() throws Exception {
@@ -235,7 +277,7 @@ public class CostAndUsageData {
     	});        
     }
     
-    private void archiveHourly(long startMilli, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
             String prodName = product == null ? "all" : product.getServiceCode();
@@ -255,7 +297,7 @@ public class CostAndUsageData {
     	});
     }
 
-//    private void archiveHourlyTagCoverage(long startMilli, boolean compress) throws Exception {
+//    private void archiveHourlyTagCoverage(boolean compress) throws Exception {
 //    	logger.info("archiving tag coverage data... ");
 //        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 //        for (Product product: tagCoverage.keySet()) {
@@ -272,7 +314,7 @@ public class CostAndUsageData {
     }
 
 
-    private void archiveSummary(long startMilli, DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveSummary(DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
 
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 
@@ -376,7 +418,7 @@ public class CostAndUsageData {
     /**
      * Archive summary data for tag coverage. For tag coverage, we don't keep hourly data.
      */
-    private void archiveSummaryTagCoverage(long startMilli, DateTime startDate, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveSummaryTagCoverage(DateTime startDate, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
     	if (tagCoverage == null) {
     		return;
     	}

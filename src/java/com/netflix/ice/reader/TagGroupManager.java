@@ -151,7 +151,7 @@ public interface TagGroupManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation);
+    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent);
     
     /**
      * Get map of tag lists based on group by.
@@ -161,7 +161,7 @@ public interface TagGroupManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, int userTagGroupByIndex);
+    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent, int userTagGroupByIndex);
     
     /**
      * Get sizes of the data

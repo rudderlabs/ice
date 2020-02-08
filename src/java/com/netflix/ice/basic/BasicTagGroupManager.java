@@ -231,7 +231,22 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
 
     public Collection<Region> getRegions(Interval interval, TagLists tagLists) {
-        Set<Region> result = Sets.newTreeSet();
+    	class RegionComparator implements Comparator<Region> {
+
+			@Override
+			public int compare(Region o1, Region o2) {
+				if (o1 == o2)
+					return 0;
+				if (o1 == Region.GLOBAL)
+					return -1;
+				if (o2 == Region.GLOBAL)
+					return 1;
+				
+				return o1.compareTo(o2);
+			}    		
+    	}
+    	
+        Set<Region> result = Sets.newTreeSet(new RegionComparator());
         Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
 
         for (TagGroup tagGroup: tagGroupsInRange) {
@@ -359,10 +374,10 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         return totalInterval == null ? null : totalInterval.overlap(interval);
     }
 
-    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation) {
-    	return getTagListsMap(interval, tagLists, groupBy, forReservation, 0);
+    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent) {
+    	return getTagListsMap(interval, tagLists, groupBy, forReservation, showLent, 0);
     }
-    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, int userTagGroupByIndex) {
+    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent, int userTagGroupByIndex) {
         Map<Tag, TagLists> result = Maps.newHashMap();
         
         // Get all the GroupBy tags. If we're not grouping by ResourceGroup or Tag, then work with a TagLists that doesn't contain resourceGroups.
@@ -375,11 +390,11 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         }
         
         // If not the reservations dashboard, we must always specify all the operations so that we can remove
-        // EC2 Instance Savings and Lent Operations
+        // EC2 Instance Savings and choose between Borrowed and Lent Operations so we don't double count the cost
         if (!forReservation && (tagListsForTag.operations == null || tagListsForTag.operations.size() == 0)) {
         	List<Operation> ops = Lists.newArrayList();
         	for (Operation op: getOperations(interval, tagListsForTag)) {
-        		if (op.isLent() || op.isSavings())
+        		if ((showLent ? op.isBorrowed() : op.isLent()) || op.isSavings())
         			continue;
         		ops.add(op);
         	}
@@ -431,32 +446,33 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         
         boolean groupByOperationOnReservationDashboard = groupBy == TagType.Operation && forReservation;
         
+        for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
+            groupByTags.remove(op);
         if (!groupByOperationOnReservationDashboard) {
-            for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
-                groupByTags.remove(lentOp);
-			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
+			for (Operation savingsOp: Operation.savingsOperations)
 				groupByTags.remove(savingsOp);
         }
         for (Tag tag: groupByTags) {
             if (tagLists.contains(tag, groupBy, userTagGroupByIndex)) {
                 //logger.info("get tag lists for " + tag + ", " + groupByOperationOnReservationDashboard);
                 TagLists tmp = tagLists.getTagLists(tag, groupBy, userTagGroupByIndex);
-                if (!groupByOperationOnReservationDashboard) {
-                	// Don't include savings or lent operations if we're not doing groupBy Operation on the Reservation Dashboard
-                    if (tmp.operations == null || tmp.operations.size() == 0) {
-                    	//logger.info("       get new operations list and remove lent and savings ops");
-                    	TagLists tl = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, tmp.operations, tmp.usageTypes);
-                        List<Operation> operations = Lists.newArrayList(getOperations(interval, tl));
-                        //logger.info("     operations: " + operations);
-                        tmp = tmp.copyWithOperations(operations);
-                    }
-                    for (Operation.ReservationOperation lentOp: Operation.getLentOperations())
-                        tmp.operations.remove(lentOp);
-        			for (Operation.ReservationOperation savingsOp: Operation.getSavingsOperations())
-        				tmp.operations.remove(savingsOp);
-        			
-        			//logger.info("          taglists: " + tmp);
+                if (tmp.operations == null || tmp.operations.size() == 0) {
+                	//logger.info("       get new operations list and remove lent and savings ops");
+                	TagLists tl = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, tmp.operations, tmp.usageTypes);
+                    List<Operation> operations = Lists.newArrayList(getOperations(interval, tl));
+                    //logger.info("     operations: " + operations);
+                    tmp = tmp.copyWithOperations(operations);
                 }
+                // Only include one of lent or borrowed based on showLent flag
+                for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
+                    tmp.operations.remove(op);
+                
+            	// Don't include savings if we're not doing groupBy Operation on the Reservation Dashboard
+                if (!groupByOperationOnReservationDashboard) {
+        			for (Operation savingsOp: Operation.savingsOperations)
+        				tmp.operations.remove(savingsOp);
+                }
+        			
                 result.put(tag, tmp);
             }
         }

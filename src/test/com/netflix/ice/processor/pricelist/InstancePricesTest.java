@@ -26,9 +26,9 @@ import java.io.InputStream;
 
 import org.junit.Test;
 
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.LeaseContractLength;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
-import com.netflix.ice.processor.pricelist.InstancePrices.PurchaseOption;
 import com.netflix.ice.processor.pricelist.InstancePrices.Rate;
 import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.VersionIndex.Version;
@@ -87,10 +87,10 @@ public class InstancePricesTest {
        	prices.importPriceList(priceList, PriceListService.tenancies);
        	
        	TestCase[] testCases = new TestCase[] {
-       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.oneyear, PurchaseOption.allUpfront, OfferingClass.standard),
-       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.threeyear, PurchaseOption.allUpfront, OfferingClass.standard),
-       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.threeyear, PurchaseOption.allUpfront, OfferingClass.convertible),
-       			new TestCase(Region.AP_SOUTHEAST_1, "c5.9xlarge.linsqlent", LeaseContractLength.oneyear, PurchaseOption.allUpfront, OfferingClass.standard),
+       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.oneyear, PurchaseOption.AllUpfront, OfferingClass.standard),
+       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.threeyear, PurchaseOption.AllUpfront, OfferingClass.standard),
+       			new TestCase(Region.US_EAST_1, "t2.small", LeaseContractLength.threeyear, PurchaseOption.AllUpfront, OfferingClass.convertible),
+       			new TestCase(Region.AP_SOUTHEAST_1, "c5.9xlarge.linsqlent", LeaseContractLength.oneyear, PurchaseOption.AllUpfront, OfferingClass.standard),
        	};
        	
        	for (TestCase tc: testCases) {

@@ -144,7 +144,7 @@ public class IceOptions {
     public static final String CUSTOM_TAGS = "ice.customTags";
 
     /**
-     * User can configure their additional tags to add to custom tags displayed in code coverage dashboard.
+     * User can configure their additional tags to add to custom tags displayed in tag coverage dashboard.
      */
     public static final String ADDITIONAL_TAGS = "ice.additionalTags";
 
@@ -217,17 +217,12 @@ public class IceOptions {
     /**
      * default reservation utilization, possible values are HEAVY and HEAVY_PARTIAL.
      */
-    public static final String RESERVATION_UTILIZATION = "ice.reservationUtilization";
+    public static final String RESERVATION_PURCHASE_OPTION = "ice.reservationPurchaseOption";
     
     /**
      * Reservation capacity poller: whether or not to start reservation capacity poller
      */
     public static final String RESERVATION_CAPACITY_POLLER = "ice.reservationCapacityPoller";
-
-    /**
-     * Reservation capacity poller: whether or not to start reservation capacity poller
-     */
-    public static final String FAMILY_RI_BREAKOUT = "ice.breakoutFamilyReservationUsage";
 
     /**
      * write JSON data files for ingest into services such as ElasticSearch

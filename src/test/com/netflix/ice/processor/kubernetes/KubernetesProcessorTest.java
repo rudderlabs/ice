@@ -36,7 +36,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
-import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
@@ -62,9 +61,7 @@ public class KubernetesProcessorTest {
 	private static final String resourceDir = "src/test/resources/";
 	private static final int testDataHour = 395;
 
-	private String[] customTagNames = new String[]{ "Cluster", "Role", "Namespace", "Environment" };
     private ProductService productService = new BasicProductService();
-    private ResourceService resourceService = new BasicResourceService(productService, customTagNames, new String[]{});
     
 	class TestConfig extends ProcessorConfig {
 
@@ -72,11 +69,10 @@ public class KubernetesProcessorTest {
 				AWSCredentialsProvider credentialsProvider,
 				ProductService productService,
 				ReservationService reservationService,
-				ResourceService resourceService,
 				PriceListService priceListService, boolean compress, String[] formulae)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
-					reservationService, resourceService,
+					reservationService,
 					priceListService, compress);
 			
 			initKubernetesConfigs(formulae);
@@ -142,14 +138,14 @@ public class KubernetesProcessorTest {
 		@Override
 		protected List<KubernetesReport> getReportsToProcess(DateTime start) throws IOException {
 	        List<KubernetesReport> filesToProcess = Lists.newArrayList();
-        	filesToProcess.add(new TestKubernetesReport(config.kubernetesConfigs.get(0)));
+        	filesToProcess.add(new TestKubernetesReport(config.kubernetesConfigs.get(0), config.resourceService));
 			return filesToProcess;
 		}
 	}
 	
 	class TestKubernetesReport extends KubernetesReport {
 
-		public TestKubernetesReport(KubernetesConfig config) {
+		public TestKubernetesReport(KubernetesConfig config, ResourceService resourceService) {
 			super(null, null, new DateTime("2019-01", DateTimeZone.UTC), config, resourceService);
 
 			File file = new File(resourceDir, "kubernetes-2019-01.csv");
@@ -169,13 +165,13 @@ public class KubernetesProcessorTest {
         props.setProperty(IceOptions.WORK_S3_BUCKET_REGION, "us-east-1");
         props.setProperty(IceOptions.BILLING_S3_BUCKET_NAME, "bar");
         props.setProperty(IceOptions.BILLING_S3_BUCKET_REGION, "us-east-1");
+        props.setProperty(IceOptions.CUSTOM_TAGS, "Cluster,Role,Namespace,Environment");
         
 		ProcessorConfig config = new TestConfig(
 				props,
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            resourceService,
 	            null,
 	            true, formulae);
 		
@@ -186,7 +182,7 @@ public class KubernetesProcessorTest {
         List<Account> accounts = Lists.newArrayList(new Account("123456789012", "Account1", null));
 
 		Zone us_west_2a = Region.US_WEST_2.getZone("us-west-2a");
-		Product ec2Instance = productService.getProductByName(Product.ec2Instance);
+		Product ec2Instance = productService.getProduct(Product.Code.Ec2Instance);
 		UsageType usageType = UsageType.getUsageType("r5.4xlarge", "hours");
 		
 		String[] tags = new String[]{ clusterName, "compute", "", "Dev", };
@@ -201,7 +197,7 @@ public class KubernetesProcessorTest {
 		KubernetesConfig kc = new KubernetesConfig();
 		kc.setTags(new ArrayList<String>());
 		kc.setNamespaceTag("Namespace");
-		TestKubernetesReport tkr = new TestKubernetesReport(kc);
+		TestKubernetesReport tkr = new TestKubernetesReport(kc, kp.config.resourceService);
 		
 		// Test the data for cluster "dev-usw2a"
 		String clusterName = "dev-usw2a";

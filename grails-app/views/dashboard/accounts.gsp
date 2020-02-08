@@ -24,6 +24,15 @@
 </head>
 <body>
 <div class="" style="margin: auto; width: 1200px; padding: 20px 30px" ng-controller="accountsCtrl">
+  <h1>Accounts  	
+	    <span class="resourcesButtons">
+	      <input ng-model="filter_accounts" type="text" class="resourcesFilter" placeholder="Filter"/>&nbsp;
+	      <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
+	       ng-click="download()"
+	       ng-disabled="accounts.length == 0">Download</a>	       
+	    </span>
+  </h1>
+  
   <div class="list">
 	  <table style="width: 100%;">
 	    <thead>
@@ -38,7 +47,7 @@
 	    </tr>
 	    </thead>
 	    <tbody>
-	    <tr ng-repeat="account in accounts" class="{{getTrClass($index)}}">
+	    <tr ng-repeat="account in accounts | filter:filter_accounts" class="{{getTrClass($index)}}">
 	      <td>{{account.name}}</td>
 	      <td>{{account.awsName}}</td>
 	      <td>{{account.id}}</td>
@@ -50,11 +59,6 @@
 	    </tbody>
 	  </table>
   </div>
-  <div class="buttons">
-    <a href="javascript:void(0)" style="background-image: url(${resource(dir: '/')}images/tango/16/actions/document-save.png)"
-       ng-click="download()"
-       ng-disabled="accounts.length == 0">Download</a>
-  </div>  
 </div>
 </body>
 </html>

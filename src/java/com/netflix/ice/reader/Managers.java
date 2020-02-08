@@ -94,6 +94,7 @@ public interface Managers {
     		TagType groupBy,
     		AggregateType aggregate,
     		boolean forReservation,
+    		boolean showLent,
     		UsageUnit usageUnit,
     		List<List<UserTag>> userTagLists,
     		int userTagGroupByIndex) throws Exception;

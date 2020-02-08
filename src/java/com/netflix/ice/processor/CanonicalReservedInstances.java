@@ -48,7 +48,7 @@ public class CanonicalReservedInstances {
 	private String accountId;
 	
 	/**
-	 * Product for this Reservation - EC2, RDS, or Redshift
+	 * Product for this Reservation - EC2, RDS, Redshift, Elasticsearch, ElastiCache
 	 */
 	private String product;
 	
@@ -194,7 +194,7 @@ public class CanonicalReservedInstances {
 
     public CanonicalReservedInstances(String accountId, String region, ReservedInstances ri, String parentReservationId) {
 		this.accountId = accountId;
-        this.product = Product.ec2;
+        this.product = Product.Code.Ec2.serviceCode;
         this.region = region;
         this.reservationId = ri.getReservedInstancesId();
         this.reservationOfferingId = "";
@@ -223,7 +223,7 @@ public class CanonicalReservedInstances {
     
     public CanonicalReservedInstances(String accountId, String region, ReservedDBInstance ri) {
 		this.accountId = accountId;
-        this.product = Product.rds;
+        this.product = Product.Code.Rds.serviceCode;
         this.region = region;
         this.reservationId = ri.getReservedDBInstanceId();
         this.reservationOfferingId = ri.getReservedDBInstancesOfferingId();
@@ -252,7 +252,7 @@ public class CanonicalReservedInstances {
 
     public CanonicalReservedInstances(String accountId, String region, ReservedNode ri) {
 		this.accountId = accountId;
-        this.product = Product.redshift;
+        this.product = Product.Code.Redshift.serviceCode;
         this.region = region;
         this.reservationId = ri.getReservedNodeId();
         this.reservationOfferingId = ri.getReservedNodeOfferingId();
@@ -281,7 +281,7 @@ public class CanonicalReservedInstances {
     
     public CanonicalReservedInstances(String accountId, String region, ReservedElasticsearchInstance ri) {
     	this.accountId = accountId;
-    	this.product = Product.elasticsearch;
+    	this.product = Product.Code.Elasticsearch.serviceCode;
     	this.region = region;
     	this.reservationId = ri.getReservedElasticsearchInstanceId();
     	this.instanceType = ri.getElasticsearchInstanceType();
@@ -309,7 +309,7 @@ public class CanonicalReservedInstances {
     
     public CanonicalReservedInstances(String accountId, String region, ReservedCacheNode ri) {
     	this.accountId = accountId;
-    	this.product = Product.elastiCache;
+    	this.product = Product.Code.ElastiCache.serviceCode;
     	this.region = region;
     	this.reservationId = ri.getReservedCacheNodeId();
     	this.instanceType = ri.getCacheNodeType();

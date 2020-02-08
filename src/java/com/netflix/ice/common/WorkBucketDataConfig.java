@@ -30,19 +30,17 @@ import com.netflix.ice.tag.Account;
 public class WorkBucketDataConfig {
 	private final String startMonth;
 	private final List<String> userTags;
-    private final boolean familyRiBreakout;
     private final List<Account> accounts;
     private final Map<String, List<String>> zones;
     private final TagCoverage tagCoverage;
     private final Map<String, Map<String, TagConfig>> tagConfigs;
 	
 	public WorkBucketDataConfig(String startMonth, List<Account> accounts, Map<String, List<String>> zones, List<String> userTags,
-			boolean familyRiBreakout, TagCoverage tagCoverage, Map<String, Map<String, TagConfig>> tagConfigs) {
+			TagCoverage tagCoverage, Map<String, Map<String, TagConfig>> tagConfigs) {
 		this.startMonth = startMonth;
 		this.accounts = accounts;
 		this.zones = zones;
 		this.userTags = userTags;
-		this.familyRiBreakout = familyRiBreakout;
 		this.tagCoverage = tagCoverage;
 		this.tagConfigs = tagConfigs;
 	}
@@ -54,7 +52,6 @@ public class WorkBucketDataConfig {
 		this.accounts = c.accounts;
 		this.zones = c.zones;
 		this.userTags = c.userTags;
-		this.familyRiBreakout = c.familyRiBreakout;
 		this.tagCoverage = c.tagCoverage;
 		this.tagConfigs = c.tagConfigs;
 	}
@@ -75,10 +72,6 @@ public class WorkBucketDataConfig {
 		return userTags;
 	}
 
-	public boolean getFamilyRiBreakout() {
-		return familyRiBreakout;
-	}
-	
 	public TagCoverage getTagCoverage() {
 		return tagCoverage;
 	}

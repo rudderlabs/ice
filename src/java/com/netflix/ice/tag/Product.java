@@ -17,11 +17,9 @@
  */
 package com.netflix.ice.tag;
 
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 public class Product extends Tag {
 	private static final long serialVersionUID = 2L;
@@ -49,6 +47,7 @@ public class Product extends Tag {
 	private final String serviceName;
 	private final String serviceCode;
 	private final Source source;
+	private final Code code;
 	
 	public enum Source {
 		pricing,
@@ -58,57 +57,55 @@ public class Product extends Tag {
 	}
 	
 	/*
-	 * Standard product name strings needed to test identity in the "is" methods.
+	 * Standard product codes needed to test identity in the "is" methods.
 	 */
-	public static final String apiGateway   = "API Gateway";
-	public static final String cloudFront   = "CloudFront";
-	public static final String cloudhsm     = "CloudHSM";
-    public static final String cloudWatch   = "CloudWatch";
-	public static final String dataTransfer = "Data Transfer";
-	public static final String dynamoDB	    = "DynamoDB";
-	public static final String ec2          = "Elastic Compute Cloud";
-	public static final String elastiCache  = "ElastiCache";
-	public static final String elasticsearch  = "Elasticsearch Service";
-	public static final String emr          = "Elastic MapReduce";
-	public static final String rds          = "RDS Service";
-	public static final String rdsFull      = "Relational Database Service"; // AWS started using the full name on 2017-09-01
-	public static final String redshift     = "Redshift";
-	public static final String registrar	= "Registrar";
-	public static final String s3           = "Simple Storage Service";
-    /*
-     * ICE-defined product sub-category strings used to test identity in the "is" methods.
-     */
-    public static final String ebs           = "Elastic Block Storage";
-    public static final String ec2Instance   = "EC2 Instance";
-    public static final String eip           = "Elastic IP";
-    public static final String rdsInstance   = "RDS Instance";
-
-    private final static Set<String> productsWithoutResourceTags;
+	public enum Code {
+		ApiGateway("Amazon API Gateway", "AmazonApiGateway", true),
+		AppSync("AWS AppSync", "AWSAppSync", false),
+		CloudFront("Amazon CloudFront", "AmazonCloudFront", true),
+		Cloudhsm("AWS CloudHSM", "CloudHSM", false),
+	    CloudWatch("AmazonCloudWatch", "AmazonCloudWatch", false),
+		DataTransfer("AWS Data Transfer", "AWSDataTransfer", false),
+		DynamoDB("Amazon DynamoDB", "AmazonDynamoDB", true),
+		Ec2("Amazon Elastic Compute Cloud", "AmazonEC2", true),
+		ElastiCache("Amazon ElastiCache", "AmazonElastiCache", true),
+		Elasticsearch("Amazon Elasticsearch Service", "AmazonES", true),
+		Emr("Amazon Elastic MapReduce", "ElasticMapReduce", true),
+		Rds("Amazon RDS Service", "AmazonRDS", true),
+		RdsFull("Amazon Relational Database Service", "AmazonRDS", true),
+		Redshift("Amazon Redshift", "AmazonRedshift", true),
+		Registrar("Amazon Registrar", "AmazonRegistrar", false),
+		S3("Amazon Simple Storage Service", "AmazonS3", true),
+	    Ebs("Amazon Elastic Block Store", "EBS", true),
+	    Ec2Instance("EC2 Instance", "EC2Instance", true),
+	    Eip("Elastic IP", "EIP", false),
+	    RdsInstance("RDS Instance", "RDSInstance", true);
+		
+		final public String serviceName;
+		final public String serviceCode;
+		final public boolean enableTagCoverage;
+		
+		private Code(String serviceName, String serviceCode, boolean enableTagCoverage) {
+			this.serviceName = serviceName;
+			this.serviceCode = serviceCode;
+			this.enableTagCoverage = enableTagCoverage;
+		}
+		
+		public String toString() {
+			return serviceName + "," + serviceCode + "," + (enableTagCoverage ? "true" : "false");
+		}
+	}
+	
 	/*
 	 * Maps for holding overridden product names. One map for each lookup direction.
 	 */
     private static ConcurrentMap<String, String> overrideNames = Maps.newConcurrentMap();
     private static ConcurrentMap<String, String> canonicalNames = Maps.newConcurrentMap();
    
-    static {
-    	productsWithoutResourceTags = Sets.newHashSet();
-    	// Canonical names for products that do not have their own resource tagging.
-    	// e.g. Data Transfer tags are actually those from S3 or EC2. There are no Data Transfer resources.
-    	String[] names = new String[]{
-    			"AppSync",
-    			"Athena",
-    			cloudWatch,
-    			"Config",
-    			dataTransfer,
-    			"EC2 Container Registry",
-    	};
-    	for (String name: names) {
-    		productsWithoutResourceTags.add(name);
-    	}
-    	
-    	addOverride(ec2, "EC2");
-    	addOverride(rdsFull, "RDS");
-    	addOverride(s3, "S3");
+    static {    	
+    	addOverride(canonicalName(Code.Ec2.serviceName), "EC2");
+    	addOverride(canonicalName(Code.RdsFull.serviceName), "RDS");
+    	addOverride(canonicalName(Code.S3.serviceName), "S3");
     }
 
     /*
@@ -127,6 +124,23 @@ public class Product extends Tag {
     	this.serviceName = serviceName;
     	this.serviceCode = serviceCode;
     	this.source = source;
+    	
+    	Code code = null;
+    	for (Code c: Code.values()) {
+    		if (c.serviceCode.equals(serviceCode) || c.serviceName.equals(serviceName)) {
+    			code = c;
+    			break;
+    		}
+    	}
+    	this.code = code;
+    }
+    
+    public Product(Code code) {
+    	super(getOverride(canonicalName(code.serviceName)));
+    	this.serviceName = code.serviceName;
+    	this.serviceCode = code.serviceCode;
+    	this.source = Source.code;
+    	this.code = code;
     }
 
     protected static String canonicalName(String name) {
@@ -136,9 +150,9 @@ public class Product extends Tag {
     		s = s.substring("Amazon".length()).trim();
     	else if (s.startsWith("AWS"))
     		s = s.substring("AWS".length()).trim();
-    	// Strip off any parenthetical portions
+    	// Strip off any parenthetical portions unless it's a support product
     	//   e.g. "EC2 Container Registry (ECR)" or "Contact Center Telecommunications (service sold by AMCS, LLC)"
-    	if (s.indexOf("(") > 0) {
+    	if (s.indexOf("(") > 0 && !s.startsWith("Support")) {
     		s = s.substring(0, s.indexOf("(")).trim();
     	}
     	// Make sure there are no commas
@@ -189,84 +203,88 @@ public class Product extends Tag {
     	return source;
     }
     
+    public Code getCode() {
+    	return code;
+    }
+    
     public boolean isSupport() {
     	return getCanonicalName().contains("Support");
     }
     
     public boolean isApiGateway() {
-    	return name.equals(getOverride(apiGateway));
+    	return code == Code.ApiGateway;
     }
     
     public boolean isCloudFront() {
-    	return name.equals(getOverride(cloudFront));
+    	return code == Code.CloudFront;
     }
     
     public boolean isCloudHsm() {
-    	return name.equals(getOverride(cloudhsm));
+    	return code == Code.Cloudhsm;
     }
     
     public boolean isDataTransfer() {
-    	return name.equals(getOverride(dataTransfer));
+    	return code == Code.DataTransfer;
     }
     
     public boolean isEc2() {
-    	return name.equals(getOverride(ec2));
+    	return code == Code.Ec2;
     }
     
     public boolean isEmr() {
-    	return name.equals(getOverride(emr));
+    	return code == Code.Emr;
     }
     
     public boolean isRds() {
-    	return name.equals(getOverride(rds)) || name.equals(getOverride(rdsFull));
+    	return code == Code.Rds || code == Code.RdsFull;
     }
     
     public boolean isRedshift() {
-    	return name.equals(getOverride(redshift));
+    	return code == Code.Redshift;
     }
     
     public boolean isRegistrar() {
-    	return name.equals(getOverride(registrar));
+    	return code == Code.Registrar;
     }
     
     public boolean isS3() {
-    	return name.equals(getOverride(s3));
+    	return code == Code.S3;
     }
     
     public boolean isEbs() {
-    	return name.equals(getOverride(ebs));
+    	return code == Code.Ebs;
     }
     
     public boolean isCloudWatch() {
-    	return name.equals(getOverride(cloudWatch));
+    	return code == Code.CloudWatch;
     }
     
     public boolean isEc2Instance() {
-    	return name.equals(getOverride(ec2Instance));
+    	return code == Code.Ec2Instance;
     }
     
     public boolean isEip() {
-    	return name.equals(getOverride(eip));
+    	return code == Code.Eip;
     }
     
     public boolean isRdsInstance() {
-    	return name.equals(getOverride(rdsInstance));
+    	return code == Code.RdsInstance;
     }
     
     public boolean isDynamoDB() {
-    	return name.equals(getOverride(dynamoDB));
+    	return code == Code.DynamoDB;
     }
     
     public boolean isElastiCache() {
-    	return name.equals(getOverride(elastiCache));
+    	return code == Code.ElastiCache;
     }
     
     public boolean isElasticsearch() {
-    	return name.equals(getOverride(elasticsearch));
+    	return code == Code.Elasticsearch;
     }
     
-    public boolean hasResourceTags() {
-    	return !productsWithoutResourceTags.contains(getCanonicalName(name));
+    public boolean enableTagCoverage() {
+    	return code != null && code.enableTagCoverage;
     }
     
     public boolean hasReservations() {

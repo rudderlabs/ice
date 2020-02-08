@@ -65,7 +65,7 @@ public class BasicProductServiceTest {
 		Product product2 = ps.getProduct("Amazon Product1", "AmazonProduct1");		
 		assertEquals("Both product strings should refer to the same object", product1, product2);
 		
-		Product rdsInstance = ps.getProductByName(Product.rdsInstance);		
+		Product rdsInstance = ps.getProduct(Product.Code.RdsInstance);		
 		assertTrue("getProductByName() returned wrong RDS product", rdsInstance.isRdsInstance());
 	}
 	
@@ -77,4 +77,11 @@ public class BasicProductServiceTest {
 		assertTrue("Got different products", s3 == s3got);		
 	}
 
+	@Test
+	public void testGetProductWithEmptyName() {
+		BasicProductService ps = new BasicProductService();
+		Product rds = ps.addProduct(new Product("Amazon Relational Database Service", "AmazonRDS", Source.pricing));
+		Product rdsEmptyName = ps.getProduct("", "AmazonRDS");
+		assertEquals("Changed product name to empty string", rds.name, rdsEmptyName.name);
+	}
 }

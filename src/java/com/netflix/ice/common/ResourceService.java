@@ -76,7 +76,7 @@ public abstract class ResourceService {
      * Initialize the billing file user tags from the userTags header
      */
     abstract public void initHeader(String[] header, String payerAccountId);
-
+    
     abstract public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs);
     
     abstract public void putDefaultTags(String accountId, Map<String, String> tags);

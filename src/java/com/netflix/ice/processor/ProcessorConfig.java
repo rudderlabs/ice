@@ -31,10 +31,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.netflix.ice.basic.BasicAccountService;
+import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.*;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.config.BillingDataConfig;
 import com.netflix.ice.processor.config.KubernetesConfig;
+import com.netflix.ice.processor.postproc.RuleConfig;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Zone;
@@ -68,7 +70,6 @@ public class ProcessorConfig extends Config {
     public final DateTime startDate;
     public final AccountService accountService;
     public final ResourceService resourceService;
-    public final boolean familyRiBreakout;
     public final List<BillingBucket> billingBuckets;
     public final List<BillingBucket> kubernetesBuckets;
     public final DateTime costAndUsageStartDate;
@@ -94,8 +95,11 @@ public class ProcessorConfig extends Config {
     
     // Kubernetes configuration data keyed by payer account ID
     public List<KubernetesConfig> kubernetesConfigs;
+    // Post=processor configuration rules
+    public List<RuleConfig> postProcessorRules;
     
     private static final String billingDataConfigBasename = "ice_config.";
+    private static final String billingDataConfigBasenameV2 = "ice_config_v2.";
 
     /**
      *
@@ -110,7 +114,6 @@ public class ProcessorConfig extends Config {
             AWSCredentialsProvider credentialsProvider,
             ProductService productService,
             ReservationService reservationService,
-            ResourceService resourceService,
             PriceListService priceListService,
             boolean compress) throws Exception {
 
@@ -128,8 +131,12 @@ public class ProcessorConfig extends Config {
 
         this.reservationService = reservationService;
         this.priceListService = priceListService;
-        this.resourceService = resourceService;
-
+        
+		String customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "");
+		String additionalTags = properties.getProperty(IceOptions.ADDITIONAL_TAGS, "");
+        resourceService = customTags.isEmpty() ? null :
+        	new BasicResourceService(productService, customTags.split(","), additionalTags.split(","));
+        
     	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);
         processBillingDataConfig(accountConfigs);
@@ -137,16 +144,12 @@ public class ProcessorConfig extends Config {
         for (AccountConfig ac: accountConfigs.values())
         	logger.info("  Account " + ac.toString());
         	
-        this.accountService = new BasicAccountService(accountConfigs);
-
+        accountService = new BasicAccountService(accountConfigs);
+               
         if (properties.getProperty(IceOptions.START_MONTH) == null) throw new IllegalArgumentException("IceOptions.START_MONTH must be specified");
         this.startMonth = properties.getProperty(IceOptions.START_MONTH);        
         this.startDate = new DateTime(startMonth, DateTimeZone.UTC);
         
-        // whether to separate out the family RI usage into its own operation category
-        familyRiBreakout = properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.FAMILY_RI_BREAKOUT));
-        
-
         String[] yearMonth = properties.getProperty(IceOptions.COST_AND_USAGE_START_DATE, "").split("-");
         if (yearMonth.length < 2)
             costAndUsageStartDate = new DateTime(3000, 1, 1, 0, 0, DateTimeZone.UTC); // Arbitrary year in the future
@@ -328,7 +331,7 @@ public class ProcessorConfig extends Config {
     		zones.put(r.name, zlist);
     	}
     	WorkBucketDataConfig wbdc = new WorkBucketDataConfig(startMonth, accountService.getAccounts(), zones,
-    			resourceService == null ? null : resourceService.getUserTags(), familyRiBreakout, getTagCoverage(), resourceService.getTagConfigs());
+    			resourceService == null ? null : resourceService.getUserTags(), getTagCoverage(), resourceService.getTagConfigs());
         File file = new File(workBucketConfig.localDir, workBucketDataConfigFilename);
     	OutputStream os = new FileOutputStream(file);
     	OutputStreamWriter writer = new OutputStreamWriter(os);
@@ -453,32 +456,47 @@ public class ProcessorConfig extends Config {
      */
     protected void processBillingDataConfig(Map<String, AccountConfig> accountConfigs) {
     	kubernetesConfigs = Lists.newArrayList();
+    	postProcessorRules = Lists.newArrayList();
     	
         for (BillingBucket bb: billingBuckets) {
             
-        	BillingDataConfig billingDataConfig = readBillingDataConfig(bb);
-        	if (billingDataConfig == null)
+        	BillingDataConfig bdc = readBillingDataConfig(bb);
+        	if (bdc == null)
         		continue;
-           	
-        	for (AccountConfig account: billingDataConfig.accounts) {
-        		if (account.id == null || account.id.isEmpty()) {
-        			logger.warn("Ignoring billing data config for account with no id: " + account.name);
-        			continue;
-        		}
-        		
-        		if (accountConfigs.containsKey(account.id)) {
-        			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
-        			continue;
-        		}
-        		accountConfigs.put(account.id, account);
-        		logger.info("Adding billing data config account: " + account.toString());
-            	resourceService.putDefaultTags(account.id, account.tags);        			
+
+        	logger.info("Billing Data Configuration: Found " +
+        			(bdc.getAccounts() == null ? "null" : bdc.getAccounts().size()) + " accounts, " +
+        			(bdc.getTags() == null ? "null" : bdc.getTags().size()) + " tags, " +
+        			(bdc.getKubernetes() == null ? "null" : bdc.getKubernetes().size()) + " kubernetes, " +
+        			(bdc.getPostprocrules() == null ? "null" : bdc.getPostprocrules().size()) + " post-proc");
+
+        	if (bdc.getAccounts() != null) {
+	        	for (AccountConfig account: bdc.getAccounts()) {
+	        		if (account.id == null || account.id.isEmpty()) {
+	        			logger.warn("Ignoring billing data config for account with no id: " + account.name);
+	        			continue;
+	        		}
+	        		
+	        		if (accountConfigs.containsKey(account.id)) {
+	        			logger.warn("Ignoring billing data config for account " + account.id + ": " + account.name + ". Config already defined in Organizations service or ice.properties.");
+	        			continue;
+	        		}
+	        		accountConfigs.put(account.id, account);
+	        		logger.info("Adding billing data config account: " + account.toString());
+	        		if (resourceService != null)
+	        			resourceService.putDefaultTags(account.id, account.tags);        			
+	        	}
         	}
         	
-        	resourceService.setTagConfigs(bb.accountId, billingDataConfig.tags);
-        	List<KubernetesConfig> k = billingDataConfig.getKubernetes();
+        	if (resourceService != null && bdc.getTags() != null)
+        		resourceService.setTagConfigs(bb.accountId, bdc.getTags());
+        	List<KubernetesConfig> k = bdc.getKubernetes();
         	if (k != null)
         		kubernetesConfigs.addAll(k);
+        	
+        	List<RuleConfig> ruleConfigs = bdc.getPostprocrules();
+        	if (ruleConfigs != null)
+        		postProcessorRules.addAll(ruleConfigs);
         }
     }
     
@@ -486,10 +504,15 @@ public class ProcessorConfig extends Config {
     	// Make sure prefix ends with /
     	String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
     	
-    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
-    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
-    	if (configFiles.size() == 0)
-    		return null;
+    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasenameV2 + ", " + bb.accountId);
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasenameV2, bb.accountId, bb.accessRoleName, bb.accessExternalId);
+    	if (configFiles.size() == 0) {
+        	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
+        	configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
+        	if (configFiles.size() == 0) {
+        		return null;
+        	}
+    	}
     	
     	String fileKey = configFiles.get(0).getKey();
         File file = new File(workBucketConfig.localDir, fileKey.substring(prefix.length()));

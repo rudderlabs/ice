@@ -24,12 +24,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.pricelist.PriceList.Product.Attributes;
 import com.netflix.ice.processor.pricelist.PriceList.Term;
 import com.netflix.ice.tag.InstanceCache;
@@ -89,7 +91,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
     public Map<Key, Product> getPrices() {
 		return prices;
 	}
-
+    
     public ServiceCode getServiceCode() {
 		return serviceCode;
 	}
@@ -108,6 +110,10 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	
 	public Product getProduct(Key productKey) {
 		return prices.get(productKey);
+	}
+	
+	public void setProduct(Key key, Product product) {
+		prices.put(key, product);
 	}
 	
 	public Product getProduct(Region region, UsageType usageType) {
@@ -138,61 +144,74 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		return product.getReservationRate(rateKey);
 	}
 	
+	protected Key getKey(
+			String location, 
+			String productFamily, 
+			String tenancyStr, 
+			String operation, 
+			String operatingSystem, 
+			String usageTypeStr,
+			String instanceType,
+			String deploymentOption, 
+			Set<Tenancy> tenancies) {
+    	// There is one entry for RDS db.t1.micro with location of "Any". We'll ignore that one.
+    	// Also skip GovCloud and non-instance SKUs.
+    	if (productFamily == null || !productFamily.contains("Instance") || location.contains("GovCloud") || location.equals("Any"))
+    		return null;
+    	switch (serviceCode) {
+        	case AmazonEC2:
+            	if (productFamily.equals("Compute Instance") && !tenancyStr.isEmpty()) {
+                	Tenancy tenancy = Tenancy.valueOf(tenancyStr);
+                	if (!tenancies.contains(tenancy))
+                		return null;
+            	}
+        		if (!operation.startsWith("RunInstances") ||
+        				operatingSystem.equals("NA")) {
+        			return null;
+        		}
+    			// Two new usage types called Reservation and UnusedBox introduced in 10/2018, so now make sure it's BoxUsage
+        		if (!usageTypeStr.contains("BoxUsage") || (usageTypeStr.contains("HostBoxUsage") && !tenancies.contains(Tenancy.Host))) {
+        			return null;
+        		}
+    			break;
+    		default:
+    			break;
+    	}
+    
+    	Region region = Region.US_EAST_1;
+    	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ")) {
+    		Region r = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
+    		if (r != null)
+    			region = r;
+    		else {
+    			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr + ", location: " + location);
+    			hasErrors = true;
+    			return null; // unsupported region
+    		}
+    	}
+    	UsageType usageType = getUsageType(instanceType, operation, deploymentOption);
+		return new Key(region, usageType);
+	}
+	
 	public void importPriceList(PriceList priceList, Set<Tenancy> tenancies) {
         Map<String, PriceList.Product> products = priceList.getProducts();
         for (String sku: products.keySet()) {
         	PriceList.Product p = products.get(sku);
         	String location = p.getAttribute(Attributes.location);
-        	// There is one entry for RDS db.t1.micro with location of "Any". We'll ignore that one.
-        	// Also skip GovCloud and non-instance SKUs.
-        	if (p.productFamily == null || !p.productFamily.contains("Instance") || location.contains("GovCloud") || location.equals("Any"))
-        		continue;
         	String t = p.getAttribute(Attributes.tenancy);
-        	if (p.productFamily.equals("Compute Instance") && !t.isEmpty()) {
-	        	Tenancy tenancy = Tenancy.valueOf(t);
-	        	if (!tenancies.contains(tenancy))
-	        		continue;
-        	}
-        	switch (serviceCode) {
-	        	case AmazonEC2:
-	        		if (!p.getAttribute(Attributes.operation).startsWith("RunInstances") ||
-	        				p.getAttribute(Attributes.operatingSystem).equals("NA")) {
-	        			continue;
-	        		}
-        			break;
-        		default:
-        			break;
-        	}
-        
+        	String operation = p.getAttribute(Attributes.operation);
+        	String operatingSystem = p.getAttribute(Attributes.operatingSystem);
         	String usageTypeStr = p.getAttribute(Attributes.usagetype);
-        	switch (serviceCode) {
-        		case AmazonEC2:
-        			// Two new usage types called Reservation and UnusedBox introduced in 10/2018, so now make sure it's BoxUsage
-	        		if (!usageTypeStr.contains("BoxUsage") || (usageTypeStr.contains("HostBoxUsage") && !tenancies.contains(Tenancy.Host))) {
-	        			continue;
-	        		}
-	        		break;
-        		default:
-        			break;
-        	}
-        	Region region = Region.US_EAST_1;
-        	if (usageTypeStr.contains("-") && !usageTypeStr.startsWith("Multi-AZ")) {
-        		Region r = Region.getRegionByShortName(usageTypeStr.substring(0, usageTypeStr.indexOf("-")));
-        		if (r != null)
-        			region = r;
-        		else {
-        			logger.error("Pricelist entry for unknown region. Usage type found: " + usageTypeStr + ", location: " + location);
-        			hasErrors = true;
-        			continue; // unsupported region
-        		}
-        	}
-        	String operationStr = p.getAttribute(Attributes.operation);
-        	UsageType usageType = getUsageType(p.getAttribute(Attributes.instanceType), operationStr, p.getAttribute(Attributes.deploymentOption));
-        	if (usageType.name.endsWith(".others")) {
+        	String deploymentOption = p.getAttribute(Attributes.deploymentOption);
+        	String instanceType = p.getAttribute(Attributes.instanceType);
+        	
+        	Key key = getKey(location, p.productFamily, t, operation, operatingSystem, usageTypeStr, instanceType, deploymentOption, tenancies);
+        	if (key == null)
+        		continue;
+        	
+        	if (key.usageType.name.endsWith(".others")) {
         		logger.error("Pricelist entry with unknown usage type: " + p);
         	}
-        	Key key = new Key(region, usageType);
-        	
     		PriceList.Terms terms = priceList.getTerms();
 
         	// Find the OnDemand Rate
@@ -206,7 +225,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
 	    		onDemandRate = term.priceDimensions.entrySet().iterator().next().getValue();
     		}
     		else {
-    			logger.info("No OnDemand rate for SKU " + p.sku + ", " + region + ", " + usageTypeStr + ", " + 
+    			logger.info("No OnDemand rate for SKU " + p.sku + ", " + key.region + ", " + key.usageType + ", " + 
     					p.getAttribute(Attributes.operation) + " " + 
     					p.getAttribute(Attributes.operatingSystem) +
     					p.getAttribute(Attributes.databaseEngine));
@@ -302,6 +321,11 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	public double fixed;
     	public double hourly;
     	
+    	public Rate() {
+    		fixed = 0.0;
+    		hourly = 0.0;
+    	}
+    	
     	public Rate(double fixed, double hourly) {
     		this.fixed = fixed;
     		this.hourly = hourly;
@@ -338,7 +362,7 @@ public class InstancePrices implements Comparable<InstancePrices> {
     	
     	public RateKey(String leaseContractLength, String purchaseOption, String offeringClass) {
     		this.leaseContractLength = LeaseContractLength.getByName(leaseContractLength);
-    		this.purchaseOption = PurchaseOption.getByName(purchaseOption);
+    		this.purchaseOption = PurchaseOption.get(purchaseOption);
     		this.offeringClass = OfferingClass.valueOf(offeringClass);
     	}
     	
@@ -380,8 +404,8 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		public final String instanceType;
 		public final String operatingSystem;
 		public final String operation;
-		public final double onDemandRate;
-		public final Map<RateKey, Rate> reservationRates;
+		private double onDemandRate;
+		private Map<RateKey, Rate> reservationRates;
 		
 		// fields used to debug ingest
 		public final String usagetype;
@@ -389,9 +413,14 @@ public class InstancePrices implements Comparable<InstancePrices> {
 		public final String databaseEngine;
 		public final String databaseEdition;
 		
+		// sku used only for ingest to reconcile csv records and catch duplicate keys
+		public final String sku;
+		
+		// Constructor used by deserializer
 		private Product(double memory, double ecu, double normalizationSizeFactor,
 				int vcpu, String instanceType, String operatingSystem, String operation, double onDemandRate,
 				Map<RateKey, Rate> reservationRates) {
+			this.sku = null;
 			this.memory = memory;
 			this.ecu = ecu;
 			this.normalizationSizeFactor = normalizationSizeFactor;
@@ -407,6 +436,27 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			this.databaseEdition = null;
 		}
 		
+		// Constructor used by CSV reader
+		public Product(String sku, String memory, String ecu, String normalizationSizeFactor,
+				String vcpu, String instanceType, String operatingSystem, String operation, String usageType,
+				String preInstalledSw, String databaseEngine, String databaseEdition) {
+			
+			this.memory = Double.parseDouble(memory);
+			this.vcpu = Integer.parseInt(vcpu);
+			this.ecu = StringUtils.isEmpty(ecu) ? 0 : ecu.toLowerCase().equals("variable") ? 3 * this.vcpu : (ecu.equals("NA") || ecu.equals("N/A")) ? 0 : Double.parseDouble(ecu);
+			this.normalizationSizeFactor = StringUtils.isEmpty(normalizationSizeFactor) ? 1.0 : normalizationSizeFactor.equals("NA") ? 1.0 : Double.parseDouble(normalizationSizeFactor);
+			this.instanceType = instanceType == null ? "" : instanceType;
+			this.operatingSystem = operatingSystem == null ? "" : operatingSystem;
+			this.operation = operation;
+			this.usagetype = usageType;
+			this.preInstalledSw = preInstalledSw == null ? "" : preInstalledSw;
+			this.databaseEngine = databaseEngine == null ? "" : databaseEngine;
+			this.databaseEdition = databaseEdition == null ? "" : databaseEdition;
+			this.sku = sku;
+			this.reservationRates = Maps.newHashMap();
+		}
+				
+		// Constructor used by JSON reader
 		public Product(PriceList.Product product, PriceList.Rate onDemandRate, Map<String, PriceList.Term> reservationOfferTerms) {
 			String memory = null;
 			if (product.hasAttribute(Attributes.memory)) {
@@ -455,6 +505,15 @@ public class InstancePrices implements Comparable<InstancePrices> {
 			this.preInstalledSw = product.getAttribute(Attributes.preInstalledSw);
 			this.databaseEngine = product.getAttribute(Attributes.databaseEngine);
 			this.databaseEdition = product.getAttribute(Attributes.databaseEdition);
+			this.sku = product.sku;
+		}
+		
+		void setOnDemandRate(double onDemandRate) {
+			this.onDemandRate = onDemandRate;
+		}
+		
+		void setReserationRate(RateKey key, Rate rate) {
+			reservationRates.put(key, rate);
 		}
 		
         @Override
@@ -613,30 +672,6 @@ public class InstancePrices implements Comparable<InstancePrices> {
         	}
         	return none;
         }
-    }
-    
-    public static enum PurchaseOption {
-    	none("none"),
-    	noUpfront("No Upfront"),
-    	partialUpfront("Partial Upfront"),
-    	allUpfront("All Upfront"),
-    	heavy("Heavy Utilization"),
-    	medium("Medium Utilization"),
-    	light("Light Utilization");
-    	
-    	public final String name;
-    	
-    	private PurchaseOption(String name) {
-    		this.name = name;
-    	}
-    	
-    	public static PurchaseOption getByName(String name) {
-        	for (PurchaseOption po: PurchaseOption.values()) {
-        		if (po.name.equals(name))
-        			return po;
-        	}
-        	return none;
-    	}
     }
     
     public static enum OfferingClass {

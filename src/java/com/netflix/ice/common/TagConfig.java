@@ -28,8 +28,8 @@ public class TagConfig {
 	public String name;
 	public List<String> aliases;
 	public Map<String, List<String>> values;
-	public Map<String, Map<String, List<String>>> mapped;
-		
+	public List<TagMappings> mapped;
+	
 	public TagConfig() {}
 	
 	public TagConfig(String name, List<String> aliases, Map<String, List<String>> values) {
@@ -62,7 +62,7 @@ public class TagConfig {
 		this.values = values;
 	}
 
-	public Map<String, Map<String, List<String>>> getMapped() {
+	public List<TagMappings> getMapped() {
 		return mapped;
 	}
 

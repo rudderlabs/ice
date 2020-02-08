@@ -48,10 +48,10 @@ public class TagGroupTest {
 		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234", ""), Region.US_EAST_1, null, ps.getProduct("AWS Relational Database Service", "AmazonRDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertEquals("TagGroups should be equivalent", tg1, tg2);
 
-		tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234", ""), Region.US_EAST_1, null, ps.getProductByName("RDS"), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
+		tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234", ""), Region.US_EAST_1, null, ps.getProduct(Product.Code.Rds), Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertEquals("TagGroups with alias should be equivalent", tg1, tg2);
 		
-		Product p = ps.getProductByName(Product.rdsFull);
+		Product p = ps.getProduct(Product.Code.RdsFull);
 		tg2 = TagGroup.getTagGroup(as.getAccountById("111111111234", ""), Region.US_EAST_1, null, p, Operation.getOperation("CreateDBInstance"), UsageType.getUsageType("RDS:GP2-Storage", "GB"), null);
 		assertEquals("Product tags should be equivalent", System.identityHashCode(tg1.product), System.identityHashCode(p));
 		assertEquals("Product tags should be equivalent", tg1.product, p);
@@ -67,8 +67,8 @@ public class TagGroupTest {
 		assertEquals("Should be equal", tg1, tg1);
 		assertEquals("Should be equal", tg1, tg2);
 		
-		TagGroup tga = TagGroup.getTagGroup(as.getAccountById("111111111345", ""), Region.US_EAST_1, null, ps.getProductByName("Data Transfer"), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW2-AWS-Out-Bytes", "GB"), null);
-		TagGroup tgb = TagGroup.getTagGroup(as.getAccountById("111111111345", ""), Region.US_EAST_1, null, ps.getProductByName("Data Transfer"), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW1-AWS-Out-Bytes", "GB"), null);
+		TagGroup tga = TagGroup.getTagGroup(as.getAccountById("111111111345", ""), Region.US_EAST_1, null, ps.getProduct(Product.Code.DataTransfer), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW2-AWS-Out-Bytes", "GB"), null);
+		TagGroup tgb = TagGroup.getTagGroup(as.getAccountById("111111111345", ""), Region.US_EAST_1, null, ps.getProduct(Product.Code.DataTransfer), Operation.getOperation("PublicIP-Out"), UsageType.getUsageType("USW1-AWS-Out-Bytes", "GB"), null);
 		assertFalse("Should not be equal", tga.equals(tgb));
 	}
 	

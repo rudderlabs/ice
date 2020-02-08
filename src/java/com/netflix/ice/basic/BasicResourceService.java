@@ -25,8 +25,6 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
-
-
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -34,6 +32,7 @@ import com.netflix.ice.common.LineItem;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagConfig;
+import com.netflix.ice.common.TagMappings;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
@@ -63,13 +62,38 @@ public class BasicResourceService extends ResourceService {
     
     // Map containing values to assign to destination tags based on a match with a value
     // in a source tag. These are returned if the requested resource doesn't have a tag value.
-    private Map<String, Map<String, Map<Integer, Map<String, String>>>> mappedTags;
-    //           ^            ^           ^           ^
-    //           |            |           |           +-- match
-    //           |            |           +-- source tag index
-    //           |            +-- destination tag
-    //           +-- payer account ID
+    // Primary map key is the payer account ID, secondary map key is the destination tag key
+    private Map<String, Map<String, List<MappedTags>>> mappedTags;
     
+    private class MappedTags {
+    	Map<Integer, Map<String, String>> maps; // Primary map key is source tag index, secondary map key is the source tag value
+    	List<String> include;
+    	List<String> exclude;
+    	
+    	public MappedTags(TagMappings config) {
+			maps = Maps.newHashMap();
+			for (String mappedValue: config.maps.keySet()) {
+				Map<String, List<String>> configValueMaps = config.maps.get(mappedValue);
+				for (String sourceTag: configValueMaps.keySet()) {
+					Integer sourceTagIndex = tagResourceGroupIndecies.get(sourceTag);
+					Map<String, String> mappedValues = maps.get(sourceTagIndex);
+					if (mappedValues == null) {
+						mappedValues = Maps.newHashMap();
+						maps.put(sourceTagIndex, mappedValues);
+					}
+					for (String target: configValueMaps.get(sourceTag)) {
+						mappedValues.put(target.toLowerCase(), mappedValue);
+					}
+				}
+			}
+			include = config.include;
+			if (include == null)
+				include = Lists.newArrayList();
+			exclude = config.exclude;
+			if (exclude == null)
+				exclude = Lists.newArrayList();
+    	}
+    }
 
     // Map of default user tag values for each account. These are returned if the requested resource doesn't
     // have a tag value nor a mapped value. Outer key is the account ID, inner map key is the tag name.
@@ -104,9 +128,8 @@ public class BasicResourceService extends ResourceService {
     	return tagConfigs;
     }
 
-    
     @Override
-    public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {
+    public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {    	
     	if (tagConfigs == null) {
     		// Remove existing configs and indecies
     		this.tagConfigs.remove(payerAccountId);
@@ -140,27 +163,14 @@ public class BasicResourceService extends ResourceService {
 		this.tagValuesInverted.put(payerAccountId, indecies);
 		
 		// Create the maps setting tags based on the values of other tags
-		Map<String, Map<Integer, Map<String, String>>> mapped = Maps.newHashMap();
+		Map<String, List<MappedTags>> mapped = Maps.newHashMap();
 		for (TagConfig config: tagConfigs) {
 			if (config.mapped == null || config.mapped.isEmpty())
 				continue;
-			
-			Map<Integer, Map<String, String>> tagSources = Maps.newHashMap();
-			for (String mappedValue: config.mapped.keySet()) {
-				Map<String, List<String>> configValueMaps = config.mapped.get(mappedValue);
-				for (String sourceTag: configValueMaps.keySet()) {
-					Integer sourceTagIndex = tagResourceGroupIndecies.get(sourceTag);
-					Map<String, String> mappedValues = tagSources.get(sourceTagIndex);
-					if (mappedValues == null) {
-						mappedValues = Maps.newHashMap();
-						tagSources.put(sourceTagIndex, mappedValues);
-					}
-					for (String target: configValueMaps.get(sourceTag)) {
-						mappedValues.put(target.toLowerCase(), mappedValue);
-					}
-				}
-			}
-			mapped.put(config.name, tagSources);
+			List<MappedTags> mappedTags = Lists.newArrayList();
+			for (TagMappings m: config.mapped)
+				mappedTags.add(new MappedTags(m));
+			mapped.put(config.name, mappedTags);			
 		}
 		this.mappedTags.put(payerAccountId, mapped);
     }
@@ -196,7 +206,7 @@ public class BasicResourceService extends ResourceService {
        	for (int i = 0; i < customTags.length; i++) {
        		String v = tags[i];
         	if (v == null || v.isEmpty())
-        		v = getMappedUserTagValue(lineItem.getPayerAccountId(), customTags[i], tags);
+        		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags[i], tags);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags[i]);
         	tags[i] = v;
@@ -241,24 +251,38 @@ public class BasicResourceService extends ResourceService {
     	return defaults == null ? null : defaults.get(tag);
     }
     
-    private String getMappedUserTagValue(String payerAccount, String tag, String[] tags) {
+    private String getMappedUserTagValue(Account account, String payerAccount, String tag, String[] tags) {
     	// return the default user tag value for the specified account if there is one.
-    	Map<String, Map<Integer, Map<String, String>>> mappedTagsForAccount = mappedTags.get(payerAccount);
-    	if (mappedTagsForAccount == null)
+    	Map<String, List<MappedTags>> mappedTagsForPayerAccount = mappedTags.get(payerAccount);
+    	if (mappedTagsForPayerAccount == null)
     		return null;
     	
-    	Map<Integer, Map<String, String>> sourceTags = mappedTagsForAccount.get(tag);
-    	if (sourceTags == null)
+    	List<MappedTags> listOfMappedTags = mappedTagsForPayerAccount.get(tag);
+    	if (listOfMappedTags == null)
     		return null;
     	
-    	for (Integer sourceTagIndex: sourceTags.keySet()) {
-    		String have = tags[sourceTagIndex];
-    		if (have == null)
-    			continue;
-    		Map<String, String> values = sourceTags.get(sourceTagIndex);
-    		String v = values.get(have.toLowerCase());
-    		if (v != null)
-    			return v;
+    	for (MappedTags mt: listOfMappedTags) {
+        	Map<Integer, Map<String, String>> sourceTags = mt.maps;
+        	if (sourceTags == null)
+        		continue;
+        	
+        	// If we have an include filter, make sure the account is in the list
+        	if (!mt.include.isEmpty() && !mt.include.contains(account.getId()))
+        		continue;
+        	
+        	// If we have an exclude filter, make sure the account is not in the list
+        	if (!mt.exclude.isEmpty() && mt.exclude.contains(account.getId()))
+        		continue;
+        	
+        	for (Integer sourceTagIndex: sourceTags.keySet()) {
+        		String have = tags[sourceTagIndex];
+        		if (have == null)
+        			continue;
+        		Map<String, String> values = sourceTags.get(sourceTagIndex);
+        		String v = values.get(have.toLowerCase());
+        		if (v != null)
+        			return v;
+        	}
     	}
     	
     	return null;

@@ -96,7 +96,7 @@ public class CostAndUsageReport extends MonthlyReport {
 	}
 	
 	public class Manifest {
-		public String assemplyId;
+		public String assemblyId;
 		public String account;
 		public Column[] columns;
 		public String charset;

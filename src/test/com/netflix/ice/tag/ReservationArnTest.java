@@ -25,6 +25,7 @@ import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.tag.Product.Code;
 
 public class ReservationArnTest {
 
@@ -37,30 +38,30 @@ public class ReservationArnTest {
 		Region region = Region.US_WEST_2;
 		
 		class TestCase {
-			public String name;
-			public String code;
+			public Code productCode;
+			public String arnProductCode;
 			public String prefix;
 			
-			TestCase(String n, String c, String p) {
-				name = n;
-				code = c;
+			TestCase(Code c, String apc, String p) {
+				productCode = c;
+				arnProductCode = apc;
 				prefix = p;
 			}
 		}
 		
 		TestCase[] testCases = new TestCase[]{
-				new TestCase(Product.dynamoDB, "dynamodb", "reserved-instances/"),
-				new TestCase(Product.ec2Instance, "ec2", "reserved-instances/"),
-				new TestCase(Product.elastiCache, "elasticache", "reserved-instance:"),
-				new TestCase(Product.elasticsearch, "es", "reserved-instances/"),
-				new TestCase(Product.rdsInstance, "rds", "ri:"),
-				new TestCase(Product.redshift, "redshift", "reserved-instances/"),
+				new TestCase(Code.DynamoDB, "dynamodb", "reserved-instances/"),
+				new TestCase(Code.Ec2Instance, "ec2", "reserved-instances/"),
+				new TestCase(Code.ElastiCache, "elasticache", "reserved-instance:"),
+				new TestCase(Code.Elasticsearch, "es", "reserved-instances/"),
+				new TestCase(Code.RdsInstance, "rds", "ri:"),
+				new TestCase(Code.Redshift, "redshift", "reserved-instances/"),
 		};
 		
 		for (TestCase tc: testCases) {
-			ReservationArn arn = ReservationArn.get(as.getAccountById(account, ""), region, ps.getProductByName(tc.name), reservationID);
-			String expect = "arn:aws:" + tc.code + ":" + region.name + ":" + account + ":" + tc.prefix + reservationID;
-			assertEquals("Incorrect ARN for " + tc.name, expect, arn.name);
+			ReservationArn arn = ReservationArn.get(as.getAccountById(account, ""), region, ps.getProduct(tc.productCode), reservationID);
+			String expect = "arn:aws:" + tc.arnProductCode + ":" + region.name + ":" + account + ":" + tc.prefix + reservationID;
+			assertEquals("Incorrect ARN for " + tc.productCode, expect, arn.name);
 		}
 	}
 

@@ -37,6 +37,7 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Product.Code;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.UsageType;
@@ -47,8 +48,8 @@ public class DataJsonWriterTest {
 
 	private ProductService productService = new BasicProductService();
 
-	private TagGroup getTagGroup(String product, String operation, String usageType, String resource) throws BadZone {
-		Product prod = productService.getProductByName(product);
+	private TagGroup getTagGroup(Code product, String operation, String usageType, String resource) throws BadZone {
+		Product prod = productService.getProduct(product);
 		return TagGroup.getTagGroup(
 				new Account("123456789012", "a1", Lists.<String>newArrayList()),
 				Region.US_EAST_1, Region.US_EAST_1.getZone("us-east-1a"), 
@@ -92,8 +93,8 @@ public class DataJsonWriterTest {
 	public void testWrite() throws Exception {
 		Data data = new Data();
 		
-		data.add(getTagGroup("S3", "CopyObject", "Requests-Tier1", null), 1.11, 1.0);
-		data.add(getTagGroup("S3", "GetObject", "Requests-Tier2", "foo|bar"), 2.22, 2.0);
+		data.add(getTagGroup(Code.S3, "CopyObject", "Requests-Tier1", null), 1.11, 1.0);
+		data.add(getTagGroup(Code.S3, "GetObject", "Requests-Tier2", "foo|bar"), 2.22, 2.0);
 		
 		DateTime dt = DateTime.parse("2017-08-01T00:00:00Z");
 		

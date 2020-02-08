@@ -554,6 +554,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           else if (params[i].indexOf("plotType=") === 0) {
             $scope.plotType = params[i].substr(9);
           }
+          else if (params[i].indexOf("reservationSharing=") === 0) {
+            $scope.reservationSharing = params[i].substr(19);
+          }
           else if (params[i].indexOf("consolidate=") === 0) {
             $scope.consolidate = params[i].substr(12);
           }
@@ -947,6 +950,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       if ($scope.dimensions[$scope.REGION_INDEX])
@@ -1035,8 +1039,27 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }).error(function (result, status) {
         if (status === 401 || status === 0)
           $window.location.reload();
+      });    
+    },
+
+    getSavingsPlanOps: function ($scope, fn, params) {
+      if (!params) {
+        params = {};
+      }
+      $http({
+        method: "GET",
+        url: "getSavingsPlanOps",
+        params: params
+      }).success(function (result) {
+        if (result.status === 200 && result.data) {
+          $scope.savingsPlanOps = result.data;
+        }
+        if (fn)
+          fn(result.data);
+      }).error(function (result, status) {
+        if (status === 401 || status === 0)
+          $window.location.reload();
       });
-    
     },
 
     getUtilizationOps: function ($scope, fn, params) {
@@ -1075,6 +1098,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         factorsps: $scope.factorsps ? true : false,
         consolidateGroups: $scope.consolidateGroups ? true : false,
         tagCoverage: $scope.tagCoverage ? true : false,
+        showLent: $scope.reservationSharing === "lent",
       }, params);
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
@@ -1167,6 +1191,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.factorsps = false;
     $scope.consolidateGroups = false;
     $scope.plotType = 'area';
+    $scope.reservationSharing = 'borrowed';
     $scope.consolidate = "daily";
     $scope.legends = [];
     $scope.showZones = false;
@@ -1176,6 +1201,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.groupByTag = {}
     $scope.initialGroupByTag = '';
     $scope.showUserTags = false;
+    $scope.predefinedQuery = null;
   }
 
   $scope.initUserTagVars = function ($scope) {
@@ -1196,6 +1222,8 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
       params.usageUnit = $scope.usageUnit;
     if ($scope.plotType)
       params.plotType = $scope.plotType;
+    if ($scope.reservationSharing)
+      params.reservationSharing = $scope.reservationSharing;
     if ($scope.showsps)
       params.showsps = "" + $scope.showsps;
     if ($scope.factorsps)
@@ -1284,6 +1312,11 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     }
 
     var compare = function (a, b) {
+      if (a['name'] === 'aggregated')
+        return -1;
+      if (b['name'] === 'aggregated')
+        return 1;
+
       if (!stats) {
         if (a[name] < b[name])
           return !$scope.reservse ? 1 : -1;
@@ -1344,7 +1377,7 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
   }
 
   $scope.updateOperations = function ($scope) {
-    var query = $scope.predefinedQuery ? jQuery.extend({ usage_cost: $scope.usage_cost, forReservation: true }, $scope.predefinedQuery) : null;
+    var query = $scope.predefinedQuery ? jQuery.extend({}, $scope.predefinedQuery) : null;
 
     usage_db.getOperations($scope, function (data) {
       $scope.updateUsageTypes($scope);
@@ -1374,7 +1407,6 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.consolidate = "hourly";
-  $scope.predefinedQuery = null;
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "OrgUnit" },
@@ -1470,6 +1502,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     return usage_db.filterAccount($scope, filter_accounts);
   }
 
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.orgUnitChanged = function () {
     usage_db.updateOrganizationalUnit($scope);
     $scope.accountsChanged();
@@ -1503,7 +1539,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.reservationOps.join(",") };
+    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1523,6 +1559,164 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   usage_db.getReservationOps($scope, fn);
+}
+
+function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
+
+  $scope.init($scope);
+  $scope.consolidate = "hourly";
+  $scope.usageUnit = "Instances";
+  $scope.groupBys = [
+    { name: "OrgUnit" },
+    { name: "Account" },
+    { name: "Region" },
+    { name: "Zone" },
+    { name: "Product" },
+    { name: "Operation" },
+    { name: "UsageType" }
+  ];
+  $scope.groupBy = $scope.groupBys[5];
+  var startMonth = $scope.end.getUTCMonth() - 1;
+  var startYear = $scope.end.getUTCFullYear();
+  if (startMonth < 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+  $scope.start.setUTCFullYear(startYear);
+  $scope.start.setUTCMonth(startMonth);
+  $scope.start.setUTCDate(1);
+  $scope.start.setUTCHours(0);
+
+  $scope.end = highchart.dateFormat($scope.end); //$filter('date')($scope.end, "y-MM-dd hha");
+  $scope.start = highchart.dateFormat($scope.start); //$filter('date')($scope.start, "y-MM-dd hha");
+
+  $scope.updateUrl = function () {
+    $scope.end = jQuery('#end').datetimepicker().val();
+    $scope.start = jQuery('#start').datetimepicker().val();
+    var params = {};
+    $scope.addCommonParams($scope, params);
+    usage_db.addDimensionParams($scope, params);
+    usage_db.updateUrl($location, params);
+  }
+
+  $scope.download = function () {
+    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    if ($scope.showZones)
+      query.showZones = true;
+    usage_db.getData($scope, null, query, true);
+  }
+
+  $scope.getData = function () {
+    $scope.loading = true;
+    $scope.errorMessage = null;
+    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    if ($scope.showZones)
+      query.showZones = true;
+    usage_db.getData($scope, function (result) {
+      var hourlydata = [];
+      for (var key in result.data) {
+        hourlydata.push({ name: key, data: result.data[key] });
+      }
+      result.data = hourlydata;
+      $scope.legends = [];
+      $scope.stats = result.stats;
+      highchart.drawGraph(result, $scope);
+      $scope.loading = false;
+
+      $scope.legendPrecision = $scope.usage_cost == "cost" ? 2 : 0;
+      $scope.legendName = $scope.groupBy.name;
+      $scope.legend_usage_cost = $scope.usage_cost;
+    }, query, false, function (result, status) {
+      $scope.errorMessage = "Error: " + status;
+      $scope.loading = false;
+    });
+  }
+
+  $scope.accountsEnabled = function () {
+    $scope.updateAccounts($scope);
+  }
+  
+  $scope.regionsEnabled = function () {
+    $scope.updateRegions($scope);
+  }
+  
+  $scope.zonesEnabled = function () {
+    $scope.updateZones($scope);
+  }
+  
+  $scope.productsEnabled = function () {
+    $scope.updateProducts($scope);
+  }
+  
+  $scope.operationsEnabled = function () {
+    $scope.updateOperations($scope);
+  }
+  
+  $scope.usageTypesEnabled = function () {
+    $scope.updateUsageTypes($scope);
+  }
+
+  $scope.filterAccount = function (filter_accounts) {
+    return usage_db.filterAccount($scope, filter_accounts);
+  }
+
+  $scope.orgUnitChanged = function () {
+    usage_db.updateOrganizationalUnit($scope);
+    $scope.accountsChanged();
+  }
+
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
+  $scope.accountsChanged = function () {
+    if ($scope.showZones)
+      $scope.updateZones($scope);
+    else
+      $scope.updateRegions($scope);
+  }
+
+  $scope.regionsChanged = function () {
+    $scope.updateProducts($scope);
+  }
+
+  $scope.zonesChanged = function () {
+    $scope.updateProducts($scope);
+  }
+
+  $scope.productsChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
+  $scope.operationsChanged = function () {
+    $scope.updateUsageTypes($scope);
+  }
+
+  $scope.usageCostChanged = function () {
+    updateOperations($scope);
+  }
+
+  var fn = function () {
+    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), usage_cost: $scope.usage_cost, forSavingsPlans: true };
+
+    usage_db.getParams($location.hash(), $scope);
+    usage_db.processParams($scope);
+
+    $scope.updateAccounts($scope);
+    $scope.getData();
+
+    jQuery("#start, #end").datetimepicker({
+      showTime: false,
+      showMinute: false,
+      ampm: true,
+      timeFormat: 'hhTT',
+      dateFormat: 'yy-mm-dd'
+    });
+    jQuery('#end').datetimepicker().val($scope.end);
+    jQuery('#start').datetimepicker().val($scope.start);
+  }
+
+  usage_db.getSavingsPlanOps($scope, fn);
 }
 
 function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
@@ -1706,7 +1900,6 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
 function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
-  $scope.predefinedQuery = null;
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
@@ -1821,7 +2014,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function (data) {
-    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(",") };
+    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
 
@@ -1950,6 +2143,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.orgUnitChanged = function () {
     usage_db.updateOrganizationalUnit($scope);
     $scope.accountsChanged();
+  }
+
+  $scope.reservationSharingChanged = function () {
+    $scope.updateOperations($scope);
   }
 
   $scope.accountsChanged = function () {
@@ -2391,21 +2588,35 @@ function tagconfigsCtrl($scope, $location, $http) {
         tagConfigsForDestKey = tagConfigsForPayer[destKey];
         if (tagConfigsForDestKey.mapped) {
           // handle mappings
-          var tagConfigsForDestValue;
-          Object.keys(tagConfigsForDestKey.mapped).forEach(function(destValue) {
-            tagConfigsForDestValue = tagConfigsForDestKey.mapped[destValue];
-            var tagConfigsForSrcKey;
-            Object.keys(tagConfigsForDestValue).forEach(function(srcKey) {
-              var srcValues = tagConfigsForDestValue[srcKey];
-              for (var i = 0; i < srcValues.length; i++) {
-                values.push({
-                  destKey: destKey,
-                  destValue: destValue,
-                  srcKey: srcKey,
-                  srcValue: srcValues[i]
-                });
+          var tagConfigsForMapsItem;
+          Object.keys(tagConfigsForDestKey.mapped).forEach(function(i) {
+            tagConfigsForMapsItem = tagConfigsForDestKey.mapped[i];
+            if (tagConfigsForMapsItem.maps) {
+              var tagConfigsForDestValue;
+              var filter = 'None';
+              if (tagConfigsForMapsItem.include) {
+                filter = 'Include: ' + tagConfigsForMapsItem.include.join(", ");
               }
-            });
+              if (tagConfigsForMapsItem.exclude) {
+                filter = 'Exclude: ' + tagConfigsForMapsItem.exclude.join(", ");
+              }
+              Object.keys(tagConfigsForMapsItem.maps).forEach(function(destValue) {
+                tagConfigsForDestValue = tagConfigsForMapsItem.maps[destValue];
+                var tagConfigsForSrcKey;
+                Object.keys(tagConfigsForDestValue).forEach(function(srcKey) {
+                  var srcValues = tagConfigsForDestValue[srcKey];
+                  for (var i = 0; i < srcValues.length; i++) {
+                    values.push({
+                      destKey: destKey,
+                      destValue: destValue,
+                      srcKey: srcKey,
+                      srcValue: srcValues[i],
+                      filter: filter
+                    });
+                  }
+                });  
+              });
+            }
           });
         }
         if (tagConfigsForDestKey.values) {

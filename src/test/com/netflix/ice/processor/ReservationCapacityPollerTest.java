@@ -39,12 +39,12 @@ import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.processor.CanonicalReservedInstances;
 import com.netflix.ice.processor.ReservationCapacityPoller;
 import com.netflix.ice.processor.ReservationCapacityPoller.Ec2Mods;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Region;
 
@@ -196,7 +196,7 @@ public class ReservationCapacityPollerTest {
 	
 	@Test
 	public void testUpdateReservations() throws Exception {
-		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.threeyear, ReservationUtilization.PARTIAL);
+		BasicReservationService reservationService = new BasicReservationService(ReservationPeriod.threeyear, PurchaseOption.PartialUpfront);
 		ReservationCapacityPoller poller = new ReservationCapacityPoller(null);
 		ProductService ps = new BasicProductService();
 		AccountService as = new BasicAccountService();
@@ -205,8 +205,8 @@ public class ReservationCapacityPollerTest {
 		as.getAccountById("123456789012", "");
 		
 		Map<ReservationKey, CanonicalReservedInstances> reservationsFromApi = Maps.newHashMap();
-		String res = "123456789012,Elastic Compute Cloud,us-east-1,4aaaaaaa-2222-4567-89ab-01234567890,,r3.xlarge,Availability Zone,us-east-1a,false,2017-03-14 05:57:49,2018-03-13 04:00:00,31536000,0.0,1028.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.063,,standard,"; 
-		String res1 = "123456789012,RDS Service,ap-southeast-2,ri-2017-06-03-07-09-23-658,573bbbbb-7c6b-1234-5678-123456789012,db.t2.micro,,,false,2017-06-03 06:08:27,2018-06-03 06:08:27,31536000,0.0,79.0,2,postgresql,retired,USD,Partial Upfront,Hourly:0.012,null,null,";
+		String res = "123456789012,AmazonEC2,us-east-1,4aaaaaaa-2222-4567-89ab-01234567890,,r3.xlarge,Availability Zone,us-east-1a,false,2017-03-14 05:57:49,2018-03-13 04:00:00,31536000,0.0,1028.0,2,Linux/UNIX,retired,USD,Partial Upfront,Hourly:0.063,,standard,"; 
+		String res1 = "123456789012,AmazonRDS,ap-southeast-2,ri-2017-06-03-07-09-23-658,573bbbbb-7c6b-1234-5678-123456789012,db.t2.micro,,,false,2017-06-03 06:08:27,2018-06-03 06:08:27,31536000,0.0,79.0,2,postgresql,retired,USD,Partial Upfront,Hourly:0.012,null,null,";
 		CanonicalReservedInstances ri = new CanonicalReservedInstances(res);
 		CanonicalReservedInstances ri1 = new CanonicalReservedInstances(res1);
 		

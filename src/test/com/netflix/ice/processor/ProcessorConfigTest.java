@@ -38,11 +38,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
-import com.netflix.ice.basic.BasicResourceService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.IceOptions;
 import com.netflix.ice.common.ProductService;
-import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.WorkBucketDataConfig;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.config.BillingDataConfig;
@@ -52,7 +50,6 @@ public class ProcessorConfigTest {
 	private AWSCredentialsProvider credentialsProvider;        
 	private ProductService productService;
 	private ReservationService reservationService;
-	private ResourceService resourceService;
 	private PriceListService priceListService;
 	private Properties props;
 	
@@ -64,11 +61,10 @@ public class ProcessorConfigTest {
 				AWSCredentialsProvider credentialsProvider,
 				ProductService productService,
 				ReservationService reservationService,
-				ResourceService resourceService,
 				PriceListService priceListService, boolean compress)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
-					reservationService, resourceService,
+					reservationService,
 					priceListService, compress);
 		}
 		
@@ -106,7 +102,6 @@ public class ProcessorConfigTest {
 		credentialsProvider = new DefaultAWSCredentialsProviderChain();        
         productService = new BasicProductService();
         reservationService = new BasicReservationService(null, null);
-        resourceService = new BasicResourceService(productService, new String[]{}, new String[]{});
         priceListService = null;
         
 		props = new Properties();
@@ -125,7 +120,6 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            resourceService,
 	            priceListService,
 	            true);
 		
@@ -150,7 +144,6 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            resourceService,
 	            priceListService,
 	            true);
 		
@@ -185,7 +178,6 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            resourceService,
 	            priceListService,
 	            true);
 		

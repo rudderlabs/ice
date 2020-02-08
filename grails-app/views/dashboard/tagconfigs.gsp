@@ -26,7 +26,8 @@
 <div class="" style="margin: auto; width: 1200px; padding: 20px 30px" ng-controller="tagconfigsCtrl">
   <div ng-repeat="payer in payers" class="list">
     <h1>Tag Settings for {{payer}}</h1>
-    <h2>Mappings</h2>
+    <h2>Mappings<span class="resourcesButtons"><input ng-model="filter_mappings" type="text" class="resourcesFilter" placeholder="Filter"/>
+    </span></h2>   
 	<table style="width: 100%;">
 	  <thead>
 	    <tr>
@@ -34,18 +35,21 @@
 	      <th ng-click="order(mappedValues[payer], 'destValue')">Destination Value</th>
 	      <th ng-click="order(mappedValues[payer], 'srcKey')">Source Tag</th>
 	      <th ng-click="order(mappedValues[payer], 'srcValue')">Source Value</th>
+	      <th>Account Filter</th>
 	    </tr>
 	  </thead>
 	  <tbody>
-	    <tr ng-repeat="mappedValue in mappedValues[payer]" class="{{getTrClass($index)}}">
+	    <tr ng-repeat="mappedValue in mappedValues[payer] | filter:filter_mappings" class="{{getTrClass($index)}}">
 	      <td>{{mappedValue.destKey}}</td>
 	      <td>{{mappedValue.destValue}}</td>
 	      <td>{{mappedValue.srcKey}}</td>
 	      <td>{{mappedValue.srcValue}}</td>
+	      <td>{{mappedValue.filter}}</td>
 	    </tr>
 	  </tbody>
 	</table>
-	<h2>Consolidations</h2>
+	<h2>Consolidations<span class="resourcesButtons"><input ng-model="filter_consolidations" type="text" class="resourcesFilter" placeholder="Filter"/>
+	</span></h2>
 	<table style="width: 100%;">
 	  <thead>
 	    <tr>
@@ -56,7 +60,7 @@
 	    </tr>
 	  </thead>
 	  <tbody>
-	    <tr ng-repeat="consolidation in consolidations[payer]" class="{{getTrClass($index)}}">
+	    <tr ng-repeat="consolidation in consolidations[payer] | filter:filter_consolidations" class="{{getTrClass($index)}}">
 	      <td>{{consolidation.key}}</td>
 	      <td>{{consolidation.keyAliases}}</td>
 	      <td>{{consolidation.value}}</td>

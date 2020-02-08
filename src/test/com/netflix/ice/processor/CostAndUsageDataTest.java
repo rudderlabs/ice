@@ -29,6 +29,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.UsageType;
 
@@ -39,9 +40,9 @@ public class CostAndUsageDataTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		String[] userTags = new String[]{ "Email, Environment" };
-		CostAndUsageData cau = new CostAndUsageData(null, Lists.newArrayList(userTags), TagCoverage.withUserTags, as, ps);
+		CostAndUsageData cau = new CostAndUsageData(0, null, Lists.newArrayList(userTags), TagCoverage.withUserTags, as, ps);
 		
-        TagGroup tagGroup = TagGroup.getTagGroup(as.getAccountById("123", ""), Region.US_WEST_2, null, ps.getProductByName("S3"), Operation.ondemandInstances, UsageType.getUsageType("c1.medium", "hours"), null);
+        TagGroup tagGroup = TagGroup.getTagGroup(as.getAccountById("123", ""), Region.US_WEST_2, null, ps.getProduct(Product.Code.S3), Operation.ondemandInstances, UsageType.getUsageType("c1.medium", "hours"), null);
 		cau.addTagCoverage(null, 0, tagGroup, new boolean[]{true, false});
 		
 		ReadWriteTagCoverageData data = cau.getTagCoverage(null);

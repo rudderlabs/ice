@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,17 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int reservationStartTimeIndex;
 	private int reservationEndTimeIndex;
 	
+	// First appeared in 2019-11 with Net versions
+	private int savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex = -1;
+	private int savingsPlanRecurringCommitmentForBillingPeriodIndex = -1;
+	private int savingsPlanStartTimeIndex = -1;
+	private int savingsPlanEndTimeIndex = -1;
+	private int savingsPlanArnIndex = -1;
+	private int savingsPlanEffectiveCostIndex = -1;
+	private int savingsPlanTotalCommitmentToDateIndex = -1;
+	private int savingsPlanUsedCommitmentIndex = -1;
+	private int savingsPlanPaymentOptionIndex = -1;
+	
 	private static Map<String, Double> normalizationFactors = Maps.newHashMap();
 	
 	{
@@ -83,8 +95,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         usageQuantityIndex = report.getColumnIndex("lineItem", "UsageAmount");
         startTimeIndex = report.getColumnIndex("lineItem", "UsageStartDate");
         endTimeIndex = report.getColumnIndex("lineItem", "UsageEndDate");
-        if (costAndUsageNetUnblendedStartDate != null &&
-        		(report.getStartTime().isEqual(costAndUsageNetUnblendedStartDate) || report.getStartTime().isAfter(costAndUsageNetUnblendedStartDate))) {        	
+        if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate)) {        	
             rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
             costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontCostForUsage");
@@ -125,6 +136,27 @@ public class CostAndUsageReportLineItem extends LineItem {
         reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
         productRegionIndex = report.getColumnIndex("product", "region");
         productServicecodeIndex = report.getColumnIndex("product", "servicecode");
+        
+        // SavingsPlan beginning 2019-11
+        if (!report.getStartTime().isBefore(new DateTime("2019-11", DateTimeZone.UTC))) {
+        	savingsPlanArnIndex = report.getColumnIndex("savingsPlan", "SavingsPlanARN");
+        	savingsPlanStartTimeIndex = report.getColumnIndex("savingsPlan", "StartTime");
+        	savingsPlanEndTimeIndex = report.getColumnIndex("savingsPlan", "EndTime");
+        	savingsPlanTotalCommitmentToDateIndex = report.getColumnIndex("savingsPlan", "TotalCommitmentToDate");
+        	savingsPlanUsedCommitmentIndex = report.getColumnIndex("savingsPlan", "UsedCommitment");
+        	savingsPlanPaymentOptionIndex = report.getColumnIndex("savingsPlan", "PaymentOption");
+        	
+            if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate)) {
+            	savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "NetAmortizedUpfrontCommitmentForBillingPeriod");
+            	savingsPlanRecurringCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "NetRecurringCommitmentForBillingPeriod");
+            	savingsPlanEffectiveCostIndex = report.getColumnIndex("savingsPlan", "NetSavingsPlanEffectiveCost");
+            }
+            else {
+            	savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "AmortizedUpfrontCommitmentForBillingPeriod");
+            	savingsPlanRecurringCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "RecurringCommitmentForBillingPeriod");
+            	savingsPlanEffectiveCostIndex = report.getColumnIndex("savingsPlan", "SavingsPlanEffectiveCost");
+            }
+        }
     }
     
     public String toString() {
@@ -162,15 +194,20 @@ public class CostAndUsageReportLineItem extends LineItem {
         try {
         	lineItemType = LineItemType.valueOf(items[lineItemTypeIndex]);
         } catch (Exception e) {
-        }
-        if (lineItemType == null)
         	logger.error("Unknown lineItemType: " + items[lineItemTypeIndex]);
+        	lineItemType = null;
+        }
     }
     
     public int size() {
     	return resourceTagStartIndex + resourceTagsHeader.length;
     }
-        
+     
+    public int getBillTypeIndex() {
+    	return billTypeIndex;
+    }
+    
+    @Override
     public BillType getBillType() {
     	return BillType.valueOf(items[billTypeIndex]);
     }
@@ -356,7 +393,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	@Override
 	public Region getProductRegion() {
 		String region = items[productRegionIndex];
-		return (region.isEmpty() || region.equals("global")) ? Region.US_EAST_1 : Region.getRegionByName(region);
+		return region.isEmpty() ? Region.US_EAST_1 : Region.getRegionByName(region);
 	}
 
 	public String getPricingUnit() {
@@ -476,6 +513,10 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return null;
 	}
 	
+	public int getLineItemProductCodeIndex() {
+		return lineItemProductCodeIndex;
+	}
+	
 	@Override
 	public String getProductServiceCode() {
 		// Favor the lineItem/ProductCode over product/ServiceCode because Lambda for example has AWSDataTransfer as the serviceCode
@@ -518,6 +559,96 @@ public class CostAndUsageReportLineItem extends LineItem {
 	public String getReservationNumberOfReservations() {
 		if (reservationNumberOfReservationsIndex >= 0)
 			return items[reservationNumberOfReservationsIndex];
+		return null;
+	}
+
+	/**
+	 * Savings Plans began 2019-11
+	 */
+	public int getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex() {
+		return savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex;
+	}
+	public int getSavingsPlanRecurringCommitmentForBillingPeriodIndex() {
+		return savingsPlanRecurringCommitmentForBillingPeriodIndex;
+	}
+	public int getSavingsPlanStartTimeIndex() {
+		return savingsPlanStartTimeIndex;
+	}
+	public int getSavingsPlanEndTimeIndex() {
+		return savingsPlanEndTimeIndex;
+	}
+	public int getSavingsPlanArnIndex() {
+		return savingsPlanArnIndex;
+	}
+	public int getSavingsPlanEffectiveCostIndex() {
+		return savingsPlanEffectiveCostIndex;
+	}
+	public int getSavingsPlanTotalCommitmentToDateIndex() {
+		return savingsPlanTotalCommitmentToDateIndex;
+	}
+	public int getSavingsPlanUsedCommitmentIndex() {
+		return savingsPlanUsedCommitmentIndex;
+	}
+	public int getSavingsPlanPaymentOptionIndex() {
+		return savingsPlanPaymentOptionIndex;
+	}
+	
+	@Override
+	public String getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod() {
+		if (savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex >= 0)
+			return items[savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex];
+		return null;
+	}
+	
+	@Override
+	public String getSavingsPlanRecurringCommitmentForBillingPeriod() {
+		if (savingsPlanRecurringCommitmentForBillingPeriodIndex >= 0)
+			return items[savingsPlanRecurringCommitmentForBillingPeriodIndex];
+		return null;
+	}
+
+	@Override
+	public String getSavingsPlanStartTime() {
+		if (savingsPlanStartTimeIndex >= 0)
+			return items[savingsPlanStartTimeIndex];
+		return null;
+	}
+
+	@Override
+	public String getSavingsPlanEndTime() {
+		if (savingsPlanEndTimeIndex >= 0)
+			return items[savingsPlanEndTimeIndex];
+		return null;
+	}
+
+	@Override
+	public String getSavingsPlanArn() {
+		if (savingsPlanArnIndex >= 0)
+			return items[savingsPlanArnIndex];
+		return null;
+	}
+
+	@Override
+	public String getSavingsPlanEffectiveCost() {
+		if (savingsPlanEffectiveCostIndex >= 0)
+			return items[savingsPlanEffectiveCostIndex];
+		return null;
+	}
+
+	@Override
+	public Double getSavingsPlanNormalizedUsage() {
+		if (savingsPlanTotalCommitmentToDateIndex >= 0 && savingsPlanUsedCommitmentIndex >= 0 &&
+				!items[savingsPlanUsedCommitmentIndex].isEmpty() && !items[savingsPlanTotalCommitmentToDateIndex].isEmpty() &&
+				!items[savingsPlanTotalCommitmentToDateIndex].equals("0")) {
+			return Double.parseDouble(items[savingsPlanUsedCommitmentIndex]) / Double.parseDouble(items[savingsPlanTotalCommitmentToDateIndex]);
+		}
+		return null;
+	}
+	
+	@Override
+	public String getSavingsPlanPaymentOption() {
+		if (savingsPlanPaymentOptionIndex >= 0)
+			return items[savingsPlanPaymentOptionIndex];
 		return null;
 	}
 

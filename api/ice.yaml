@@ -215,7 +215,9 @@ paths:
               resources:
                 description: If true, only return product names that can have tagged resources.
                 type: boolean
-              forReservations:
+              forReservation:
+                type: boolean
+              forSavingsPlans:
                 type: boolean
               usage_cost:
                 description: If "cost" remove Lent operations. If "usage" remove Amortization and Savings operations.
@@ -269,6 +271,15 @@ paths:
           schema:
             $ref: '#/definitions/NamesResponse'
 
+  /getSavingsPlanOps:
+    get:
+      description: Get the list of operations to use for requests in the savings plans dashboard.
+      responses:
+        '200':
+          description: collection of operations
+          schema:
+            $ref: '#/definitions/NamesResponse'
+
   /getUtilizationOps:
     get:
       description: Get the list of operations to use for requests in the utilization dashboard.
@@ -277,6 +288,7 @@ paths:
           description: collection of operations
           schema:
             $ref: '#/definitions/NamesResponse'
+
   /tags:
     get:
       description: Get the list of custom tags for which we have coverage data
@@ -285,6 +297,7 @@ paths:
           description: collection of tag names
           schema:
             $ref: '#/definitions/NamesResponse'
+
   /getData:
     post:
       description: Get the data for the requested cost or usage.
@@ -334,7 +347,10 @@ paths:
                 type: boolean
               forReservation:
                 type: boolean
-                description: Requesting data for the Reservation dashboard. Includes Savings and Lent Opertions. (default = false)
+                description: Requesting data for the Reservation dashboard. Includes Savings and Lent Operations. (default = false)
+              forSavingsPlans:
+                type: boolean
+                description: Requesting data for the Savings Plans dashboard. Includes Lent Operations. (default = false)
               elasticity:
                 type: boolean
               showZones:

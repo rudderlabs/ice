@@ -46,6 +46,7 @@ import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.IceOptions;
+import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.WorkBucketDataConfig;
 import com.netflix.ice.common.Config.TagCoverage;
@@ -53,7 +54,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.ReservationService.ReservationPeriod;
-import com.netflix.ice.processor.ReservationService.ReservationUtilization;
 import com.netflix.ice.processor.ReservationService.ReservationKey;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.processor.pricelist.InstancePrices;
@@ -158,18 +158,17 @@ public class BillingFileProcessorTest {
 	
 	public void testFileData(ReportTest reportTest, String prefix, ProductService productService) throws Exception {
         ReservationPeriod reservationPeriod = ReservationPeriod.valueOf(properties.getProperty(IceOptions.RESERVATION_PERIOD, "oneyear"));
-        ReservationUtilization reservationUtilization = ReservationUtilization.valueOf(properties.getProperty(IceOptions.RESERVATION_UTILIZATION, "PARTIAL"));
-		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationUtilization);
+        PurchaseOption reservationPurchaseOption = PurchaseOption.valueOf(properties.getProperty(IceOptions.RESERVATION_PURCHASE_OPTION, "PartialUpfront"));
+		BasicReservationService reservationService = new BasicReservationService(reservationPeriod, reservationPurchaseOption);
 		
 		class TestProcessorConfig extends ProcessorConfig {
 			public TestProcessorConfig(
 		            Properties properties,
 		            ProductService productService,
 		            ReservationService reservationService,
-		            ResourceService resourceService,
 		            PriceListService priceListService,
 		            boolean compress) throws Exception {
-				super(properties, null, productService, reservationService, resourceService, priceListService, compress);
+				super(properties, null, productService, reservationService, priceListService, compress);
 			}
 			
 			@Override
@@ -198,20 +197,19 @@ public class BillingFileProcessorTest {
 										properties,
 										productService,
 										reservationService,
-										resourceService,
 										priceListService,
 										false);
+		Long startMilli = config.startDate.getMillis();
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
-		bfp.init();
+		bfp.init(startMilli);
 		
 		// Debug settings
 		//bfp.reservationProcessor.setDebugHour(0);
 		//bfp.reservationProcessor.setDebugFamily("c4");
     	
-		CostAndUsageData costAndUsageData = new CostAndUsageData(null, null, TagCoverage.none, null, productService);
+		CostAndUsageData costAndUsageData = new CostAndUsageData(startMilli, null, null, TagCoverage.none, null, productService);
         Instances instances = new Instances(null, null, null);
         
-		Long startMilli = config.startDate.getMillis();
 		Map<ReservationKey, CanonicalReservedInstances> reservations = ReservationCapacityPoller.readReservations(new File(resourcesReportDir, "reservation_capacity.csv"));
 		ReservationCapacityPoller rcp = new ReservationCapacityPoller(config);
 		rcp.updateReservations(reservations, config.accountService, startMilli, productService, resourceService, reservationService);
@@ -224,12 +222,12 @@ public class BillingFileProcessorTest {
         		
 		// Initialize the price lists
     	Map<Product, InstancePrices> prices = Maps.newHashMap();
-    	Product p = productService.getProductByName(Product.ec2Instance);
+    	Product p = productService.getProduct(Product.Code.Ec2Instance);
     	prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonEC2));
-    	p = productService.getProductByName(Product.rdsInstance);
+    	p = productService.getProduct(Product.Code.RdsInstance);
     	if (reservationService.hasReservations(p))
     		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRDS));
-    	p = productService.getProductByName(Product.redshift);
+    	p = productService.getProduct(Product.Code.Redshift);
     	if (reservationService.hasReservations(p))
     		prices.put(p, priceListService.getPrices(config.startDate, ServiceCode.AmazonRedshift));
 
@@ -305,7 +303,7 @@ public class BillingFileProcessorTest {
 		
 		
 		// See that number of hours matches
-		assertEquals(dataType+" number of hours doesn't match, expected " + expectedData.getNum() + ", got " + data.getNum(), expectedData.getNum(), data.getNum());
+		assertEquals(dataType+" number of hours doesn't match", expectedData.getNum(), data.getNum());
 		// For each hour see that the length and entries match
 		for (int i = 0; i < data.getNum(); i++) {
 			Map<TagGroup, Double> expected = expectedData.getData(i);
@@ -436,23 +434,23 @@ public class BillingFileProcessorTest {
 		init(resourcesReportDir + "ice.properties");
 		ProductService productService = new BasicProductService();
 		// Load products since DBRs don't have product codes (we normally pull them from the pricing service)
-		productService.getProduct("EC2 Instance", "EC2_Instance");
-		productService.getProduct("RDS Instance", "RDS_Instance");
+		productService.getProduct(Product.Code.Ec2Instance);
+		productService.getProduct(Product.Code.RdsInstance);
 		productService.getProduct("AWS Support (Developer)", "AWSDeveloperSupport");
 		productService.getProduct("AWS CloudTrail", "AWSCloudTrail");
 		productService.getProduct("AWS Config", "AWSConfig");
 		productService.getProduct("AWS Lambda", "AWSLambda");
-		productService.getProduct("Data Transfer", "Data_Transfer");
+		productService.getProduct(Product.Code.DataTransfer);
 		productService.getProduct("Amazon Simple Queue Service", "AWSQueueService");
-		productService.getProduct("Amazon API Gateway", "AmazonApiGateway");
-		productService.getProduct("AmazonCloudWatch", "AmazonCloudWatch");
+		productService.getProduct(Product.Code.ApiGateway);
+		productService.getProduct(Product.Code.CloudWatch);
 		productService.getProduct("Amazon DynamoDB", "AmazonDynamoDB");
-		productService.getProduct("Amazon Elastic Compute Cloud", "AmazonEC2");
-		productService.getProduct("Elastic Block Storage", "Elastic_Block_Storage");
-		productService.getProduct("Elastic IP", "Elastic_IP");
-		productService.getProduct("Amazon ElastiCache", "AmazonElastiCache");
-		productService.getProduct("Amazon RDS Service", "AmazonRDS");
-		productService.getProduct("Amazon Simple Storage Service", "AmazonS3");
+		productService.getProduct(Product.Code.Ec2);
+		productService.getProduct(Product.Code.Ebs);
+		productService.getProduct(Product.Code.Eip);
+		productService.getProduct(Product.Code.ElastiCache);
+		productService.getProduct(Product.Code.Rds);
+		productService.getProduct(Product.Code.S3);
 		productService.getProduct("Amazon Simple Notification Service", "AmazonSNS");
 		productService.getProduct("Amazon Virtual Private Cloud", "AmazonVPC");
 		productService.getProduct("AWS Key Management Service", "awskms");
@@ -461,19 +459,19 @@ public class BillingFileProcessorTest {
 		productService.getProduct("Amazon Route 53", "AmazonRoute53");
 		productService.getProduct("Amazon Simple Email Service", "AmazonSES");
 		productService.getProduct("Amazon Glacier", "AmazonGlacier");
-		productService.getProduct("Amazon CloudFront", "AmazonCloudFront");
+		productService.getProduct(Product.Code.CloudFront);
 		productService.getProduct("Amazon EC2 Container Registry (ECR)", "AmazonECR");
-		productService.getProduct("Amazon Elasticsearch Service", "AmazonES");
+		productService.getProduct(Product.Code.Elasticsearch);
 		productService.getProduct("AWS Service Catalog", "AWSServiceCatalog");
 		productService.getProduct("Amazon WorkSpaces", "AmazonWorkSpaces");
 		productService.getProduct("AWS Data Pipeline", "datapipeline");
 		productService.getProduct("Amazon WorkDocs", "AmazonWorkDocs");
-		productService.getProduct("Amazon Elastic MapReduce", "ElasticMapReduce");
+		productService.getProduct(Product.Code.Emr);
 		productService.getProduct("Amazon Mobile Analytics", "mobileanalytics");
 		productService.getProduct("AWS Directory Service", "AWSDirectoryService");
 		productService.getProduct("Amazon Elastic File System", "AmazonEFS");
 		productService.getProduct("Amazon Kinesis", "AmazonKinesis");
-		productService.getProduct("Amazon Redshift", "Redshift");
+		productService.getProduct(Product.Code.Redshift);
 				
 		testFileData(new DetailedBillingReportTest(), "dbr-", productService);
 	}
