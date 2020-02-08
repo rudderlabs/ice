@@ -159,6 +159,19 @@ public class CostAndUsageData {
         }
     }
     
+    public int getMaxNum() {
+    	// return the maximum number of hours represented in the underlying maps
+    	int max = 0;
+    	
+        for (ReadWriteData data: usageDataByProduct.values()) {
+            max = max < data.getNum() ? data.getNum() : max;
+        }
+        for (ReadWriteData data: costDataByProduct.values()) {
+            max = max < data.getNum() ? data.getNum() : max;
+        }
+        return max;
+    }
+    
     public void addReservation(Reservation reservation) {
     	reservations.put(reservation.tagGroup.arn, reservation);
     }
