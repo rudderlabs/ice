@@ -93,7 +93,12 @@ public class BasicAccountService implements AccountService {
     }
     
     public Account getAccountById(String accountId) {
-    	return accountsById.get(accountId);
+    	Account account = accountsById.get(accountId);
+    	if (account == null) {
+    		logger.error("getAccountById() unregistered account: " + accountId);
+    		account = getAccountById(accountId, "");
+    	}
+    	return account;
     }
 
     public Account getAccountById(String accountId, String root) {
@@ -127,7 +132,8 @@ public class BasicAccountService implements AccountService {
 
     public List<Account> getAccounts() {
         List<Account> result = Lists.newArrayList();
-        for (Account a: accountsByIceName.values())
+        // Accounts can have the same name, so be sure to get the list using the ID map
+        for (Account a: accountsById.values())
             result.add(a);
         return result;
     }
