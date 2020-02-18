@@ -700,7 +700,7 @@ public class BasicLineItemProcessorTest {
 				// check for matching operation
 				if (tg.operation.isAmortized() && amortization != null) {
 					String[] amortizedTag = expectedTag.clone();
-					amortizedTag[operationIndex] = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tg.operation).getPurchaseOption()).name;
+					amortizedTag[operationIndex] = ReservationOperation.getAmortized(((ReservationOperation) tg.operation).getPurchaseOption()).name;
 					String errors = checkTag(tg, amortizedTag);
 					assertTrue(reportName + " Amortization Tag is not correct: " + errors, errors.length() == 0);
 					double cost = costData.getData(0).get(tg);

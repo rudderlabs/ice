@@ -157,7 +157,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 				    amort = null;
 				    if (purchaseOption != PurchaseOption.NoUpfront) {
 					    // See if we have amortization in the map already
-					    TagGroupRI atg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(purchaseOption), tg.usageType, tg.resourceGroup, tg.arn);
+					    TagGroupRI atg = TagGroupRI.get(tg.account, tg.region, tg.zone, tg.product, Operation.getAmortized(purchaseOption), tg.usageType, tg.resourceGroup, tg.arn);
 					    amort = costMap.remove(atg);
 					    if (hour == 0 && amort == null)
 					    	logger.warn("No amortization in map for tagGroup: " + atg);
@@ -185,6 +185,11 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 					    usedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getReservedInstances(purchaseOption), tg.usageType, tg.resourceGroup);
 					    add(toBeAdded, usedTagGroup, used);						    
 					    add(costMap, usedTagGroup, adjustedCost);						    
+					    // assign amortization
+					    if (adjustedAmortization > 0.0) {
+					        TagGroup amortTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getAmortized(purchaseOption), tg.usageType, tg.resourceGroup);
+						    add(costMap, amortTagGroup, adjustedAmortization);
+					    }
 				    }
 				    else {
 				    	// Borrowed by other account, mark as borrowed/lent
@@ -194,11 +199,13 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 					    add(costMap, borrowedTagGroup, adjustedCost);
 					    add(toBeAdded, lentTagGroup, adjustedUsed);
 					    add(costMap, lentTagGroup, adjustedCost);
-				    }
-				    // assign amortization
-				    if (adjustedAmortization > 0.0) {
-				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getUpfrontAmortized(purchaseOption), tg.usageType, tg.resourceGroup);
-					    add(costMap, upfrontTagGroup, adjustedAmortization);
+					    // assign amortization
+					    if (adjustedAmortization > 0.0) {
+					        TagGroup borrowedAmortTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getBorrowedAmortized(purchaseOption), tg.usageType, tg.resourceGroup);
+					        TagGroup lentAmortTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getLentAmortized(purchaseOption), rtg.usageType, tg.resourceGroup);
+						    add(costMap, borrowedAmortTagGroup, adjustedAmortization);
+						    add(costMap, lentAmortTagGroup, adjustedAmortization);
+					    }
 				    }
 				    // assign savings
 			        TagGroup savingsTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getSavings(purchaseOption), tg.usageType, tg.resourceGroup);
@@ -224,7 +231,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    double unusedFixedCost = reservedUnused * reservation.upfrontAmortized;
 			    if (reservation.upfrontAmortized > 0.0) {
 				    // assign unused amortization to owner
-			        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUpfrontUnusedAmortized(purchaseOption), rtg.usageType, riResourceGroup);
+			        TagGroup upfrontTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedAmortized(purchaseOption), rtg.usageType, riResourceGroup);
 				    add(costMap, upfrontTagGroup, unusedFixedCost);
 			    }
 				    

@@ -87,14 +87,25 @@ public class SavingsPlanProcessor {
 	    	double cost = costMap.remove(bonusTg);
 	    	double usage = usageMap.remove(bonusTg);
 	    	
+    		String accountId = sp.arn.getAccountId();
 	    	if (sp.paymentOption != PurchaseOption.NoUpfront) {
 	    		// Add amortization
-	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
+	    		Operation amortOp = null;
+	    		if (accountId.equals(bonusTg.account.getId())) {
+	    			amortOp = Operation.getSavingsPlanAmortized(sp.paymentOption);
+	    		}
+	    		else {
+	    			amortOp = Operation.getSavingsPlanBorrowedAmortized(sp.paymentOption);
+	    			// Create Lent records for account that owns the savings plan
+	        		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLentAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
+	    	    	add(costMap, tg, cost * sp.normalizedAmortization);
+	    		}	    		
+	    		
+	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, amortOp, bonusTg.usageType, bonusTg.resourceGroup);
 	    		add(costMap, tg, cost * sp.normalizedAmortization);
 	    	}
 	    	
     		Operation op = null;
-    		String accountId = sp.arn.getAccountId();
     		if (accountId.equals(bonusTg.account.getId())) {
     			op = Operation.getSavingsPlanUsed(sp.paymentOption);
     		}

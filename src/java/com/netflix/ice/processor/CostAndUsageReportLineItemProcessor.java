@@ -361,7 +361,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     	}
 		amortCost = Double.parseDouble(amort);
 		if (amortCost > 0.0) {
-    		ReservationOperation amortOp = ReservationOperation.getUpfrontAmortized(((ReservationOperation) tagGroup.operation).getPurchaseOption());
+    		ReservationOperation amortOp = ReservationOperation.getAmortized(((ReservationOperation) tagGroup.operation).getPurchaseOption());
     		TagGroupRI tg = TagGroupRI.get(tagGroup.account, tagGroup.region, tagGroup.zone, product, amortOp, tagGroup.usageType, tagGroup.resourceGroup, reservationArn);
     		addValue(costs, tg, amortCost);
             if (debug) {

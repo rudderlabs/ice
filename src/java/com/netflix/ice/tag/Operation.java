@@ -58,6 +58,8 @@ public class Operation extends Tag {
     	Borrowed,
     	Lent,
     	Amortized,
+    	BorrowedAmortized,
+    	LentAmortized,
     	Unused,
     	UnusedAmortized;
     }
@@ -79,18 +81,22 @@ public class Operation extends Tag {
     public static final ReservationOperation bonusReservedInstancesPartialUpfront = new ReservationOperation(Category.Bonus, PurchaseOption.PartialUpfront);
     public static final ReservationOperation borrowedInstancesPartialUpfront = new ReservationOperation(Category.Borrowed, PurchaseOption.PartialUpfront);
     public static final ReservationOperation lentInstancesPartialUpfront = new ReservationOperation(Category.Lent, PurchaseOption.PartialUpfront);
-    public static final ReservationOperation upfrontAmortizedPartialUpfront = new ReservationOperation(Category.Amortized, PurchaseOption.PartialUpfront);    
+    public static final ReservationOperation amortizedPartialUpfront = new ReservationOperation(Category.Amortized, PurchaseOption.PartialUpfront);    
+    public static final ReservationOperation borrowedAmortizedPartialUpfront = new ReservationOperation(Category.BorrowedAmortized, PurchaseOption.PartialUpfront);    
+    public static final ReservationOperation lentAmortizedPartialUpfront = new ReservationOperation(Category.LentAmortized, PurchaseOption.PartialUpfront);    
     public static final ReservationOperation unusedInstancesPartialUpfront = new ReservationOperation(Category.Unused, PurchaseOption.PartialUpfront);
-    public static final ReservationOperation upfrontUnusedAmortizedPartialUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.PartialUpfront);
+    public static final ReservationOperation unusedAmortizedPartialUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.PartialUpfront);
 
     public static final ReservationOperation savingsAllUpfront = new ReservationOperation(Category.Savings, PurchaseOption.AllUpfront);
     public static final ReservationOperation reservedInstancesAllUpfront = new ReservationOperation(Category.Used, PurchaseOption.AllUpfront);
     public static final ReservationOperation bonusReservedInstancesAllUpfront = new ReservationOperation(Category.Bonus, PurchaseOption.AllUpfront);
     public static final ReservationOperation borrowedInstancesAllUpfront = new ReservationOperation(Category.Borrowed, PurchaseOption.AllUpfront);
     public static final ReservationOperation lentInstancesAllUpfront = new ReservationOperation(Category.Lent, PurchaseOption.AllUpfront);
-    public static final ReservationOperation upfrontAmortizedAllUpfront = new ReservationOperation(Category.Amortized, PurchaseOption.AllUpfront);
+    public static final ReservationOperation amortizedAllUpfront = new ReservationOperation(Category.Amortized, PurchaseOption.AllUpfront);
+    public static final ReservationOperation borrowedAmortizedAllUpfront = new ReservationOperation(Category.BorrowedAmortized, PurchaseOption.AllUpfront);
+    public static final ReservationOperation lentAmortizedAllUpfront = new ReservationOperation(Category.LentAmortized, PurchaseOption.AllUpfront);
     public static final ReservationOperation unusedInstancesAllUpfront = new ReservationOperation(Category.Unused, PurchaseOption.AllUpfront);
-    public static final ReservationOperation upfrontUnusedAmortizedAllUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
+    public static final ReservationOperation unusedAmortizedAllUpfront = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
 
     // Legacy Heavy/Medium/Light Utilization types used only by ElastiCache. There is account borrowing at least for ElastiCache.
     public static final ReservationOperation savingsHeavy = new ReservationOperation(Category.Savings, PurchaseOption.Heavy);
@@ -98,24 +104,33 @@ public class Operation extends Tag {
     public static final ReservationOperation bonusReservedInstancesHeavy = new ReservationOperation(Category.Bonus, PurchaseOption.Heavy);
     public static final ReservationOperation borrowedInstancesHeavy = new ReservationOperation(Category.Borrowed, PurchaseOption.Heavy);
     public static final ReservationOperation lentInstancesHeavy = new ReservationOperation(Category.Lent, PurchaseOption.Heavy);
-    public static final ReservationOperation upfrontAmortizedHeavy = new ReservationOperation(Category.Amortized, PurchaseOption.Heavy);
+    public static final ReservationOperation amortizedHeavy = new ReservationOperation(Category.Amortized, PurchaseOption.Heavy);
+    public static final ReservationOperation borrowedAmortizedHeavy = new ReservationOperation(Category.BorrowedAmortized, PurchaseOption.Heavy);
+    public static final ReservationOperation lentAmortizedHeavy = new ReservationOperation(Category.LentAmortized, PurchaseOption.Heavy);
     public static final ReservationOperation unusedInstancesHeavy = new ReservationOperation(Category.Unused, PurchaseOption.Heavy);
+    public static final ReservationOperation unusedAmortizedHeavy = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.Heavy);
 
     public static final ReservationOperation savingsMedium = new ReservationOperation(Category.Savings, PurchaseOption.Medium);
     public static final ReservationOperation reservedInstancesMedium = new ReservationOperation(Category.Used, PurchaseOption.Medium);
     public static final ReservationOperation bonusReservedInstancesMedium = new ReservationOperation(Category.Bonus, PurchaseOption.Medium);
     public static final ReservationOperation borrowedInstancesMedium = new ReservationOperation(Category.Borrowed, PurchaseOption.Medium);
     public static final ReservationOperation lentInstancesMedium = new ReservationOperation(Category.Lent, PurchaseOption.Medium);
-    public static final ReservationOperation upfrontAmortizedMedium = new ReservationOperation(Category.Amortized, PurchaseOption.Medium);
+    public static final ReservationOperation amortizedMedium = new ReservationOperation(Category.Amortized, PurchaseOption.Medium);
+    public static final ReservationOperation borrowedAmortizedMedium = new ReservationOperation(Category.BorrowedAmortized, PurchaseOption.Medium);
+    public static final ReservationOperation lentAmortizedMedium = new ReservationOperation(Category.LentAmortized, PurchaseOption.Medium);
     public static final ReservationOperation unusedInstancesMedium = new ReservationOperation(Category.Unused, PurchaseOption.Medium);
+    public static final ReservationOperation unusedAmortizedMedium = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.Medium);
 
     public static final ReservationOperation savingsLight = new ReservationOperation(Category.Savings, PurchaseOption.Light);
     public static final ReservationOperation reservedInstancesLight = new ReservationOperation(Category.Used, PurchaseOption.Light);
     public static final ReservationOperation bonusReservedInstancesLight = new ReservationOperation(Category.Bonus, PurchaseOption.Light);
     public static final ReservationOperation borrowedInstancesLight = new ReservationOperation(Category.Borrowed, PurchaseOption.Light);
     public static final ReservationOperation lentInstancesLight = new ReservationOperation(Category.Lent, PurchaseOption.Light);
-    public static final ReservationOperation upfrontAmortizedLight = new ReservationOperation(Category.Amortized, PurchaseOption.Light);
+    public static final ReservationOperation amortizedLight = new ReservationOperation(Category.Amortized, PurchaseOption.Light);
+    public static final ReservationOperation borrowedAmortizedLight = new ReservationOperation(Category.BorrowedAmortized, PurchaseOption.Light);
+    public static final ReservationOperation lentAmortizedLight = new ReservationOperation(Category.LentAmortized, PurchaseOption.Light);
     public static final ReservationOperation unusedInstancesLight = new ReservationOperation(Category.Unused, PurchaseOption.Light);
+    public static final ReservationOperation unusedAmortizedLight = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.Light);
 
     public static final ReservationOperation reservedInstancesCredits = new ReservationOperation("RI Credits", null);
     
@@ -132,6 +147,8 @@ public class Operation extends Tag {
     public static final SavingsPlanOperation savingsPlanBorrowedPartialUpfront = new SavingsPlanOperation(Category.Borrowed, PurchaseOption.PartialUpfront);
     public static final SavingsPlanOperation savingsPlanLentPartialUpfront = new SavingsPlanOperation(Category.Lent, PurchaseOption.PartialUpfront);
     public static final SavingsPlanOperation savingsPlanAmortizedPartialUpfront = new SavingsPlanOperation(Category.Amortized, PurchaseOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanBorrowedAmortizedPartialUpfront = new SavingsPlanOperation(Category.BorrowedAmortized, PurchaseOption.PartialUpfront);
+    public static final SavingsPlanOperation savingsPlanLentAmortizedPartialUpfront = new SavingsPlanOperation(Category.LentAmortized, PurchaseOption.PartialUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedPartialUpfront = new SavingsPlanOperation(Category.Unused, PurchaseOption.PartialUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedAmortizedPartialUpfront = new SavingsPlanOperation(Category.UnusedAmortized, PurchaseOption.PartialUpfront);
 
@@ -141,6 +158,8 @@ public class Operation extends Tag {
     public static final SavingsPlanOperation savingsPlanBorrowedAllUpfront = new SavingsPlanOperation(Category.Borrowed, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanLentAllUpfront = new SavingsPlanOperation(Category.Lent, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanAmortizedAllUpfront = new SavingsPlanOperation(Category.Amortized, PurchaseOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanBorrowedAmortizedAllUpfront = new SavingsPlanOperation(Category.BorrowedAmortized, PurchaseOption.AllUpfront);
+    public static final SavingsPlanOperation savingsPlanLentAmortizedAllUpfront = new SavingsPlanOperation(Category.LentAmortized, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedAllUpfront = new SavingsPlanOperation(Category.Unused, PurchaseOption.AllUpfront);
     public static final SavingsPlanOperation savingsPlanUnusedAmortizedAllUpfront = new SavingsPlanOperation(Category.UnusedAmortized, PurchaseOption.AllUpfront);
     
@@ -151,9 +170,16 @@ public class Operation extends Tag {
     	lentInstancesHeavy,
     	lentInstancesMedium,
     	lentInstancesLight,
+    	lentAmortizedPartialUpfront,
+    	lentAmortizedAllUpfront,
+    	lentAmortizedHeavy,
+    	lentAmortizedMedium,
+    	lentAmortizedLight,
     	savingsPlanLentNoUpfront,
     	savingsPlanLentPartialUpfront,
     	savingsPlanLentAllUpfront,
+    	savingsPlanLentAmortizedPartialUpfront,
+    	savingsPlanLentAmortizedAllUpfront,
     };
     
     public static final Operation[] borrowedOperations = new Operation[] {
@@ -163,9 +189,16 @@ public class Operation extends Tag {
     	borrowedInstancesHeavy,
     	borrowedInstancesMedium,
     	borrowedInstancesLight,
+    	borrowedAmortizedPartialUpfront,
+    	borrowedAmortizedAllUpfront,
+    	borrowedAmortizedHeavy,
+    	borrowedAmortizedMedium,
+    	borrowedAmortizedLight,
     	savingsPlanBorrowedNoUpfront,
     	savingsPlanBorrowedPartialUpfront,
     	savingsPlanBorrowedAllUpfront,
+    	savingsPlanBorrowedAmortizedPartialUpfront,
+    	savingsPlanBorrowedAmortizedAllUpfront,
     };
     
     public static final Operation[] savingsOperations = new Operation[] {
@@ -182,18 +215,32 @@ public class Operation extends Tag {
     };
     
     public static final Operation[] amortizationOperations = new Operation[] {
-    	upfrontAmortizedPartialUpfront,
-    	upfrontAmortizedAllUpfront,
-    	upfrontAmortizedHeavy,
-    	upfrontAmortizedMedium,
-    	upfrontAmortizedLight,
+    	amortizedPartialUpfront,
+    	amortizedAllUpfront,
+    	amortizedHeavy,
+    	amortizedMedium,
+    	amortizedLight,
+    	borrowedAmortizedPartialUpfront,
+    	borrowedAmortizedAllUpfront,
+    	borrowedAmortizedHeavy,
+    	borrowedAmortizedMedium,
+    	borrowedAmortizedLight,
+    	lentAmortizedPartialUpfront,
+    	lentAmortizedAllUpfront,
+    	lentAmortizedHeavy,
+    	lentAmortizedMedium,
+    	lentAmortizedLight,
+    	unusedAmortizedPartialUpfront,
+    	unusedAmortizedAllUpfront,
+    	unusedAmortizedHeavy,
+    	unusedAmortizedMedium,
+    	unusedAmortizedLight,
     	savingsPlanAmortizedPartialUpfront,
     	savingsPlanAmortizedAllUpfront,
-    };
-
-    public static final Operation[] unusedAmortizationOperations = new Operation[] {
-    	upfrontUnusedAmortizedPartialUpfront,
-    	upfrontUnusedAmortizedAllUpfront,
+    	savingsPlanBorrowedAmortizedPartialUpfront,
+    	savingsPlanBorrowedAmortizedAllUpfront,
+    	savingsPlanLentAmortizedPartialUpfront,
+    	savingsPlanLentAmortizedAllUpfront,
     	savingsPlanUnusedAmortizedPartialUpfront,
     	savingsPlanUnusedAmortizedAllUpfront,
     };
@@ -289,24 +336,46 @@ public class Operation extends Tag {
         }
     }
 
-    public static ReservationOperation getUpfrontAmortized(PurchaseOption purchaseOption) {
+    public static ReservationOperation getAmortized(PurchaseOption purchaseOption) {
         switch (purchaseOption) {
-            case AllUpfront: return upfrontAmortizedAllUpfront;
-            case PartialUpfront: return upfrontAmortizedPartialUpfront;
-            case Heavy: return upfrontAmortizedHeavy;
-            case Medium: return upfrontAmortizedMedium;
-            case Light: return upfrontAmortizedLight;
+            case AllUpfront: return amortizedAllUpfront;
+            case PartialUpfront: return amortizedPartialUpfront;
+            case Heavy: return amortizedHeavy;
+            case Medium: return amortizedMedium;
+            case Light: return amortizedLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
 
-    public static ReservationOperation getUpfrontUnusedAmortized(PurchaseOption purchaseOption) {
+    public static ReservationOperation getBorrowedAmortized(PurchaseOption purchaseOption) {
         switch (purchaseOption) {
-            case AllUpfront: return upfrontUnusedAmortizedAllUpfront;
-            case PartialUpfront: return upfrontUnusedAmortizedPartialUpfront;
-            case Heavy: return upfrontAmortizedHeavy;
-            case Medium: return upfrontAmortizedMedium;
-            case Light: return upfrontAmortizedLight;
+            case AllUpfront: return borrowedAmortizedAllUpfront;
+            case PartialUpfront: return borrowedAmortizedPartialUpfront;
+            case Heavy: return borrowedAmortizedHeavy;
+            case Medium: return borrowedAmortizedMedium;
+            case Light: return borrowedAmortizedLight;
+            default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
+        }
+    }
+
+    public static ReservationOperation getLentAmortized(PurchaseOption purchaseOption) {
+        switch (purchaseOption) {
+            case AllUpfront: return lentAmortizedAllUpfront;
+            case PartialUpfront: return lentAmortizedPartialUpfront;
+            case Heavy: return lentAmortizedHeavy;
+            case Medium: return lentAmortizedMedium;
+            case Light: return lentAmortizedLight;
+            default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
+        }
+    }
+
+    public static ReservationOperation getUnusedAmortized(PurchaseOption purchaseOption) {
+        switch (purchaseOption) {
+            case AllUpfront: return unusedAmortizedAllUpfront;
+            case PartialUpfront: return unusedAmortizedPartialUpfront;
+            case Heavy: return unusedAmortizedHeavy;
+            case Medium: return unusedAmortizedMedium;
+            case Light: return unusedAmortizedLight;
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
@@ -390,6 +459,22 @@ public class Operation extends Tag {
     	switch(paymentOption) {
     	case PartialUpfront: return savingsPlanAmortizedPartialUpfront;
     	case AllUpfront: return savingsPlanAmortizedAllUpfront;
+    	default: throw new RuntimeException("Unknown PurchaseOption " + paymentOption);
+    	}
+    }
+    
+    public static SavingsPlanOperation getSavingsPlanBorrowedAmortized(PurchaseOption paymentOption) {
+    	switch(paymentOption) {
+    	case PartialUpfront: return savingsPlanBorrowedAmortizedPartialUpfront;
+    	case AllUpfront: return savingsPlanBorrowedAmortizedAllUpfront;
+    	default: throw new RuntimeException("Unknown PurchaseOption " + paymentOption);
+    	}
+    }
+    
+    public static SavingsPlanOperation getSavingsPlanLentAmortized(PurchaseOption paymentOption) {
+    	switch(paymentOption) {
+    	case PartialUpfront: return savingsPlanLentAmortizedPartialUpfront;
+    	case AllUpfront: return savingsPlanLentAmortizedAllUpfront;
     	default: throw new RuntimeException("Unknown PurchaseOption " + paymentOption);
     	}
     }
