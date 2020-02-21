@@ -2631,6 +2631,14 @@ function tagconfigsCtrl($scope, $location, $http) {
             })
           });
         }
+        else if (tagConfigsForDestKey.aliases) {
+          tagConsolidations.push({
+            key: destKey,
+            keyAliases: tagConfigsForDestKey.aliases.join(', '),
+            value: '',
+            valueAliases: ''
+          })
+        }
       });
       $scope.order(values, 'srcValue');
       $scope.order(values, 'srcKey');
