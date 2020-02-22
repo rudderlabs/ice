@@ -156,8 +156,10 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
         
         int count = Integer.parseInt(lineItem.getReservationNumberOfReservations());
-        long start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).getMillis();
-        long end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).getMillis();
+    	// AWS Reservations start being applied at the beginning of the hour in which the reservation was purchased.
+        // The reservations stop being applied at the beginning of the hour in which the reservation expires.
+        DateTime start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0);
+        DateTime end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0);
         PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();
         
         
@@ -173,7 +175,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         if (unusedUsagePrice > 0.0 && Math.abs(unusedUsagePrice - usagePrice) > 0.0001)
         	logger.info(" used and unused usage prices are different, used: " + usagePrice + ", unused: " + unusedUsagePrice + ", tg: " + tg);
 		
-        Reservation r = new Reservation(tg, count, start, end, purchaseOption, hourlyFixedPrice, usagePrice);
+        Reservation r = new Reservation(tg, count, start.getMillis(), end.getMillis(), purchaseOption, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
         if (ReservationArn.debugReservationArn != null && tg.arn == ReservationArn.debugReservationArn) {

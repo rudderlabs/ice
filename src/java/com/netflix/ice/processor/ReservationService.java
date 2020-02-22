@@ -30,6 +30,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+
 /**
  * Interface for reservations.
  */
@@ -81,14 +86,28 @@ public interface ReservationService {
     public static class ReservationInfo {
     	public final TagGroupRI tagGroup;
         public final int capacity;
+        public final long start;					// only set when fetching reservations by ARN
+        public final long end;						// only set when fetching reservations by ARN
         public final double upfrontAmortized;		// Per-hour amortization of any up-front cost per instance
         public final double reservationHourlyCost;	// Per-hour cost for each reserved instance
 
-        public ReservationInfo(TagGroupRI tagGroup, int capacity, double upfrontAmortized, double reservationHourlyCost) {
+        public ReservationInfo(TagGroupRI tagGroup, int capacity, long start, long end, double upfrontAmortized, double reservationHourlyCost) {
         	this.tagGroup = tagGroup;
             this.capacity = capacity;
+            this.start = start;
+            this.end = end;
             this.upfrontAmortized = upfrontAmortized;
             this.reservationHourlyCost = reservationHourlyCost;
+        }
+
+        public static final DateTimeFormatter dateTimeFormatISO = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ").withZone(DateTimeZone.UTC);
+
+        public String toString() {
+        	return "tagGroup:{" + tagGroup + "}, capacity:" + capacity +
+        			", start:" + new DateTime(start).toString(dateTimeFormatISO) +
+        			", end:" + new DateTime(end).toString(dateTimeFormatISO) +
+        			", amortized:" + upfrontAmortized +
+        			", hourly:" + reservationHourlyCost;
         }
     }
     

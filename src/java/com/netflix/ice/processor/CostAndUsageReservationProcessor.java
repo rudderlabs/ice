@@ -230,11 +230,11 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    }
 	    
 	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupRI
-	    cleanup(hour, usageMap, "usage");
-	    cleanup(hour, costMap, "cost");
+	    cleanup(hour, usageMap, "usage", reservationService);
+	    cleanup(hour, costMap, "cost", reservationService);
 	}
 	
-	private void cleanup(int hour, Map<TagGroup, Double> data, String which) {
+	private void cleanup(int hour, Map<TagGroup, Double> data, String which, ReservationService reservationService) {
 	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: data.keySet()) {
 	    	if (tagGroup instanceof TagGroupRI) {
@@ -246,6 +246,10 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	Integer i = leftovers.get(tg.operation);
 	    	i = 1 + ((i == null) ? 0 : i);
 	    	leftovers.put(tg.operation, i);
+	    	
+	    	if (tg.operation.isBonus()) {
+	    		logger.info("Bonus reservation at hour " + hour + ": " + reservationService.getReservation(tg.arn));
+	    	}
 	    	
 	    	Double v = data.remove(tg);
 	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
