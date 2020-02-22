@@ -19,9 +19,11 @@ package com.netflix.ice.reader;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -34,6 +36,7 @@ import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadOnlyGenericData<D> {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
     protected D[][] data;
     protected List<TagGroup> tagGroups;
     private Map<TagType, Map<Tag, Map<TagGroup, Integer>>> tagGroupsByTagAndTagType;
@@ -57,7 +60,7 @@ public abstract class ReadOnlyGenericData<D> {
         return data.length;
     }
 
-    public Collection<TagGroup> getTagGroups() {
+    public List<TagGroup> getTagGroups() {
         return tagGroups;
     }
     
@@ -79,7 +82,10 @@ public abstract class ReadOnlyGenericData<D> {
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
         for (int j = 0; j < numKeys; j++) {
-            keys.add(TagGroup.Serializer.deserialize(accountService, productService, in));
+        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, in);
+        	if (keys.contains(tg))
+        		logger.error("Duplicate tag group in data file: " + tg);
+            keys.add(tg);
         }
 
         int num = in.readInt();

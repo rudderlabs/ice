@@ -44,6 +44,8 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
+import com.netflix.ice.common.TagGroupRI;
+import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
@@ -225,6 +227,9 @@ public class CostAndUsageData {
     }
 
     public void archive(DateTime startDate, boolean compress, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, PriceListService priceListService, int numThreads) throws Exception {
+    	// Make sure all SP and RI TagGroups have been aggregated back to regular TagGroups
+    	verifyTagGroups();
+    	
     	ExecutorService pool = Executors.newFixedThreadPool(numThreads);
     	List<Future<Void>> futures = Lists.newArrayList();
     	
@@ -248,6 +253,24 @@ public class CostAndUsageData {
 		for (Future<Void> f: futures) {
 			f.get();
 		}
+    }
+    
+    private void verifyTagGroups() throws Exception {
+        for (Product product: costDataByProduct.keySet()) {
+        	if (product == null || product.isEc2Instance() || product.isRdsInstance() || product.isRedshift() || product.isElastiCache() || product.isElasticsearch()) {
+        		// verify that all the tag groups are instances of TagGroup and not TagGroupArn
+                Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
+                for (TagGroup tg: tagGroups) {
+                	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
+                		throw new Exception("Non-baseclass tag group in archive cost data: " + tg);
+                }
+                tagGroups = usageDataByProduct.get(product).getTagGroups();
+                for (TagGroup tg: tagGroups) {
+                	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
+                		throw new Exception("Non-baseclass tag group in archive usage data: " + tg);
+                }
+        	}
+        }
     }
     
     private Future<Void> archiveJson(final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
