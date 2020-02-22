@@ -156,12 +156,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
         
         int count = Integer.parseInt(lineItem.getReservationNumberOfReservations());
-    	// AWS Reservations start being applied at the beginning of the hour in which the reservation was purchased.
-        // The reservations stop being applied at the beginning of the hour in which the reservation expires.
+    	// AWS Reservations are applied within the hour they are purchased. We process full hours, so adjust to start of hour.
+        // The reservations stop being applied during the hour in which the reservation expires. We process full hours, so extend to end of hour.
         DateTime start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0);
-        DateTime end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0);
-        PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();
-        
+        DateTime end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).plusHours(1);
+        PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();        
         
         Double usageQuantity = Double.parseDouble(lineItem.getUsageQuantity());
         double hourlyFixedPrice = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod()) / usageQuantity;
