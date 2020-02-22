@@ -30,6 +30,8 @@ public abstract class TagGroupArn<T extends Tag> extends TagGroup {
 	private static final long serialVersionUID = 1L;
 	
 	public final T arn;
+	
+	private final int hashcode;
 
 	protected TagGroupArn(Account account, Region region, Zone zone,
 			Product product, Operation operation, UsageType usageType,
@@ -37,6 +39,7 @@ public abstract class TagGroupArn<T extends Tag> extends TagGroup {
 		super(account, region, zone, product, operation, usageType,
 				resourceGroup);
 		this.arn = arn;
+		this.hashcode = genHashCode();
 	}
 
     @Override
@@ -63,6 +66,10 @@ public abstract class TagGroupArn<T extends Tag> extends TagGroup {
 
     @Override
     public int hashCode() {
+    	return hashcode;
+    }
+    
+    private int genHashCode() {
         final int prime = 31;
         int result = super.hashCode();
         result = prime * result + ((this.arn != null) ? this.arn.hashCode() : 0);
