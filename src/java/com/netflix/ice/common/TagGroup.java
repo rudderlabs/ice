@@ -49,6 +49,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
     public final Zone zone;
     public final ResourceGroup resourceGroup;
     
+    private final int hashcode;
+    
     protected TagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
         this.account = account;
         this.region = region;
@@ -57,6 +59,8 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         this.operation = operation;
         this.usageType = usageType;
         this.resourceGroup = resourceGroup;
+        
+        this.hashcode = genHashCode();
     }
 
     @Override
@@ -152,6 +156,10 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
 
     @Override
     public int hashCode() {
+    	return hashcode;
+    }
+
+    private int genHashCode() {
         final int prime = 31;
         int result = 1;
         if (this.zone != null)
