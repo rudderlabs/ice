@@ -27,7 +27,6 @@ import org.joda.time.DateTimeZone;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.PurchaseOption;
@@ -40,6 +39,7 @@ import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
 import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.Tag;
 
 public class CostAndUsageReservationProcessor extends ReservationProcessor {
     // Unused rates and amortization for RIs were added to CUR on 2018-01
@@ -104,16 +104,12 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 		// Process reservations for the hour using the ReservationsService loaded from the ReservationCapacityPoller (Before Jan 1, 2018)
 
 		Set<ReservationArn> reservationArns = reservationService.getReservations(startMilli + hour * AwsUtils.hourMillis, product);
-	
-	    Set<TagGroup> toBeRemoved = Sets.newHashSet();
-	    Map<TagGroup, Double> toBeAdded = Maps.newHashMap();
-	    
+		    
 	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: usageMap.keySet()) {
-	    	if (!(tagGroup instanceof TagGroupRI) || (product != null && product != tagGroup.product))
-	    		continue;
-	    	
-	    	riTagGroups.add((TagGroupRI) tagGroup);
+	    	if (tagGroup instanceof TagGroupRI) {
+	    		riTagGroups.add((TagGroupRI) tagGroup);
+	    	}
 	    }
 	    
 	    for (ReservationArn reservationArn: reservationArns) {		    	
@@ -140,8 +136,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 		    		continue;
 		    	
 			    // grab the RI tag group value and add it to the remove list
-			    Double used = usageMap.get(tg);
-			    toBeRemoved.add(tg);
+			    Double used = usageMap.remove(tg);
 
 			    Double cost = null;
 			    Double amort = null;
@@ -183,16 +178,16 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 					    // Used by owner account, mark as used
 					    TagGroup usedTagGroup = null;
 					    usedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getReservedInstances(purchaseOption), tg.usageType, tg.resourceGroup);
-					    add(toBeAdded, usedTagGroup, used);						    
+					    add(usageMap, usedTagGroup, used);						    
 					    add(costMap, usedTagGroup, adjustedCost);						    
 				    }
 				    else {
 				    	// Borrowed by other account, mark as borrowed/lent
 					    TagGroup borrowedTagGroup = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, Operation.getBorrowedInstances(purchaseOption), tg.usageType, tg.resourceGroup);
 					    TagGroup lentTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getLentInstances(purchaseOption), rtg.usageType, tg.resourceGroup);
-					    add(toBeAdded, borrowedTagGroup, used);
+					    add(usageMap, borrowedTagGroup, used);
 					    add(costMap, borrowedTagGroup, adjustedCost);
-					    add(toBeAdded, lentTagGroup, adjustedUsed);
+					    add(usageMap, lentTagGroup, adjustedUsed);
 					    add(costMap, lentTagGroup, adjustedCost);
 				    }
 				    // assign amortization
@@ -214,7 +209,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 		    if (haveUnused) {			    	
 			    ResourceGroup riResourceGroup = product == null ? null : rtg.resourceGroup;
 			    TagGroup unusedTagGroup = TagGroup.getTagGroup(rtg.account, rtg.region, rtg.zone, rtg.product, Operation.getUnusedInstances(purchaseOption), rtg.usageType, riResourceGroup);
-			    add(toBeAdded, unusedTagGroup, reservedUnused);
+			    add(usageMap, unusedTagGroup, reservedUnused);
 			    double unusedHourlyCost = reservedUnused * reservation.reservationHourlyCost;
 			    add(costMap, unusedTagGroup, unusedHourlyCost);
 
@@ -233,11 +228,30 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			    add(costMap, savingsTagGroup, -unusedFixedCost - unusedHourlyCost);
 		    }
 	    }
-	    // Remove the entries we replaced
-	    for (TagGroup tg: toBeRemoved) {
-	    	usageMap.remove(tg);
+	    
+	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupRI
+	    cleanup(hour, usageMap, "usage");
+	    cleanup(hour, costMap, "cost");
+	}
+	
+	private void cleanup(int hour, Map<TagGroup, Double> data, String which) {
+	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
+	    for (TagGroup tagGroup: data.keySet()) {
+	    	if (tagGroup instanceof TagGroupRI) {
+	    		riTagGroups.add((TagGroupRI) tagGroup);
+	    	}
 	    }
-	    // Add the new ones
-	    usageMap.putAll(toBeAdded);
+	    Map<Tag, Integer> leftovers = Maps.newHashMap();
+	    for (TagGroupRI tg: riTagGroups) {
+	    	Integer i = leftovers.get(tg.operation);
+	    	i = 1 + ((i == null) ? 0 : i);
+	    	leftovers.put(tg.operation, i);
+	    	
+	    	Double v = data.remove(tg);
+	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
+	    	add(data, newTg, v);
+	    }
+	    for (Tag t: leftovers.keySet())
+	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " RI TagGroups on hour " + hour + " for operation " + t);
 	}
 }

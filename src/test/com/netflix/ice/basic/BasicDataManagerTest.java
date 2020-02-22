@@ -29,6 +29,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
+import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone.BadZone;
 
@@ -292,4 +294,43 @@ public class BasicDataManagerTest {
 		assertNotNull("Without operation specified, has aggregated tag", data.get(Tag.aggregated));
 		assertEquals("Without operation specified, wrong value for aggregation", 1.0, data.get(Tag.aggregated)[0], 0.001);
 	}
+	
+	// Example for debugging getData()
+	@Test
+	public void testHourlyDataFromFile() throws Exception {
+		AccountService as = new BasicAccountService();
+		ProductService ps = new BasicProductService();
+		
+		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
+	    
+	    File f = new File(dataDir + "cost_hourly_EC2Instance_2019-01.gz");
+	    if (!f.exists())
+	    	return;
+	    
+	    ReadOnlyData rod = data.loadDataFromFile(f);
+	    
+	    for (int i = 0; i < rod.getData(0).length; i++) {
+	    	//TagGroup tg = rod.getTagGroups().get(i);
+	    }
+	    
+	    logger.info("File: " + f + " has " + rod.getTagGroups().size() + " tag groups and "+ rod.getNum() + " hours of data");
+	    
+		DateTime testMonth = new DateTime("2020-01-01", DateTimeZone.UTC);
+		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, rod.getTagGroups());
+		
+		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.hourly, tagGroupManager, true, 0, 0, null, as, ps, rod);
+		
+		Interval interval = new Interval(testMonth, testMonth.plusHours(1));
+		
+		// First test with operations specified
+		List<Operation> operations = Lists.newArrayList((Operation) Operation.upfrontAmortizedAllUpfront);
+		List<UsageType> usageTypes = Lists.newArrayList(UsageType.getUsageType("r4.2xlarge", "hours"));
+		TagLists tagLists = new TagLists(null, null, null, null, operations, usageTypes, null);
+		
+		Map<Tag, double[]> results = dataManager.getData(interval, tagLists, TagType.Account, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		
+		for (Tag t: results.keySet())
+			logger.info(t + ", " + results.get(t)[0]);
+	}
+
 }
