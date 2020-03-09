@@ -70,4 +70,8 @@ public class Aggregation {
             return newOne;
         }
     }
+    
+    public boolean contains(TagType tagType) {
+    	return groupByTags.contains(tagType);
+    }
 }

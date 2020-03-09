@@ -49,7 +49,7 @@ public class Evaluator {
 		funcs.put("MIN", Function.MIN);
 	}
 	
-	private List<String> parse(String expr) {
+	protected List<String> parse(String expr) {
 		List<String> tokens = Lists.newArrayList();
 		
 		String operand = "";
@@ -70,6 +70,16 @@ public class Evaluator {
 					}
 					tokens.add(operand);
 					operand = "";
+					operandIsNumber = false;
+				}
+				else if (c == '-') {
+					String lastToken = tokens.get(tokens.size() - 1);
+					if (!lastToken.equals(')') && !Character.isDigit(lastToken.charAt(lastToken.length()-1))) {
+						// Must be a unary '-' operator, keep it with the number
+						operandIsNumber = true;
+						operand += c.toString();
+						break;
+					}
 				}
 				tokens.add(c.toString());
 				break;
@@ -80,6 +90,7 @@ public class Evaluator {
 				if (!operand.isEmpty()) {
 					tokens.add(operand);
 					operand = "";
+					operandIsNumber = false;
 				}
 				break;
 				
@@ -173,7 +184,10 @@ public class Evaluator {
 		}
 		
 		// Evaluate the RPN
-		return evalRpn(output);
+		Double result = evalRpn(output);
+		if (Double.isInfinite(result) || Double.isNaN(result))
+			result = 0.0;
+		return result;
 	}
 	
 	private Double evalRpn(Deque<String> tokens) throws Exception {

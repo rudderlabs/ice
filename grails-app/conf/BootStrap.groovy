@@ -146,6 +146,7 @@ class BootStrap {
                 properties.setProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, prop.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_ROLENAME, prop.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_EXTERNALID, prop.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, ""));
+				properties.setProperty(IceOptions.BILLING_ICE_CONFIG_BASENAME, prop.getProperty(IceOptions.BILLING_ICE_CONFIG_BASENAME, ""));
                 properties.setProperty(IceOptions.ROOT_NAME, prop.getProperty(IceOptions.ROOT_NAME, ""));
                 properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, ""));
                 properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, ""));

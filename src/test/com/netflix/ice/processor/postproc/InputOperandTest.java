@@ -83,25 +83,114 @@ public class InputOperandTest {
 	}
 	
 	@Test
-	public void testOperandKey() throws Exception {
+	public void testOperandCacheKey() throws Exception {
+		// Set up the in operand
+		OperandConfig inOperand = new OperandConfig();
+		inOperand.setType(OperandType.usage);
+		InputOperand in = new InputOperand(inOperand, as);		
+		TagGroup tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", "tag1|tag2", as, ps);		
+		AggregationTagGroup atg = in.aggregateTagGroup(tg, as, ps);
+		
+		/*
+		 * Test case where operand depends on input operand for all its tags
+		 */
 		OperandConfig oc = new OperandConfig();
 		oc.setType(OperandType.usage);
 		InputOperand io = new InputOperand(oc, as);
+		String key = io.cacheKey(atg);
 		
-		TagGroup tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", null, as, ps);
+		assertEquals("wrong operand cache key with no aggregation", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,tag1|tag2", key);
 		
-		AggregationTagGroup atg = io.aggregateTagGroup(tg, as, ps);		
-		String key = io.key(atg);
-		
-		assertEquals("wrong operand cache key with no aggregation", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,null", key);
-		
-		List<String> agg = Lists.newArrayList(new String[]{"Region","Product"});
-		oc.setAggregate(agg);
+		/*
+		 * Test case where operand groups by five tag types
+		 */
+		List<String> groupBy = Lists.newArrayList(new String[]{"Account","Zone","Operation","UsageType","ResourceGroup"});
+		oc.setGroupBy(groupBy);
 		io = new InputOperand(oc, as);
-		atg = io.aggregateTagGroup(tg, as, ps);
-		key = io.key(atg);
+		key = io.cacheKey(atg);
 		
-		assertEquals("wrong operand cache key with aggregation", "usage,123456789012,null,OP1,UT1,null", key);
+		assertEquals("wrong operand cache key with aggregation", "usage,123456789012,null,OP1,UT1,tag1|tag2", key);
+		
+		/*
+		 * Test case where operand gets all it's tags from the config
+		 */
+		oc.setGroupBy(null);
+		oc.setAccount("123456789012");
+		oc.setRegion("us-east-1");
+		oc.setZone(null);
+		oc.setProduct("IOTestProduct");
+		oc.setOperation("OP1");
+		oc.setUsageType("UT1");
+		io = new InputOperand(oc, as);
+		key = io.cacheKey(atg);
+		
+		assertEquals("wrong operand cache key with no aggregation or atg dependencies", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,tag1|tag2", key);		
+	}
+	
+	@Test
+	public void testOperandMatches() throws Exception {
+		// Set up the in operand
+		OperandConfig inOperand = new OperandConfig();
+		inOperand.setType(OperandType.usage);
+		InputOperand in = new InputOperand(inOperand, as);		
+		TagGroup tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", "tag1", as, ps);		
+		AggregationTagGroup atg = in.aggregateTagGroup(tg, as, ps);
+
+		// Test case where operand depends on 'in' operand for all its tag types
+		OperandConfig oc = new OperandConfig();
+		oc.setType(OperandType.cost);
+		InputOperand io = new InputOperand(oc, as);
+		assertTrue("TagGroup should match operand that depends on 'in'", io.matches(atg, tg));
+		
+		
+		// Test case where operand is aggregating everything
+		List<String> groupBy = Lists.newArrayList(new String[]{});
+		oc = new OperandConfig();
+		oc.setType(OperandType.cost);
+		oc.setGroupBy(groupBy);
+		io = new InputOperand(oc, as);
+		TagGroup tg1 = TagGroup.getTagGroup("123456789012", "us-west-2", null, "IOTestProduct", "OP2", "UT2", "", "tag2", as, ps);		
+		assertTrue("TagGroup should match all aggregation operand", io.matches(atg, tg1));
+		
+		// Test case where aggregating all accounts, but tag group account is different
+		groupBy = Lists.newArrayList(new String[]{"Region","Zone","Product","Operation","UsageType","ResourceGroup"});
+		oc = new OperandConfig();
+		oc.setType(OperandType.cost);
+		oc.setGroupBy(groupBy);
+		io = new InputOperand(oc, as);
+		tg1 = TagGroup.getTagGroup("234567890123", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", "tag1", as, ps);		
+		assertTrue("TagGroup should match account aggregation operand with different account", io.matches(atg, tg1));
+	}
+	
+	@Test
+	public void testOperandMatchesWithOmmittedValue() throws Exception {
+		// Set up the in operand
+		OperandConfig inOperand = new OperandConfig();
+		inOperand.setType(OperandType.usage);
+		inOperand.setProduct("(?!IOTestProduct$)^.*$");
+		inOperand.setOperation("(?!OP$)^.*$");
+		inOperand.setUsageType("(?!UT$)^.*$");
+		List<String> groupBy = Lists.newArrayList(new String[]{"Account","Region","Zone","ResourceGroup"});
+		inOperand.setGroupBy(groupBy);
+		InputOperand in = new InputOperand(inOperand, as);		
+		TagGroup tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT1", "", null, as, ps);		
+		AggregationTagGroup atg = in.aggregateTagGroup(tg, as, ps);
+
+		// Test case where omitting a product based on regex with no dependency on 'in' aggregation tag group
+		OperandConfig oc = new OperandConfig();
+		oc.setType(OperandType.cost);
+		oc.setProduct("(?!IOTestProduct$)^.*$");
+		oc.setOperation("(?!OP$)^.*$");
+		oc.setUsageType("(?!UT$)^.*$");
+		InputOperand io = new InputOperand(oc, as);
+		TagGroup tg1 = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct", "OP1", "UT1", "", null, as, ps);		
+		assertFalse("TagGroup should not match product aggregation operand with ommitted product", io.matches(atg, tg1));
+		
+		tg1 = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP", "UT1", "", null, as, ps);		
+		assertFalse("TagGroup should not match product aggregation operand with ommitted operation", io.matches(atg, tg1));
+		
+		tg1 = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT", "", null, as, ps);		
+		assertFalse("TagGroup should not match product aggregation operand with ommitted usageType", io.matches(atg, tg1));		
 	}
 
 }

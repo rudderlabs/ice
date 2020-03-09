@@ -82,6 +82,11 @@ public class IceOptions {
     public static final String BILLING_ACCESS_EXTERNALID = "ice.billing_accessExternalId";
     
     /**
+     * Billing data config file basename. This optional parameter allows you to override the default basename of "ice_config". Both ".json" and ".yml" extensions are supported.
+     */
+    public static final String BILLING_ICE_CONFIG_BASENAME = "ice.billingConfigBasename";
+    
+    /**
      * Root name to be used in parent paths for an account. The path expresses where the account is positioned in the organization hierarchy.
      * For multiple payer accounts, root names can be specified delimited by comma ",".
      */

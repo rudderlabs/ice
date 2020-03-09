@@ -146,6 +146,43 @@ public class PostProcessorTest {
         loadData(dataSpecs, usageData, costData, 0);
 	}
 	
+	private String inputOperandTestYaml = "" +
+			"name: inputOperandTest\n" + 
+			"start: 2019-11\n" + 
+			"end: 2022-11\n" + 
+			"operands:\n" + 
+			"  accountAgg:\n" + 
+			"    type: usage\n" +
+			"    groupBy: [Region,Zone,Product,Operation,UsageType,ResourceGroup]\n" +
+			"    usageType: ${group}-Usage\n" + 
+			"  accountAggByList:\n" + 
+			"    type: usage\n" +
+			"    accounts: [1,2,3]\n" +
+			"    usageType: ${group}-Usage\n" + 
+			"  accountExAgg:\n" + 
+			"    type: usage\n" +
+			"    accounts: [1,2,3]\n" +
+			"    usageType: ${group}-Usage\n" + 
+			"in:\n" + 
+			"  type: usage\n" + 
+			"  product: Test\n" + 
+			"  usageType: (..)-Usage\n" +
+			"results:\n" +
+			"  - result:\n" + 
+			"      type: cost\n" + 
+			"      product: Foo\n" + 
+			"      usageType: Bar\n" + 
+			"    value: '0'\n";
+	
+	@Test
+	public void testOperandHasAggregation() throws Exception {
+		Rule rule = new Rule(getConfig(inputOperandTestYaml), as, ps);
+		assertFalse("in operand incorrectly indicates that it has aggregation", rule.getIn().hasAggregation());
+		assertTrue("accountAgg operand incorrectly indicates it has no aggregation", rule.getOperand("accountAgg").hasAggregation());
+		assertTrue("accountAggByList operand incorrectly indicates it has no aggregation", rule.getOperand("accountAggByList").hasAggregation());
+		assertTrue("accountExAgg operand incorrectly indicates it has no aggregation", rule.getOperand("accountExAgg").hasAggregation());
+	}
+	
 	private String computedCostYaml = "" +
 			"name: ComputedCost\n" + 
 			"start: 2019-11\n" + 
@@ -216,6 +253,9 @@ public class PostProcessorTest {
 			AggregationTagGroup atg = rule.getIn().aggregation.getAggregationTagGroup(tg);
 			assertEquals("Wrong aggregation for " + tg.operation + " " + tg.usageType, spec.value, inMap.get(atg)[0], 0.001);
 		}
+		
+		// Check that the data operand is flagged as not having aggregations
+		assertFalse("Data operand incorrectly indicates it has aggregations", rule.getOperand("data").hasAggregation());
 	}
 	
 	@Test
@@ -300,7 +340,7 @@ public class PostProcessorTest {
 		"end: 2022-11\n" + 
 		"in:\n" + 
 		"  type: cost\n" +
-		"  aggregate: [Product, Operation, UsageType]\n" + 
+		"  groupBy: [Account,Region,Zone,ResourceGroup]\n" + 
 		"results:\n" + 
 		"  - result:\n" + 
 		"      type: cost\n" + 
@@ -392,13 +432,11 @@ public class PostProcessorTest {
 			"start: 2019-11\n" + 
 			"end: 2022-11\n" + 
 			"operands:\n" + 
-			"  lump-usage:\n" + 
-			"    type: usage\n" +
-			"    accounts: [" + a1 + "]\n" +
-			"    regions: [global]\n" +
-			"    product: GlobalFee\n" + 
-			"    operation: None\n" +
-			"    usageType: Dollar\n" + 
+			"  total:\n" + 
+			"    type: cost\n" +
+			"    product: '(?!GlobalFee$)^.*$'\n" + 
+	        "    operation: '(?!.*Savings - |.*Lent )^.*$' # ignore lent and savings\n" +
+			"    groupBy: []\n" +
 			"  lump-cost:\n" +
 			"    type: cost\n" + 
 			"    accounts: [" + a1 + "]\n" +
@@ -409,7 +447,8 @@ public class PostProcessorTest {
 			"in:\n" + 
 			"  type: cost\n" + 
 			"  product: '(?!GlobalFee$)^.*$'\n" +
-			"  aggregate: [Zone,Product,Operation,UsageType,ResourceGroup]\n" +
+	        "  operation: '(?!.*Savings - |.*Lent )^.*$' # ignore lent and savings\n" +
+			"  groupBy: [Account,Region]\n" +
 			"results:\n" + 
 			"  - result:\n" + 
 			"      type: cost\n" + 
@@ -418,7 +457,7 @@ public class PostProcessorTest {
 			"      product: GlobalFee\n" +
 			"      operation: Split\n" +
 			"      usageType: Dollar\n" + 
-			"    value: '${lump-cost} * ${in} / ${lump-usage}'\n" + 
+			"    value: '${lump-cost} * ${in} / ${total}'\n" + 
 			"  - result:\n" + 
 			"      type: cost\n" + 
 			"      account: " + a1 + "\n" +
@@ -456,10 +495,17 @@ public class PostProcessorTest {
 
 		
 		PostProcessor pp = new PostProcessor(null, as, ps);
+		pp.debug = true;
 		Rule rule = new Rule(getConfig(splitCostYaml), as, ps);
+		// Check that the operands are flagged as having aggregations
+		assertTrue("in operand incorrectly indicates it has no aggregation", rule.getIn().hasAggregation());
+		assertTrue("total operand incorrectly indicates it has no aggregation", rule.getOperand("total").hasAggregation());
+		assertFalse("lump-cost operand incorrectly indicates it has no aggregation", rule.getOperand("lump-cost").hasAggregation());
+
 		pp.processReadWriteData(rule, data, true);
 
-		assertEquals("wrong number of operands in the cache", 2, pp.getOperandValueCache().size());
+		assertEquals("wrong number of operand cache misses", 2, pp.getCacheMisses());
+		assertEquals("wrong number of operand cache hits", 6, pp.getCacheHits());
 		ReadWriteData outCostData = data.getCost(null);
 		
 		// Should have zero-ed out the GlobalFee cost
@@ -570,6 +616,173 @@ public class PostProcessorTest {
 				assertEquals("Wrong value for US-Requests hour " + hour + ", tag " + tag, -0.61, value, .0001);
 			}
 		}
+		
+		// Check that the data operand is flagged as not having aggregations
+		assertFalse("Data operand incorrectly indicates it has aggregations", rule.getOperand("data").hasAggregation());
+	}
+
+	private String splitMonthlyCostByHourYaml = "" +
+			"name: SplitCost\n" + 
+			"start: 2019-11\n" + 
+			"end: 2022-11\n" + 
+			"operands:\n" + 
+			"  total:\n" + 
+			"    type: cost\n" +
+			"    monthly: true\n" +
+			"    product: '(?!GlobalFee$)^.*$'\n" + 
+			"    groupBy: []\n" +
+			"  lump-cost:\n" +
+			"    type: cost\n" + 
+			"    monthly: true\n" +
+			"    accounts: [" + a1 + "]\n" +
+			"    regions: [global]\n" +
+			"    product: GlobalFee\n" + 
+			"    operation: None\n" +
+			"    usageType: Dollar\n" + 
+			"in:\n" + 
+			"  type: cost\n" + 
+			"  product: '(?!GlobalFee$)^.*$'\n" +
+			"  groupBy: [Account,Region]\n" +
+			"results:\n" + 
+			"  - result:\n" + 
+			"      type: cost\n" + 
+			"      account: '${group}'\n" + 
+			"      region: '${group}'\n" +
+			"      product: GlobalFee\n" +
+			"      operation: Split\n" +
+			"      usageType: Dollar\n" + 
+			"    value: '${lump-cost} * ${in} / ${total}'\n";
+
+	@Test
+	public void testMonthlySplitByHour() throws Exception {
+		// Split $300 (3% of $10,000) of spend across three accounts and two hours based on individual account spend
+        TagGroupSpec[] dataSpecs0 = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", 300.0),
+        		new TagGroupSpec(DataType.cost, a2, "us-east-1", "None", "Dollar", 3000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-east-1", "None", "Dollar", 2000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-west-2", "None", "Dollar", 1500.0),
+        };        
+        TagGroupSpec[] dataSpecs1 = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.cost, a2, "us-east-1", "None", "Dollar", 2000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-east-1", "None", "Dollar", 1000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-west-2", "None", "Dollar", 500.0),
+        };
+        
+		ReadWriteData usageData = new ReadWriteData();
+		ReadWriteData costData = new ReadWriteData();
+		loadData(dataSpecs0, usageData, costData, 0);
+		loadData(dataSpecs1, usageData, costData, 1);
+		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
+        data.putUsage(null, usageData);
+        data.putCost(null, costData);
+        
+		PostProcessor pp = new PostProcessor(null, as, ps);
+		pp.debug = true;
+		Rule rule = new Rule(getConfig(splitMonthlyCostByHourYaml), as, ps);
+
+		pp.processReadWriteData(rule, data, true);
+		ReadWriteData outCostData = data.getCost(null);
+				
+		Map<TagGroup, Double> m = outCostData.getData(0);
+		for (TagGroup tg: m.keySet())
+			logger.info("out: " + m.get(tg) + ", " + tg);
+		
+		// Should have 50/30/20% split of $300
+		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		Double value = outCostData.getData(0).get(a2split);
+		value += outCostData.getData(1).get(a2split);
+		assertEquals("wrong value for account 2", 300.0 * 0.5, value, .001);
+		
+		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		value = outCostData.getData(0).get(a3split);
+		value += outCostData.getData(1).get(a3split);
+		assertEquals("wrong value for account 3", 300.0 * 0.3, value, .001);
+		
+		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		value = outCostData.getData(0).get(a3split);
+		value += outCostData.getData(1).get(a3split);
+		assertEquals("wrong value for account 3", 300.0 * 0.2, value, .001);
+	}
+
+	private String splitMonthlyCostByMonthYaml = "" +
+			"name: SplitCost\n" + 
+			"start: 2019-11\n" + 
+			"end: 2022-11\n" + 
+			"operands:\n" + 
+			"  total:\n" + 
+			"    type: cost\n" +
+			"    monthly: true\n" +
+			"    product: '(?!GlobalFee$)^.*$'\n" + 
+			"    groupBy: []\n" +
+			"  lump-cost:\n" +
+			"    type: cost\n" + 
+			"    monthly: true\n" +
+			"    accounts: [" + a1 + "]\n" +
+			"    regions: [global]\n" +
+			"    product: GlobalFee\n" + 
+			"    operation: None\n" +
+			"    usageType: Dollar\n" + 
+			"in:\n" + 
+			"  type: cost\n" + 
+			"  monthly: true\n" +
+			"  product: '(?!GlobalFee$)^.*$'\n" +
+			"  groupBy: [Account,Region]\n" +
+			"results:\n" + 
+			"  - result:\n" + 
+			"      type: cost\n" + 
+			"      account: '${group}'\n" + 
+			"      region: '${group}'\n" +
+			"      product: GlobalFee\n" +
+			"      operation: Split\n" +
+			"      usageType: Dollar\n" + 
+			"    value: '${lump-cost} * ${in} / ${total}'\n";
+
+	@Test
+	public void testMonthlySplitByMonth() throws Exception {
+		// Split $300 (3% of $10,000) of spend across three accounts and two hours based on individual account spend
+        TagGroupSpec[] dataSpecs0 = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", 300.0),
+        		new TagGroupSpec(DataType.cost, a2, "us-east-1", "None", "Dollar", 3000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-east-1", "None", "Dollar", 2000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-west-2", "None", "Dollar", 1500.0),
+        };        
+        TagGroupSpec[] dataSpecs1 = new TagGroupSpec[]{
+        		new TagGroupSpec(DataType.cost, a2, "us-east-1", "None", "Dollar", 2000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-east-1", "None", "Dollar", 1000.0),
+        		new TagGroupSpec(DataType.cost, a3, "us-west-2", "None", "Dollar", 500.0),
+        };
+        
+		ReadWriteData usageData = new ReadWriteData();
+		ReadWriteData costData = new ReadWriteData();
+		loadData(dataSpecs0, usageData, costData, 0);
+		loadData(dataSpecs1, usageData, costData, 1);
+		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
+        data.putUsage(null, usageData);
+        data.putCost(null, costData);
+        
+		PostProcessor pp = new PostProcessor(null, as, ps);
+		pp.debug = true;
+		Rule rule = new Rule(getConfig(splitMonthlyCostByMonthYaml), as, ps);
+
+		pp.processReadWriteData(rule, data, true);
+		ReadWriteData outCostData = data.getCost(null);
+				
+		Map<TagGroup, Double> m = outCostData.getData(0);
+		for (TagGroup tg: m.keySet())
+			logger.info("out: " + m.get(tg) + ", " + tg);
+		
+		// Should have 50/30/20% split of $300
+		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		Double value = outCostData.getData(0).get(a2split);
+		assertEquals("wrong value for account 2", 300.0 * 0.5, value, .001);
+		
+		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		value = outCostData.getData(0).get(a3split);
+		assertEquals("wrong value for account 3", 300.0 * 0.3, value, .001);
+		
+		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", null).getTagGroup();
+		value = outCostData.getData(0).get(a3split);
+		assertEquals("wrong value for account 3", 300.0 * 0.2, value, .001);
 	}
 
 }

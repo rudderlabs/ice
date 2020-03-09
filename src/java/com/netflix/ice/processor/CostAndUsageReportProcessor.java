@@ -289,7 +289,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 			FileData fd = ffd.get();
 	        for (String[] items: fd.delayedItems) {
 	        	lineItem.setItems(items);
-	            endMilli = processOneLine(null, report.billingBucket.rootName, lineItem, costAndUsageData, endMilli, edpDiscount);
+	            endMilli = processOneLine("<delayed items>", null, report.billingBucket.rootName, lineItem, costAndUsageData, endMilli, edpDiscount);
 	        }
 		}
         return endMilli;
@@ -327,7 +327,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            endMilli = processOneLine(null, report.billingBucket.rootName, lineItem, costAndUsageData, endMilli, edpDiscount);
+            endMilli = processOneLine("<delayed items>", null, report.billingBucket.rootName, lineItem, costAndUsageData, endMilli, edpDiscount);
         }
         return endMilli;
 	}
@@ -411,7 +411,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    endMilli = processOneLine(delayedItems, root, lineItem, costAndUsageData, endMilli, edpDiscount);
+                    endMilli = processOneLine(fileName, delayedItems, root, lineItem, costAndUsageData, endMilli, edpDiscount);
                 }
                 catch (Exception e) {
                     logger.error(StringUtils.join(items, ","), e);
@@ -432,8 +432,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
         return endMilli;
 	}
 
-    private long processOneLine(List<String[]> delayedItems, String root, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, double edpDiscount) {
-        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
+    private long processOneLine(String fileName, List<String[]> delayedItems, String root, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, double edpDiscount) {
+        LineItemProcessor.Result result = lineItemProcessor.process(fileName, delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

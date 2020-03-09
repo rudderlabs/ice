@@ -32,10 +32,12 @@ import com.netflix.ice.tag.Zone;
 public class AggregationTagGroup {
 	public List<Tag> tags;
 	public List<TagType> types;
+	private final int hashcode;
 	
 	protected AggregationTagGroup(List<Tag> tags, List<TagType> types) {
 		this.tags = tags;
 		this.types = types;
+		this.hashcode = genHashCode();
 	}
 	
 	public Account getAccount() {
@@ -87,10 +89,6 @@ public class AggregationTagGroup {
     	return 0;
     }
     
-    public String compareKey() {
-    	return "";
-    }
-
     @Override
     public boolean equals(Object o) {
     	if (this == o)
@@ -109,6 +107,10 @@ public class AggregationTagGroup {
 
     @Override
     public int hashCode() {
+    	return hashcode;
+    }
+    
+    private int genHashCode() {
         final int prime = 31;
         int result = 1;
         

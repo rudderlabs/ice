@@ -98,8 +98,7 @@ public class ProcessorConfig extends Config {
     // Post=processor configuration rules
     public List<RuleConfig> postProcessorRules;
     
-    private static final String billingDataConfigBasename = "ice_config.";
-    private static final String billingDataConfigBasenameV2 = "ice_config_v2.";
+    private static final String billingDataConfigBasename = "ice_config";
 
     /**
      *
@@ -202,6 +201,7 @@ public class ProcessorConfig extends Config {
         String[] billingAccessRoleNames = properties.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, "").split(",");
         String[] billingAccessExternalIds = properties.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, "").split(",");
         String[] rootNames = properties.getProperty(IceOptions.ROOT_NAME, "").split(",");
+        String[] configBasenames = properties.getProperty(IceOptions.BILLING_ICE_CONFIG_BASENAME, "").split(",");
         
         for (int i = 0; i < billingS3BucketNames.length; i++) {
         	BillingBucket bb = new BillingBucket(
@@ -211,7 +211,8 @@ public class ProcessorConfig extends Config {
         			billingAccountIds.length > i ? billingAccountIds[i] : "",
         			billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "",
         			billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "",
-        			rootNames.length > i ? rootNames[i] : ""
+        			rootNames.length > i ? rootNames[i] : "",
+        			configBasenames.length > i ? configBasenames[i] : billingDataConfigBasename        					
         		);
         	billingBuckets.add(bb);
         }
@@ -233,7 +234,7 @@ public class ProcessorConfig extends Config {
         			kubernetesAccountIds.length > i ? kubernetesAccountIds[i] : "",
         			kubernetesAccessRoleNames.length > i ? kubernetesAccessRoleNames[i] : "",
         			kubernetesAccessExternalIds.length > i ? kubernetesAccessExternalIds[i] : "",
-        			""
+        			"", ""
         		);
         	kubernetesBuckets.add(bb);
         }
@@ -344,9 +345,29 @@ public class ProcessorConfig extends Config {
     
     /**
      * get all the accounts from the organizations service so we can add the names if they're not specified in the ice.properties file.
+     * @throws Exception 
      */
-    protected Map<String, AccountConfig> getAccountsFromOrganizations() {
+    protected Map<String, AccountConfig> getAccountsFromOrganizations() throws Exception {
+    	final String localAccountConfigsFilename = "accountConfigs.json";
+        File file = new File(workBucketConfig.localDir, localAccountConfigsFilename);
     	Map<String, AccountConfig> result = Maps.newHashMap();
+    	
+        if (file.exists() && file.lastModified() > DateTime.now().minusHours(6).getMillis()) {
+        	// Save time by grabbing the accounts from the cached copy
+	    	String json;
+			try {
+				json = new String(Files.readAllBytes(file.toPath()), "UTF-8");
+				BillingDataConfig bdc = new BillingDataConfig(json);
+				for (AccountConfig ac: bdc.getAccounts())
+					result.put(ac.getId(), ac);
+				logger.info("Accounts read from recent local copy");
+				return result;
+			} catch (IOException e) {
+				// ignore error and pull accounts from org service.
+				file.delete();
+			}
+        }
+        
     	Set<String> done = Sets.newHashSet();
     	
     	List<String> customTags = Lists.newArrayList(resourceService.getCustomTags());
@@ -363,10 +384,21 @@ public class ProcessorConfig extends Config {
             	resourceService.putDefaultTags(entry.getKey(), entry.getValue().getDefaultTags());        			
             }
         }
+        
+        // Save a local copy
+        BillingDataConfig bdc = new BillingDataConfig();
+        bdc.accounts = Lists.newArrayList();
+        for (AccountConfig ac: result.values())
+        	bdc.accounts.add(ac);
+    	OutputStream os = new FileOutputStream(file);
+    	OutputStreamWriter writer = new OutputStreamWriter(os);
+    	writer.write(bdc.toJSON());
+    	writer.close();
+        
     	return result;
     }
     
-    protected static Map<String, AccountConfig> getOrganizationAccounts(BillingBucket bb, List<String> customTags) {        
+    protected static Map<String, AccountConfig> getOrganizationAccounts(BillingBucket bb, List<String> customTags) {
         logger.info("Get account/organizational unit hierarchy for " + bb.accountId +
         		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
         
@@ -503,15 +535,11 @@ public class ProcessorConfig extends Config {
     protected BillingDataConfig readBillingDataConfig(BillingBucket bb) {
     	// Make sure prefix ends with /
     	String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
-    	
-    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasenameV2 + ", " + bb.accountId);
-    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasenameV2, bb.accountId, bb.accessRoleName, bb.accessExternalId);
+    	    	
+    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + bb.configBasename + ", " + bb.accountId);
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + bb.configBasename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
     	if (configFiles.size() == 0) {
-        	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
-        	configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename, bb.accountId, bb.accessRoleName, bb.accessExternalId);
-        	if (configFiles.size() == 0) {
-        		return null;
-        	}
+    		return null;
     	}
     	
     	String fileKey = configFiles.get(0).getKey();

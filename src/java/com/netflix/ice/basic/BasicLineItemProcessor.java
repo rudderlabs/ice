@@ -64,7 +64,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(long startMilli, String root, LineItem lineItem) {
+    protected boolean ignore(String fileName, long startMilli, String root, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -88,11 +88,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		// All other cases are ignored here.
 	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
 	        if (lineItem.getStartMillis() >= nextMonthStartMillis) {
-	        	logger.error("line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
 	        if (lineItem.getEndMillis() > nextMonthStartMillis) {
-	        	logger.error("line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
     	}
@@ -119,13 +119,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return region == null ? Region.US_EAST_1 : region;
     }
     
-    protected Zone getZone(Region region, LineItem lineItem) {
+    protected Zone getZone(String fileName, Region region, LineItem lineItem) {
     	String zoneStr = lineItem.getZone();
     	if (zoneStr.isEmpty() || region.name.equals(zoneStr))
     		return null;
     	
     	if (!zoneStr.startsWith(region.name)) {
-			logger.warn("LineItem with mismatched regions: Product=" + lineItem.getProduct() + ", UsageType=" + lineItem.getUsageType() + ", AvailabilityZone=" + lineItem.getZone() + ", Region=" + region + ", Description=" + lineItem.getDescription());
+			logger.warn(fileName + " LineItem with mismatched regions: Product=" + lineItem.getProduct() + ", UsageType=" + lineItem.getUsageType() + ", AvailabilityZone=" + lineItem.getZone() + ", Region=" + region + ", Description=" + lineItem.getDescription());
     		return null;
     	}
     	
@@ -133,7 +133,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 		try {
 			zone = region.getZone(zoneStr);
 		} catch (BadZone e) {
-			logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
+			logger.error(fileName + " Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
 			return null;
 		}     
 		return zone;
@@ -150,6 +150,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
     
     public Result process(
+    		String fileName,
     		boolean processDelayed,
     		String root,
     		LineItem lineItem,
@@ -158,13 +159,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		double edpDiscount) {
     	
     	long startMilli = costAndUsageData.getStartMilli();
-    	if (ignore(startMilli, root, lineItem))
+    	if (ignore(fileName, startMilli, root, lineItem))
     		return Result.ignore;
     	
 
         Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         Region region = getRegion(lineItem);
-        Zone zone = getZone(region, lineItem);
+        Zone zone = getZone(fileName, region, lineItem);
 
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();
@@ -182,7 +183,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (origProduct.isSupport()) {
         	// Put the whole fee in the first hour
         	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
-        	logger.info("Support: " + lineItem);
+        	logger.info(fileName + " Support: " + lineItem);
         }
         
         PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(millisStart);
@@ -225,7 +226,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        	if (processDelayed) {
 	                // Grab the unused rates for the reservation processor.
 	            	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getPurchaseOption()), usageType, resourceGroup, reservationArn);
-	            	addReservation(lineItem, costAndUsageData, tgri, startMilli);
+	            	addReservation(fileName, lineItem, costAndUsageData, tgri, startMilli);
 	        	}
 	        	break;
 	        	
@@ -288,11 +289,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (resourceService != null) {
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
-        addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
+        addData(fileName, lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
     }
 
-    protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
+    protected void addData(String fileName, LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
     		CostAndUsageData costAndUsageData, double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount, long startMilli) {
         final ReadWriteData usageData = costAndUsageData.getUsage(null);
         final ReadWriteData costData = costAndUsageData.getCost(null);
@@ -360,7 +361,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         map.put(tagGroup, value);
     }
     
-    protected void addReservation(LineItem lineItem,
+    protected void addReservation(
+    		String fileName,
+    		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
     		TagGroupRI tg, long startMilli) {    	
         return;        

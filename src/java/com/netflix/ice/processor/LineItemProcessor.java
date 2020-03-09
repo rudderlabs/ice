@@ -24,6 +24,7 @@ import com.netflix.ice.common.LineItem;
  */
 public interface LineItemProcessor {
     Result process(
+    		String fileName,
     		boolean processAll,
     		String root,
     		LineItem lineItem, 
