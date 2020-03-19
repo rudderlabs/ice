@@ -249,22 +249,19 @@ public class Operation extends Tag {
     	return category == Category.Bonus;
     }
     public boolean isLent() {
-    	return category == Category.Lent;
+    	return category == Category.Lent || category == Category.LentAmortized;
     }
     public boolean isBorrowed() {
-    	return category == Category.Borrowed;
+    	return category == Category.Borrowed || category == Category.BorrowedAmortized;
     }
     public boolean isUsed() {
     	return category == Category.Used;
     }
     public boolean isUnused() {
-    	return category == Category.Unused;
+    	return category == Category.Unused || category == Category.UnusedAmortized;
     }
     public boolean isAmortized() {
-    	return category == Category.Amortized;
-    }
-    public boolean isUnusedAmortized() {
-    	return category == Category.UnusedAmortized;
+    	return category == Category.Amortized || category == Category.UnusedAmortized || category == Category.LentAmortized || category == Category.BorrowedAmortized;
     }
     public boolean isOnDemand() {
     	return this == ondemandInstances;
