@@ -140,8 +140,11 @@ public class ProcessorConfig extends Config {
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);
         processBillingDataConfig(accountConfigs);
         processWorkBucketConfig(accountConfigs);
-        for (AccountConfig ac: accountConfigs.values())
+        for (AccountConfig ac: accountConfigs.values()) {
         	logger.info("  Account " + ac.toString());
+    		if (resourceService != null)
+    			resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
+        }
         	
         accountService = new BasicAccountService(accountConfigs);
                
@@ -360,7 +363,6 @@ public class ProcessorConfig extends Config {
 				BillingDataConfig bdc = new BillingDataConfig(json);
 				for (AccountConfig ac: bdc.getAccounts()) {
 					result.put(ac.getId(), ac);
-	            	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
 				}
 				logger.info("Accounts read from recent local copy");
 				return result;
@@ -383,7 +385,6 @@ public class ProcessorConfig extends Config {
             Map<String, AccountConfig> accounts = getOrganizationAccounts(bb, customTags);
             for (Entry<String, AccountConfig> entry: accounts.entrySet()) {
             	result.put(entry.getKey(), entry.getValue());
-            	resourceService.putDefaultTags(entry.getKey(), entry.getValue().getDefaultTags());        			
             }
         }
         
@@ -517,8 +518,6 @@ public class ProcessorConfig extends Config {
 	        		}
 	        		accountConfigs.put(account.id, account);
 	        		logger.info("Adding billing data config account: " + account.toString());
-	        		if (resourceService != null)
-	        			resourceService.putDefaultTags(account.id, account.tags);        			
 	        	}
         	}
         	
