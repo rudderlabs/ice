@@ -358,8 +358,10 @@ public class ProcessorConfig extends Config {
 			try {
 				json = new String(Files.readAllBytes(file.toPath()), "UTF-8");
 				BillingDataConfig bdc = new BillingDataConfig(json);
-				for (AccountConfig ac: bdc.getAccounts())
+				for (AccountConfig ac: bdc.getAccounts()) {
 					result.put(ac.getId(), ac);
+	            	resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
+				}
 				logger.info("Accounts read from recent local copy");
 				return result;
 			} catch (IOException e) {
