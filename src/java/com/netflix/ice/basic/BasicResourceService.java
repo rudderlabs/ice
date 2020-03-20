@@ -51,12 +51,12 @@ public class BasicResourceService extends ResourceService {
     // Maps are nested by Payer Account ID, Tag Key, then Value
     private Map<String, Map<String, Map<String, String>>> tagValuesInverted;
     
-    // Map containing the lineItem column indecies that match the canonical tag keys specified by CustomTags
+    // Map containing the lineItem column indeces that match the canonical tag keys specified by CustomTags
     // Key is the Custom Tag name (without the "user:" prefix). First index in the list is always the exact
     // custom tag name match if present.
-    private Map<String, List<Integer>> tagLineItemIndecies;
+    private Map<String, List<Integer>> tagLineItemIndeces;
     
-    private final Map<String, Integer> tagResourceGroupIndecies;
+    private final Map<String, Integer> tagResourceGroupIndeces;
     
     private static final String USER_TAG_PREFIX = "user:";
     
@@ -75,7 +75,7 @@ public class BasicResourceService extends ResourceService {
 			for (String mappedValue: config.maps.keySet()) {
 				Map<String, List<String>> configValueMaps = config.maps.get(mappedValue);
 				for (String sourceTag: configValueMaps.keySet()) {
-					Integer sourceTagIndex = tagResourceGroupIndecies.get(sourceTag);
+					Integer sourceTagIndex = tagResourceGroupIndeces.get(sourceTag);
 					Map<String, String> mappedValues = maps.get(sourceTagIndex);
 					if (mappedValues == null) {
 						mappedValues = Maps.newHashMap();
@@ -103,9 +103,9 @@ public class BasicResourceService extends ResourceService {
 		super();
 		this.customTags = customTags;
 		this.tagValuesInverted = Maps.newHashMap();
-		this.tagResourceGroupIndecies = Maps.newHashMap();
+		this.tagResourceGroupIndeces = Maps.newHashMap();
 		for (int i = 0; i < customTags.length; i++)
-			tagResourceGroupIndecies.put(customTags[i], i);
+			tagResourceGroupIndeces.put(customTags[i], i);
 				
 		userTags = Lists.newArrayList();
 		for (String tag: customTags) {
@@ -131,7 +131,7 @@ public class BasicResourceService extends ResourceService {
     @Override
     public void setTagConfigs(String payerAccountId, List<TagConfig> tagConfigs) {    	
     	if (tagConfigs == null) {
-    		// Remove existing configs and indecies
+    		// Remove existing configs and indeces
     		this.tagConfigs.remove(payerAccountId);
     		this.tagValuesInverted.remove(payerAccountId);
     		return;
@@ -144,7 +144,7 @@ public class BasicResourceService extends ResourceService {
     	this.tagConfigs.put(payerAccountId, configs);
     	
     	// Create inverted indexes for each of the tag value alias sets
-		Map<String, Map<String, String>> indecies = Maps.newHashMap();
+		Map<String, Map<String, String>> indeces = Maps.newHashMap();
 		for (TagConfig config: tagConfigs) {
 			if (config.values == null || config.values.isEmpty())
 				continue;
@@ -158,9 +158,9 @@ public class BasicResourceService extends ResourceService {
 				// Handle upper/lower case differences of key and remove any whitespace
 				invertedIndex.put(entry.getKey().toLowerCase().replace(" ", ""), entry.getKey());
 			}
-			indecies.put(config.name, invertedIndex);
+			indeces.put(config.name, invertedIndex);
 		}
-		this.tagValuesInverted.put(payerAccountId, indecies);
+		this.tagValuesInverted.put(payerAccountId, indeces);
 		
 		// Create the maps setting tags based on the values of other tags
 		Map<String, List<MappedTags>> mapped = Maps.newHashMap();
@@ -191,7 +191,7 @@ public class BasicResourceService extends ResourceService {
 	
 	@Override
 	public int getUserTagIndex(String tag) {
-		return tagResourceGroupIndecies.get(tag);
+		return tagResourceGroupIndeces.get(tag);
 	}
 
     @Override
@@ -290,11 +290,11 @@ public class BasicResourceService extends ResourceService {
     
     @Override
     public String getUserTagValue(LineItem lineItem, String tag) {
-    	Map<String, Map<String, String>> indecies = tagValuesInverted.get(lineItem.getPayerAccountId());    	
-    	Map<String, String> invertedIndex = indecies == null ? null : indecies.get(tag);
+    	Map<String, Map<String, String>> indeces = tagValuesInverted.get(lineItem.getPayerAccountId());    	
+    	Map<String, String> invertedIndex = indeces == null ? null : indeces.get(tag);
     	
     	// Grab the first non-empty value
-    	for (int index: tagLineItemIndecies.get(tag)) {
+    	for (int index: tagLineItemIndeces.get(tag)) {
     		if (lineItem.getResourceTagsSize() > index) {
     	    	// cut all white space from tag value
     			String val = lineItem.getResourceTag(index).replace(" ", "");
@@ -327,19 +327,19 @@ public class BasicResourceService extends ResourceService {
     
     @Override
     public void initHeader(String[] header, String payerAccountId) {
-    	tagLineItemIndecies = Maps.newHashMap();
+    	tagLineItemIndeces = Maps.newHashMap();
     	Map<String, TagConfig> configs = tagConfigs.get(payerAccountId);
     	
     	/*
-    	 * Create a list of billing report line item indecies for
+    	 * Create a list of billing report line item indeces for
     	 * each of the configured user tags. The list will first have
     	 * the exact match for the name if it exists in the report
     	 * followed by any case variants and specified aliases
     	 */
     	for (String tag: userTags) {
     		String fullTag = USER_TAG_PREFIX + tag;
-    		List<Integer> indecies = Lists.newArrayList();
-    		tagLineItemIndecies.put(tag, indecies);
+    		List<Integer> indeces = Lists.newArrayList();
+    		tagLineItemIndeces.put(tag, indeces);
     		
     		// First check the preferred key name
     		int index = -1;
@@ -350,7 +350,7 @@ public class BasicResourceService extends ResourceService {
     			}
     		}
     		if (index >= 0) {
-    			indecies.add(index);
+    			indeces.add(index);
     		}
     		// Look for alternate names
             for (int i = 0; i < header.length; i++) {
@@ -358,7 +358,7 @@ public class BasicResourceService extends ResourceService {
             		continue;	// skip the exact match we handled above
             	}
             	if (fullTag.equalsIgnoreCase(header[i])) {
-            		indecies.add(i);
+            		indeces.add(i);
             	}
             }
             // Look for aliases
@@ -369,7 +369,7 @@ public class BasicResourceService extends ResourceService {
 	            		String fullAlias = USER_TAG_PREFIX + alias;
 	                    for (int i = 0; i < header.length; i++) {
 	                    	if (fullAlias.equalsIgnoreCase(header[i])) {
-	                    		indecies.add(i);
+	                    		indeces.add(i);
 	                    	}
 	                    }
 	            	}

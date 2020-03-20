@@ -18,19 +18,30 @@
 package com.netflix.ice.processor.postproc;
 
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
+import com.netflix.ice.common.AggregationTagGroup;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.ResourceService;
+import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.postproc.OperandConfig.OperandType;
 import com.netflix.ice.tag.Account;
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone;
 
-public abstract class Operand {
+public class Operand {
 	protected final String groupToken = "${group}";
 	
 	protected final OperandType type;
@@ -43,26 +54,110 @@ public abstract class Operand {
 	protected final TagFilter productTagFilter;
 	protected final TagFilter operationTagFilter;
 	protected final TagFilter usageTypeTagFilter;
+	protected final Map<String, TagFilter> userTagFilters;
+	protected final Map<String, Integer> userTagFilterIndeces;
+	protected final int numUserTags;
+	private final boolean single;
+	private final boolean monthly;
 	
-	public Operand(OperandConfig opConfig, AccountService accountService) {
-		this.type = opConfig.getType();
-		List<Account> accts = Lists.newArrayList();
-		for (String a: opConfig.getAccounts()) {
-			accts.add(accountService.getAccountById(a));
+	public String toString() {
+		List<String> tags = Lists.newArrayList();
+		tags.add(type.toString());
+		if (single)
+			tags.add("single");
+		if (monthly)
+			tags.add("monthly");
+		
+		String s = accounts.size() > 0 ? ("accounts:" + accounts + "") : accountTagFilter != null ? ("account:\"" + accountTagFilter + "\"") : null;
+		if (s != null)
+			tags.add(s);
+		
+		s = regions.size() > 0 ? ("regions:" + regions + "") : regionTagFilter != null ? ("region:\"" + regionTagFilter + "\"") : null;
+		if (s != null)
+			tags.add(s);
+
+		s = zones.size() > 0 ? ("zones:" + zones + "") : zoneTagFilter != null ? ("zone:\"" + zoneTagFilter + "\"") : null;
+		if (s != null)
+			tags.add(s);
+		
+		if (productTagFilter != null)
+			tags.add("product:\"" + productTagFilter + "\"");
+		if (operationTagFilter != null)
+			tags.add("operation:\"" + operationTagFilter + "\"");
+		if (usageTypeTagFilter != null)
+			tags.add("usageType:\"" + usageTypeTagFilter + "\"");
+		for (String key: userTagFilters.keySet()) {
+			tags.add(key + ":\"" + userTagFilters.get(key) + "\"");
 		}
-		this.accounts = accts.size() > 0 ? accts : null;
-		this.regions = Region.getRegions(opConfig.getRegions());
-		this.zones = Zone.getZones(opConfig.getZones());
-		this.accountTagFilter = opConfig.getAccount() == null ? null : new TagFilter(opConfig.getAccount());
-		this.regionTagFilter = opConfig.getRegion() == null ? null : new TagFilter(opConfig.getRegion());
-		this.zoneTagFilter = opConfig.getZone() == null ? null : new TagFilter(opConfig.getZone());
-		this.productTagFilter = opConfig.getProduct() == null ? null : new TagFilter(opConfig.getProduct());
-		this.operationTagFilter = opConfig.getOperation() == null ? null : new TagFilter(opConfig.getOperation());
-		this.usageTypeTagFilter = opConfig.getUsageType() == null ? null : new TagFilter(opConfig.getUsageType());
+						
+		return "{" + StringUtils.join(tags, ",") + "}";
+	}
+	
+	public Operand(OperandConfig opConfig, AccountService accountService, ResourceService resourceService) throws Exception {
+		type = opConfig.getType();
+		accounts = Lists.newArrayList();
+		for (String a: opConfig.getAccounts()) {
+			accounts.add(accountService.getAccountById(a));
+		}
+		regions = Region.getRegions(opConfig.getRegions());
+		zones = Zone.getZones(opConfig.getZones());
+		accountTagFilter = opConfig.getAccount() == null ? null : new TagFilter(opConfig.getAccount());
+		regionTagFilter = opConfig.getRegion() == null ? null : new TagFilter(opConfig.getRegion());
+		zoneTagFilter = opConfig.getZone() == null ? null : new TagFilter(opConfig.getZone());
+		productTagFilter = opConfig.getProduct() == null ? null : new TagFilter(opConfig.getProduct());
+		operationTagFilter = opConfig.getOperation() == null ? null : new TagFilter(opConfig.getOperation());
+		usageTypeTagFilter = opConfig.getUsageType() == null ? null : new TagFilter(opConfig.getUsageType());
+		userTagFilters = Maps.newHashMap();
+		userTagFilterIndeces = Maps.newHashMap();
+		if (opConfig.getUserTags() != null) {
+			List<String> customTags = resourceService.getUserTags();
+			for (String key: opConfig.getUserTags().keySet()) {
+				if (!customTags.contains(key))
+					throw new Exception("Invalid user tag key name: \"" + key + "\"");
+				userTagFilters.put(key, new TagFilter(opConfig.getUserTags().get(key)));
+		    	userTagFilterIndeces.put(key, resourceService.getUserTagIndex(key));
+			}
+		}
+		numUserTags = resourceService.getCustomTags().length;
+		single = opConfig.isSingle();
+		monthly = opConfig.isMonthly();
+		
+		validate();		
+	}
+	
+	private void validate() throws Exception {
+		if (accounts.size() > 0 && accountTagFilter != null)
+			throw new Exception("only specify one of accounts or account filter");
+		if (regions.size() > 0 && regionTagFilter != null)
+			throw new Exception("only specify one of regions or region filter");
+		if (zones.size() > 0 && zoneTagFilter != null)
+			throw new Exception("only specify one of zones or zone filter");
+		if (single) {
+			if ((accountTagFilter != null && accountTagFilter.hasDependency()) ||
+				(regionTagFilter != null && regionTagFilter.hasDependency()) ||
+				(zoneTagFilter != null && zoneTagFilter.hasDependency()) ||
+				(productTagFilter != null && productTagFilter.hasDependency()) ||
+				(operationTagFilter != null && operationTagFilter.hasDependency()) ||
+				(usageTypeTagFilter != null && usageTypeTagFilter.hasDependency())) {
+				throw new Exception("single value operand should not have a tag filter with a dependency");
+			}
+			for (TagFilter tf: userTagFilters.values()) {
+				if (tf.hasDependency())
+					throw new Exception("single value operand should not have a tag filter with a dependency");
+			}
+		}
 	}
 	
 	public OperandType getType() {
 		return type;
+	}
+	
+	public boolean isSingle() {
+		return single;
+	}
+
+	public boolean isMonthly() {
+		return monthly;
 	}
 	
 	/**
@@ -83,6 +178,64 @@ public abstract class Operand {
 		// Result operands just use the regex directly.
 		return productService.getProductByServiceCode(productTagFilter.regex);
 	}
+	
+	/**
+	 * Get the TagGroup based on the supplied AggregationTagGroup. Values present in the operand config are used to
+	 * override the values in the supplied TagGroup. For tags that have lists, there should only be one entry, so
+	 * the first is always chosen.
+	 */
+	public TagGroup tagGroup(AggregationTagGroup atg, AccountService accountService, ProductService productService, boolean isNonResource) throws Exception {
+		Account account = (accounts != null && accounts.size() > 0) ? accounts.get(0) : atg == null ? null : atg.getAccount();
+		Region region = (regions != null && regions.size() > 0) ? regions.get(0) : atg == null ? null : atg.getRegion();
+		Zone zone = (zones != null && zones.size() > 0) ? zones.get(0) : atg == null ? null : atg.getZone();
+		Product product = atg == null ? null : atg.getProduct();
+		Operation operation = atg == null ? null : atg.getOperation();
+		UsageType usageType = atg == null ? null : atg.getUsageType();		
+		
+		if (accountTagFilter != null) {
+			account = accountService.getAccountById(accountTagFilter.getTag(account == null ? "" : account.name));
+		}
+		if (regionTagFilter != null) {
+			region = Region.getRegionByName(regionTagFilter.getTag(region == null ? "" : region.name));
+		}
+		if (zoneTagFilter != null) {
+			zone = region.getZone(zoneTagFilter.getTag(zone == null ? "" : zone.name));
+		}
+		if (productTagFilter != null) {
+			product = productService.getProductByServiceCode(productTagFilter.getTag(product == null ? "" : product.name));
+		}
+		if (operationTagFilter != null) {
+			operation = Operation.getOperation(operationTagFilter.getTag(operation == null ? "" : operation.name));
+		}
+		if (usageTypeTagFilter != null) {
+			String ut = usageTypeTagFilter.getTag(usageType == null ? "" : usageType.name);
+			usageType = UsageType.getUsageType(ut, usageType == null ? null : usageType.unit);
+		}
+		
+		ResourceGroup resourceGroup = null;		
+		if (!isNonResource) {
+			resourceGroup = atg == null ? null : atg.getResourceGroup(numUserTags);
+			if (resourceGroup == null && userTagFilters.size() == 0) {
+				resourceGroup = ResourceGroup.getResourceGroup(product.name, true);
+			}
+			else {
+				List<UserTag> userTags = Lists.newArrayListWithCapacity(numUserTags);
+				for (int i = 0; i < numUserTags; i++)
+					userTags.add(atg == null ? null : atg.getUserTag(i));
+				if (userTagFilters.size() > 0) {
+					for (String key: userTagFilters.keySet()) {
+						int i = userTagFilterIndeces.get(key);
+						UserTag ut = userTags.get(i);
+						userTags.set(i, UserTag.get(userTagFilters.get(key).getTag(ut == null ? "" : ut.name)));
+					}
+				}
+				resourceGroup = ResourceGroup.getResourceGroup(userTags);
+			}
+		}
+
+		return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
+	}
+
 		
 	public class TagFilter {
 		String regex;
@@ -119,6 +272,10 @@ public abstract class Operand {
 		
 		public String toString() {
 			return regex;
+		}
+		
+		public boolean hasDependency() {
+			return regex.contains("${");
 		}
 	}
 }

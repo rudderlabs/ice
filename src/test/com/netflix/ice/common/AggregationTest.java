@@ -81,8 +81,9 @@ public class AggregationTest {
 	@Test
 	public void test() throws Exception {
 		List<TagType> groupByTags = Lists.newArrayList(new TagType[]{TagType.Account, TagType.Product, TagType.Region});
+		List<Integer> groupByUserTagIndeces = Lists.newArrayList();
 		
-		Aggregation ag = new Aggregation(groupByTags);
+		Aggregation ag = new Aggregation(groupByTags, groupByUserTagIndeces);
 		
 		Map<AggregationTagGroup, Double> aggregationMap = Maps.newHashMap();
 		for (TagGroup tg: data.keySet()) {

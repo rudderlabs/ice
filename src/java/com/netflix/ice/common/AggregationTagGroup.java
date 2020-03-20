@@ -27,16 +27,21 @@ import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone;
 
 public class AggregationTagGroup {
-	public List<Tag> tags;
-	public List<TagType> types;
+	public final List<Tag> tags;
+	private final List<TagType> types;
+	public final List<UserTag> userTags;
+	private final List<Integer> userTagIndeces;
 	private final int hashcode;
 	
-	protected AggregationTagGroup(List<Tag> tags, List<TagType> types) {
+	protected AggregationTagGroup(List<Tag> tags, List<TagType> types, List<UserTag> userTags, List<Integer> userTagIndeces) {
 		this.tags = tags;
 		this.types = types;
+		this.userTags = userTags;
+		this.userTagIndeces = userTagIndeces;
 		this.hashcode = genHashCode();
 	}
 	
@@ -70,19 +75,56 @@ public class AggregationTagGroup {
 		return index < 0 ? null : (UsageType) tags.get(index); 
 	}
 	
-	public ResourceGroup getResourceGroup() {
-		int index = types.indexOf(TagType.ResourceGroup);
-		return index < 0 ? null : (ResourceGroup) tags.get(index); 
+	public ResourceGroup getResourceGroup(int numUserTags) {
+		if (userTags == null)
+			return null;
+		
+		String[] tags = new String[numUserTags];
+		for (int i = 0; i < numUserTags; i++) {
+			int tagIndex = userTagIndeces.indexOf(i);
+			tags[i] = tagIndex < 0 ? null : userTags.get(tagIndex).name;
+		}
+		return ResourceGroup.getResourceGroup(tags);
 	}
+	
+	public UserTag getUserTag(Integer index) {
+		if (userTagIndeces == null || userTags == null)
+			return null;
+		
+		int i = userTagIndeces.indexOf(index);
+		return i < 0 ? null : userTags.get(i);
+	}
+	
+    public boolean groupBy(TagType tagType) {
+    	return types.contains(tagType);
+    }
+    
+    public boolean groupByUserTag(Integer index) {
+    	return userTagIndeces == null ? false : userTagIndeces.contains(index);
+    }
 	
     @Override
     public String toString() {
-        return tags.toString();
+        return userTags == null ? tags.toString() : String.join(",", tags.toString(), userTags.toString());
     }
 
-    public int compareTo(AggregationTagGroup atg) {
+    public int compareTo(AggregationTagGroup other) {
     	for (int i = 0; i < tags.size(); i++) {
-    		int result = tags.get(i).compareTo(atg.tags.get(i));
+    		Tag t = tags.get(i);
+    		Tag o = other.tags.get(i);
+            int result = t == o ? 0 : (t == null ? 1 : (o == null ? -1 : o.compareTo(t)));
+    		if (result != 0)
+    			return result;
+    	}
+    	
+    	int result = userTags == other.userTags ? 0 : (userTags == null ? 1 : (other.userTags == null ? -1 : 0));
+    	if (result != 0)
+    		return result;
+    	
+    	for (int i = 0; i < userTags.size(); i++) {
+    		Tag t = userTags.get(i);
+    		Tag o = other.userTags.get(i);
+            result = t == o ? 0 : (t == null ? 1 : (o == null ? -1 : o.compareTo(t)));
     		if (result != 0)
     			return result;
     	}
@@ -102,6 +144,16 @@ public class AggregationTagGroup {
     		if (tags.get(i) != other.tags.get(i))
     			return false;
     	}
+    	if (userTags != null || other.userTags != null) {
+    		// at least one is not null
+    		if (userTags == null || other.userTags == null)
+    			return false; // only one is null
+    		
+	    	for (int i = 0; i < userTags.size(); i++) {
+	    		if (userTags.get(i) != other.userTags.get(i))
+	    			return false;
+	    	}
+    	}
     	return true;
     }
 
@@ -114,10 +166,16 @@ public class AggregationTagGroup {
         final int prime = 31;
         int result = 1;
         
-    	for (int i = 0; i < tags.size(); i++) {
-    		if (tags.get(i) != null)
-    			result = prime * result + tags.get(i).hashCode();
+    	for (Tag t: tags) {
+    		if (t != null)
+    			result = prime * result + t.hashCode();
     	}
+    	if (userTags != null) {
+	    	for (Tag t: userTags) {
+	    		if (t != null)
+	    			result = prime * result + t.hashCode();
+	    	}
+	    }
         
         return result;
     }

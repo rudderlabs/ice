@@ -112,6 +112,13 @@ public class ResourceGroup extends Tag {
     	return getResourceGroup(strings);
     }
 
+    public static ResourceGroup getResourceGroup(List<UserTag> tags) {
+    	String[] strings = new String[tags.size()];
+    	for (int i = 0; i < tags.size(); i++)
+    		strings[i] = tags.get(i) == null ? null : tags.get(i).name;
+    	return getResourceGroup(strings);
+    }
+
     public static List<ResourceGroup> getResourceGroups(List<String> names) {
         List<ResourceGroup> result = Lists.newArrayList();
         if (names != null) {

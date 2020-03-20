@@ -183,7 +183,7 @@ public class BillingFileProcessor extends Poller {
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
             
             // Run the post processor
-            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService);
+            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService, config.resourceService);
             pp.process(costAndUsageData);
 
             if (hasTags && config.resourceService != null)
