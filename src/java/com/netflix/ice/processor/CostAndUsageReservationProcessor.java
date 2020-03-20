@@ -34,9 +34,11 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.PriceListService;
+import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Operation.ReservationOperation;
+import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Tag;
@@ -84,15 +86,43 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	}
 	    }
 	    
+	    Map<Product, Integer> numHoursByProduct = product == null ? getNumHoursByProduct(reservationService, data) : null;
+	    
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
 		    Map<TagGroup, Double> usageMap = usageData.getData(i);
 		    Map<TagGroup, Double> costMap = costData.getData(i);
 
-			processHour(i, reservationService, usageMap, costMap, startMilli);
+			processHour(i, reservationService, usageMap, costMap, startMilli, numHoursByProduct);
 		}
 		
 //		logger.info("process time in seconds: " + Seconds.secondsBetween(start, DateTime.now()).getSeconds());
+	}
+	
+	private Map<Product, Integer> getNumHoursByProduct(ReservationService reservationService, CostAndUsageData data) {
+	    Map<Product, Integer> numHoursByProduct = Maps.newHashMap();
+    	for (ServiceCode sc: ServiceCode.values()) {
+    		// EC2 and RDS Instances are broken out into separate products, so need to grab those
+    		Product prod = null;
+    		switch (sc) {
+    		case AmazonEC2:
+        		prod = productService.getProduct(Product.Code.Ec2Instance);
+        		break;
+    		case AmazonRDS:
+    			prod = productService.getProduct(Product.Code.RdsInstance);
+    			break;
+    		default:
+    			prod = productService.getProductByServiceCode(sc.name());
+    			break;
+    		}
+    		if (reservationService.hasReservations(prod)) {
+    			ReadWriteData rwd = data.getUsage(prod);
+    		    if (rwd != null) {
+    		    	numHoursByProduct.put(prod, rwd.getNum());
+    		    }
+    		}
+    	}
+    	return numHoursByProduct;
 	}
 	
 	private void processHour(
@@ -100,7 +130,8 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 			ReservationService reservationService,
 			Map<TagGroup, Double> usageMap,
 			Map<TagGroup, Double> costMap,
-			long startMilli) {
+			long startMilli,
+			Map<Product, Integer> numHoursByProduct) {
 		// Process reservations for the hour using the ReservationsService loaded from the ReservationCapacityPoller (Before Jan 1, 2018)
 
 		Set<ReservationArn> reservationArns = reservationService.getReservations(startMilli + hour * AwsUtils.hourMillis, product);
@@ -115,6 +146,17 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    for (ReservationArn reservationArn: reservationArns) {		    	
 		    // Get the reservation info for the utilization and tagGroup in the current hour
 		    ReservationService.ReservationInfo reservation = reservationService.getReservation(reservationArn);
+		    
+		    if (product == null && numHoursByProduct != null) {
+		    	Integer numHours = numHoursByProduct.get(reservation.tagGroup.product);
+		    	if (numHours != null && numHours <= hour) {
+			    	// Only process the number of hours that we have in the
+			    	// resource data to minimize the amount of unused data we include at the ragged end of data within
+			    	// the month. This also keeps the numbers matching between non-resource and resource data sets.
+			    	continue;
+		    	}
+		    }		    
+		    
 		    double reservedUnused = reservation.capacity;
 		    TagGroup rtg = reservation.tagGroup;
 						    
@@ -135,9 +177,8 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 		    	if (tg.arn != reservationArn)
 		    		continue;
 		    	
-			    // grab the RI tag group value and add it to the remove list
+			    // grab the RI tag group value
 			    Double used = usageMap.remove(tg);
-
 			    Double cost = null;
 			    Double amort = null;
 			    Double savings = null;
