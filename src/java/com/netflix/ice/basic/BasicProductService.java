@@ -236,7 +236,7 @@ public class BasicProductService implements ProductService {
     }
 
     public Collection<Product> getProducts() {
-        return productsByName.values();
+        return productsByServiceCode.values();
     }
 
     public List<Product> getProducts(List<String> names) {
