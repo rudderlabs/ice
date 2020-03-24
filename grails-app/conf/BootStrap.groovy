@@ -111,7 +111,9 @@ class BootStrap {
 			if (prop.getProperty(IceOptions.PROCESSOR_THREADS) != null)
 				properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));				
 			properties.setProperty(IceOptions.TAG_COVERAGE, prop.getProperty(IceOptions.TAG_COVERAGE, ""));
-				
+			if (prop.getProperty(IceOptions.HOURLY_DATA) != null)
+				properties.setProperty(IceOptions.HOURLY_DATA, prop.getProperty(IceOptions.HOURLY_DATA));
+
 			// Stash any debug properties
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith(IceOptions.DEBUG + ".")) {
@@ -209,8 +211,6 @@ class BootStrap {
 					properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
 				if (prop.getProperty(IceOptions.DASHBOARD_NOTICE) != null)
 					properties.setProperty(IceOptions.DASHBOARD_NOTICE, prop.getProperty(IceOptions.DASHBOARD_NOTICE));
-				if (prop.getProperty(IceOptions.HOURLY_DATA) != null)
-					properties.setProperty(IceOptions.HOURLY_DATA, prop.getProperty(IceOptions.HOURLY_DATA));
 
                 readerConfig = new ReaderConfig(
                         properties,

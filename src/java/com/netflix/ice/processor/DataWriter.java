@@ -26,7 +26,7 @@ import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 public class DataWriter extends DataFile {
-    private ReadWriteDataSerializer data;
+    protected ReadWriteDataSerializer data;
 
     DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load, WorkBucketConfig workBucketConfig,
     		AccountService accountService, ProductService productService) throws Exception {

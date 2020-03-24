@@ -192,8 +192,8 @@ public class BillingFileProcessor extends Poller {
             logger.info("archive product list...");
             config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
-            logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
+            logger.info("archiving results for " + dataTime + (config.hourlyData ? " with" : " without") + " hourly data...");
+            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads, config.hourlyData);
             
             logger.info("archiving instance data...");
             archiveInstances();

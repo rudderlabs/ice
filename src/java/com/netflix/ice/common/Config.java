@@ -39,6 +39,7 @@ public abstract class Config {
     public final Map<String, String> debugProperties;
     public final int numthreads;
     private TagCoverage tagCoverage;
+    public final boolean hourlyData;
     
     public enum TagCoverage {
     	none,
@@ -88,6 +89,7 @@ public abstract class Config {
         this.productService = productService;
         this.numthreads = properties.getProperty(IceOptions.PROCESSOR_THREADS) == null ? 5 : Integer.parseInt(properties.getProperty(IceOptions.PROCESSOR_THREADS));
         this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
+        this.hourlyData = Boolean.parseBoolean(properties.getProperty(IceOptions.HOURLY_DATA, "true"));
 
         if (credentialsProvider != null)
         	AwsUtils.init(credentialsProvider, workBucketConfig.workS3BucketRegion);

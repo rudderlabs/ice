@@ -48,7 +48,7 @@ public abstract class DataFile {
         os = null;
         
         String filename = dbName + (compress ? compressExtension : "");
-        file = new File(config.localDir, filename);
+        file = config == null ? new File(filename) : new File(config.localDir, filename);
     }
     
     // For unit testing

@@ -64,7 +64,6 @@ public class ReaderConfig extends Config {
     public final int monthlyCacheSize;
     public final List<String> userTags;
     public final String dashboardNotice;
-    public final boolean hourlyData;
     public Map<String, Map<String, TagConfig>> tagConfigs;
 
     /**
@@ -110,7 +109,6 @@ public class ReaderConfig extends Config {
         
         updateZones(dataConfig.getZones());
 
-        hourlyData = Boolean.parseBoolean(properties.getProperty(IceOptions.HOURLY_DATA, "true"));
         companyName = properties.getProperty(IceOptions.COMPANY_NAME, "");
         dashboardNotice = properties.getProperty(IceOptions.DASHBOARD_NOTICE, "");
         currencySign = properties.getProperty(IceOptions.CURRENCY_SIGN, "$");
