@@ -215,7 +215,7 @@ public class ProcessorConfig extends Config {
         			billingAccessRoleNames.length > i ? billingAccessRoleNames[i] : "",
         			billingAccessExternalIds.length > i ? billingAccessExternalIds[i] : "",
         			rootNames.length > i ? rootNames[i] : "",
-        			configBasenames.length > i ? configBasenames[i] : billingDataConfigBasename        					
+        			configBasenames.length > i ? configBasenames[i] : ""        					
         		);
         	billingBuckets.add(bb);
         }
@@ -536,11 +536,16 @@ public class ProcessorConfig extends Config {
     protected BillingDataConfig readBillingDataConfig(BillingBucket bb) {
     	// Make sure prefix ends with /
     	String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
-    	    	
-    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + bb.configBasename + ", " + bb.accountId);
-    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + bb.configBasename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
-    	if (configFiles.size() == 0) {
-    		return null;
+    	String basename = bb.configBasename.isEmpty() ? billingDataConfigBasename : bb.configBasename;
+    	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + basename + ", " + bb.accountId);
+    	List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + basename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
+    	if (configFiles.size() == 0 && !basename.equals(billingDataConfigBasename)) {
+    		// Default baseName was overridden but we didn't find it. Fall back to the default config file basename
+        	logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + billingDataConfigBasename + ", " + bb.accountId);
+        	configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, prefix + billingDataConfigBasename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
+        	if (configFiles.size() == 0) {
+        		return null;
+        	}
     	}
     	
     	String fileKey = configFiles.get(0).getKey();
