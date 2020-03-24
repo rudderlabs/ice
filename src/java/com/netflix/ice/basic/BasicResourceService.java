@@ -25,6 +25,8 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
+
+
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -41,8 +43,10 @@ import com.netflix.ice.tag.ResourceGroup;
 public class BasicResourceService extends ResourceService {
     //private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
-    protected final String[] customTags;
+    protected final List<String> customTags;
     private final List<String> userTags;
+    private final boolean includeReservationIds = true;
+    
     
     // Map of tags where each tag has a list of aliases. Outer key is the payerAccountId.
     private Map<String, Map<String, TagConfig>> tagConfigs;
@@ -59,6 +63,7 @@ public class BasicResourceService extends ResourceService {
     private final Map<String, Integer> tagResourceGroupIndeces;
     
     private static final String USER_TAG_PREFIX = "user:";
+    private static final String reservationIdsKeyName = "RI/SP ID";
     
     // Map containing values to assign to destination tags based on a match with a value
     // in a source tag. These are returned if the requested resource doesn't have a tag value.
@@ -101,14 +106,16 @@ public class BasicResourceService extends ResourceService {
 
     public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags) {
 		super();
-		this.customTags = customTags;
+		this.customTags = Lists.newArrayList(customTags);
+		if (includeReservationIds)
+			this.customTags.add(reservationIdsKeyName);
 		this.tagValuesInverted = Maps.newHashMap();
 		this.tagResourceGroupIndeces = Maps.newHashMap();
 		for (int i = 0; i < customTags.length; i++)
 			tagResourceGroupIndeces.put(customTags[i], i);
 				
 		userTags = Lists.newArrayList();
-		for (String tag: customTags) {
+		for (String tag: this.customTags) {
 			if (!tag.isEmpty())
 				userTags.add(tag);
 		}
@@ -180,7 +187,7 @@ public class BasicResourceService extends ResourceService {
     }
 	
 	@Override
-	public String[] getCustomTags() {
+	public List<String> getCustomTags() {
 		return customTags;
 	}
 	
@@ -197,18 +204,18 @@ public class BasicResourceService extends ResourceService {
     @Override
     public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
         // Build the resource group based on the values of the custom tags
-    	String[] tags = new String[customTags.length];
+    	String[] tags = new String[customTags.size()];
        	boolean hasTag = false;
-       	for (int i = 0; i < customTags.length; i++) {
-       		tags[i] = getUserTagValue(lineItem, customTags[i]);
+       	for (int i = 0; i < customTags.size(); i++) {
+       		tags[i] = getUserTagValue(lineItem, customTags.get(i));
        	}
        	
-       	for (int i = 0; i < customTags.length; i++) {
+       	for (int i = 0; i < customTags.size(); i++) {
        		String v = tags[i];
         	if (v == null || v.isEmpty())
-        		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags[i], tags);
+        		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags.get(i), tags);
         	if (v == null || v.isEmpty())
-        		v = getDefaultUserTagValue(account, customTags[i]);
+        		v = getDefaultUserTagValue(account, customTags.get(i));
         	tags[i] = v;
         	hasTag = v == null ? hasTag : true;
         }
@@ -219,20 +226,20 @@ public class BasicResourceService extends ResourceService {
     @Override
     public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags) {
         // Build the resource group based on the values of the custom tags
-    	String[] tags = new String[customTags.length];
+    	String[] tags = new String[customTags.size()];
        	boolean hasTag = false;
-       	for (int i = 0; i < customTags.length; i++) {
+       	for (int i = 0; i < customTags.size(); i++) {
            	String v = null;
    			// find first matching key with a legitimate value
        		for (Tag riTag: reservedInstanceTags) {
-       			if (riTag.getKey().toLowerCase().equals(customTags[i].toLowerCase())) {
+       			if (riTag.getKey().toLowerCase().equals(customTags.get(i).toLowerCase())) {
        				v = riTag.getValue();
        				if (v != null && !v.isEmpty())
        					break;
        			}
        		}
         	if (v == null || v.isEmpty())
-        		v = getDefaultUserTagValue(account, customTags[i]);
+        		v = getDefaultUserTagValue(account, customTags.get(i));
         	tags[i] = v;
         	hasTag = v == null ? hasTag : true;
        	}
@@ -290,6 +297,13 @@ public class BasicResourceService extends ResourceService {
     
     @Override
     public String getUserTagValue(LineItem lineItem, String tag) {
+    	if (includeReservationIds && tag == reservationIdsKeyName) {
+    		String id = lineItem.getReservationArn();
+    		if (id.isEmpty())
+    			id = lineItem.getSavingsPlanArn();
+    		return id;
+    	}
+    	
     	Map<String, Map<String, String>> indeces = tagValuesInverted.get(lineItem.getPayerAccountId());    	
     	Map<String, String> invertedIndex = indeces == null ? null : indeces.get(tag);
     	

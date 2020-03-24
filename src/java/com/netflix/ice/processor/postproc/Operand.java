@@ -118,7 +118,7 @@ public class Operand {
 		    	userTagFilterIndeces.put(key, resourceService.getUserTagIndex(key));
 			}
 		}
-		numUserTags = resourceService.getCustomTags().length;
+		numUserTags = resourceService.getCustomTags().size();
 		single = opConfig.isSingle();
 		monthly = opConfig.isMonthly();
 		

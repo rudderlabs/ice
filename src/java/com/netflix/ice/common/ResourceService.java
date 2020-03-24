@@ -39,7 +39,7 @@ public abstract class ResourceService {
      */
     abstract public void init();
     
-    abstract public String[] getCustomTags();
+    abstract public List<String> getCustomTags();
     abstract public List<String> getUserTags();
 
     abstract public Map<String, Map<String, TagConfig>> getTagConfigs();

@@ -233,6 +233,11 @@ public class PostProcessor {
 	protected Map<String, Double[]> getOperandSingleValues(Rule rule, Map<String, Map<Product, ReadWriteData>> dataByOperand, boolean isNonResource, int maxHours) throws Exception {
 		Map<String, Double[]> operandSingleValues = Maps.newHashMap();
 		for (String opName: rule.getOperands().keySet()) {
+			
+			Map<Product, ReadWriteData> dataMap = dataByOperand.get(opName);
+			if (dataMap == null || dataMap.size() == 0)
+				continue;
+			
 			InputOperand op = rule.getOperand(opName);
 			if (op.isSingle()) {
 				Double[] values = new Double[op.isMonthly() ? 1 : maxHours];
@@ -241,7 +246,7 @@ public class PostProcessor {
 					values[i] = 0.0;
 
 				if (op.hasAggregation()) {
-					for (ReadWriteData rwd: dataByOperand.get(opName).values()) {					
+					for (ReadWriteData rwd: dataMap.values()) {					
 						for (TagGroup tg: rwd.getTagGroups()) {															
 							if (op.matches(null, tg)) {
 								getData(rwd, tg, values, maxHours, op.isMonthly());
@@ -250,7 +255,6 @@ public class PostProcessor {
 					}
 				}
 				else {
-					Map<Product, ReadWriteData> dataMap = dataByOperand.get(opName);
 					if (dataMap.size() > 1)
 						throw new Exception("operand \"" + opName + "\" has more than one data map, but is non-aggregating");
 					
@@ -453,7 +457,8 @@ public class PostProcessor {
 			for (String opName: rule.getOperands().keySet()) {			
 				// Get the operand values from the proper data source
 				InputOperand op = rule.getOperand(opName);
-				Double opValue = (op.isSingle() ? opSingleValuesMap.get(opName) : opValuesMap.get(opName))[op.isMonthly() ? 0 : hour];
+				Double[] opValues = op.isSingle() ? opSingleValuesMap.get(opName) : opValuesMap.get(opName);
+				Double opValue = opValues == null ? 0.0 : opValues[op.isMonthly() ? 0 : hour];
 				expr = expr.replace("${" + opName + "}", opValue.toString());
 			}
 			try {

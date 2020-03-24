@@ -28,7 +28,7 @@ public class ClusterNameBuilder {
 	final private static String rulesSeparator = "\\+";
 	final private List<List<Rule>> formulae;
 	
-	ClusterNameBuilder(List<String> formulae, String[] tagNames) {
+	ClusterNameBuilder(List<String> formulae, List<String> tagNames) {
 		this.formulae = Lists.newArrayList();
 		for (String formula: formulae) {
 			List<Rule> rules = Lists.newArrayList();
@@ -61,7 +61,7 @@ public class ClusterNameBuilder {
 		public final int tagIndex; // Tag to operate on
 		public final List<Function> funcs; // operation to perform
 		
-		Rule(String ruleString, String[] tagNames) {
+		Rule(String ruleString, List<String> tagNames) {
 			String literal = null;
 			if (ruleString.startsWith("\"")) {
 				literal = ruleString.replaceAll("\"", "");
@@ -79,8 +79,8 @@ public class ClusterNameBuilder {
 				tagName = ruleString.substring(0, sep);
 			}
 			int index = -1;
-			for (int i = 0; i < tagNames.length; i++) {
-				if (tagName.equals(tagNames[i])) {
+			for (int i = 0; i < tagNames.size(); i++) {
+				if (tagName.equals(tagNames.get(i))) {
 					index = i;
 					break;
 				}

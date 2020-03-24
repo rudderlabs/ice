@@ -85,10 +85,10 @@ public class InputOperand extends Operand {
 		groupByTags = Lists.newArrayList();
 		if (opConfig.getGroupByTags() == null) {
 			// no aggregation, group by all user tag keys
-			String[] customTags = resourceService.getCustomTags();
-			for (int i = 0; i < customTags.length; i++) {
+			List<String> customTags = resourceService.getCustomTags();
+			for (int i = 0; i < customTags.size(); i++) {
 				groupByTagsIndeces.add(i);
-				groupByTags.add(customTags[i]);
+				groupByTags.add(customTags.get(i));
 			}
 		}
 		else {
@@ -97,7 +97,7 @@ public class InputOperand extends Operand {
 	    		groupByTagsIndeces.add(tagIndex);
 	    		groupByTags.add(key);
 	    	}
-	    	aggregates |= groupByTagsIndeces.size() == resourceService.getCustomTags().length;
+	    	aggregates |= groupByTagsIndeces.size() == resourceService.getCustomTags().size();
 		}
 		
 		this.aggregation = new Aggregation(groupBy, groupByTagsIndeces);
