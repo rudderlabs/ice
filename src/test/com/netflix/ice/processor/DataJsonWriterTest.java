@@ -56,7 +56,7 @@ public class DataJsonWriterTest {
 				prod, 
 				Operation.getOperation(operation), 
 				UsageType.getUsageType(usageType, ""), 
-				resource == null ? ResourceGroup.getResourceGroup(prod.name, true) : ResourceGroup.getResourceGroup(resource, false));
+				resource == null ? null : ResourceGroup.getResourceGroup(resource));
 	}
 	
 	class Data {

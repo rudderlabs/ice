@@ -43,7 +43,6 @@ import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.ReadWriteData;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.Zone.BadZone;
 
 public class PostProcessorTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -60,7 +59,7 @@ public class PostProcessorTest {
 	static public void init() {
 		ps = new BasicProductService();
 		as = new BasicAccountService();
-		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{});
+		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{}, false);
 		ps.getProduct(Product.Code.CloudFront);
 		ps.getProduct(Product.Code.CloudWatch);
 	}
@@ -101,16 +100,16 @@ public class PostProcessorTest {
     		this.resourceGroup = null;
     	}
 
-    	public TagGroup getTagGroup() throws BadZone {
+    	public TagGroup getTagGroup() throws Exception {
     		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
     	}
     	
-    	public TagGroup getTagGroup(String account) throws BadZone {
+    	public TagGroup getTagGroup(String account) throws Exception {
     		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
     	}
     }
     
-    private void loadData(TagGroupSpec[] dataSpecs, ReadWriteData usageData, ReadWriteData costData, int hour) throws BadZone {
+    private void loadData(TagGroupSpec[] dataSpecs, ReadWriteData usageData, ReadWriteData costData, int hour) throws Exception {
         Map<TagGroup, Double> usages = usageData.getData(hour);
         Map<TagGroup, Double> costs = costData.getData(hour);
     	
@@ -122,7 +121,7 @@ public class PostProcessorTest {
         }
     }
     
-	private void loadComputedCostData(ReadWriteData usageData, ReadWriteData costData) throws BadZone {
+	private void loadComputedCostData(ReadWriteData usageData, ReadWriteData costData) throws Exception {
         TagGroupSpec[] dataSpecs = new TagGroupSpec[]{
         		new TagGroupSpec(DataType.usage, a1, "us-east-1", productCode, "OP1", "US-Requests-1", 1000.0),
         		new TagGroupSpec(DataType.usage, a1, "us-east-1", productCode, "OP1", "US-Requests-2", 2000.0),
@@ -291,7 +290,7 @@ public class PostProcessorTest {
 		assertEquals("Wrong usage value for EU-Requests", -610000.0, euValue, .0001);
 	}
 	
-	private void loadComputedCostDataWithResources(ReadWriteData usageData, ReadWriteData costData) throws BadZone {
+	private void loadComputedCostDataWithResources(ReadWriteData usageData, ReadWriteData costData) throws Exception {
         TagGroupSpec[] dataSpecs = new TagGroupSpec[]{
         		new TagGroupSpec(DataType.usage, a1, "us-east-1", productCode, "OP1", "US-Requests-1", "tagA|", 1000.0),
         		new TagGroupSpec(DataType.usage, a1, "us-east-1", productCode, "OP1", "US-Requests-2", "tagA|", 2000.0),
@@ -367,7 +366,7 @@ public class PostProcessorTest {
 		"      usageType: Dollar\n" + 
 		"    value: '${in}'\n";
 	
-	private void loadSurchargeData(ReadWriteData usageData, ReadWriteData costData) throws BadZone {
+	private void loadSurchargeData(ReadWriteData usageData, ReadWriteData costData) throws Exception {
 		String productCode = Product.Code.CloudFront.serviceCode;
         TagGroupSpec[] dataSpecs = new TagGroupSpec[]{
         		new TagGroupSpec(DataType.cost, a1, "us-east-1", productCode, "OP1", "US-Requests-1", 1000.0),
@@ -560,8 +559,8 @@ public class PostProcessorTest {
 	public void testGlobalSplitWithUserTags() throws Exception {
 		// Split $300 (3% of $10,000) of spend across three accounts based on individual account spend
         TagGroupSpec[] globalFeeSpecs = new TagGroupSpec[]{
-        		new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "GlobalFee", 300.0),
-        		new TagGroupSpec(DataType.usage, a1, "global", "GlobalFee", "None", "Dollar", "GlobalFee", 10000.0),
+        		new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "|", 300.0),
+        		new TagGroupSpec(DataType.usage, a1, "global", "GlobalFee", "None", "Dollar", "|", 10000.0),
         };
         TagGroupSpec[] productSpecs = new TagGroupSpec[]{
         		new TagGroupSpec(DataType.cost, a1, "us-east-1", productCode, "None", "Dollar", "Tag1|", 5000.0),
@@ -607,8 +606,8 @@ public class PostProcessorTest {
 		for (TagGroup tg: m.keySet())
 			logger.info("globalFee out: " + m.get(tg) + ", " + tg);
 				
-		// Should have zero-ed out the GlobalFee cost
-		TagGroup globalFeeTag = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "GlobalFee", null).getTagGroup();
+		// Should have zeroed out the GlobalFee cost
+		TagGroup globalFeeTag = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "|", null).getTagGroup();
 		Double value = outCostData.getData(0).get(globalFeeTag);
 		assertNotNull("No value for global fee", value);
 		assertEquals("Wrong value for global fee", 0.0, value, .001);
@@ -634,7 +633,7 @@ public class PostProcessorTest {
 		assertEquals("wrong value for account 3", 300.0 * 0.05, value, .001);
 	}
 	
-	private CostAndUsageData loadMultiProductComputedCostData() throws BadZone {
+	private CostAndUsageData loadMultiProductComputedCostData() throws Exception {
 		CostAndUsageData data = new CostAndUsageData(0, null, null, null, as, ps);
 
 		ReadWriteData usageData = new ReadWriteData();

@@ -324,30 +324,19 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             addValue(costs, tagGroup, costValue);
             
             if (resourceService != null) {
-	            if (resourceTagGroup != null) {
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-	
-	                if (!((product.isRedshift() || product.isRds()) && monthly)) {
-	                	addValue(usagesOfResource, resourceTagGroup, usageValue);
-	                }
-	                
-	                addValue(costsOfResource, resourceTagGroup, costValue);
-	                
-	                // Collect statistics on tag coverage
-	            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
-	            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
-	            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
-	            }
-	            else {
-	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-	
-	                TagGroup tg = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, tagGroup.operation, tagGroup.usageType, ResourceGroup.getResourceGroup(product.name, true));
-	            	addValue(usagesOfResource, tg, usageValue);
-	                addValue(costsOfResource, tg, costValue);           	
-	            }
+                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
+                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
+
+                if (!((product.isRedshift() || product.isRds()) && monthly)) {
+                	addValue(usagesOfResource, resourceTagGroup, usageValue);
+                }
+                
+                addValue(costsOfResource, resourceTagGroup, costValue);
+                
+                // Collect statistics on tag coverage
+            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
+            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
+            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
             }
         }
     }

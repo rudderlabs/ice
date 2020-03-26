@@ -46,7 +46,7 @@ public class OperandTest {
 		accts.add(new Account("234567890123", "Account2", null));
 		as = new BasicAccountService(accts);
 		ps = new BasicProductService();
-		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{});
+		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{}, false);
 	}
 	
 	@Test

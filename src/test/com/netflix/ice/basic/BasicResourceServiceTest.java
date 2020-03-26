@@ -69,7 +69,7 @@ public class BasicResourceServiceTest {
 				"Environment", "Product", "CostCenter"
 			};
 		BasicAccountService as = new BasicAccountService();
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
 		Map<String, String> defaultTags = Maps.newHashMap();
 		defaultTags.put("CostCenter", "1234");
@@ -85,7 +85,7 @@ public class BasicResourceServiceTest {
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
 	}
@@ -112,7 +112,7 @@ public class BasicResourceServiceTest {
 		tagValues.put("QA", Lists.newArrayList("test", "quality assurance"));
 		TagConfig tc = new TagConfig("Environment", null, tagValues);
 		
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		List<TagConfig> configs = Lists.newArrayList();
 		configs.add(tc);
 		rs.setTagConfigs("234567890123", configs);
@@ -188,7 +188,7 @@ public class BasicResourceServiceTest {
 		Map<String, String> defaultTags = Maps.newHashMap();
 		defaultTags.put("Environment", "Prod");
 		
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.putDefaultTags("12345", defaultTags);
 		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
@@ -255,7 +255,7 @@ public class BasicResourceServiceTest {
 				return "123456789012";
 			}
 		}
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.initHeader(new String[]{ "user:Email", "user:Department", "user:Environment" }, "1234");
 		LineItem lineItem = new TestLineItem(new String[]{ "joe@company.com", "1234", "" });
 		boolean[] coverage = rs.getUserTagCoverage(lineItem);
@@ -287,7 +287,7 @@ public class BasicResourceServiceTest {
 		
 		BasicAccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
-		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{}, false);
 		rs.setTagConfigs("123456789012", tagConfigs);
 		
 		Map<String, String> defaultTags = Maps.newHashMap();

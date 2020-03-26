@@ -27,10 +27,11 @@ import com.google.common.collect.Lists;
 import com.netflix.ice.tag.UserTag;
 
 public class ClusterNameBuilderTest {
+	private static final List<String> tags = Lists.newArrayList(new String[]{ "Tag1", "Tag2", "Tag3" });
+
 
 	@Test
 	public void testNoFuncs() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag3"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -45,9 +46,7 @@ public class ClusterNameBuilderTest {
 	}
 	
 	@Test
-	public void testToUpper() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testToUpper() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag2.toUpper()"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -55,9 +54,7 @@ public class ClusterNameBuilderTest {
 	}
 
 	@Test
-	public void testToLower() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testToLower() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag2.toLower()"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -65,9 +62,7 @@ public class ClusterNameBuilderTest {
 	}
 
 	@Test
-	public void testRegex() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testRegex() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag2.regex(\"Stripme-(.*)\")"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Stripme-Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -75,9 +70,7 @@ public class ClusterNameBuilderTest {
 	}
 
 	@Test
-	public void testRegexWithToLower() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testRegexWithToLower() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag2.regex(\"Stripme-(.*)\").toLower()"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Stripme-Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -85,9 +78,7 @@ public class ClusterNameBuilderTest {
 	}
 	
 	@Test
-	public void testMultipleTagRules() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testMultipleTagRules() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag1.toLower()+Tag2.regex(\"Stripme(-.*)\")"), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Stripme-Two"), UserTag.get("Three")};
 		String name = cnb.getClusterNames(userTags).get(0);
@@ -95,9 +86,7 @@ public class ClusterNameBuilderTest {
 	}
 	
 	@Test
-	public void testEmptyTags() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
-		
+	public void testEmptyTags() {		
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList("Tag2.toUpper()"), tags);
 		UserTag[] userTags = new UserTag[]{ null, null, null};
 		assertEquals("Should not return any cluster names", 0, cnb.getClusterNames(userTags).size());
@@ -105,7 +94,6 @@ public class ClusterNameBuilderTest {
 
 	@Test
 	public void testMultipleFormulae() {
-		String[] tags = new String[]{ "Tag1", "Tag2", "Tag3" };
 		String[] formulae = new String[]{ "Tag1.toLower()+Tag2.regex(\"Stripme(-.*)\")", "Tag3.regex(\"k8s-(.*)\")" };
 		ClusterNameBuilder cnb = new ClusterNameBuilder(Lists.newArrayList(formulae), tags);
 		UserTag[] userTags = new UserTag[]{ UserTag.get("One"), UserTag.get("Stripme-Two"), UserTag.get("k8s-Three")};

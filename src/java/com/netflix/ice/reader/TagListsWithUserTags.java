@@ -70,7 +70,7 @@ public class TagListsWithUserTags extends TagLists {
         
         logger.debug("           contains - resourceGroup: " + tagGroup.resourceGroup + ", " + resourceGroups + ", " + resourceUserTagLists);
         
-        if (tagGroup.resourceGroup == null || tagGroup.resourceGroup.isProductName()) {
+        if (tagGroup.resourceGroup == null) {
         	if (useResource) {
         		// Check for empty tags in all the lists
     	        for (int i = 0; i < resourceUserTagLists.size(); i++) {

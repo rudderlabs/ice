@@ -33,15 +33,10 @@ public class ResourceGroup extends Tag {
 	private static final String separatorRegex = "\\|";
 	
 	private UserTag[] resourceTags;
-	/**
-	 * isProductName indicates that the resourceTags is simply the product name.
-	 */
-	private final boolean isProductName;
     private static ConcurrentMap<String, ResourceGroup> resourceGroups = Maps.newConcurrentMap();
-
-	protected ResourceGroup(String name, boolean isProductName) {
+    
+	protected ResourceGroup(String name) {
         super(name);
-        this.isProductName = isProductName;
     }
 	
 	private static String joinTags(String[] tags) {
@@ -68,12 +63,7 @@ public class ResourceGroup extends Tag {
 	
 	protected ResourceGroup(String[] tags) {
 		super(joinTags(tags));
-		this.isProductName = false;
 		resourceTags = splitTags(this.name);
-	}
-	
-	public boolean isProductName() {
-		return isProductName;
 	}
 	
 	public UserTag[] getUserTags() {
@@ -83,20 +73,7 @@ public class ResourceGroup extends Tag {
 		return resourceTags;
 	}
 	
-    public static ResourceGroup getResourceGroup(String name, boolean isProductName) {
-    	if (name.contains(separator)) {
-    		return getResourceGroup(name.split(separatorRegex, -1));
-    	}
-        ResourceGroup resourceGroup = resourceGroups.get(name);
-        if (resourceGroup == null) {
-            resourceGroups.putIfAbsent(name, new ResourceGroup(name, isProductName));
-            resourceGroup = resourceGroups.get(name);
-        }
-        return resourceGroup;
-    }
-
-    public static ResourceGroup getResourceGroup(String[] tags) {
-    	String name = joinTags(tags);
+    private static ResourceGroup getResourceGroup(String name, String[] tags) {
         ResourceGroup resourceGroup = resourceGroups.get(name);
         if (resourceGroup == null) {
             resourceGroups.putIfAbsent(name, new ResourceGroup(tags));
@@ -105,6 +82,17 @@ public class ResourceGroup extends Tag {
         return resourceGroup;
     }
 
+    public static ResourceGroup getResourceGroup(String name) {
+        ResourceGroup resourceGroup = resourceGroups.get(name);
+        if (resourceGroup == null)
+        	resourceGroup = getResourceGroup(name, name.split(separatorRegex, -1));
+        return resourceGroup;
+    }
+
+    public static ResourceGroup getResourceGroup(String[] tags) {
+    	return getResourceGroup(joinTags(tags), tags);
+    }
+    
     public static ResourceGroup getResourceGroup(UserTag[] tags) {
     	String[] strings = new String[tags.length];
     	for (int i = 0; i < tags.length; i++)

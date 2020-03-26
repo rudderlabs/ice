@@ -335,20 +335,12 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
                 Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
                 Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
                 
-	            if (resourceTagGroup != null) {
-	                addHourData(fileName, lineItem, lineItemType, monthly, resourceTagGroup, reservationUsage, reservationArn, usageValue, costValue, edpDiscount, usagesOfResource, costsOfResource, amort, publicOnDemandCost, i == 0, startMilli);
-	                
-	                // Collect statistics on tag coverage
-	            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
-	            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
-	            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
-	            }
-	            else {
-	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.	
-	                TagGroup tg = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, tagGroup.operation, tagGroup.usageType, ResourceGroup.getResourceGroup(product.name, true));
-	            	addValue(usagesOfResource, tg, usageValue);
-	                addValue(costsOfResource, tg, costValue);           	
-	            }
+                addHourData(fileName, lineItem, lineItemType, monthly, resourceTagGroup, reservationUsage, reservationArn, usageValue, costValue, edpDiscount, usagesOfResource, costsOfResource, amort, publicOnDemandCost, i == 0, startMilli);
+                
+                // Collect statistics on tag coverage
+            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
+            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
+            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
             }
         }
     }

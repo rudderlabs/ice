@@ -190,7 +190,7 @@ public class InputOperand extends Operand {
         	usageType = ut.isEmpty() ? null : UsageType.getUsageType(ut, tg.usageType.unit);
         }
         
-		UserTag[] userTags = (tg.resourceGroup == null || tg.resourceGroup.isProductName()) ? null : tg.resourceGroup.getUserTags();
+		UserTag[] userTags = tg.resourceGroup == null ? null : tg.resourceGroup.getUserTags();
         
 		if (userTags != null) {			
 			for (String key: userTagFilters.keySet()) {

@@ -134,7 +134,7 @@ public class ProcessorConfig extends Config {
 		String customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "");
 		String additionalTags = properties.getProperty(IceOptions.ADDITIONAL_TAGS, "");
         resourceService = customTags.isEmpty() ? null :
-        	new BasicResourceService(productService, customTags.split(","), additionalTags.split(","));
+        	new BasicResourceService(productService, customTags.split(","), additionalTags.split(","), true);
         
     	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);

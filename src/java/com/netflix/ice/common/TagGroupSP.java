@@ -63,7 +63,7 @@ public class TagGroupSP extends TagGroupArn<SavingsPlanArn> {
         	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
-            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)),
+            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup),
             SavingsPlanArn.get(savingsPlanArn));   	
     }
     

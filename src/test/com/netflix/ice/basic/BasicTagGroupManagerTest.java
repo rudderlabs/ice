@@ -38,7 +38,6 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.reader.TagListsWithUserTags;
 import com.netflix.ice.tag.Operation.ReservationOperation;
-import com.netflix.ice.tag.Zone.BadZone;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
@@ -56,9 +55,9 @@ public class BasicTagGroupManagerTest {
 	}
 	
 	@Test
-	public void testGetTagListsMap() throws BadZone {
+	public void testGetTagListsMap() throws Exception {
 		TagGroup[] tagGroups = new TagGroup[]{
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "ProductA", accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|", accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|", 	accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagB|", 	accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagX", 	accountService, productService),
@@ -66,17 +65,17 @@ public class BasicTagGroupManagerTest {
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|TagX", accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagB|TagY", accountService, productService),
 				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|", 		accountService, productService),
-				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "ProductA", accountService, productService),
+				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|", accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "TagA|", 	accountService, productService),
 				TagGroup.getTagGroup("Account2", "us-east-1", "us-east-1a", "ProductA", "OperationA", "UsageTypeA", "", "|TagX", 	accountService, productService),
 				// Savings operation tags that should be filtered if not for reservations
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - Spot", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings - Spot", "m1.small", "hour", "|", 	accountService, productService),
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Savings RIs - All Upfront", "m1.small", "hour", "|", 	accountService, productService),
 				// Lent or Borrowed (but not both) should be filtered based on showLent flag
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Lent RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Borrowed RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "LentAmortized RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
-				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "BorrowedAmortized RIs - All Upfront", "m1.small", "hour", "EC2 Instance", 	accountService, productService),				
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Lent RIs - All Upfront", "m1.small", "hour", "|", 	accountService, productService),				
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "Borrowed RIs - All Upfront", "m1.small", "hour", "|", 	accountService, productService),				
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "LentAmortized RIs - All Upfront", "m1.small", "hour", "|", 	accountService, productService),				
+				TagGroup.getTagGroup("Account1", "us-east-1", "us-east-1a", "EC2 Instance", "BorrowedAmortized RIs - All Upfront", "m1.small", "hour", "|", 	accountService, productService),				
 		};
 		
 		TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = Maps.newTreeMap();
@@ -213,7 +212,7 @@ public class BasicTagGroupManagerTest {
 		        	if (tagGroup.operation.isLent() || tagGroup.operation.isSavings())
 		        		assertEquals("contains returned wrong state on reservation op: " + tagGroup, false, contains);
 		        	else
-		        		assertEquals("contains returned wrong state on empty tag for: " + tagGroup, tagGroup.resourceGroup.isProductName() || firstUserTagEmpty, contains);
+		        		assertEquals("contains returned wrong state on empty tag for: " + tagGroup, firstUserTagEmpty, contains);
 		        }
 			}
 			else {

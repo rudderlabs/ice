@@ -116,7 +116,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     			productValues.add(tg.product.name);
     			operationValues.add(tg.operation.name);
     			usageTypeValues.add(tg.usageType.name);
-        		if (numUserTags > 0 && tg.resourceGroup != null && !tg.resourceGroup.isProductName()) {
+        		if (numUserTags > 0 && tg.resourceGroup != null) {
 		    		UserTag[] userTags = tg.resourceGroup.getUserTags();
 		    		for (int j = 0; j < numUserTags; j++) {
 		    			if (!userTags[j].name.isEmpty())
@@ -330,7 +330,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         	//logger.info("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
             if (tagLists.contains(tagGroup)) {
             	try {
-            		UserTag t = (tagGroup.resourceGroup == null || tagGroup.resourceGroup.isProductName()) ? emptyUserTag : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
+            		UserTag t = tagGroup.resourceGroup == null ? emptyUserTag : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
             		result.add(t);
             	}
             	catch (Exception e) {

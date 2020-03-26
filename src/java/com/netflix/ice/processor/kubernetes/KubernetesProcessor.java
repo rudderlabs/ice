@@ -131,7 +131,7 @@ public class KubernetesProcessor {
 			// Get a copy of the key set since we'll be updating the map
 			Set<TagGroup> tagGroups = Sets.newHashSet(hourCostData.keySet());
 			for (TagGroup tg: tagGroups) {
-				if (tg.resourceGroup == null || tg.resourceGroup.isProductName())
+				if (tg.resourceGroup == null)
 					continue;
 				
 				UserTag[] ut = tg.resourceGroup.getUserTags();

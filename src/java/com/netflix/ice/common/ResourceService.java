@@ -61,9 +61,7 @@ public abstract class ResourceService {
      * @param millisStart
      * @return
      */
-    public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart){
-        return ResourceGroup.getResourceGroup(product.name, true);
-    }
+    abstract public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart);
     
     abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags);
 

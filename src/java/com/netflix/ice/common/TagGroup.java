@@ -185,7 +185,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
         	productService.getProductByServiceCode(product),
         	Operation.getOperation(operation),
             UsageType.getUsageType(usageTypeName, usageTypeUnit),
-            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup, resourceGroup.equals(product)));   	
+            StringUtils.isEmpty(resourceGroup) ? null : ResourceGroup.getResourceGroup(resourceGroup));   	
     }
     
     public static TagGroup getTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) {
@@ -221,7 +221,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             out.writeUTF(tagGroup.product.getServiceCode());
             out.writeUTF(tagGroup.operation.toString());
             UsageType.serialize(out, tagGroup.usageType);
-            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.isProductName() ? tagGroup.product.getServiceCode() : tagGroup.resourceGroup.toString());
+            out.writeUTF(tagGroup.resourceGroup == null ? "" : tagGroup.resourceGroup.toString());
         }
         
         public static void serializeCsvHeader(OutputStreamWriter out) throws IOException {
@@ -267,7 +267,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Operation operation = Operation.getOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
-            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr.equals(prodStr) ? product.name : resourceGroupStr, resourceGroupStr.equals(prodStr));
+            ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr);
 
             return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, resourceGroup);
         }

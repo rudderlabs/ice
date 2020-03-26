@@ -199,9 +199,6 @@ public class DataJsonWriter extends DataFile {
 	
 	public class ResourceGroupSerializer implements JsonSerializer<ResourceGroup> {
 		public JsonElement serialize(ResourceGroup rg, Type typeOfSrc, JsonSerializationContext context) {
-			if (rg.isProductName())
-				return null;
-			
 			JsonObject tags = new JsonObject();
 			
 			UserTag[] userTags = rg.getUserTags();

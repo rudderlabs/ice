@@ -25,8 +25,6 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
-
-
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -45,7 +43,7 @@ public class BasicResourceService extends ResourceService {
 
     protected final List<String> customTags;
     private final List<String> userTags;
-    private final boolean includeReservationIds = true;
+    private final boolean includeReservationIds;
     
     
     // Map of tags where each tag has a list of aliases. Outer key is the payerAccountId.
@@ -104,8 +102,9 @@ public class BasicResourceService extends ResourceService {
     // have a tag value nor a mapped value. Outer key is the account ID, inner map key is the tag name.
     private Map<String, Map<String, String>> defaultTags;
 
-    public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags) {
+    public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags, boolean includeReservationIds) {
 		super();
+		this.includeReservationIds = includeReservationIds;
 		this.customTags = Lists.newArrayList(customTags);
 		if (includeReservationIds)
 			this.customTags.add(reservationIdsKeyName);
@@ -205,7 +204,6 @@ public class BasicResourceService extends ResourceService {
     public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
         // Build the resource group based on the values of the custom tags
     	String[] tags = new String[customTags.size()];
-       	boolean hasTag = false;
        	for (int i = 0; i < customTags.size(); i++) {
        		tags[i] = getUserTagValue(lineItem, customTags.get(i));
        	}
@@ -217,17 +215,14 @@ public class BasicResourceService extends ResourceService {
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags.get(i));
         	tags[i] = v;
-        	hasTag = v == null ? hasTag : true;
         }
-        // If we didn't have any tags, just return a ResourceGroup
-        return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
+		return ResourceGroup.getResourceGroup(tags);
     }
     
     @Override
     public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags) {
         // Build the resource group based on the values of the custom tags
     	String[] tags = new String[customTags.size()];
-       	boolean hasTag = false;
        	for (int i = 0; i < customTags.size(); i++) {
            	String v = null;
    			// find first matching key with a legitimate value
@@ -241,10 +236,8 @@ public class BasicResourceService extends ResourceService {
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags.get(i));
         	tags[i] = v;
-        	hasTag = v == null ? hasTag : true;
        	}
-        // If we didn't have any tags, just return a ResourceGroup
-        return hasTag ? ResourceGroup.getResourceGroup(tags) : ResourceGroup.getResourceGroup(product.name, true);
+		return ResourceGroup.getResourceGroup(tags);
     }
     
     @Override

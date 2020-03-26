@@ -47,7 +47,7 @@ public class InputOperandTest {
 		accts.add(new Account("234567890123", "Account2", null));
 		as = new BasicAccountService(accts);
 		ps = new BasicProductService();
-		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{});
+		rs = new BasicResourceService(ps, new String[]{"Key1","Key2"}, new String[]{}, false);
 	}
 	
 	@Test
@@ -290,10 +290,10 @@ public class InputOperandTest {
 		oc.setUserTags(userTags);
 		
 		io = new InputOperand(oc, as, rs);
-		tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT1", "", "tag2", as, ps);		
+		tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT1", "", "tag2|", as, ps);		
 		assertFalse("tag group should not match with wrong user tag", io.matches(null, tg));
 		
-		tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT1", "", "tag1", as, ps);		
+		tg = TagGroup.getTagGroup("123456789012", "us-east-1", null, "IOTestProduct1", "OP1", "UT1", "", "tag1|", as, ps);		
 		assertTrue("tag groups should match with correct user tag", io.matches(null, tg));
 	}
 

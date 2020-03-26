@@ -59,6 +59,7 @@ public class Operand {
 	protected final int numUserTags;
 	private final boolean single;
 	private final boolean monthly;
+	private final String[] emptyUserTags;
 	
 	public String toString() {
 		List<String> tags = Lists.newArrayList();
@@ -121,6 +122,7 @@ public class Operand {
 		numUserTags = resourceService.getCustomTags().size();
 		single = opConfig.isSingle();
 		monthly = opConfig.isMonthly();
+		emptyUserTags = new String[numUserTags];
 		
 		validate();		
 	}
@@ -216,7 +218,7 @@ public class Operand {
 		if (!isNonResource) {
 			resourceGroup = atg == null ? null : atg.getResourceGroup(numUserTags);
 			if (resourceGroup == null && userTagFilters.size() == 0) {
-				resourceGroup = ResourceGroup.getResourceGroup(product.name, true);
+				resourceGroup = ResourceGroup.getResourceGroup(emptyUserTags);
 			}
 			else {
 				List<UserTag> userTags = Lists.newArrayListWithCapacity(numUserTags);
