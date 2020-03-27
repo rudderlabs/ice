@@ -154,6 +154,11 @@ public class IceOptions {
     public static final String ADDITIONAL_TAGS = "ice.additionalTags";
 
     /**
+     * Boolean flag to indicated whether to include reservation IDs as an additional custom tag.
+     */
+    public static final String RESERVATION_ID_TAGS = "ice.reservationIdTags";
+
+    /**
      * Boolean Flag whether to use blended or Unblended Costs.  Default is UnBlended Cost(false)
      */
     public static final String USE_BLENDED = "ice.use_blended";
