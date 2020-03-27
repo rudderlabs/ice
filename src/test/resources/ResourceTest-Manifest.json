@@ -8,6 +8,9 @@
     "category":"lineItem",
     "name":"LineItemType"
   },{
+    "category":"lineItem",
+    "name":"UsageStartDate"
+  },{
     "category":"resourceTags",
     "name":"user:Email"
   },{

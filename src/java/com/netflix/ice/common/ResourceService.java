@@ -63,7 +63,7 @@ public abstract class ResourceService {
      */
     abstract public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart);
     
-    abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags);
+    abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags, long millisStart);
 
     /**
      * Commit resource mappings. This method will be called at the end of billing file processing to commit your mappings.

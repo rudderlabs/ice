@@ -25,6 +25,9 @@ import org.apache.commons.lang.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+
 import com.amazonaws.services.ec2.model.Tag;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -62,6 +65,8 @@ public class BasicResourceService extends ResourceService {
     
     private static final String USER_TAG_PREFIX = "user:";
     private static final String reservationIdsKeyName = "RI/SP ID";
+    private static final String defaultTagSeparator = "/";
+    private static final String defaultTagEffectiveDateSeparator = "=";
     
     // Map containing values to assign to destination tags based on a match with a value
     // in a source tag. These are returned if the requested resource doesn't have a tag value.
@@ -100,7 +105,49 @@ public class BasicResourceService extends ResourceService {
 
     // Map of default user tag values for each account. These are returned if the requested resource doesn't
     // have a tag value nor a mapped value. Outer key is the account ID, inner map key is the tag name.
-    private Map<String, Map<String, String>> defaultTags;
+    private Map<String, Map<String, DefaultTag>> defaultTags;
+    
+    private class DefaultTag {
+    	private class DateValue {
+    		public long startMillis;
+    		public String value;
+    		
+    		DateValue(long startMillis, String value) {
+    			this.startMillis = startMillis;
+    			this.value = value;
+    		}
+    	}
+    	private List<DateValue> timeOrderedValues;
+    	
+    	DefaultTag(String config) {
+    		Map<Long, String> sortedMap = Maps.newTreeMap();
+    		String[] dateValues = config.split(defaultTagSeparator);
+    		for (String dv: dateValues) {
+    			String[] parts = dv.split(defaultTagEffectiveDateSeparator);
+    			if (dv.contains(defaultTagEffectiveDateSeparator)) {
+    				// If only one part, it's the start time and value should be empty
+        			sortedMap.put(new DateTime(parts[0], DateTimeZone.UTC).getMillis(), parts.length < 2 ? "" : parts[1]);    				
+    			}
+    			else {
+    				// If only one part, it's the value that starts at time 0
+    				sortedMap.put(parts.length < 2 ? 0 : new DateTime(parts[0], DateTimeZone.UTC).getMillis(), parts[parts.length < 2 ? 0 : 1]);
+    			}
+    		}
+    		timeOrderedValues = Lists.newArrayList();
+    		for (Long start: sortedMap.keySet())
+    			timeOrderedValues.add(new DateValue(start, sortedMap.get(start)));
+    	}
+    	
+    	String getValue(long startMillis) {
+    		String value = null;
+    		for (DateValue dv: timeOrderedValues) {
+    			if (dv.startMillis > startMillis)
+    				break;
+    			value = dv.value;
+    		}
+    		return value;
+    	}
+    }
 
     public BasicResourceService(ProductService productService, String[] customTags, String[] additionalTags, boolean includeReservationIds) {
 		super();
@@ -213,14 +260,14 @@ public class BasicResourceService extends ResourceService {
         	if (v == null || v.isEmpty())
         		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags.get(i), tags);
         	if (v == null || v.isEmpty())
-        		v = getDefaultUserTagValue(account, customTags.get(i));
+        		v = getDefaultUserTagValue(account, customTags.get(i), millisStart);
         	tags[i] = v;
         }
 		return ResourceGroup.getResourceGroup(tags);
     }
     
     @Override
-    public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags) {
+    public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags, long millisStart) {
         // Build the resource group based on the values of the custom tags
     	String[] tags = new String[customTags.size()];
        	for (int i = 0; i < customTags.size(); i++) {
@@ -234,7 +281,7 @@ public class BasicResourceService extends ResourceService {
        			}
        		}
         	if (v == null || v.isEmpty())
-        		v = getDefaultUserTagValue(account, customTags.get(i));
+        		v = getDefaultUserTagValue(account, customTags.get(i), millisStart);
         	tags[i] = v;
        	}
 		return ResourceGroup.getResourceGroup(tags);
@@ -242,13 +289,17 @@ public class BasicResourceService extends ResourceService {
     
     @Override
     public void putDefaultTags(String accountId, Map<String, String> tags) {
-    	defaultTags.put(accountId, tags);
+    	Map<String, DefaultTag> defaults = Maps.newHashMap();
+    	for (String key: tags.keySet())
+    		defaults.put(key, new DefaultTag(tags.get(key)));
+    	defaultTags.put(accountId, defaults);
     }
     
-    private String getDefaultUserTagValue(Account account, String tag) {
+    private String getDefaultUserTagValue(Account account, String tagKey, long startMillis) {
     	// return the default user tag value for the specified account if there is one.
-    	Map<String, String> defaults = defaultTags.get(account.getId());
-    	return defaults == null ? null : defaults.get(tag);
+    	Map<String, DefaultTag> defaults = defaultTags.get(account.getId());
+    	DefaultTag dt = defaults == null ? null : defaults.get(tagKey);
+    	return dt == null ? null : dt.getValue(startMillis);
     }
     
     private String getMappedUserTagValue(Account account, String payerAccount, String tag, String[] tags) {

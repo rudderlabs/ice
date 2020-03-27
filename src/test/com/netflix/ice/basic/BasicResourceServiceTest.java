@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -175,6 +177,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -192,9 +195,60 @@ public class BasicResourceServiceTest {
 		rs.putDefaultTags("12345", defaultTags);
 		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
-		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		UserTag[] userTags = resourceGroup.getUserTags();
-		assertEquals("default resource group not set", userTags[0].name, "Prod");
+		assertEquals("default resource group not set", "Prod", userTags[0].name);
+		
+		//
+		// Test multiple default tags with effective dates
+		//
+		// First set the effective date for a new value
+		defaultTags.put("Environment", "Prod/2020-02=Dev");
+		rs.putDefaultTags("12345", defaultTags);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Prod", userTags[0].name);
+		
+		// Now check after the effective date of the second value
+		item[2] = "2020-02-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Dev", userTags[0].name);
+		
+		// Make sure out-of-time-ordered effective dates don't break things
+		defaultTags.put("Environment", "Prod/2020-02=Dev/2018=QA/2018-02=Test");
+		rs.putDefaultTags("12345", defaultTags);
+		
+		item[2] = "2018-01-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "QA", userTags[0].name);
+		
+		item[2] = "2019-01-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Test", userTags[0].name);
+		
+		// Check that we can stop setting values with a trailing '='
+		defaultTags.put("Environment", "Prod/2020-02=/2018=QA/2018-02=Test");
+		rs.putDefaultTags("12345", defaultTags);
+		item[2] = "2020-02-21T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "", userTags[0].name);
+		
+		// Check that we ignore a trailing '/'
+		defaultTags.put("Environment", "Prod/2020-02=/2018=QA/2018-02=Test/");
+		rs.putDefaultTags("12345", defaultTags);
+		item[2] = "2020-02-21T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "", userTags[0].name);		
 	}
 	
 	@Test
