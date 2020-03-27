@@ -58,6 +58,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"Prod", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -353,6 +354,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -363,20 +365,20 @@ public class BasicResourceServiceTest {
 		
 		// Test with mapped value
 		li.setItems(item);
-		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test with value on resource
-		item[3] = "test";
+		item[4] = "test";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "test" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test without mapped value or resource tag - should use account default
-		item[3] = "";
-		item[5] = "";
+		item[4] = "";
+		item[6] = "";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "", resource.name);
 		
 		// Test include filtering
@@ -386,13 +388,13 @@ public class BasicResourceServiceTest {
 		tc = mapper.readValue(yamlWithFilters, tc.getClass());
 		tagConfigs = Lists.newArrayList(tc);
 		rs.setTagConfigs("123456789012", tagConfigs);
-		item[5] = "serviceAPI";
+		item[6] = "serviceAPI";
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test exclude filtering
@@ -404,10 +406,34 @@ public class BasicResourceServiceTest {
 		rs.setTagConfigs("123456789012", tagConfigs);
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		// Test start date
+		String yamlWithStart = yaml + 
+				"  - start: 2020-02\n" +
+				"    maps:\n" +
+				"      QA2:\n" +
+				"        Product: [serviceAPI]\n" +
+				"      2345678:\n" +
+				"        Product: [webServer]\n";
+
+		tc = new TagConfig();
+		tc = mapper.readValue(yamlWithStart, tc.getClass());
+		tagConfigs = Lists.newArrayList(tc);
+		rs.setTagConfigs("123456789012", tagConfigs);
+		li.setItems(item);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		item[2] = "2020-02-01T00:00:00Z";
+		li.setItems(item);
+
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		assertEquals("Resource name doesn't match", "QA2" + ResourceGroup.separator + "serviceAPI", resource.name);		
 	}
 }

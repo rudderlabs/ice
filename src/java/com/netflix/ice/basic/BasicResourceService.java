@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.basic;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -68,15 +69,43 @@ public class BasicResourceService extends ResourceService {
     private static final String defaultTagSeparator = "/";
     private static final String defaultTagEffectiveDateSeparator = "=";
     
-    // Map containing values to assign to destination tags based on a match with a value
-    // in a source tag. These are returned if the requested resource doesn't have a tag value.
-    // Primary map key is the payer account ID, secondary map key is the destination tag key
-    private Map<String, Map<String, List<MappedTags>>> mappedTags;
+    /**
+     *  Map containing values to assign to destination tags based on a match with a value
+     *  in a source tag. These are returned if the requested resource doesn't have a tag value.
+     *  Primary map key is the payer account ID, secondary map key is the destination tag key.
+     *  
+     *  The full data structure in YML notation looks like this:
+     *  
+     *  <pre>
+     *  mappedTags:
+     *    payerAcctId:
+     *      destTagKey:
+     *        include: []
+     *        exclude: []
+     *        start: YYYY-MM
+     *        maps:
+     *          srcTagIndex:
+     *            srcTagValue:
+     *      destTagKey2:
+     *        ...
+     *      destTagKey3:
+     *        ...
+     *    payerAcctId2:
+     *      ...
+     *  </pre>
+     */
+    private Map<String, Map<String, Map<Long, MappedTags>>> mappedTags;
     
+    /**
+     * 
+     * @author jaroth
+     *
+     */
     private class MappedTags {
     	Map<Integer, Map<String, String>> maps; // Primary map key is source tag index, secondary map key is the source tag value
     	List<String> include;
     	List<String> exclude;
+    	Long startMillis;
     	
     	public MappedTags(TagMappings config) {
 			maps = Maps.newHashMap();
@@ -100,6 +129,7 @@ public class BasicResourceService extends ResourceService {
 			exclude = config.exclude;
 			if (exclude == null)
 				exclude = Lists.newArrayList();
+			startMillis = config.start == null || config.start.isEmpty() ? 0 : new DateTime(config.start, DateTimeZone.UTC).getMillis();
     	}
     }
 
@@ -216,13 +246,15 @@ public class BasicResourceService extends ResourceService {
 		this.tagValuesInverted.put(payerAccountId, indeces);
 		
 		// Create the maps setting tags based on the values of other tags
-		Map<String, List<MappedTags>> mapped = Maps.newHashMap();
+		Map<String, Map<Long, MappedTags>> mapped = Maps.newHashMap();
 		for (TagConfig config: tagConfigs) {
 			if (config.mapped == null || config.mapped.isEmpty())
 				continue;
-			List<MappedTags> mappedTags = Lists.newArrayList();
-			for (TagMappings m: config.mapped)
-				mappedTags.add(new MappedTags(m));
+			Map<Long, MappedTags> mappedTags = Maps.newTreeMap();
+			for (TagMappings m: config.mapped) {
+				MappedTags mt = new MappedTags(m);
+				mappedTags.put(mt.startMillis, mt);
+			}
 			mapped.put(config.name, mappedTags);			
 		}
 		this.mappedTags.put(payerAccountId, mapped);
@@ -258,7 +290,7 @@ public class BasicResourceService extends ResourceService {
        	for (int i = 0; i < customTags.size(); i++) {
        		String v = tags[i];
         	if (v == null || v.isEmpty())
-        		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags.get(i), tags);
+        		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags.get(i), tags, millisStart);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags.get(i), millisStart);
         	tags[i] = v;
@@ -302,17 +334,24 @@ public class BasicResourceService extends ResourceService {
     	return dt == null ? null : dt.getValue(startMillis);
     }
     
-    private String getMappedUserTagValue(Account account, String payerAccount, String tag, String[] tags) {
-    	// return the default user tag value for the specified account if there is one.
-    	Map<String, List<MappedTags>> mappedTagsForPayerAccount = mappedTags.get(payerAccount);
+    private String getMappedUserTagValue(Account account, String payerAccount, String tag, String[] tags, long startMillis) {
+    	// return the user tag value for the specified account if there is a mapping configured.
+    	Map<String, Map<Long, MappedTags>> mappedTagsForPayerAccount = mappedTags.get(payerAccount);
     	if (mappedTagsForPayerAccount == null)
     		return null;
     	
-    	List<MappedTags> listOfMappedTags = mappedTagsForPayerAccount.get(tag);
+    	// Get the time-ordered values
+    	Map<Long, MappedTags> mappedTagsMap = mappedTagsForPayerAccount.get(tag);
+    	Collection<MappedTags> listOfMappedTags = mappedTagsMap == null ? null : mappedTagsMap.values();
     	if (listOfMappedTags == null)
     		return null;
     	
+    	String value = null;
+    	
     	for (MappedTags mt: listOfMappedTags) {
+    		if (startMillis < mt.startMillis)
+    			break; // Remaining rules are not in effect yet
+    		
         	Map<Integer, Map<String, String>> sourceTags = mt.maps;
         	if (sourceTags == null)
         		continue;
@@ -330,13 +369,13 @@ public class BasicResourceService extends ResourceService {
         		if (have == null)
         			continue;
         		Map<String, String> values = sourceTags.get(sourceTagIndex);
-        		String v = values.get(have.toLowerCase());
-        		if (v != null)
-        			return v;
+        		value = values.get(have.toLowerCase());
+        		if (value != null)
+        			break; // done processing this rule set. Move on to any later rule sets
         	}
     	}
     	
-    	return null;
+    	return value;
     }
     
     @Override
