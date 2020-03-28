@@ -130,6 +130,10 @@ public class InputOperand extends Operand {
 		return aggregates;
 	}
 	
+	public boolean hasGroupByTags() {
+		return groupByTags.size() > 0;
+	}
+	
 	/**
 	 * Used by the In operand when aggregating the input data
 	 */
@@ -323,8 +327,8 @@ public class InputOperand extends Operand {
         if (accounts != null && accounts.size() > 0) {
         	sb.append(accounts.toString() + "," + (excludeAccount ? "true," : "false,"));
         }
-        else if (accountTagFilter != null && atg.getAccount() != null) {
-			sb.append(accountTagFilter.getTag(atg.getAccount().getId()) + ",");
+        else if (accountTagFilter != null) {
+			sb.append(accountTagFilter.getTag(atg == null ? "" : atg.getAccount().getId()) + ",");
 		}
         else if (aggregation.groupBy(TagType.Account) && atg.groupBy(TagType.Account)) {
         	sb.append(atg.getAccount().getId() + ",");
@@ -333,8 +337,8 @@ public class InputOperand extends Operand {
         if (regions != null && regions.size() > 0) {
         	sb.append(regions.toString() + "," + (excludeRegion ? "true," : "false,"));
         }
-        else if (regionTagFilter != null && atg.getRegion() != null) {
-			sb.append(regionTagFilter.getTag(atg.getRegion().name) + ",");
+        else if (regionTagFilter != null) {
+			sb.append(regionTagFilter.getTag(atg == null ? "" : atg.getRegion().name) + ",");
 		}
         else if (aggregation.groupBy(TagType.Region) && atg.groupBy(TagType.Region)) {
         	sb.append(atg.getRegion().name + ",");
@@ -343,29 +347,29 @@ public class InputOperand extends Operand {
         if (zones != null && zones.size() > 0) {
         	sb.append(zones.toString() + "," + (excludeZone ? "true," : "false,"));
         }
-        else if (zoneTagFilter != null && atg.getZone() != null) {
-			sb.append(zoneTagFilter.getTag(atg.getZone().name) + ",");
+        else if (zoneTagFilter != null) {
+			sb.append(zoneTagFilter.getTag(atg == null ? "" : atg.getZone().name) + ",");
 		}
-        else if (aggregation.groupBy(TagType.Zone) && atg.groupBy(TagType.Zone)) {
-        	sb.append(atg.getZone() == null ? "null," : atg.getZone().name + ",");
+        else if (aggregation.groupBy(TagType.Zone) && (atg == null || atg.groupBy(TagType.Zone))) { // zone can be null even if it's a groupBy
+        	sb.append(atg == null || atg.getZone() == null ? "null," : atg.getZone().name + ",");
         }
         
-		if (productTagFilter != null && atg.getProduct() != null) {
-			sb.append(productTagFilter.getTag(atg.getProduct().name) + ",");
+		if (productTagFilter != null) {
+			sb.append(productTagFilter.getTag(atg == null || atg.getProduct() == null ? "" : atg.getProduct().name) + ",");
 		}
 		else if (aggregation.groupBy(TagType.Product) && atg.groupBy(TagType.Product)) {
 			sb.append(atg.getProduct().getServiceCode() + ",");
 		}
 		
-		if (operationTagFilter != null && atg.getOperation() != null) {
-			sb.append(operationTagFilter.getTag(atg.getOperation().name) + ",");
+		if (operationTagFilter != null) {
+			sb.append(operationTagFilter.getTag(atg == null || atg.getOperation() == null ? "" : atg.getOperation().name) + ",");
 		}
 		else if (aggregation.groupBy(TagType.Operation) && atg.groupBy(TagType.Operation)) {
 			sb.append(atg.getOperation().name + ",");
 		}
 		
-		if (usageTypeTagFilter != null && atg.getUsageType() != null) {
-			sb.append(usageTypeTagFilter.getTag(atg.getUsageType().name) + ",");
+		if (usageTypeTagFilter != null) {
+			sb.append(usageTypeTagFilter.getTag(atg == null || atg.getUsageType() == null ? "" : atg.getUsageType().name) + ",");
 		}
 		else if (aggregation.groupBy(TagType.UsageType) && atg.groupBy(TagType.UsageType)) {
 			sb.append(atg.getUsageType().name + ",");
@@ -374,8 +378,8 @@ public class InputOperand extends Operand {
 		for (String key: userTagFilters.keySet()) {
 			TagFilter userTagFilter = userTagFilters.get(key);
 			Integer userTagIndex = userTagFilterIndeces.get(key);
-			if (userTagFilter != null && atg.getUserTag(userTagIndex) != null) {
-				sb.append(userTagFilter.getTag(atg.getUserTag(userTagIndex).name) + ",");
+			if (userTagFilter != null) {
+				sb.append(userTagFilter.getTag(atg == null || atg.getUserTag(userTagIndex) == null ? "" : atg.getUserTag(userTagIndex).name) + ",");
 			}
 			else if (aggregation.groupByUserTag(userTagIndex) && atg.groupByUserTag(userTagIndex)) {
 				sb.append(atg.getUserTag(userTagIndex).name + ",");
@@ -384,7 +388,7 @@ public class InputOperand extends Operand {
 		for (Integer userTagIndex: groupByTagsIndeces) {
 			if (userTagFilterIndeces.containsValue(userTagIndex))
 				continue; // already handled this one above
-			if (aggregation.groupByUserTag(userTagIndex) && atg.groupByUserTag(userTagIndex)) {
+			if (aggregation.groupByUserTag(userTagIndex) && atg.groupByUserTag(userTagIndex)) { // user tags can be null
 				sb.append(atg.getUserTag(userTagIndex).name + ",");
 			}
 		}

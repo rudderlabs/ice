@@ -174,10 +174,23 @@ public class InputOperandTest {
 		oc.setProduct("IOTestProduct");
 		oc.setOperation("OP1");
 		oc.setUsageType("UT1");
+		oc.setGroupByTags(Lists.<String>newArrayList());
 		io = new InputOperand(oc, as, rs);
-		key = io.cacheKey(atg);
+		key = io.cacheKey(atg);		
+		assertEquals("wrong operand cache key with no aggregation or atg dependencies", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,", key);
 		
-		assertEquals("wrong operand cache key with no aggregation or atg dependencies", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,tag1,tag2,", key);		
+		oc.setGroupByTags(Lists.<String>newArrayList(new String[]{"Key1", "Key2"}));
+		io = new InputOperand(oc, as, rs);
+		key = io.cacheKey(atg);		
+		assertEquals("wrong operand cache key with no aggregation or atg dependencies", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,tag1,tag2,", key);
+		
+		/*
+		 * Test case where operand gets all it's tags from the config and the aggregation tag group is null
+		 */
+		oc.setGroupByTags(Lists.<String>newArrayList());
+		io = new InputOperand(oc, as, rs);
+		key = io.cacheKey(null);		
+		assertEquals("wrong operand cache key with no aggregation or atg dependencies", "usage,123456789012,us-east-1,null,IOTestProduct,OP1,UT1,", key);
 	}
 	
 	@Test

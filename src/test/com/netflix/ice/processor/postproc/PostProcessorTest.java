@@ -20,6 +20,7 @@ package com.netflix.ice.processor.postproc;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
 import org.junit.BeforeClass;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.basic.BasicResourceService;
@@ -215,11 +217,14 @@ public class PostProcessorTest {
 		loadComputedCostData(usageData, costData);
 		data.putUsage(null, usageData);
 		data.putCost(null, costData);
+		Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = Maps.newHashMap();
+		tagGroupsCache.put(usageData, usageData.getTagGroups());
+		tagGroupsCache.put(costData, costData.getTagGroups());
 				
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		Rule rule = new Rule(getConfig(computedCostYaml), as, ps, rs);
 		
-		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum());
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum(), tagGroupsCache);
 		
 		assertEquals("Wrong number of matched tags", 3, inMap.size());
 		// Scan map and make sure we have 2 US and 1 EU
@@ -264,8 +269,11 @@ public class PostProcessorTest {
 		
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		Rule rule = new Rule(getConfig(computedCostYaml), as, ps, rs);
-		pp.processReadWriteData(rule, data, true);
-		
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, true, operandSingleValueCache);
+
+		assertEquals("Wrong number of entries in the single value cache", 0, operandSingleValueCache.size());
+
 		// cost: 'in - (data * 4 * 8 / 2) * 0.01 / 1000'
 		// 'in' is the sum of the two request values
 		//
@@ -322,11 +330,14 @@ public class PostProcessorTest {
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		pp.debug = true;
 		Rule rule = new Rule(getConfig(computedCostYaml), as, ps, rs);
-		pp.processReadWriteData(rule, data, false);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, false, operandSingleValueCache);
 		
 		Product outProduct = ps.getProductByServiceCode("ComputedCost");
 		ReadWriteData outCostData = data.getCost(outProduct);
 		
+		assertEquals("Wrong number of entries in the single value cache", 0, operandSingleValueCache.size());
+
 		// out: 'in - (data * 4 * 8 / 2) * 0.01 / 1000'
 		// 'in' is the sum of the two request values
 		//
@@ -409,7 +420,11 @@ public class PostProcessorTest {
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		Rule rule = new Rule(getConfig(surchargeConfigYaml), as, ps, rs);
 		
-		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum());
+		Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = Maps.newHashMap();
+		tagGroupsCache.put(usageData, usageData.getTagGroups());
+		tagGroupsCache.put(costData, costData.getTagGroups());
+		
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum(), tagGroupsCache);
 		
 		assertEquals("Wrong number of matched tags", 4, inMap.size());
 		// Scan map and make sure we have 2 us-east-1 and 2 eu-west-1
@@ -520,19 +535,21 @@ public class PostProcessorTest {
 		assertTrue("total operand incorrectly indicates it has no aggregation", rule.getOperand("total").hasAggregation());
 		assertFalse("lump-cost operand incorrectly indicates it has no aggregation", rule.getOperand("lump-cost").hasAggregation());
 
-		pp.processReadWriteData(rule, data, true);
-
-		ReadWriteData outCostData = data.getCost(null);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, true, operandSingleValueCache);
 		
+		ReadWriteData outCostData = data.getCost(null);
+		Map<TagGroup, Double> m = outCostData.getData(0);
+		for (TagGroup tg: m.keySet())
+			logger.info("out: " + m.get(tg) + ", " + tg);
+				
+		assertEquals("Wrong number of entries in the single value cache", 2, operandSingleValueCache.size());
+
 		// Should have zero-ed out the GlobalFee cost
 		TagGroup globalFee = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", null).getTagGroup();
 		Double value = outCostData.getData(0).get(globalFee);
 		assertNotNull("No value for global fee", value);
 		assertEquals("Wrong value for global fee", 0.0, value, .001);
-		
-		Map<TagGroup, Double> m = outCostData.getData(0);
-		for (TagGroup tg: m.keySet())
-			logger.info("out: " + m.get(tg) + ", " + tg);
 		
 		// Should have 50/30/15/5% split of $300
 		TagGroup a1split = new TagGroupSpec(DataType.cost, a1, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
@@ -599,13 +616,16 @@ public class PostProcessorTest {
 		assertTrue("total operand incorrectly indicates it has no aggregation", rule.getOperand("total").hasAggregation());
 		assertFalse("lump-cost operand incorrectly indicates it has no aggregation", rule.getOperand("lump-cost").hasAggregation());
 
-		pp.processReadWriteData(rule, data, false);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, false, operandSingleValueCache);
 
 		ReadWriteData outCostData = data.getCost(globalFee);
 		Map<TagGroup, Double> m = outCostData.getData(0);
 		for (TagGroup tg: m.keySet())
 			logger.info("globalFee out: " + m.get(tg) + ", " + tg);
 				
+		assertEquals("Wrong number of entries in the single value cache", 2, operandSingleValueCache.size());
+
 		// Should have zeroed out the GlobalFee cost
 		TagGroup globalFeeTag = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "|", null).getTagGroup();
 		Double value = outCostData.getData(0).get(globalFeeTag);
@@ -698,8 +718,11 @@ public class PostProcessorTest {
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		pp.debug = true;
 		Rule rule = new Rule(getConfig(computedMultiProductCostYaml), as, ps, rs);
-		pp.processReadWriteData(rule, data, false);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, false, operandSingleValueCache);
 		
+		assertEquals("Wrong number of entries in the single value cache", 0, operandSingleValueCache.size());
+
 		Product outProduct = ps.getProductByServiceCode("ComputedCost");
 		ReadWriteData outCostData = data.getCost(outProduct);
 		
@@ -779,13 +802,16 @@ public class PostProcessorTest {
 		pp.debug = true;
 		Rule rule = new Rule(getConfig(splitMonthlyCostByHourYaml), as, ps, rs);
 
-		pp.processReadWriteData(rule, data, true);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, true, operandSingleValueCache);
 		ReadWriteData outCostData = data.getCost(null);
-				
+
 		Map<TagGroup, Double> m = outCostData.getData(0);
 		for (TagGroup tg: m.keySet())
 			logger.info("out: " + m.get(tg) + ", " + tg);
 		
+		assertEquals("Wrong number of entries in the single value cache", 0, operandSingleValueCache.size());
+
 		// Should have 50/30/20% split of $300
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
 		Double value = outCostData.getData(0).get(a2split);
@@ -863,13 +889,16 @@ public class PostProcessorTest {
 		pp.debug = true;
 		Rule rule = new Rule(getConfig(splitMonthlyCostByMonthYaml), as, ps, rs);
 
-		pp.processReadWriteData(rule, data, true);
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+		pp.processReadWriteData(rule, data, true, operandSingleValueCache);
 		ReadWriteData outCostData = data.getCost(null);
 				
 		Map<TagGroup, Double> m = outCostData.getData(0);
 		for (TagGroup tg: m.keySet())
 			logger.info("out: " + m.get(tg) + ", " + tg);
-		
+
+		assertEquals("Wrong number of entries in the single value cache", 0, operandSingleValueCache.size());
+
 		// Should have 50/30/20% split of $300
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
 		Double value = outCostData.getData(0).get(a2split);
