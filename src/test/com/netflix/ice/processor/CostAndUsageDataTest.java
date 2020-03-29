@@ -174,8 +174,8 @@ public class CostAndUsageDataTest {
 	class TestDataWriter extends DataWriter {
 		private ReadWriteData archive;
 		
-		TestDataWriter(String dbName, ReadWriteDataSerializer data, boolean compress, ReadWriteData archive) throws Exception {
-			super(dbName, data, compress, false, null, null, null);
+		TestDataWriter(String dbName, ReadWriteDataSerializer data, ReadWriteData archive) throws Exception {
+			super(dbName, data, false, null, null, null);
 			this.archive = archive;
 		}
 
@@ -206,7 +206,7 @@ public class CostAndUsageDataTest {
 		}
 		
 		@Override
-	    protected DataWriter getDataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load) throws Exception {
+	    protected DataWriter getDataWriter(String name, ReadWriteDataSerializer data, boolean load) throws Exception {
 			DateTime start = new DateTime(getStartMilli(), DateTimeZone.UTC);
 			ReadWriteData archive = null;
 			// Prepare "loaded" data and provide destination for archive to capture output
@@ -251,7 +251,7 @@ public class CostAndUsageDataTest {
 				archive = monthlyCost;
 			}
 
-			DataWriter writer = new TestDataWriter(name, data, compress, archive);
+			DataWriter writer = new TestDataWriter(name, data, archive);
 	        return writer;
 	    }
 	}
@@ -291,7 +291,7 @@ public class CostAndUsageDataTest {
 			hourlyCost.put(tg, 1.0);
 		}
 
-	    cau.archiveSummaryProduct(monthDate, startDate, null, cost, "", true);
+	    cau.archiveSummaryProduct(monthDate, startDate, null, cost, "");
 
         assertEquals("wrong number of days", expectedDays, cau.dailyCost.getNum());
         assertEquals("wrong number of weeks", expectedWeeks, cau.weeklyCost.getNum());

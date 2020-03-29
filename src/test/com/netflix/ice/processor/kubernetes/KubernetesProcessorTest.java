@@ -69,11 +69,11 @@ public class KubernetesProcessorTest {
 				AWSCredentialsProvider credentialsProvider,
 				ProductService productService,
 				ReservationService reservationService,
-				PriceListService priceListService, boolean compress, String[] formulae)
+				PriceListService priceListService, String[] formulae)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
 					reservationService,
-					priceListService, compress);
+					priceListService);
 			
 			initKubernetesConfigs(formulae);
 		}
@@ -172,8 +172,7 @@ public class KubernetesProcessorTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            null,
-	            true, formulae);
+	            null, formulae);
 		
 		return new TestKubernetesProcessor(config, null);
 	}

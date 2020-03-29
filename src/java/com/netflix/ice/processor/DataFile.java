@@ -37,17 +37,15 @@ public abstract class DataFile {
     protected final WorkBucketConfig config;
     protected final String dbName;
     protected final File file;
-    protected final boolean compress;
     
     protected OutputStream os;
 
-    DataFile(String name, boolean compress, WorkBucketConfig config) throws Exception {
-    	this.compress = compress;
+    DataFile(String name, WorkBucketConfig config) throws Exception {
     	this.config = config;
         dbName = name;
         os = null;
         
-        String filename = dbName + (compress ? compressExtension : "");
+        String filename = dbName + compressExtension;
         file = config == null ? new File(filename) : new File(config.localDir, filename);
     }
     
@@ -56,13 +54,11 @@ public abstract class DataFile {
     	config = null;
     	dbName = null;
     	file = null;
-    	compress = true;
     }
     
     public void open() throws IOException {
     	os = new FileOutputStream(file);
-    	if (compress)
-    		os = new GZIPOutputStream(os);
+    	os = new GZIPOutputStream(os);
     }
     
     public void close() throws IOException {

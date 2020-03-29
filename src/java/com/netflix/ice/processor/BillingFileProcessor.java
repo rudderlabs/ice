@@ -52,7 +52,6 @@ public class BillingFileProcessor extends Poller {
 
     private ProcessorConfig config;
     private WorkBucketConfig workBucketConfig;
-    private boolean compress;
     private Long startMilli;
     private Long endMilli;
     /**
@@ -68,10 +67,9 @@ public class BillingFileProcessor extends Poller {
     private MonthlyReportProcessor cauProcessor;
     
 
-    public BillingFileProcessor(ProcessorConfig config, boolean compress) throws Exception {
+    public BillingFileProcessor(ProcessorConfig config) throws Exception {
     	this.config = config;
     	this.workBucketConfig = config.workBucketConfig;
-    	this.compress = compress;
         
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
@@ -193,7 +191,7 @@ public class BillingFileProcessor extends Poller {
             config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
             logger.info("archiving results for " + dataTime + (config.hourlyData ? " with" : " without") + " hourly data...");
-            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads, config.hourlyData);
+            costAndUsageData.archive(config.startDate, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads, config.hourlyData);
             
             logger.info("archiving instance data...");
             archiveInstances();

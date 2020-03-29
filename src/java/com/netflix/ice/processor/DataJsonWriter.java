@@ -73,7 +73,7 @@ public class DataJsonWriter extends DataFile {
 			Map<Product, ReadWriteData> usageDataByProduct,
 			InstanceMetrics instanceMetrics, PriceListService priceListService, WorkBucketConfig workBucketConfig)
 			throws Exception {
-		super(name, true, workBucketConfig);
+		super(name, workBucketConfig);
 		this.monthDateTime = monthDateTime;
 		this.tagNames = tagNames;
 		this.fileType = fileType;
@@ -162,13 +162,13 @@ public class DataJsonWriter extends DataFile {
         // Aggregate
         for (int hour = 0; hour < cost.getNum(); hour++) {
             Map<TagGroup, Double> costMap = cost.getData(hour);
-            Map<TagGroup, Double> usageMap = usage.getData(hour);
+            Map<TagGroup, Double> usageMap = usage == null ? null : usage.getData(hour);
 
             for (TagGroup tagGroup: tagGroups) {
                 Double v = costMap.get(tagGroup);
                 if (v != null && v != 0)
                     addValue(dailyCost, hour/24, tagGroup, v);
-                v = usageMap.get(tagGroup);
+                v = usageMap == null ? null : usageMap.get(tagGroup);
                 if (v != null && v != 0)
                     addValue(dailyUsage, hour/24, tagGroup, v);
             }

@@ -113,8 +113,7 @@ public class ProcessorConfig extends Config {
             AWSCredentialsProvider credentialsProvider,
             ProductService productService,
             ReservationService reservationService,
-            PriceListService priceListService,
-            boolean compress) throws Exception {
+            PriceListService priceListService) throws Exception {
 
         super(properties, credentialsProvider, productService);
         
@@ -188,7 +187,7 @@ public class ProcessorConfig extends Config {
         
         ProcessorConfig.instance = this;
 
-        billingFileProcessor = new BillingFileProcessor(this, compress);
+        billingFileProcessor = new BillingFileProcessor(this);
         
         boolean needPoller = Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_CAPACITY_POLLER)) &&
         		(startDate.isBefore(CostAndUsageReportLineItemProcessor.jan1_2018) ||

@@ -28,9 +28,9 @@ import java.util.zip.GZIPInputStream;
 public class DataWriter extends DataFile {
     protected ReadWriteDataSerializer data;
 
-    DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load, WorkBucketConfig workBucketConfig,
+    DataWriter(String name, ReadWriteDataSerializer data, boolean load, WorkBucketConfig workBucketConfig,
     		AccountService accountService, ProductService productService) throws Exception {
-    	super(name, compress, workBucketConfig);
+    	super(name, workBucketConfig);
         this.data = data;
 
         if (!load)
@@ -40,8 +40,7 @@ public class DataWriter extends DataFile {
 
         if (file.exists()) {
         	InputStream is = new FileInputStream(file);
-        	if (compress)
-        		is = new GZIPInputStream(is);
+        	is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
                 data.deserialize(accountService, productService, in);		

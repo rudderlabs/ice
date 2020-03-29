@@ -193,8 +193,7 @@ class BootStrap {
                         credentialsProvider,
                         productService,
                         reservationService,
-						priceListService,
-						true)
+						priceListService)
 				processorConfig.start();
             }
 
