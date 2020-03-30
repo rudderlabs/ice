@@ -27,7 +27,6 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 
 import org.junit.Test;
 
@@ -64,8 +63,7 @@ public class ReadOnlyTagCoverageDataTest {
         TagCoverageMetrics.add(metrics, new boolean[]{ false, true, true, true, true });
 
         ReadWriteTagCoverageData data = new ReadWriteTagCoverageData(numTags);        
-        Map<TagGroup, TagCoverageMetrics> map = data.getData(0);
-        map.put(tagGroup, metrics);
+        data.put(0, tagGroup, metrics);
 
         data.serialize(out);
         

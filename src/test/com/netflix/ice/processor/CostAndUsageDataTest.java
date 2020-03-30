@@ -72,7 +72,7 @@ public class CostAndUsageDataTest {
 		
 		ReadWriteTagCoverageData data = cau.getTagCoverage(null);
 		
-		TagCoverageMetrics tcm = data.getData(0).get(tg);
+		TagCoverageMetrics tcm = data.get(0, tg);
 		
 		assertEquals("wrong metrics total", 1, tcm.total);
 		assertEquals("wrong count on Email tag", 1, tcm.counts[0]);
@@ -112,8 +112,7 @@ public class CostAndUsageDataTest {
 		for (TestCase tc: testCases) {
 			cost.cutData(0);
 			for (int hour = 0; hour < 24 * tc.daysInMonth; hour++) {
-				Map<TagGroup, Double> hourlyCost = cost.getData(hour);
-				hourlyCost.put(tg, 1.0);
+				cost.put(hour, tg, 1.0);
 			}
 			
 	        // init daily, weekly and monthly
@@ -152,8 +151,7 @@ public class CostAndUsageDataTest {
 
         DateTime monthDateTime = new DateTime("2020-01", DateTimeZone.UTC);
 		for (int day = 0; day < 365; day++) {
-			Map<TagGroup, Double> dailyCost = cost.getData(day);
-			dailyCost.put(tg, 1.0);
+			cost.put(day, tg, 1.0);
 		}
 		
 		int daysFromLastMonth = 4;
@@ -227,26 +225,26 @@ public class CostAndUsageDataTest {
 						endDay = currentMonth.dayOfYear().getMaximumValue();
 				}
 				for (int day = 0; day < endDay; day++) {
-					Map<TagGroup, Double> cost = ((ReadWriteData)data).getData(day);
-					cost.put(tg, 1.0 * 24);
-					cost.put(staleDataTagGroup, 1.0 * 24);
+					ReadWriteData cost = (ReadWriteData)data;
+					cost.put(day, tg, 1.0 * 24);
+					cost.put(day, staleDataTagGroup, 1.0 * 24);
 				}
 			}
 			else if (name.contains("weekly_")) {				
 		        int weeks = Weeks.weeksBetween(startMonth, endMonth).getWeeks() + (startMonth.dayOfWeek() == currentMonth.withDayOfWeek(1).dayOfWeek() ? 0 : 1);
 				for (int week = 0; week < weeks; week++) {
-					Map<TagGroup, Double> cost = ((ReadWriteData)data).getData(week);
-					cost.put(tg, 1.0 * 24 * 7);
-					cost.put(staleDataTagGroup, 1.0 * 24 * 7);
+					ReadWriteData  cost = (ReadWriteData)data;
+					cost.put(week, tg, 1.0 * 24 * 7);
+					cost.put(week, staleDataTagGroup, 1.0 * 24 * 7);
 				}
 				archive = weeklyCost;
 			}
 			else if (name.contains("monthly_")) {
 				for (int month = 0; month < Months.monthsBetween(startMonth, endMonth).getMonths(); month++) {
-					Map<TagGroup, Double> cost = ((ReadWriteData)data).getData(month);
+					ReadWriteData cost = (ReadWriteData)data;
 					int daysInMonth = start.plusMonths(month).dayOfMonth().getMaximumValue();
-					cost.put(tg, 1.0 * 24 * daysInMonth);
-					cost.put(staleDataTagGroup, 1.0 * 24 * daysInMonth);
+					cost.put(month, tg, 1.0 * 24 * daysInMonth);
+					cost.put(month, staleDataTagGroup, 1.0 * 24 * daysInMonth);
 				}
 				archive = monthlyCost;
 			}
@@ -287,11 +285,10 @@ public class CostAndUsageDataTest {
 		cau.putCost(null, cost);
 		// Load data for Jan 2020
 		for (int hour = 0; hour < 24 * 31; hour++) {
-			Map<TagGroup, Double> hourlyCost = cost.getData(hour);
-			hourlyCost.put(tg, 1.0);
+			cost.put(hour, tg, 1.0);
 		}
 
-	    cau.archiveSummaryProduct(monthDate, startDate, null, cost, "");
+	    cau.archiveSummaryProduct(monthDate, startDate, null, cost, "", cost.getTagGroups());
 
         assertEquals("wrong number of days", expectedDays, cau.dailyCost.getNum());
         assertEquals("wrong number of weeks", expectedWeeks, cau.weeklyCost.getNum());
@@ -301,14 +298,14 @@ public class CostAndUsageDataTest {
         int firstDay = monthDate.getDayOfYear() - 1;
         int daysInMonth = monthDate.dayOfMonth().getMaximumValue();
         for (int day = 0; day < firstDay; day++)
-        	assertNotNull("did not find stale data for day " + day, cau.dailyCost.getData(day).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for day " + day, cau.dailyCost.get(day, staleDataTagGroup));
         
         for (int day = firstDay; day < firstDay + daysInMonth; day++) {
-        	assertEquals("wrong value for day " + day, 24.0, cau.dailyCost.getData(day).get(tg), 0.001);
-        	assertNull("found stale data for day " + day, cau.dailyCost.getData(day).get(staleDataTagGroup));
+        	assertEquals("wrong value for day " + day, 24.0, cau.dailyCost.get(day, tg), 0.001);
+        	assertNull("found stale data for day " + day, cau.dailyCost.get(day, staleDataTagGroup));
         }
         for (int day = firstDay + daysInMonth; day < cau.dailyCost.getNum(); day++)
-        	assertNotNull("did not find stale data for day " + day, cau.dailyCost.getData(day).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for day " + day, cau.dailyCost.get(day, staleDataTagGroup));
         
         // For weekly data, make sure we've only updated the proper weeks
         int dayOfWeek = monthDate.getDayOfWeek(); // Monday is first day of week == 1
@@ -324,7 +321,7 @@ public class CostAndUsageDataTest {
             index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
         
         for (int week = 0; week < index; week++)
-        	assertNotNull("did not find stale data for week " + week, cau.weeklyCost.getData(week).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for week " + week, cau.weeklyCost.get(week, staleDataTagGroup));
         
         int daysInNextMonth = 7 - (monthDate.plusMonths(1).getDayOfWeek() - 1);
         if (daysInNextMonth == 7)
@@ -335,21 +332,21 @@ public class CostAndUsageDataTest {
         for (int week = index; week < index + weeks; week++) {
         	double daysInFirstWeek = monthDate.isAfter(startDate) ? 7 : 7 - daysFromLastMonth;
         	double expected = 24 * (week == index ? daysInFirstWeek : week < cau.weeklyCost.getNum() - 1 ? 7 : daysInLastWeek);
-        	assertEquals("wrong value for week " + week, expected, cau.weeklyCost.getData(week).get(tg), 0.001);
-        	assertNull("found stale data for week " + week, cau.weeklyCost.getData(week).get(staleDataTagGroup));
+        	assertEquals("wrong value for week " + week, expected, cau.weeklyCost.get(week, tg), 0.001);
+        	assertNull("found stale data for week " + week, cau.weeklyCost.get(week, staleDataTagGroup));
         }
         for (int week = index + weeks; week < cau.weeklyCost.getNum(); week++)
-        	assertNotNull("did not find stale data for week " + week, cau.weeklyCost.getData(week).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for week " + week, cau.weeklyCost.get(week, staleDataTagGroup));
         
         // For monthly data, make sure we've only updated the one month
         int monthIndex = Months.monthsBetween(startDate, monthDate).getMonths();
         for (int m = 0; m < monthIndex; m++)
-        	assertNotNull("did not find stale data for month", cau.monthlyCost.getData(m).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for month", cau.monthlyCost.get(m, staleDataTagGroup));
         	
-        assertEquals("wrong value for month", 24 * monthDate.dayOfMonth().getMaximumValue(), cau.monthlyCost.getData(monthIndex).get(tg), 0.001);
-    	assertNull("found stale data for month", cau.monthlyCost.getData(monthIndex).get(staleDataTagGroup));
+        assertEquals("wrong value for month", 24 * monthDate.dayOfMonth().getMaximumValue(), cau.monthlyCost.get(monthIndex, tg), 0.001);
+    	assertNull("found stale data for month", cau.monthlyCost.get(monthIndex, staleDataTagGroup));
         
         for (int m = monthIndex + 1; m < cau.monthlyCost.getNum(); m++)
-        	assertNotNull("did not find stale data for month", cau.monthlyCost.getData(m).get(staleDataTagGroup));
+        	assertNotNull("did not find stale data for month", cau.monthlyCost.get(m, staleDataTagGroup));
 	}
 }

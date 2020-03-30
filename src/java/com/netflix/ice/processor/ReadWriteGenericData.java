@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,9 +36,14 @@ import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer {
     protected List<Map<TagGroup, T>> data;
+    // Cached set of tagGroup keys used throughout the list of data maps.
+    // Post processing for reservations, savings plans, savings data, post processor, and data writing
+    // all need an aggregated set of tagGroups and it's very expensive to walk the maps calling addAll().
+    protected Set<TagGroup> tagGroups;
 
 	public ReadWriteGenericData() {
         data = Lists.newArrayList();
+        tagGroups = Sets.newHashSet();
     }
 
     public int getNum() {
@@ -50,10 +56,42 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
     }
 
     public Map<TagGroup, T> getData(int i) {
-        return getCreateData(i);
+        return Collections.unmodifiableMap(getCreateData(i));
+    }
+    
+    public T get(int i, TagGroup tagGroup) {
+    	return getData(i).get(tagGroup);
     }
 
-    void setData(List<Map<TagGroup, T>> newData, int startIndex, boolean merge) {
+    public void put(int i, TagGroup tagGroup, T value) {
+    	getCreateData(i).put(tagGroup, value);
+    	tagGroups.add(tagGroup);
+    }
+
+    public T remove(int i, TagGroup tagGroup) {
+    	if (i >= data.size())
+    		return null;
+    	T existing = data.get(i).remove(tagGroup);
+    	if (existing != null) {
+    		// See if we can purge the value from the cache
+    		boolean found = false;
+    		for (Map<TagGroup, T> d: data) {
+    			if (d.containsKey(tagGroup)) {
+    				found = true;
+    				break;
+    			}
+    		}
+    		if (!found)
+    			tagGroups.remove(tagGroup);
+    	}
+    	
+    	return existing;
+    }
+
+    /**
+     * Set the supplied data in the map.
+     */
+    void setData(List<Map<TagGroup, T>> newData, int startIndex) {
         for (int i = 0; i < newData.size(); i++) {
             int index = startIndex + i;
 
@@ -64,21 +102,33 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
                 data.add(newData.get(i));
             }
             else {
-                if (merge) {
-                    Map<TagGroup, T> existed = data.get(index);
-                    for (Map.Entry<TagGroup, T> entry: newData.get(i).entrySet()) {
-                        existed.put(entry.getKey(), entry.getValue());
-                    }
-                }
-                else {
-                    data.set(index, newData.get(i));
-                }
+                data.set(index, newData.get(i));
             }
+            tagGroups.addAll(newData.get(i).keySet());
         }
     }
     
-    void putAll(ReadWriteGenericData<T> data) {
-    	setData(data.data, 0, true);
+    /**
+     * Merge all the data from the source into the existing destination.
+     */
+    void putAll(ReadWriteGenericData<T> srcData) {
+    	List<Map<TagGroup, T>> newData = srcData.data;
+        for (int i = 0; i < newData.size(); i++) {
+            if (i > data.size()) {
+                getCreateData(i-1);
+            }
+            if (i >= data.size()) {
+                data.add(newData.get(i));
+            }
+            else {
+                Map<TagGroup, T> existed = data.get(i);
+                for (Map.Entry<TagGroup, T> entry: newData.get(i).entrySet()) {
+                	TagGroup tagGroup = entry.getKey();
+                    existed.put(tagGroup, entry.getValue());
+                }
+            }
+        }
+        tagGroups.addAll(srcData.tagGroups);
     }
 
     Map<TagGroup, T> getCreateData(int i) {
@@ -92,18 +142,24 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
 
     /**
      * Gets the aggregated set of TagGroups across all time intervals in the list of maps.
-     * This method walks the list adding all the keys from each map.
      * 
      * @return a set of TagGroups
      */
     public Collection<TagGroup> getTagGroups() {
-        Set<TagGroup> keys = Sets.newTreeSet();
-
-        for (Map<TagGroup, T> map: data) {
-            keys.addAll(map.keySet());
-        }
-
-        return keys;
+        return tagGroups;
+    }
+    
+    public Collection<TagGroup> getSortedTagGroups() {
+    	Set<TagGroup> sortedTagGroups = Sets.newTreeSet();
+    	sortedTagGroups.addAll(tagGroups);
+        return sortedTagGroups;
+    }
+    
+    /**
+     * Gets the tagGroup key set for the given hour
+     */
+    public Collection<TagGroup> getTagGroups(int i) {
+    	return getData(i).keySet();
     }
     
     /**

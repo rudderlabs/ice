@@ -647,20 +647,20 @@ public class BasicLineItemProcessorTest {
 			logger.info("Test:");
 			int gotLen = costAndUsageData.getUsage(null).getTagGroups().size();
 			for (TagGroup tg: costAndUsageData.getUsage(null).getTagGroups())
-				logger.info(" - usage: " + costAndUsageData.getUsage(null).getData(0).get(tg) + ", " + tg);
+				logger.info(" - usage: " + costAndUsageData.getUsage(null).get(0, tg) + ", " + tg);
 			assertEquals(reportName + " Incorrect number of usage tags", numExpectedUsageTags, gotLen);
 			if (gotLen > 0) {
 				TagGroup got = (TagGroup) costAndUsageData.getUsage(null).getTagGroups().toArray()[0];
 				//logger.info("Got Tag: " + got);
 				String errors = checkTag(got, expectedTag);
 				assertTrue(reportName + " Tag is not correct: " + errors, errors.isEmpty());
-				double usage = costAndUsageData.getUsage(null).getData(0).get(got);
+				double usage = costAndUsageData.getUsage(null).get(0, got);
 				assertEquals(reportName + " Usage is incorrect", usage, usage, 0.001);
 			}
 			// Check cost data
 			gotLen = costAndUsageData.getCost(null).getTagGroups().size();
 			for (TagGroup tg: costAndUsageData.getCost(null).getTagGroups())
-				logger.info(" - cost: " + costAndUsageData.getCost(null).getData(0).get(tg) + ", " + tg);
+				logger.info(" - cost: " + costAndUsageData.getCost(null).get(0, tg) + ", " + tg);
 			assertEquals(reportName + " Incorrect number of cost tags", numExpectedCostTags, gotLen);
 			if (gotLen > 0) {
 				checkCostAndUsage(costAndUsageData, which, reportName, null, isCostAndUsageReport, expectedTag);
@@ -705,7 +705,7 @@ public class BasicLineItemProcessorTest {
 					amortizedTag[operationIndex] = ReservationOperation.getAmortized(((ReservationOperation) tg.operation).getPurchaseOption()).name;
 					String errors = checkTag(tg, amortizedTag);
 					assertTrue(reportName + " Amortization Tag is not correct: " + errors, errors.length() == 0);
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", amortization, cost, 0.001);				
 				}
 				else if (tg.operation.isUnused() && tg.operation.isAmortized() && amortization != null) {
@@ -713,7 +713,7 @@ public class BasicLineItemProcessorTest {
 					amortizedTag[operationIndex] = Operation.getSavingsPlanUnusedAmortized(((Operation.SavingsPlanOperation) tg.operation).getPaymentOption()).name;
 					String errors = checkTag(tg, amortizedTag);
 					assertTrue(reportName + " Amortization Tag is not correct: " + errors, errors.length() == 0);
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", amortization, cost, 0.001);				
 				}
 				else if (tg.operation.isSavingsPlan() && tg.operation.isSavings() && savings != null) {
@@ -721,7 +721,7 @@ public class BasicLineItemProcessorTest {
 					savingsTag[operationIndex] = Operation.getSavingsPlanSavings(((Operation.SavingsPlanOperation) tg.operation).getPaymentOption()).name;
 					String errors = checkTag(tg, savingsTag);
 					assertTrue(reportName + " Savings Tag is not correct: " + errors, errors.length() == 0);
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", savings, cost, 0.001);				
 				}
 				else if (tg.operation.isSavings() && savings != null) {
@@ -729,19 +729,19 @@ public class BasicLineItemProcessorTest {
 					savingsTag[operationIndex] = ReservationOperation.getSavings(((ReservationOperation) tg.operation).getPurchaseOption()).name;
 					String errors = checkTag(tg, savingsTag);
 					assertTrue(reportName + " Savings Tag is not correct: " + errors, errors.length() == 0);
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", savings, cost, 0.001);				
 				}
 				else if ((tg.operation.isUnused() && !tg.operation.isAmortized()) && unusedCost != null) {
 					String errors = checkTag(tg, expectedTag);
 					assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);					
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", unusedCost, cost, 0.001);				
 				}
 				else {
 					String errors = checkTag(tg, expectedTag);
 					assertTrue(reportName + " Tag is not correct: " + errors, errors.length() == 0);					
-					double cost = costData.getData(0).get(tg);
+					double cost = costData.get(0, tg);
 					assertEquals(reportName + " Cost is incorrect", this.cost, cost, 0.001);				
 				}
 				if (product != null && product.isEc2Instance() && isCostAndUsageReport) {

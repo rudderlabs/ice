@@ -246,13 +246,13 @@ public class BillingFileProcessor extends Poller {
     			TagGroup savingsTag = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.spotInstanceSavings, tg.usageType, tg.resourceGroup);
     			for (int i = 0; i < usageData.getNum(); i++) {
     				// For each hour of usage...
-    				Double usage = usageData.getData(i).get(tg);
-    				Double cost = costData.getData(i).get(tg);
+    				Double usage = usageData.get(i, tg);
+    				Double cost = costData.get(i, tg);
     				if (usage != null && cost != null) {
     					double onDemandRate = ec2Prices.getOnDemandRate(tg.region, tg.usageType);
     					// Don't include the EDP discount on top of the spot savings
     					double edpRate = onDemandRate * (1 - edpDiscount);
-    					costData.getData(i).put(savingsTag, edpRate * usage - cost);
+    					costData.put(i, savingsTag, edpRate * usage - cost);
     				}
     			}
     		}

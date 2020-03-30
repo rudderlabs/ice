@@ -134,13 +134,13 @@ public class ReadWriteDataTest {
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
         map.put(tg, value);
-		data.setData(list, 0, false);
+		data.setData(list, 0);
 		
 		ReadWriteData result = serializeDeserialize(as, ps, data);
 		
 		assertEquals("Length of data is wrong", 1, result.getNum());
 		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
-		assertEquals("Value of first num is wrong", value, result.getData(0).get(tg), 0.001);
+		assertEquals("Value of first num is wrong", value, result.get(0, tg), 0.001);
 	}
 	
 	@Test
@@ -151,7 +151,7 @@ public class ReadWriteDataTest {
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
         map.put(tg, 1.0);
-		data.setData(list, 0, false);
+		data.setData(list, 0);
 		
 		data = serializeDeserialize(as, ps, data);
 		
@@ -160,15 +160,15 @@ public class ReadWriteDataTest {
 		list = Lists.newArrayList();
 		map = ReadWriteData.getCreateData(list, 0);
 		map.put(tg2, 2.0);
-		data.setData(list, 1, false);
+		data.setData(list, 1);
 		
 		ReadWriteData result = serializeDeserialize(as, ps, data);
 		
 		assertEquals("Length of data is wrong", 2, result.getNum());
 		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
-		assertEquals("Value of first num is wrong", 1.0, result.getData(0).get(tg), 0.001);
+		assertEquals("Value of first num is wrong", 1.0, result.get(0, tg), 0.001);
 		assertEquals("Length of second num is wrong", 1, result.getData(1).size());
-		assertEquals("Value of second num is wrong", 2.0, result.getData(1).get(tg2), 0.001);
+		assertEquals("Value of second num is wrong", 2.0, result.get(1, tg2), 0.001);
 		assertEquals("Tags don't match", tg, tg2);
 	}
 	

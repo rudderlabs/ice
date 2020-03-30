@@ -18,7 +18,6 @@
 package com.netflix.ice.processor;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -59,8 +58,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
    }
    
    private void borrow(int i, long time,
-           Map<TagGroup, Double> usageMap,
-           Map<TagGroup, Double> costMap,
+           ReadWriteData usageData,
+           ReadWriteData costData,
            TagGroup tagGroup,
            PurchaseOption purchaseOption,
            ReservationService reservationService,
@@ -68,7 +67,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
            InstancePrices instancePrices) {
 
 	    boolean debug = debugReservations(i, tagGroup, purchaseOption);
-		Double existing = usageMap.get(tagGroup);
+		Double existing = usageData.get(i, tagGroup);
 
 		if (debug)
 			logger.info("      borrow from accounts: " + reservationBorrowers + ", existing: " + existing + " from tagGroup " + tagGroup);
@@ -80,7 +79,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			        break;
 			    
 			    TagGroup unusedTagGroup = TagGroup.getTagGroup(from, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(purchaseOption), tagGroup.usageType, tagGroup.resourceGroup);
-			    Double unused = usageMap.get(unusedTagGroup);
+			    Double unused = usageData.get(i, unusedTagGroup);
 			
 			    if (unused != null && unused > 0) {
 			        if (debug) {
@@ -88,7 +87,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			        	logger.info("       from: " + from + ", unused: " + unused + ", " + unusedTagGroup);
 			        }
 			        
-			        Double resHourlyCost = costMap.get(unusedTagGroup);
+			        Double resHourlyCost = costData.get(i, unusedTagGroup);
 			        double hourlyCost = resHourlyCost == null ? 0.0 : resHourlyCost / unused;
 			
 			        double reservedBorrowed = Math.min(existing, unused);
@@ -98,30 +97,30 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			
 			        TagGroup borrowedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBorrowedInstances(purchaseOption), tagGroup.usageType, tagGroup.resourceGroup);
 			        
-			        Double existingBorrowed = usageMap.get(borrowedTagGroup);
+			        Double existingBorrowed = usageData.get(i, borrowedTagGroup);
 			        reservedBorrowed = existingBorrowed == null ? reservedBorrowed : reservedBorrowed + existingBorrowed;
 			
-			        usageMap.put(borrowedTagGroup, reservedBorrowed);
-			        usageMap.put(tagGroup, existing);
+			        usageData.put(i, borrowedTagGroup, reservedBorrowed);
+			        usageData.put(i, tagGroup, existing);
 			        
-			        costMap.put(borrowedTagGroup, reservedBorrowed * hourlyCost);
-			        costMap.put(tagGroup, existing * hourlyCost);
+			        costData.put(i, borrowedTagGroup, reservedBorrowed * hourlyCost);
+			        costData.put(i, tagGroup, existing * hourlyCost);
 			        
 			        if (reservedUnused > 0) {
-			        	usageMap.put(unusedTagGroup, reservedUnused);
-			        	costMap.put(unusedTagGroup, reservedUnused * hourlyCost);
+			        	usageData.put(i, unusedTagGroup, reservedUnused);
+			        	costData.put(i, unusedTagGroup, reservedUnused * hourlyCost);
 			        }
 			        else {
-			        	usageMap.remove(unusedTagGroup);
-			        	costMap.remove(unusedTagGroup);
+			        	usageData.remove(i, unusedTagGroup);
+			        	costData.remove(i, unusedTagGroup);
 			        }
 			        
 			        if (product == null) {
 			        	TagGroup lentTagGroup = TagGroup.getTagGroup(from, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getLentInstances(purchaseOption), tagGroup.usageType, tagGroup.resourceGroup);
-				        Double existingLent = usageMap.get(lentTagGroup);
+				        Double existingLent = usageData.get(i, lentTagGroup);
 				        double reservedLent = existingLent == null ? reservedBorrowed : reservedBorrowed + existingLent;
-				        usageMap.put(lentTagGroup, reservedLent);
-				        costMap.put(lentTagGroup, reservedLent * hourlyCost);
+				        usageData.put(i, lentTagGroup, reservedLent);
+				        costData.put(i, lentTagGroup, reservedLent * hourlyCost);
 				        if (debug)
 				        	logger.info("      lent      quantity: " + reservedLent + ", tag: " + lentTagGroup);
 			        }						        
@@ -145,7 +144,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    		continue;
 			    	
 			        TagGroup unusedRegionalTagGroup = TagGroup.getTagGroup(from, rtg.region, null, rtg.product, Operation.getUnusedInstances(purchaseOption), rtg.usageType, riResourceGroup);
-			        Double unused = usageMap.get(unusedRegionalTagGroup);
+			        Double unused = usageData.get(i, unusedRegionalTagGroup);
 			
 			        if (unused != null && unused > 0) {
 			            if (debug) {
@@ -153,7 +152,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			            	logger.info("       from: " + from + ", unused: " + unused + ", " + rtg);
 			            }
 			            
-				        Double resHourlyCost = costMap.get(unusedRegionalTagGroup);
+				        Double resHourlyCost = costData.get(i, unusedRegionalTagGroup);
 				        double hourlyCost = resHourlyCost == null ? 0.0 : resHourlyCost / unused;
 			
 			            double adjustedUnused = convertFamilyUnits(unused, rtg.usageType, tagGroup.usageType);
@@ -165,38 +164,38 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			           
 			            TagGroup borrowedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getBorrowedInstances(purchaseOption), tagGroup.usageType, tagGroup.resourceGroup);
 			
-			            Double existingBorrowed = usageMap.get(borrowedTagGroup);
+			            Double existingBorrowed = usageData.get(i, borrowedTagGroup);
 			            adjustedReservedBorrowed = existingBorrowed == null ? adjustedReservedBorrowed : adjustedReservedBorrowed + existingBorrowed;			            
 			
-			            usageMap.put(borrowedTagGroup, adjustedReservedBorrowed);			            
-			            usageMap.put(tagGroup, existing);
+			            usageData.put(i, borrowedTagGroup, adjustedReservedBorrowed);			            
+			            usageData.put(i, tagGroup, existing);
 
 			            // Borrowed is in actual usage units
 			            double curBorrowedCost = reservedBorrowed * hourlyCost;
-			            Double existingBorrowedCost = costMap.get(borrowedTagGroup);
+			            Double existingBorrowedCost = costData.get(i, borrowedTagGroup);
 			            double borrowedCost = existingBorrowedCost == null ? curBorrowedCost : curBorrowedCost + existingBorrowedCost;
 
-			            costMap.put(borrowedTagGroup, borrowedCost);
-			            costMap.put(tagGroup, existing * hourlyCost);
+			            costData.put(i, borrowedTagGroup, borrowedCost);
+			            costData.put(i, tagGroup, existing * hourlyCost);
 			            			
 
 			            if (reservedUnused > 0) {
-			            	usageMap.put(unusedRegionalTagGroup, reservedUnused);
-			            	costMap.put(unusedRegionalTagGroup, reservedUnused * hourlyCost);
+			            	usageData.put(i, unusedRegionalTagGroup, reservedUnused);
+			            	costData.put(i, unusedRegionalTagGroup, reservedUnused * hourlyCost);
 			            }
 			            else {
-			            	usageMap.remove(unusedRegionalTagGroup);
-			            	costMap.remove(unusedRegionalTagGroup);
+			            	usageData.remove(i, unusedRegionalTagGroup);
+			            	costData.remove(i, unusedRegionalTagGroup);
 			            }
 			            
 			            if (product == null) {
 				            TagGroup lentTagGroup = TagGroup.getTagGroup(from, rtg.region, rtg.zone, rtg.product, Operation.getLentInstances(purchaseOption), rtg.usageType, riResourceGroup);
 				            
 				            // Lent is in reservation units
-				            Double existingLent = usageMap.get(lentTagGroup);
+				            Double existingLent = usageData.get(i, lentTagGroup);
 				            double reservedLent = existingLent == null ? reservedBorrowed : reservedBorrowed + existingLent;
-				            usageMap.put(lentTagGroup, reservedLent);
-				            costMap.put(lentTagGroup, reservedLent * hourlyCost);
+				            usageData.put(i, lentTagGroup, reservedLent);
+				            costData.put(i, lentTagGroup, reservedLent * hourlyCost);
 				            if (debug)
 				            	logger.info("      lent      quantity: " + reservedLent + ", tag: " + lentTagGroup);
 			            }
@@ -219,13 +218,13 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			if (debug) {
 				logger.info("** bonus(" + i + ") **   bonus     quantity: " + existing + ", tag: " + bonusTagGroup);
 			}
-			usageMap.put(bonusTagGroup, existing);
+			usageData.put(i, bonusTagGroup, existing);
 			if (reservation.reservationHourlyCost > 0)
-				costMap.put(bonusTagGroup, existing * reservation.reservationHourlyCost);				
+				costData.put(i, bonusTagGroup, existing * reservation.reservationHourlyCost);				
 		}
 		else {
-			usageMap.remove(tagGroup);
-			costMap.remove(tagGroup);
+			usageData.remove(i, tagGroup);
+			costData.remove(i, tagGroup);
 		}
 	}
 
@@ -237,8 +236,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	}
 	
 	private void family(int i, long time,
-		Map<TagGroup, Double> usageMap,
-		Map<TagGroup, Double> costMap,
+		ReadWriteData usageData,
+		ReadWriteData costData,
 		TagGroup tagGroup,
 		PurchaseOption purchaseOption,
 		Set<TagGroup> bonusTags) {
@@ -246,14 +245,14 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	    boolean debug = debugReservations(i, tagGroup, purchaseOption);
 	    ResourceGroup riResourceGroup = product == null ? null : tagGroup.resourceGroup;
 		TagGroup unusedTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getUnusedInstances(purchaseOption), tagGroup.usageType, riResourceGroup);
-		Double unused = usageMap.get(unusedTagGroup);
+		Double unused = usageData.get(i, unusedTagGroup);
 		Operation op = Operation.getReservedInstances(purchaseOption);
 
 		if (debug)
 			logger.info("      family - " + bonusTags.size() + " bonus tags, unused: " + unused + " for tagGroup " + tagGroup);
 		
 		if (unused != null && unused > 0) {
-	        Double resHourlyCost = costMap.get(unusedTagGroup);
+	        Double resHourlyCost = costData.get(i, unusedTagGroup);
 	        double hourlyCost = resHourlyCost == null ? 0.0 : resHourlyCost / unused;
 			
 			if (debug) {
@@ -273,10 +272,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 				
 				if (sameFamily(tg, tagGroup)) {
 			        if (debug) {
-			        	logger.info("      found bonus: " + usageMap.get(tg) + ", tag: " + tg);
+			        	logger.info("      found bonus: " + usageData.get(i, tg) + ", tag: " + tg);
 			        }
 					// found a reservation that uses the unused portion
-					Double used = usageMap.get(tg);
+					Double used = usageData.get(i, tg);
 					if (used != null && used > 0) {
 						double adjustedUsed = convertFamilyUnits(used, tg.usageType, tagGroup.usageType);
 						double reservedUsed = Math.min(unused, adjustedUsed);
@@ -289,25 +288,25 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 				        
 				        // Allocated usage as a family reservation
 				        
-			            Double existingFamilyUsage = usageMap.get(familyTagGroup);
+			            Double existingFamilyUsage = usageData.get(i, familyTagGroup);
 			            double totalFamilyUsage = existingFamilyUsage == null ? familyUsed : familyUsed + existingFamilyUsage;
 			            
-				        usageMap.put(familyTagGroup, totalFamilyUsage);			            
+				        usageData.put(i, familyTagGroup, totalFamilyUsage);			            
 			            
-			            Double existingFamilyCost = costMap.get(familyTagGroup);
+			            Double existingFamilyCost = costData.get(i, familyTagGroup);
 			            double familyCost = reservedUsed * hourlyCost;
 			            double totalFamilyCost = existingFamilyCost == null ? familyCost : familyCost + existingFamilyCost;
 		
-			        	costMap.put(familyTagGroup, totalFamilyCost);
+			        	costData.put(i, familyTagGroup, totalFamilyCost);
 				        
 				        // What's left of bonus if any
 				        if (used > 0) {
-							usageMap.put(tg, used);
-							costMap.put(tg, (adjustedUsed - reservedUsed) * hourlyCost);
+							usageData.put(i, tg, used);
+							costData.put(i, tg, (adjustedUsed - reservedUsed) * hourlyCost);
 				        }
 				        else {
-				        	usageMap.remove(tg);
-				        	costMap.remove(tg);
+				        	usageData.remove(i, tg);
+				        	costData.remove(i, tg);
 				        }
 						
 			            if (debug) {
@@ -323,12 +322,12 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 				logger.info("      family - update unused: " + unused + " for unused tagGroup " + unusedTagGroup);
 			// Updated whatever remains unused if any
 			if (unused > 0) {
-				usageMap.put(unusedTagGroup, unused);
-				costMap.put(unusedTagGroup, unused * hourlyCost);
+				usageData.put(i, unusedTagGroup, unused);
+				costData.put(i, unusedTagGroup, unused * hourlyCost);
 			}
 			else {
-				usageMap.remove(unusedTagGroup);
-				costMap.remove(unusedTagGroup);
+				usageData.remove(i, unusedTagGroup);
+				costData.remove(i, unusedTagGroup);
 			}
 		}
 	}
@@ -343,11 +342,13 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		}
 	}
 	
-	private void processUsage(PurchaseOption purchaseOption,
+	private void processUsage(
+			int hour,
+			PurchaseOption purchaseOption,
 			TagGroup tagGroup,
 			Zone zone,
-			Map<TagGroup, Double> usageMap,
-			Map<TagGroup, Double> costMap,
+			ReadWriteData usageData,
+			ReadWriteData costData,
 			UsedUnused uu,
 			double reservationHourlyCost,
 			boolean debug) {
@@ -356,33 +357,35 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		
 		if (product == null) {
 			TagGroup bonusTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, zone, tagGroup.product, bonusOperation, tagGroup.usageType, null);
-			applyUsage(purchaseOption, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost, debug);
+			applyUsage(hour, purchaseOption, bonusTagGroup, usageData, costData, uu, reservationHourlyCost, debug);
 		}
 		else {
-			// Handle resource groups - make a copy of the keys so we can update the usageMap as we process
+			// Handle resource groups - make a copy of the keys so we can update the usageData as we process
 			Set<TagGroup> usageMapKeys = Sets.newHashSet();
-			usageMapKeys.addAll(usageMap.keySet());
+			usageMapKeys.addAll(usageData.getTagGroups(hour));
 			for (TagGroup usageTg: usageMapKeys) {
 				if (usageTg.account != tagGroup.account || usageTg.region != tagGroup.region || usageTg.zone != zone ||
 						usageTg.product != tagGroup.product || usageTg.operation != bonusOperation || usageTg.usageType != tagGroup.usageType) {
 					continue;
 				}
 				TagGroup bonusTagGroup = TagGroup.getTagGroup(usageTg.account, usageTg.region, usageTg.zone, usageTg.product, bonusOperation, usageTg.usageType, usageTg.resourceGroup);
-				applyUsage(purchaseOption, bonusTagGroup, usageMap, costMap, uu, reservationHourlyCost, debug);
+				applyUsage(hour, purchaseOption, bonusTagGroup, usageData, costData, uu, reservationHourlyCost, debug);
 				if (uu.unused <= 0.0)
 					break;
 			}
 		}
 	}
 	
-	private void applyUsage(PurchaseOption purchaseOption,
+	private void applyUsage(
+			int hour,
+			PurchaseOption purchaseOption,
 			TagGroup bonusTagGroup,
-			Map<TagGroup, Double> usageMap,
-			Map<TagGroup, Double> costMap,
+			ReadWriteData usageData,
+			ReadWriteData costData,
 			UsedUnused uu,
 			double reservationHourlyCost, 
 			boolean debug) {
-		Double existing = usageMap.get(bonusTagGroup);
+		Double existing = usageData.get(hour, bonusTagGroup);
 		double value = existing == null ? 0 : existing;
 		double reservedUsed = Math.min(value, uu.unused);
 		if (debug)
@@ -392,21 +395,21 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	   		uu.unused -= reservedUsed;
 	
 	   		TagGroup usedTagGroup = TagGroup.getTagGroup(bonusTagGroup.account, bonusTagGroup.region, bonusTagGroup.zone, bonusTagGroup.product, Operation.getReservedInstances(purchaseOption), bonusTagGroup.usageType, bonusTagGroup.resourceGroup);
-	   		Double usedExisting = usageMap.get(usedTagGroup);
+	   		Double usedExisting = usageData.get(hour, usedTagGroup);
 	   		double usedTotal = usedExisting == null ? reservedUsed : usedExisting + reservedUsed;
    		
-	        usageMap.put(usedTagGroup, usedTotal);				        
-	        costMap.put(usedTagGroup, usedTotal * reservationHourlyCost);
+	   		usageData.put(hour, usedTagGroup, usedTotal);				        
+	        costData.put(hour, usedTagGroup, usedTotal * reservationHourlyCost);
 	        
 	        // Now decrement the bonus
 	        double bonus = value - reservedUsed;
 	        if (bonus > 0) {
-	        	usageMap.put(bonusTagGroup, bonus);
-	        	costMap.put(bonusTagGroup, bonus * reservationHourlyCost);
+	        	usageData.put(hour, bonusTagGroup, bonus);
+	        	costData.put(hour, bonusTagGroup, bonus * reservationHourlyCost);
 	        }
 	        else {
-	        	usageMap.remove(bonusTagGroup);
-	        	costMap.remove(bonusTagGroup);
+	        	usageData.remove(hour, bonusTagGroup);
+	        	costData.remove(hour, bonusTagGroup);
 	        }				        
 	    }
 	}
@@ -473,16 +476,13 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
 			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			
 			    // Get the reservation info for the utilization and tagGroup in the current hour
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, reservationTagGroup, purchaseOption, instancePrices);
 			    boolean debug = debugReservations(i, tagGroup, purchaseOption);
 
 			    // Do we have any usage from the current reservation?
 			    // Usage is initially tagged as Bonus, then we work through the allocations.
-			    Double existing = usageMap.get(bonusTagGroup);
+			    Double existing = usageData.get(i, bonusTagGroup);
 			    double bonusReserved = existing == null ? 0 : existing;
 			    
 			    double reservedUnused = reservation.capacity;			    
@@ -491,8 +491,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    bonusReserved -= reservedUsed;
 
 			    if (reservedUsed > 0) {
-			    	addToExisting(usageMap, tagGroup, reservedUsed);
-			    	addToExisting(costMap, tagGroup, reservedUsed * reservation.reservationHourlyCost);
+			    	addToExisting(usageData, i, tagGroup, reservedUsed);
+			    	addToExisting(costData, i, tagGroup, reservedUsed * reservation.reservationHourlyCost);
 			    }
 			    
 			    if (debug) {
@@ -500,15 +500,15 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    }
 			    
 			    if (reservedUnused > 0) {
-			        addToExisting(usageMap, unusedTagGroup, reservedUnused);
-			        addToExisting(costMap, unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
+			        addToExisting(usageData, i, unusedTagGroup, reservedUnused);
+			        addToExisting(costData, i, unusedTagGroup, reservedUnused * reservation.reservationHourlyCost);
 			        if (debug) {
 			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + reservedUsed + ", unused: " + reservedUnused + ", tag: " + unusedTagGroup);
 			        }
 			    }
 			
-		        usageMap.put(bonusTagGroup, bonusReserved);
-		        costMap.put(bonusTagGroup, bonusReserved * reservation.reservationHourlyCost);
+			    usageData.put(i, bonusTagGroup, bonusReserved);
+			    costData.put(i, bonusTagGroup, bonusReserved * reservation.reservationHourlyCost);
 		        if (debug) {
 		        	logger.info("  ** Bonus instances **** hour: " + i + ", bonus: " + bonusReserved + ", tag: " + bonusTagGroup);
 		        }
@@ -516,10 +516,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (reservation.capacity > 0) {
 			    	if (reservation.upfrontAmortized > 0) {
 				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getAmortized(purchaseOption), tagGroup.usageType, null);
-			    		addToExisting(costMap, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+			    		addToExisting(costData, i, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
-				    addToExisting(costMap, savingsTagGroup, reservation.capacity * savingsRate);
+				    addToExisting(costData, i, savingsTagGroup, reservation.capacity * savingsRate);
 			    }
 			}
 			
@@ -528,10 +528,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		processFamilySharingAndBorrowing(purchaseOption, reservationService, usageData, costData, startMilli, reservationTagGroups, false);
 	}
 	
-	private void addToExisting(Map<TagGroup, Double> map, TagGroup tagGroup, double amount) {
-    	Double existing = map.get(tagGroup);
+	private void addToExisting(ReadWriteData data, int hour, TagGroup tagGroup, double amount) {
+    	Double existing = data.get(hour, tagGroup);
     	double total = (existing == null ? 0.0 : existing) + amount;
-        map.put(tagGroup, total);
+        data.put(hour, tagGroup, total);
 	}
 	
 	private void processFamilySharingAndBorrowing(PurchaseOption purchaseOption,
@@ -562,10 +562,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 				
 				for (int i = 0; i < usageData.getNum(); i++) {
 				
-				    Map<TagGroup, Double> usageMap = usageData.getData(i);
-				    Map<TagGroup, Double> costMap = costData.getData(i);
-				    
-				    family(i, startMilli + i * AwsUtils.hourMillis, usageMap, costMap, tagGroup, purchaseOption, unassignedUsage);
+				    family(i, startMilli + i * AwsUtils.hourMillis, usageData, costData, tagGroup, purchaseOption, unassignedUsage);
 				}
 			}
 		}
@@ -580,12 +577,9 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 		for (TagGroup tagGroup: unassignedUsage) {
 			InstancePrices instancePrices = prices.get(tagGroup.product);
 			for (int i = 0; i < usageData.getNum(); i++) {
-			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			
+						
 			    borrow(i, startMilli + i * AwsUtils.hourMillis,
-			    		usageMap, costMap,
+			    		usageData, costData,
 			           tagGroup,
 			           purchaseOption,
 			           reservationService,
@@ -623,10 +617,7 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
-			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			
+						
 			    // Get the reservation info for the utilization and tagGroup in the current hour
 			    ReservationService.ReservationInfo reservation = reservationService.getReservation(startMilli + i * AwsUtils.hourMillis, tagGroup, purchaseOption, instancePrices);
 			    boolean debug = debugReservations(i, tagGroup, purchaseOption);
@@ -636,14 +627,14 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (uu.unused > 0) {
 				    // Do we have any usage from the current reservation?
 				    // First check for region-based usage
-				    processUsage(purchaseOption, tagGroup, null, usageMap, costMap, uu, reservation.reservationHourlyCost, debug);
+				    processUsage(i, purchaseOption, tagGroup, null, usageData, costData, uu, reservation.reservationHourlyCost, debug);
 
 			    	// Check each of the AZs in the region
 			    	for (Zone zone: tagGroup.region.getZones()) {
 			    		if (uu.unused <= 0)
 			    			break;
 			    		
-			    		processUsage(purchaseOption, tagGroup, zone, usageMap, costMap, uu, reservation.reservationHourlyCost, debug);
+			    		processUsage(i, purchaseOption, tagGroup, zone, usageData, costData, uu, reservation.reservationHourlyCost, debug);
 				    }
 			    }
 			    if (debug) {
@@ -652,8 +643,8 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    }
 			    
 			    if (uu.unused > 0) {
-			        usageMap.put(unusedTagGroup, uu.unused);
-			        costMap.put(unusedTagGroup, uu.unused * reservation.reservationHourlyCost);
+			    	usageData.put(i, unusedTagGroup, uu.unused);
+			    	costData.put(i, unusedTagGroup, uu.unused * reservation.reservationHourlyCost);
 			        if (debug) {
 			        	logger.info("  ** Unused instances **** hour: " + i + ", used: " + uu.used + ", unused: " + uu.unused + ", tag: " + unusedTagGroup);
 			        }
@@ -661,10 +652,10 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 			    if (reservation.capacity > 0) {
 			    	if (reservation.upfrontAmortized > 0) {
 				        TagGroup upfrontTagGroup = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getAmortized(purchaseOption), tagGroup.usageType, null);
-				        addToExisting(costMap, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
+				        addToExisting(costData, i, upfrontTagGroup, reservation.capacity * reservation.upfrontAmortized);
 			    	}
 			        double savingsRate = onDemandRate - reservation.reservationHourlyCost - reservation.upfrontAmortized;
-			        addToExisting(costMap, savingsTagGroup, reservation.capacity * savingsRate);
+			        addToExisting(costData, i, savingsTagGroup, reservation.capacity * savingsRate);
 			    }			
 			}
 			reservationTagGroups.add(TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, Operation.getReservedInstances(purchaseOption), tagGroup.usageType, tagGroup.resourceGroup));
@@ -709,18 +700,15 @@ public class DetailedBillingReservationProcessor extends ReservationProcessor {
 	        for (int i = 0; i < usageData.getNum(); i++) {
 				// For each hour of usage...
 			
-			    Map<TagGroup, Double> usageMap = usageData.getData(i);
-			    Map<TagGroup, Double> costMap = costData.getData(i);
-			    
-			    Double unused = usageMap.get(tagGroup);
+			    Double unused = usageData.get(i, tagGroup);
 	        	if (unused != null && unused > 0.0) {
-		        	Double savings = costMap.get(savingsTagGroup);
+		        	Double savings = costData.get(i, savingsTagGroup);
 		        	if (savings == null) {
 		        		logger.error("Savings record not found for " + tagGroup);
 		        	}
 		        	else {
 		        		savings -= unused * onDemandRate;
-		        		costMap.put(savingsTagGroup, savings);
+		        		costData.put(i, savingsTagGroup, savings);
 		        	}
 	        	}
 	        }

@@ -311,27 +311,22 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         
         for (int i : indexes) {
-            Map<TagGroup, Double> usages = usageData.getData(i);
-            Map<TagGroup, Double> costs = costData.getData(i);
             //
             // For DBR reports, Redshift and RDS have cost as a monthly charge, but usage appears hourly.
             //		EC2 has cost reported in each usage lineitem.
             // The reservation processor handles determination on what's unused.
             if (!monthly || !(product.isRedshift() || product.isRdsInstance())) {
-            	addValue(usages, tagGroup, usageValue);                	
+            	addValue(usageData, i, tagGroup, usageValue);                	
             }
 
-            addValue(costs, tagGroup, costValue);
+            addValue(costData, i, tagGroup, costValue);
             
             if (resourceService != null) {
-                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-
                 if (!((product.isRedshift() || product.isRds()) && monthly)) {
-                	addValue(usagesOfResource, resourceTagGroup, usageValue);
+                	addValue(usageDataOfProduct, i, resourceTagGroup, usageValue);
                 }
                 
-                addValue(costsOfResource, resourceTagGroup, costValue);
+                addValue(costDataOfProduct, i, resourceTagGroup, costValue);
                 
                 // Collect statistics on tag coverage
             	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
@@ -341,13 +336,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
     }
 
-    protected void addValue(Map<TagGroup, Double> map, TagGroup tagGroup, double value) {
-        Double oldV = map.get(tagGroup);
+    protected void addValue(ReadWriteData rwd, int i, TagGroup tagGroup, double value) {
+        Double oldV = rwd.get(i, tagGroup);
         if (oldV != null) {
             value += oldV;
         }
 
-        map.put(tagGroup, value);
+        rwd.put(i, tagGroup, value);
     }
     
     protected void addReservation(

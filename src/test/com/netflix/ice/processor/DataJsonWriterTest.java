@@ -60,6 +60,14 @@ public class DataJsonWriterTest {
 	}
 	
 	class Data {
+		class TestReadWriteData extends ReadWriteData {
+			void setData(TagGroup tg, Double value, int i) {
+	            if (i >= data.size()) {
+	                getCreateData(i);
+	            }
+	            data.get(i).put(tg, value);
+			}
+		}
 	    public Map<Product, ReadWriteData> usageDataByProduct;
 	    public Map<Product, ReadWriteData> costDataByProduct;
 		
@@ -67,25 +75,15 @@ public class DataJsonWriterTest {
 	    	usageDataByProduct = Maps.newHashMap();
 	    	costDataByProduct = Maps.newHashMap();
 	    }
-	    
-	    private List<Map<TagGroup, Double>> getListForData(TagGroup tg, Double value) {
-    		Map<TagGroup, Double> hourValue = Maps.newHashMap();
-    		hourValue.put(tg, value);
-
-    		List<Map<TagGroup, Double>> valueData = Lists.newArrayList();
-    		
-    		valueData.add(hourValue);
-    		return valueData;
-	    }
-	    
+	    	    
 	    public void add(TagGroup tg, Double cost, Double usage) {
     		if (!costDataByProduct.containsKey(tg.product))
-    			costDataByProduct.put(tg.product, new ReadWriteData());
+    			costDataByProduct.put(tg.product, new TestReadWriteData());
     		if (!usageDataByProduct.containsKey(tg.product))
-    			usageDataByProduct.put(tg.product, new ReadWriteData());
+    			usageDataByProduct.put(tg.product, new TestReadWriteData());
     			
-    		costDataByProduct.get(tg.product).setData(getListForData(tg, cost), 0, true);
-    		usageDataByProduct.get(tg.product).setData(getListForData(tg, usage), 0, true);
+    		((TestReadWriteData)costDataByProduct.get(tg.product)).setData(tg, cost, 0);
+    		((TestReadWriteData)usageDataByProduct.get(tg.product)).setData(tg, usage, 0);
 	    }
 	}
 	

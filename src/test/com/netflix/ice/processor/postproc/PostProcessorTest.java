@@ -20,7 +20,6 @@ package com.netflix.ice.processor.postproc;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 
 import org.junit.BeforeClass;
@@ -112,14 +111,11 @@ public class PostProcessorTest {
     }
     
     private void loadData(TagGroupSpec[] dataSpecs, ReadWriteData usageData, ReadWriteData costData, int hour) throws Exception {
-        Map<TagGroup, Double> usages = usageData.getData(hour);
-        Map<TagGroup, Double> costs = costData.getData(hour);
-    	
         for (TagGroupSpec spec: dataSpecs) {
         	if (spec.dataType == DataType.cost)
-        		costs.put(spec.getTagGroup(), spec.value);
+        		costData.put(hour, spec.getTagGroup(), spec.value);
         	else
-        		usages.put(spec.getTagGroup(), spec.value);
+        		usageData.put(hour, spec.getTagGroup(), spec.value);
         }
     }
     
@@ -217,14 +213,11 @@ public class PostProcessorTest {
 		loadComputedCostData(usageData, costData);
 		data.putUsage(null, usageData);
 		data.putCost(null, costData);
-		Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = Maps.newHashMap();
-		tagGroupsCache.put(usageData, usageData.getTagGroups());
-		tagGroupsCache.put(costData, costData.getTagGroups());
 				
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		Rule rule = new Rule(getConfig(computedCostYaml), as, ps, rs);
 		
-		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum(), tagGroupsCache);
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum());
 		
 		assertEquals("Wrong number of matched tags", 3, inMap.size());
 		// Scan map and make sure we have 2 US and 1 EU
@@ -279,21 +272,21 @@ public class PostProcessorTest {
 		//
 		// US: ((1000 + 2000) - (4000 * 4 * 8 / 2)) * 0.01 / 1000 == (3000 - 64000) * 0.00001 == 2999.36
 		TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", null).getTagGroup();
-		Double value = costData.getData(0).get(usReqs);
+		Double value = costData.get(0, usReqs);
 		assertNotNull("No cost value for US-Requests", value);
 		assertEquals("Wrong cost value for US-Requests", -0.61, value, .0001);
 		
-		value = usageData.getData(0).get(usReqs);
+		value = usageData.get(0, usReqs);
 		assertNotNull("No usage value for US-Requests", value);
 		assertEquals("Wrong usage value for US-Requests", -61000.0, value, .0001);
 		
 		// EU:  ((10000 + 20000) - (40000 * 4 * 8 / 2)) * 0.01 / 1000 == (30000 - 640000) * 0.00001 == 29993.6
 		TagGroup euReqs = new TagGroupSpec(DataType.cost, a1, "eu-west-1", "ComputedCost", "OP1", "EU-Requests", null).getTagGroup();
-		Double euValue = costData.getData(0).get(euReqs);
+		Double euValue = costData.get(0, euReqs);
 		assertNotNull("No cost value for EU-Requests", euValue);
 		assertEquals("Wrong cost value for EU-Requests", -6.1, euValue, .0001);
 		
-		euValue = usageData.getData(0).get(euReqs);
+		euValue = usageData.get(0, euReqs);
 		assertNotNull("No usage value for EU-Requests", euValue);
 		assertEquals("Wrong usage value for EU-Requests", -610000.0, euValue, .0001);
 	}
@@ -343,13 +336,13 @@ public class PostProcessorTest {
 		//
 		// US: (1000 + 2000) - (4000 * 4 * 8 / 2) * 0.01 / 1000 == 3000 - 64000 * 0.00001 == 2999.36
 		TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", "tagA|", 0.0).getTagGroup();
-		Double value = outCostData.getData(0).get(usReqs);
+		Double value = outCostData.get(0, usReqs);
 		assertNotNull("No value for US-Requests", value);
 		assertEquals("Wrong value for US-Requests", -0.61, value, .0001);
 		
 		// EU:  (10000 + 20000) - (40000 * 4 * 8 / 2) * 0.01 / 1000 == 30000 - 640000 * 0.00001 == 29993.6
 		TagGroup euReqs = new TagGroupSpec(DataType.cost, a1, "eu-west-1", "ComputedCost", "OP1", "EU-Requests", "tagC|", 0.0).getTagGroup();
-		Double euValue = outCostData.getData(0).get(euReqs);
+		Double euValue = outCostData.get(0, euReqs);
 		assertNotNull("No value for EU-Requests", euValue);
 		assertEquals("Wrong value for EU-Requests", -6.1, euValue, .0001);
 	}
@@ -419,12 +412,8 @@ public class PostProcessorTest {
 				
 		PostProcessor pp = new PostProcessor(null, as, ps, rs);
 		Rule rule = new Rule(getConfig(surchargeConfigYaml), as, ps, rs);
-		
-		Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = Maps.newHashMap();
-		tagGroupsCache.put(usageData, usageData.getTagGroups());
-		tagGroupsCache.put(costData, costData.getTagGroups());
-		
-		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum(), tagGroupsCache);
+				
+		Map<AggregationTagGroup, Double[]> inMap = pp.getInData(rule, data, true, data.getMaxNum());
 		
 		assertEquals("Wrong number of matched tags", 4, inMap.size());
 		// Scan map and make sure we have 2 us-east-1 and 2 eu-west-1
@@ -547,27 +536,27 @@ public class PostProcessorTest {
 
 		// Should have zero-ed out the GlobalFee cost
 		TagGroup globalFee = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", null).getTagGroup();
-		Double value = outCostData.getData(0).get(globalFee);
+		Double value = outCostData.get(0, globalFee);
 		assertNotNull("No value for global fee", value);
 		assertEquals("Wrong value for global fee", 0.0, value, .001);
 		
 		// Should have 50/30/15/5% split of $300
 		TagGroup a1split = new TagGroupSpec(DataType.cost, a1, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a1split);
+		value = outCostData.get(0, a1split);
 		assertNotNull("No value for global fee on account 1", value);
 		assertEquals("wrong value for account 1", 300.0 * 0.5, value, .001);
 		
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a2split);
+		value = outCostData.get(0, a2split);
 		assertNotNull("No value for global fee on account 2", value);
 		assertEquals("wrong value for account 2", 300.0 * 0.3, value, .001);
 		
 		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertNotNull("No value for global fee on account 3", value);
 		assertEquals("wrong value for account 3", 300.0 * 0.15, value, .001);
 		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertNotNull("No value for global fee on account 4", value);
 		assertEquals("wrong value for account 3", 300.0 * 0.05, value, .001);
 	}
@@ -628,27 +617,27 @@ public class PostProcessorTest {
 
 		// Should have zeroed out the GlobalFee cost
 		TagGroup globalFeeTag = new TagGroupSpec(DataType.cost, a1, "global", "GlobalFee", "None", "Dollar", "|", null).getTagGroup();
-		Double value = outCostData.getData(0).get(globalFeeTag);
+		Double value = outCostData.get(0, globalFeeTag);
 		assertNotNull("No value for global fee", value);
 		assertEquals("Wrong value for global fee", 0.0, value, .001);
 		
 		// Should have 50/30/15/5% split of $300
 		TagGroup a1split = new TagGroupSpec(DataType.cost, a1, "us-east-1", "GlobalFee", "Split", "Dollar", "Tag1|", null).getTagGroup();
-		value = outCostData.getData(0).get(a1split);
+		value = outCostData.get(0, a1split);
 		assertNotNull("No value for global fee on account 1", value);
 		assertEquals("wrong value for account 1", 300.0 * 0.5, value, .001);
 		
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", "Tag2|", null).getTagGroup();
-		value = outCostData.getData(0).get(a2split);
+		value = outCostData.get(0, a2split);
 		assertNotNull("No value for global fee on account 2", value);
 		assertEquals("wrong value for account 2", 300.0 * 0.3, value, .001);
 		
 		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", "Tag3|", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertNotNull("No value for global fee on account 3", value);
 		assertEquals("wrong value for account 3", 300.0 * 0.15, value, .001);
 		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", "Tag4|", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertNotNull("No value for global fee on account 4", value);
 		assertEquals("wrong value for account 3", 300.0 * 0.05, value, .001);
 	}
@@ -733,7 +722,7 @@ public class PostProcessorTest {
 		for (String rg: new String[]{"Tag1|", "Tag2|"}) {
 			TagGroup usReqs = new TagGroupSpec(DataType.cost, a1, "us-east-1", "ComputedCost", "OP1", "US-Requests", rg, null).getTagGroup();
 			for (int hour = 0; hour < 2; hour++) {
-				Double value = outCostData.getData(hour).get(usReqs);
+				Double value = outCostData.get(hour, usReqs);
 				assertNotNull("No value for US-Requests hour " + hour + ", tag " + rg, value);
 				assertEquals("Wrong value for US-Requests hour " + hour + ", tag " + rg, -0.61, value, .0001);
 			}
@@ -814,18 +803,18 @@ public class PostProcessorTest {
 
 		// Should have 50/30/20% split of $300
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		Double value = outCostData.getData(0).get(a2split);
-		value += outCostData.getData(1).get(a2split);
+		Double value = outCostData.get(0, a2split);
+		value += outCostData.get(1, a2split);
 		assertEquals("wrong value for account 2", 300.0 * 0.5, value, .001);
 		
 		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
-		value += outCostData.getData(1).get(a3split);
+		value = outCostData.get(0, a3split);
+		value += outCostData.get(1, a3split);
 		assertEquals("wrong value for account 3", 300.0 * 0.3, value, .001);
 		
 		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
-		value += outCostData.getData(1).get(a3split);
+		value = outCostData.get(0, a3split);
+		value += outCostData.get(1, a3split);
 		assertEquals("wrong value for account 3", 300.0 * 0.2, value, .001);
 	}
 
@@ -901,15 +890,15 @@ public class PostProcessorTest {
 
 		// Should have 50/30/20% split of $300
 		TagGroup a2split = new TagGroupSpec(DataType.cost, a2, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		Double value = outCostData.getData(0).get(a2split);
+		Double value = outCostData.get(0, a2split);
 		assertEquals("wrong value for account 2", 300.0 * 0.5, value, .001);
 		
 		TagGroup a3split = new TagGroupSpec(DataType.cost, a3, "us-east-1", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertEquals("wrong value for account 3", 300.0 * 0.3, value, .001);
 		
 		a3split = new TagGroupSpec(DataType.cost, a3, "us-west-2", "GlobalFee", "Split", "Dollar", null).getTagGroup();
-		value = outCostData.getData(0).get(a3split);
+		value = outCostData.get(0, a3split);
 		assertEquals("wrong value for account 3", 300.0 * 0.2, value, .001);
 	}
 

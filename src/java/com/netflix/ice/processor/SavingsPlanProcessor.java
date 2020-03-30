@@ -58,14 +58,12 @@ public class SavingsPlanProcessor {
 		
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
-		    Map<TagGroup, Double> usageMap = usageData.getData(i);
-		    Map<TagGroup, Double> costMap = costData.getData(i);
-
-			processHour(product, i, usageMap, costMap);
-		}
+			processHour(product, i, usageData, costData);
+		}		
 	}
 	
-	private void processHour(Product product, int hour, Map<TagGroup, Double> usageMap, Map<TagGroup, Double> costMap) {
+	private void processHour(Product product, int hour, ReadWriteData usageData, ReadWriteData costData) {
+	    Map<TagGroup, Double> usageMap = usageData.getData(hour);
 		Map<String, SavingsPlan> savingsPlans = data.getSavingsPlans();
 
 		List<TagGroupSP> spTagGroups = Lists.newArrayList();
@@ -84,8 +82,8 @@ public class SavingsPlanProcessor {
 	    		logger.error("No savings plan in the map at hour " + hour + " for tagGroup: " + bonusTg);
 	    		continue;
 	    	}
-	    	double cost = costMap.remove(bonusTg);
-	    	double usage = usageMap.remove(bonusTg);
+	    	double cost = costData.remove(hour, bonusTg);
+	    	double usage = usageData.remove(hour, bonusTg);
 	    	
     		String accountId = sp.arn.getAccountId();
 	    	if (sp.paymentOption != PurchaseOption.NoUpfront) {
@@ -98,11 +96,11 @@ public class SavingsPlanProcessor {
 	    			amortOp = Operation.getSavingsPlanBorrowedAmortized(sp.paymentOption);
 	    			// Create Lent records for account that owns the savings plan
 	        		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLentAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
-	    	    	add(costMap, tg, cost * sp.normalizedAmortization);
+	    	    	add(costData, hour, tg, cost * sp.normalizedAmortization);
 	    		}	    		
 	    		
 	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, amortOp, bonusTg.usageType, bonusTg.resourceGroup);
-	    		add(costMap, tg, cost * sp.normalizedAmortization);
+	    		add(costData, hour, tg, cost * sp.normalizedAmortization);
 	    	}
 	    	
     		Operation op = null;
@@ -114,23 +112,23 @@ public class SavingsPlanProcessor {
     			
     			// Create Lent records for account that owns the savings plan
         		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLent(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
-        		add(usageMap, tg, usage);
+        		add(usageData, hour, tg, usage);
         		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
-    	    	add(costMap, tg, cost * sp.normalizedRecurring);
+    	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
     		}
     		
     		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, op, bonusTg.usageType, bonusTg.resourceGroup);
-    		add(usageMap, tg, usage);
+    		add(usageData, hour, tg, usage);
     		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
-	    	add(costMap, tg, cost * sp.normalizedRecurring);
+	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
 	    }
 	}
 	
-	private void add(Map<TagGroup, Double> map, TagGroup tg, double value) {
-		Double amount = map.get(tg);
+	private void add(ReadWriteData data, int hour, TagGroup tg, double value) {
+		Double amount = data.get(hour, tg);
 		if (amount == null)
 			amount = 0.0;
 		amount += value;
-		map.put(tg, amount);
+		data.put(hour, tg, amount);
 	}
 }

@@ -122,10 +122,10 @@ public class SavingsPlanProcessorTest {
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);
-		caud.getUsage(null).setData(ud, 0, false);
+		caud.getUsage(null).setData(ud, 0);
 		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
 		cd.add(hourCostData);
-		caud.getCost(null).setData(cd, 0, false);
+		caud.getCost(null).setData(cd, 0);
 		
 		SavingsPlanProcessor spp = new SavingsPlanProcessor(caud, accountService);
 		spp.process(null);

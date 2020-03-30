@@ -243,10 +243,10 @@ public class ReservationProcessorTest {
 
 		List<Map<TagGroup, Double>> ud = new ArrayList<Map<TagGroup, Double>>();
 		ud.add(hourUsageData);
-		caud.getUsage(product).setData(ud, 0, false);
+		caud.getUsage(product).setData(ud, 0);
 		List<Map<TagGroup, Double>> cd = new ArrayList<Map<TagGroup, Double>>();
 		cd.add(hourCostData);
-		caud.getCost(product).setData(cd, 0, false);
+		caud.getCost(product).setData(cd, 0);
 		
 		Region debugRegion = null;
 		if (usageData.length > 0)
