@@ -126,7 +126,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
 
         ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
-        if (operation instanceof Operation.ReservationOperation && !reservationArn.name.isEmpty()) {
+        if (operation instanceof Operation.ReservationOperation && !reservationArn.name.isEmpty() && operation != Operation.reservedInstancesCredits) {
         	return TagGroupRI.get(account, region, zone, product, operation, usageType, rg, reservationArn);
         }
         return super.getTagGroup(lineItem, account, region, zone, product, operation, usageType, rg);

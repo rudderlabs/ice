@@ -695,6 +695,9 @@ public class BasicLineItemProcessorTest {
 					if (!tg.operation.isUnused() && !tg.operation.isSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
+				else if (which == Which.cau && tg.operation == Operation.reservedInstancesCredits) {
+					assertFalse(reportName + " TagGroup is instance of TagGroupRI", tg instanceof TagGroupRI);
+				}
 				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport()) {
 					assertTrue(reportName + " TagGroup is not instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
