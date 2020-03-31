@@ -155,12 +155,6 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
         return tagGroups;
     }
     
-    public Collection<TagGroup> getSortedTagGroups() {
-    	Set<TagGroup> sortedTagGroups = Sets.newTreeSet();
-    	sortedTagGroups.addAll(tagGroups);
-        return sortedTagGroups;
-    }
-    
     /**
      * Gets the tagGroup key set for the given hour
      */

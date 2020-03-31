@@ -253,7 +253,7 @@ public class CostAndUsageData {
     public void archive(DateTime startDate, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, 
     		PriceListService priceListService, int numThreads, boolean archiveHourlyData) throws Exception {
     	
-    	Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = cacheTagGroups();
+    	verifyTagGroups();
     	
     	ExecutorService pool = Executors.newFixedThreadPool(numThreads);
     	List<Future<Status>> futures = Lists.newArrayList();
@@ -262,14 +262,14 @@ public class CostAndUsageData {
         	futures.add(archiveJson(jft, instanceMetrics, priceListService, pool));
     	
         for (Product product: costDataByProduct.keySet()) {
-        	futures.add(archiveTagGroups(startMilli, product, tagGroupsCache.get(costDataByProduct.get(product)), pool));
+        	futures.add(archiveTagGroups(startMilli, product, costDataByProduct.get(product).getTagGroups(), pool));
         }
 
         archiveHourly(usageDataByProduct, "usage_", archiveHourlyData, pool, futures);
         archiveHourly(costDataByProduct, "cost_", archiveHourlyData, pool, futures);  
     
-        archiveSummary(startDate, usageDataByProduct, "usage_", tagGroupsCache, pool, futures);
-        archiveSummary(startDate, costDataByProduct, "cost_", tagGroupsCache, pool, futures);
+        archiveSummary(startDate, usageDataByProduct, "usage_", pool, futures);
+        archiveSummary(startDate, costDataByProduct, "cost_", pool, futures);
         archiveSummaryTagCoverage(startDate, pool, futures);
 
 		// Wait for completion
@@ -281,26 +281,20 @@ public class CostAndUsageData {
 		}
     }
     
-    private Map<ReadWriteData, Collection<TagGroup>> cacheTagGroups() throws Exception {
-    	Map<ReadWriteData, Collection<TagGroup>> tagGroupsCache = Maps.newHashMap();
-    	
+    private void verifyTagGroups() throws Exception {    	
         for (Product product: costDataByProduct.keySet()) {
         	boolean verify = product == null || product.isEc2Instance() || product.isRdsInstance() || product.isRedshift() || product.isElastiCache() || product.isElasticsearch();
+        	if (!verify)
+        		continue;
         	
-            Collection<TagGroup> tagGroups = costDataByProduct.get(product).getSortedTagGroups();
-            tagGroupsCache.put(costDataByProduct.get(product), tagGroups);
-            
-        	if (verify)
-        		verifyTagGroups(tagGroups);
+            Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();            
+        	verifyTagGroupsForProduct(tagGroups);
 
         	if (usageDataByProduct.get(product) != null) {
-	            tagGroups = usageDataByProduct.get(product).getSortedTagGroups();
-	            tagGroupsCache.put(usageDataByProduct.get(product), tagGroups);
+	            tagGroups = usageDataByProduct.get(product).getTagGroups();
+	            verifyTagGroupsForProduct(tagGroups);
         	}
-            if (verify)
-            	verifyTagGroups(tagGroups);
         }
-        return tagGroupsCache;
     }
     
     /**
@@ -308,7 +302,7 @@ public class CostAndUsageData {
      * @param tagGroups
      * @throws Exception
      */
-    private void verifyTagGroups(Collection<TagGroup> tagGroups) throws Exception {
+    private void verifyTagGroupsForProduct(Collection<TagGroup> tagGroups) throws Exception {
         for (TagGroup tg: tagGroups) {
     		// verify that all the tag groups are instances of TagGroup and not TagGroupArn
         	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
@@ -407,22 +401,22 @@ public class CostAndUsageData {
     }
 
 
-    private void archiveSummary(DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix, Map<ReadWriteData, 
-    		Collection<TagGroup>> tagGroupsCache, ExecutorService pool, List<Future<Status>> futures) {
+    private void archiveSummary(DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix,
+    		ExecutorService pool, List<Future<Status>> futures) {
 
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 
         // Queue the non-resource version first because it takes longer and we
         // don't like to have it last with other threads idle.
         ReadWriteData data = dataMap.get(null);
-        futures.add(archiveSummaryProductFuture(monthDateTime, startDate, "all", data, prefix, tagGroupsCache.get(data), pool));
+        futures.add(archiveSummaryProductFuture(monthDateTime, startDate, "all", data, prefix, pool));
                 
         for (Product product: dataMap.keySet()) {
         	if (product == null)
         		continue;
         	
             data = dataMap.get(product);            
-            futures.add(archiveSummaryProductFuture(monthDateTime, startDate, product.getServiceCode(), data, prefix, tagGroupsCache.get(data), pool));
+            futures.add(archiveSummaryProductFuture(monthDateTime, startDate, product.getServiceCode(), data, prefix, pool));
         }
     }
     
@@ -555,12 +549,12 @@ public class CostAndUsageData {
     }
     
     private Future<Status> archiveSummaryProductFuture(final DateTime monthDateTime, final DateTime startDate, final String prodName,
-    		final ReadWriteData data, final String prefix, final Collection<TagGroup> tagGroups, ExecutorService pool) {
+    		final ReadWriteData data, final String prefix, ExecutorService pool) {
     	return pool.submit(new Callable<Status>() {
     		@Override
     		public Status call() {
     			try {
-    				archiveSummaryProduct(monthDateTime, startDate, prodName, data, prefix, tagGroups);  
+    				archiveSummaryProduct(monthDateTime, startDate, prodName, data, prefix, data.getTagGroups());  
     			}
     			catch (Exception e) {
     				e.printStackTrace();
@@ -608,7 +602,7 @@ public class CostAndUsageData {
     		public Status call() {
     			try {
 	    	        int numUserTags = userTags == null ? 0 : userTags.size();
-	                Collection<TagGroup> tagGroups = data.getSortedTagGroups();
+	                Collection<TagGroup> tagGroups = data.getTagGroups();
 	
 	                // init daily, weekly and monthly
 	                List<Map<TagGroup, TagCoverageMetrics>> daily = Lists.newArrayList();
