@@ -178,8 +178,11 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
      * 		4a. Data present for TagGroup flag (boolean)<br/>
      * 		4b. Data array for TagGroup (if flag is true)<br/>
      */
-    public void serialize(DataOutput out) throws IOException {
+    public void serialize(DataOutput out, TagGroupFilter filter) throws IOException {
         Collection<TagGroup> keys = getTagGroups();
+        if (filter != null)
+        	keys = filter.getTagGroups(keys);
+        
         out.writeInt(keys.size());
         for (TagGroup tagGroup: keys) {
             TagGroup.Serializer.serialize(out, tagGroup);

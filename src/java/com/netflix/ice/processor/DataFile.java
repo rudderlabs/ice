@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 
 public abstract class DataFile {
     private final static Logger logger = LoggerFactory.getLogger(DataWriter.class);
@@ -70,8 +71,12 @@ public abstract class DataFile {
     }
     
     void archive() throws IOException {
+    	archive(null);
+    }
+    
+    void archive(TagGroupFilter filter) throws IOException {
     	open();
-    	write();
+    	write(filter);
     	close();
     }
     
@@ -79,5 +84,5 @@ public abstract class DataFile {
     	file.delete();
     }
 
-    abstract protected void write() throws IOException;
+    abstract protected void write(TagGroupFilter filter) throws IOException;
 }

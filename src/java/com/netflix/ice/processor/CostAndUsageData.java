@@ -47,8 +47,10 @@ import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.common.TagGroupRI;
 import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 
@@ -362,17 +364,31 @@ public class CostAndUsageData {
         	
             String prodName = product == null ? "all" : product.getServiceCode();
             String name = prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime);
-            futures.add(archiveHourlyFile(name, dataMap.get(product), pool));
+            futures.add(archiveHourlyFile(name, dataMap.get(product), archiveHourlyData, pool));
         }
     }
     
-    private Future<Status> archiveHourlyFile(final String name, final ReadWriteDataSerializer data, ExecutorService pool) {
+    public class RiSpTagGroupFilter implements TagGroupFilter {
+
+		@Override
+		public Collection<TagGroup> getTagGroups(Collection<TagGroup> tagGroups) {
+			List<TagGroup> filtered = Lists.newArrayList();
+			for (TagGroup tg: tagGroups) {
+				if (tg.operation instanceof Operation.ReservationOperation || tg.operation instanceof Operation.SavingsPlanOperation)
+					filtered.add(tg);
+			}
+			return filtered;
+		}
+    	
+    }
+    
+    private Future<Status> archiveHourlyFile(final String name, final ReadWriteDataSerializer data, final boolean archiveHourlyData, ExecutorService pool) {
     	return pool.submit(new Callable<Status>() {
     		@Override
     		public Status call() {
     			try {
 	                DataWriter writer = getDataWriter(name, data, false);
-	                writer.archive();
+	                writer.archive(archiveHourlyData ? null : new RiSpTagGroupFilter());
 	                writer.delete(); // delete local copy to save disk space since we don't need it anymore
     			}
     			catch (Exception e) {

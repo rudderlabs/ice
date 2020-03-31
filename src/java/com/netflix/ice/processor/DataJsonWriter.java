@@ -42,6 +42,7 @@ import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
@@ -111,7 +112,7 @@ public class DataJsonWriter extends DataFile {
 
 
 	@Override
-	protected void write() throws IOException {
+	protected void write(TagGroupFilter filter) throws IOException {
         for (Product product: costDataByProduct.keySet()) {
         	// Skip the "null" product map that doesn't have resource tags
         	if (product == null)

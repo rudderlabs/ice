@@ -21,6 +21,7 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 
 import java.io.*;
 import java.util.zip.GZIPInputStream;
@@ -55,10 +56,10 @@ public class DataWriter extends DataFile {
     }
     
 	@Override
-	protected void write() throws IOException {
+	protected void write(TagGroupFilter filter) throws IOException {
     	DataOutputStream out = new DataOutputStream(os);
         try {
-        	data.serialize(out);
+        	data.serialize(out, filter);
     		out.flush();
         }
         finally {
