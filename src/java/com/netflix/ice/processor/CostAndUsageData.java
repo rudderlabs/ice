@@ -263,13 +263,13 @@ public class CostAndUsageData {
         	futures.add(archiveTagGroups(startMilli, product, tagGroupsCache.get(costDataByProduct.get(product)), pool));
         }
 
+        archiveHourly(usageDataByProduct, "usage_", archiveHourlyData, pool, futures);
+        archiveHourly(costDataByProduct, "cost_", archiveHourlyData, pool, futures);  
+    
         archiveSummary(startDate, usageDataByProduct, "usage_", tagGroupsCache, pool, futures);
         archiveSummary(startDate, costDataByProduct, "cost_", tagGroupsCache, pool, futures);
         archiveSummaryTagCoverage(startDate, pool, futures);
 
-        archiveHourly(usageDataByProduct, "usage_", archiveHourlyData, pool, futures);
-        archiveHourly(costDataByProduct, "cost_", archiveHourlyData, pool, futures);  
-    
 		// Wait for completion
 		for (Future<Status> f: futures) {
 			Status s = f.get();
@@ -396,11 +396,17 @@ public class CostAndUsageData {
 
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 
+        // Queue the non-resource version first because it takes longer and we
+        // don't like to have it last with other threads idle.
+        ReadWriteData data = dataMap.get(null);
+        futures.add(archiveSummaryProductFuture(monthDateTime, startDate, "all", data, prefix, tagGroupsCache.get(data), pool));
+                
         for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.getServiceCode();
-            ReadWriteData data = dataMap.get(product);
-            
-            futures.add(archiveSummaryProductFuture(monthDateTime, startDate, prodName, data, prefix, tagGroupsCache.get(data), pool));
+        	if (product == null)
+        		continue;
+        	
+            data = dataMap.get(product);            
+            futures.add(archiveSummaryProductFuture(monthDateTime, startDate, product.getServiceCode(), data, prefix, tagGroupsCache.get(data), pool));
         }
     }
     
