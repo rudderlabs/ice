@@ -75,7 +75,13 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
     	if (existing != null) {
     		// See if we can purge the value from the cache
     		boolean found = false;
-    		for (Map<TagGroup, T> d: data) {
+    		// Most remove calls are done by RI and SP processors which
+    		// run through the data lists from 0 to the end.
+    		// Assuming most values are present throughout the list, we
+    		// can save time by checking from back to front since we'll
+    		// bail quickly if we find the tagGroup at the end.
+    		for (int j = data.size() - 1; j >= 0; j--) {
+    			Map<TagGroup, T> d = data.get(j);
     			if (d.containsKey(tagGroup)) {
     				found = true;
     				break;
