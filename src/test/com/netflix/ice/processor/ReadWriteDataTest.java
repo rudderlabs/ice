@@ -176,7 +176,7 @@ public class ReadWriteDataTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         DataOutput out = new DataOutputStream(output);
 		
-		data.serialize(out);
+		data.serialize(out, null);
 		ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
 		DataInput in = new DataInputStream(input);
 		data.deserialize(as, ps, in);

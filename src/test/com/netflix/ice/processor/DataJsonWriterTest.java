@@ -105,7 +105,7 @@ public class DataJsonWriterTest {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		djw.writer = new OutputStreamWriter(out);		
 
-		djw.write();
+		djw.write(null);
 		djw.writer.flush();
 		
 		String expectGet =

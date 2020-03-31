@@ -65,7 +65,7 @@ public class ReadOnlyTagCoverageDataTest {
         ReadWriteTagCoverageData data = new ReadWriteTagCoverageData(numTags);        
         data.put(0, tagGroup, metrics);
 
-        data.serialize(out);
+        data.serialize(out, null);
         
 		ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
 		DataInput in = new DataInputStream(input);
