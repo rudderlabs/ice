@@ -132,7 +132,7 @@ public class DataJsonWriter extends DataFile {
             if (costMap.size() == 0)
             	continue;
             
-            Map<TagGroup, Double> usageMap = usage.getData(i);
+            Map<TagGroup, Double> usageMap = usage == null ? null : usage.getData(i);
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	TagGroup tg = costEntry.getKey();
             	boolean rates = false;
