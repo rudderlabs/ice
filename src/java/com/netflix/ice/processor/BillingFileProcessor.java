@@ -77,9 +77,16 @@ public class BillingFileProcessor extends Poller {
 
     @Override
     protected void poll() throws Exception {
-        TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = dbrProcessor.getReportsToProcess();
-        reportsToProcess.putAll(cauProcessor.getReportsToProcess());
         boolean wroteConfig = false;
+        TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = null;
+        
+        if (config.startDate.isEqual(config.costAndUsageStartDate) || config.startDate.isAfter(config.costAndUsageStartDate))
+        	reportsToProcess = Maps.newTreeMap();
+        else
+        	reportsToProcess = dbrProcessor.getReportsToProcess();
+        
+        if (config.costAndUsageStartDate.isBefore(DateTime.now(DateTimeZone.UTC)))
+        	reportsToProcess.putAll(cauProcessor.getReportsToProcess());        
         
         for (DateTime dataTime: reportsToProcess.keySet()) {
             startMilli = endMilli = dataTime.getMillis();

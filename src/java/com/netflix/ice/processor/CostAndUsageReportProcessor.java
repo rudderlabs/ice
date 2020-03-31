@@ -69,7 +69,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private final String debugManifestKey = "manifest";
     private final String debugReportKeys = "reportKeys"; // report keys can be the full key or just the report name in which case the manifest path is used to build the key
 
-    private static final DateTimeFormatter yearMonthNumberFormat = DateTimeFormat.forPattern("yyyyMM").withZone(DateTimeZone.UTC);
+    private static final DateTimeFormatter yearMonthDayFormat = DateTimeFormat.forPattern("yyyyMMdd").withZone(DateTimeZone.UTC);
 
 	public CostAndUsageReportProcessor(ProcessorConfig config) throws IOException {
 		this.config = config;
@@ -84,18 +84,6 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		}
 	}
 	
-	protected static Pattern getPattern(String reportName) {
-		return Pattern.compile(".+/(\\d\\d\\d\\d\\d\\d)01-\\d\\d\\d\\d\\d\\d01/" + reportName + "-Manifest.json");
-	}
-	
-    protected static DateTime getDateTimeFromCostAndUsageReport(String key, Pattern costAndUsageReportPattern) {
-    	Matcher matcher = costAndUsageReportPattern.matcher(key);
-    	if (matcher.matches())
-    		return yearMonthNumberFormat.parseDateTime(matcher.group(1));
-    	else
-    		return null;
-    }
-    
     /*
      * Get the report name from the bucket prefix. Return null if no name found (is a DBR bucket for example)
      */
@@ -109,6 +97,14 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     	return parts[parts.length - 1];
     }
 
+    private String getManifestKey(String prefix, String reportName, DateTime month) {
+    	List<String> parts = Lists.newArrayList();
+    	parts.add(prefix.endsWith("/") ? prefix.substring(0, prefix.length() - 1) : prefix);
+    	parts.add(month.toString(yearMonthDayFormat) + "-" + month.plusMonths(1).toString(yearMonthDayFormat));
+    	parts.add(reportName + "-Manifest.json");
+    	
+    	return String.join("/", parts);
+    }
 
 	@Override
 	public TreeMap<DateTime, List<MonthlyReport>> getReportsToProcess() {
@@ -121,58 +117,45 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
             	// Must be a DBR bucket
             	continue; 
             }
-            
-            logger.info("trying to list objects in cost and usage report bucket " + bb.s3BucketName +
+
+            logger.info("trying to list relevant manifest files in cost and usage report bucket " + bb.s3BucketName +
             		" using assume role \"" + bb.accessRoleName + "\", and external id \"" + bb.accessExternalId + "\"");
-            List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, bb.s3BucketPrefix,
-                    bb.accountId, bb.accessRoleName, bb.accessExternalId);
-            logger.info("found " + objectSummaries.size() + " in cost and usage report bucket " + bb.s3BucketName);
 
-            Pattern costAndUsageReportPattern = getPattern(reportName);
-
-            TreeMap<DateTime, S3ObjectSummary> filesToProcessInOneBucket = Maps.newTreeMap();
-
-            for (S3ObjectSummary objectSummary : objectSummaries) {
-
-                String fileKey = objectSummary.getKey();
+            // S3 billing buckets can have lots of files, so we'll look specifically for the
+            // manifest files we're interested in.
+            for (DateTime month = config.startDate; month.isBefore(DateTime.now(DateTimeZone.UTC)); month = month.plusMonths(1)) {
+            	String manifestKey = getManifestKey(bb.s3BucketPrefix, reportName, month);
+            	
+            	if (month.isBefore(config.costAndUsageStartDate)) {
+                    logger.info("ignoring file " + manifestKey);
+            		continue;
+            	}
+                List<S3ObjectSummary> objectSummaries = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, manifestKey,
+                        bb.accountId, bb.accessRoleName, bb.accessExternalId);
                 
-                DateTime dataTime = getDateTimeFromCostAndUsageReport(fileKey, costAndUsageReportPattern);
-
-                if (dataTime == null) {
-                	continue; // Not a file we're interested in.
-                }
-                
-                if (dataTime.isBefore(config.startDate) || dataTime.isBefore(config.costAndUsageStartDate)) {
-                    logger.info("ignoring file " + objectSummary.getKey());
-                    continue;
-                }
-                
-                filesToProcessInOneBucket.put(dataTime, objectSummary);
-                logger.info("using file " + objectSummary.getKey());
-             }
-
-            for (DateTime key: filesToProcessInOneBucket.keySet()) {
-                List<MonthlyReport> list = filesToProcess.get(key);
-                if (list == null) {
-                    list = Lists.newArrayList();
-                    filesToProcess.put(key, list);
-                }
-                
-                S3ObjectSummary manifest = filesToProcessInOneBucket.get(key);
-                
-                // For debugging substitute alternate manifest (typically a short one from early in the month)
-                // property keys
-                String debugMonth = config.debugProperties.get(debugMonthKey);
-                if (debugMonth != null) {
-	                String fileKey = manifest.getKey();
-	                String debugManifest = config.debugProperties.get(debugManifestKey);
-	                if (fileKey.contains(debugMonth)) {
-	                	fileKey = fileKey.substring(0, fileKey.lastIndexOf("/")) + "/" + debugManifest + fileKey.substring(fileKey.lastIndexOf("/"));
-	                	manifest.setKey(fileKey);
-	                }
-                }
-               
-                list.add(new CostAndUsageReport(manifest, bb, this));
+                for (S3ObjectSummary manifest : objectSummaries) {
+                    logger.info("using file " + manifest.getKey());
+                    
+                    List<MonthlyReport> list = filesToProcess.get(month);
+                    if (list == null) {
+                        list = Lists.newArrayList();
+                        filesToProcess.put(month, list);
+                    }
+                    
+                    // For debugging substitute alternate manifest (typically a short one from early in the month)
+                    // property keys
+                    String debugMonth = config.debugProperties.get(debugMonthKey);
+                    if (debugMonth != null) {
+    	                String fileKey = manifest.getKey();
+    	                String debugManifest = config.debugProperties.get(debugManifestKey);
+    	                if (fileKey.contains(debugMonth)) {
+    	                	fileKey = fileKey.substring(0, fileKey.lastIndexOf("/")) + "/" + debugManifest + fileKey.substring(fileKey.lastIndexOf("/"));
+    	                	manifest.setKey(fileKey);
+    	                }
+                    }
+                   
+                    list.add(new CostAndUsageReport(manifest, bb, this));
+                }                	
             }
         }
 
