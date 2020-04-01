@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.basic;
 
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
@@ -24,6 +25,7 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.processor.ReservationService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Product.Source;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -295,7 +297,15 @@ public class BasicProductService implements ProductService {
     private void retrieve(String localDir, String bucket, String prefix) {
         File file = new File(localDir, productsFileName);
     	
-        boolean downloaded = AwsUtils.downloadFileIfChanged(bucket, prefix, file);
+        boolean downloaded = false;
+        try {
+        	downloaded = AwsUtils.downloadFileIfChanged(bucket, prefix, file);
+        }
+        catch (AmazonS3Exception e) {
+            if (e.getStatusCode() != 404)
+                throw e;
+            logger.info("file not found in s3 " + file);
+        }
         if (downloaded)
         	logger.info("downloaded " + file);
         

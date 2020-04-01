@@ -24,6 +24,8 @@ import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -275,17 +277,18 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    }
 	    
 	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupRI
-	    cleanup(hour, usageData, "usage");
-	    cleanup(hour, costData, "cost");
+	    cleanup(hour, usageData, "usage", startMilli);
+	    cleanup(hour, costData, "cost", startMilli);
 	}
-	
-	private void cleanup(int hour, ReadWriteData data, String which) {
+	    
+	private void cleanup(int hour, ReadWriteData data, String which, long startMilli) {
 	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: data.getTagGroups(hour)) {
 	    	if (tagGroup instanceof TagGroupRI) {
 	    		riTagGroups.add((TagGroupRI) tagGroup);
 	    	}
 	    }
+	    
 	    Map<Tag, Integer> leftovers = Maps.newHashMap();
 	    for (TagGroupRI tg: riTagGroups) {
 	    	Integer i = leftovers.get(tg.operation);
@@ -296,7 +299,11 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
 	    	add(data, hour, newTg, v);
 	    }
-	    for (Tag t: leftovers.keySet())
-	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " RI TagGroups on hour " + hour + " for operation " + t);
+	    for (Tag t: leftovers.keySet()) {
+	    	DateTime time = new DateTime(startMilli + hour * AwsUtils.hourMillis, DateTimeZone.UTC);
+	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " RI TagGroups on hour " + hour + " (" + time + ") for operation " + t);
+	    }
+	    
+	    logger.info("  First leftover: " + riTagGroups.get(0));
 	}
 }
