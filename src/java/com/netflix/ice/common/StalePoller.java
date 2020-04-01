@@ -19,7 +19,7 @@ package com.netflix.ice.common;
 
 public abstract class StalePoller extends Poller {
     private boolean stale = true;
-    public final int DefaultStalePollIntervalSecs = 5 * 60;
+    public final int DefaultStalePollIntervalSecs = 1 * 60;
 
     public void stale() {
     	stale = true;

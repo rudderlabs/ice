@@ -104,7 +104,7 @@ public class BasicDataManagerTest {
 	
 	    logger.info("Products:");
 	    for (Product p: products)
-	    	logger.info("  " + p.name);
+	    	logger.info("  " + p.getIceName());
 	}
 	
 	@Test
@@ -128,7 +128,7 @@ public class BasicDataManagerTest {
 	
 	    logger.info("Products:");
 	    for (Product p: products)
-	    	logger.info("  " + p.name);
+	    	logger.info("  " + p.getIceName());
 	    
 	    for (int i = 0; i < rod.getNum(); i++) {
 	    	List<TagGroup> tagGroups = (List<TagGroup>) rod.getTagGroups();

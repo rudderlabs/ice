@@ -645,7 +645,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         // Usage type string is empty for Support recurring fees.
         if (usageTypeStr.equals("Unknown") || usageTypeStr.equals("Not Applicable") || usageTypeStr.isEmpty()) {
-            usageTypeStr = product.name;
+            usageTypeStr = product.getIceName();
         }
 
         if (operation == null) {

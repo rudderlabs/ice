@@ -68,6 +68,8 @@ public interface ProductService {
     
     public void initReader(String localDir, String bucket, String prefix);
     
+    public void updateReader(String localDir, String bucket, String prefix);
+    
     public void initProcessor(String localDir, String bucket, String prefix);
     
     public void archive(String localDir, String bucket, String prefix) throws IOException;

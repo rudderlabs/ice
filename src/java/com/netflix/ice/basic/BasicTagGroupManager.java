@@ -113,7 +113,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     			regionValues.add(tg.region.name);
     			if (tg.zone != null)
     				zoneValues.add(tg.zone.name);
-    			productValues.add(tg.product.name);
+    			productValues.add(tg.product.getIceName());
     			operationValues.add(tg.operation.name);
     			usageTypeValues.add(tg.usageType.name);
         		if (numUserTags > 0 && tg.resourceGroup != null) {

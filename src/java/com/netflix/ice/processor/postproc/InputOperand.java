@@ -355,7 +355,7 @@ public class InputOperand extends Operand {
         }
         
 		if (productTagFilter != null) {
-			sb.append(productTagFilter.getTag(atg == null || atg.getProduct() == null ? "" : atg.getProduct().name) + ",");
+			sb.append(productTagFilter.getTag(atg == null || atg.getProduct() == null ? "" : atg.getProduct().getIceName()) + ",");
 		}
 		else if (aggregation.groupBy(TagType.Product) && atg.groupBy(TagType.Product)) {
 			sb.append(atg.getProduct().getServiceCode() + ",");

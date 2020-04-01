@@ -233,7 +233,7 @@ public class ReaderConfig extends Config {
     	accountService.updateAccounts(config.getAccounts());
     	updateZones(config.getZones());
         tagConfigs = config.getTagConfigs();
-        productService.initReader(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
+        productService.updateReader(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
     }
     
     private void updateZones(Map<String, List<String>> zones) {

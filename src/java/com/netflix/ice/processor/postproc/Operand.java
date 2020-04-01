@@ -204,7 +204,7 @@ public class Operand {
 			zone = region.getZone(zoneTagFilter.getTag(zone == null ? "" : zone.name));
 		}
 		if (productTagFilter != null) {
-			product = productService.getProductByServiceCode(productTagFilter.getTag(product == null ? "" : product.name));
+			product = productService.getProductByServiceCode(productTagFilter.getTag(product == null ? "" : product.getIceName()));
 		}
 		if (operationTagFilter != null) {
 			operation = Operation.getOperation(operationTagFilter.getTag(operation == null ? "" : operation.name));

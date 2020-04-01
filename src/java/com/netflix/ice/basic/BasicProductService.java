@@ -150,9 +150,9 @@ public class BasicProductService implements ProductService {
             Product newProduct = new Product(serviceName, StringUtils.isEmpty(serviceCode) ? serviceName.replace(" ", "_") : serviceCode, serviceCode == null ? Source.dbr : Source.cur);
             product = addProduct(newProduct);
             if (newProduct == product)
-            	logger.info("created product: " + product.name + " for: " + serviceName + " with code: " + product.getServiceCode());
+            	logger.info("created product: " + product.getIceName() + " for: " + serviceName + " with code: " + product.getServiceCode());
             else if (!product.getServiceCode().equals(serviceCode)) {
-            	logger.error("new service code " + serviceCode + " for product: " + product.name + " for: " + serviceName + " with code: " + product.getServiceCode());
+            	logger.error("new service code " + serviceCode + " for product: " + product.getIceName() + " for: " + serviceName + " with code: " + product.getServiceCode());
             }
         }
         if (!serviceName.isEmpty() && !product.getServiceName().equals(serviceName) && product.getSource() == Source.pricing) {
@@ -169,9 +169,9 @@ public class BasicProductService implements ProductService {
     		Product newProduct = new Product(code);
     		product = addProduct(newProduct);
             if (newProduct == product)
-            	logger.info("created product: " + product.name + " for: " + code.serviceName + " with code: " + product.getServiceCode());
+            	logger.info("created product: " + product.getIceName() + " for: " + code.serviceName + " with code: " + product.getServiceCode());
             else if (!product.getServiceCode().equals(code.serviceCode)) {
-            	logger.error("new service code " + code.serviceCode + " for product: " + product.name + " for: " + code.serviceName + " with code: " + product.getServiceCode());
+            	logger.error("new service code " + code.serviceCode + " for product: " + product.getIceName() + " for: " + code.serviceName + " with code: " + product.getServiceCode());
             }
     	}
     	return product;
@@ -187,7 +187,7 @@ public class BasicProductService implements ProductService {
     	if (product == null) {
     		product = new Product(serviceCode, serviceCode, Source.code);
     		product = addProduct(product);
-            logger.warn("created product by service code: " + serviceCode + ", name: "+ product.name + ", code: " + product.getServiceCode());
+            logger.warn("created product by service code: " + serviceCode + ", name: "+ product.getIceName() + ", code: " + product.getServiceCode());
     	}
     	return product;
     }
@@ -195,9 +195,9 @@ public class BasicProductService implements ProductService {
     public Product getProductByServiceName(String serviceName) {
         Product product = productsByServiceName.get(serviceName);
         if (product == null) {
-            product = new Product(serviceName, serviceName.replace(" ", "_"), Source.dbr);
+            product = new Product(serviceName, serviceName.replace(" ", ""), Source.dbr);
             product = addProduct(product);
-            logger.info("created product by service name: " + product.name + " for code: " + product.getServiceCode());
+            logger.info("created product by service name: \"" + product.getServiceName() + "\" for code: " + product.getServiceCode() + ", iceName: \"" + product.getIceName() + "\"");
         }
         return product;
     }
@@ -223,11 +223,11 @@ public class BasicProductService implements ProductService {
     }
     
     private void setProduct(Product product) {
-        productsByName.put(product.name, product);
+        productsByName.put(product.getIceName(), product);
         productsByServiceCode.put(product.getServiceCode(), product);
 
         String canonicalName = product.getCanonicalName();
-        if (!canonicalName.equals(product.name)) {
+        if (!canonicalName.equals(product.getIceName())) {
         	// Product is using an alternate name, also save the canonical name
         	productsByName.put(canonicalName, product);
         }
@@ -276,39 +276,50 @@ public class BasicProductService implements ProductService {
     	
     	CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT.withHeader(header));
     	for (Product p: productsByServiceCode.values()) {
-    		printer.printRecord(p.name, p.getServiceName(), p.getServiceCode(), p.getSource());
+    		printer.printRecord(p.getIceName(), p.getServiceName(), p.getServiceCode(), p.getSource());
     	}
   	
     	printer.close(true);
     }
     
+    public void updateReader(String localDir, String bucket, String prefix) {
+        File file = new File(localDir, productsFileName);
+    	
+        boolean downloaded = AwsUtils.downloadFileIfChanged(bucket, prefix, file);
+        if (downloaded) {
+        	logger.info("downloaded " + file);
+        	load(file);
+        }        
+    }
+    
     private void retrieve(String localDir, String bucket, String prefix) {
         File file = new File(localDir, productsFileName);
     	
-        // read from s3 if not exists
-        if (!file.exists()) {
-            logger.info("downloading " + file + "...");
-            AwsUtils.downloadFileIfNotExist(bucket, prefix, file);
-            logger.info("downloaded " + file);
-        }
+        boolean downloaded = AwsUtils.downloadFileIfChanged(bucket, prefix, file);
+        if (downloaded)
+        	logger.info("downloaded " + file);
         
         if (file.exists()) {
-            BufferedReader reader = null;
-            try {
-            	InputStream is = new FileInputStream(file);
-            	is = new GZIPInputStream(is);
-                reader = new BufferedReader(new InputStreamReader(is));
-                readCsv(reader);
-            }
-            catch (Exception e) {
-            	Logger logger = LoggerFactory.getLogger(ReservationService.class);
-            	logger.error("error in reading " + file, e);
-            }
-            finally {
-                if (reader != null)
-                    try {reader.close();} catch (Exception e) {}
-            }
+        	load(file);
         }        
+    }
+    
+    private void load(File file) {
+        BufferedReader reader = null;
+        try {
+        	InputStream is = new FileInputStream(file);
+        	is = new GZIPInputStream(is);
+            reader = new BufferedReader(new InputStreamReader(is));
+            readCsv(reader);
+        }
+        catch (Exception e) {
+        	Logger logger = LoggerFactory.getLogger(ReservationService.class);
+        	logger.error("error in reading " + file, e);
+        }
+        finally {
+            if (reader != null)
+                try {reader.close();} catch (Exception e) {}
+        }
     }
     
     protected void readCsv(Reader reader) throws IOException {
@@ -318,8 +329,18 @@ public class BasicProductService implements ProductService {
     		      .parse(reader);
     	
 	    for (CSVRecord record : records) {
-	    	setProduct(new Product(record.get(1), record.get(2), Source.valueOf(record.get(3))));
+	    	String iceName = record.get(0);
+	    	String serviceName = record.get(1);
+	    	String serviceCode = record.get(2);
+	    	Source source = Source.valueOf(record.get(3));
+	    	
+    		Product existingProduct = productsByServiceCode.get(serviceCode);
+	    	if (existingProduct != null) {
+	    		existingProduct.update(serviceName, iceName);
+		    }
+	    	else {	    	
+	    		setProduct(new Product(serviceName, serviceCode, source));	
+	    	}
 	    }
     }
-
 }

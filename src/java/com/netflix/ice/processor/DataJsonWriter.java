@@ -300,7 +300,7 @@ public class DataJsonWriter extends DataFile {
 			account = tg.account.getIceName();
 			region = tg.region.name;
 			zone = tg.zone == null ? null : tg.zone.name;
-			product = tg.product.name;
+			product = tg.product.getIceName();
 			operation = tg.operation.name;
 			usageType = tg.usageType.name;
 			tags = tg.resourceGroup;
