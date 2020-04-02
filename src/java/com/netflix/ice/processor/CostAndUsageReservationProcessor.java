@@ -24,8 +24,6 @@ import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -303,7 +301,7 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	DateTime time = new DateTime(startMilli + hour * AwsUtils.hourMillis, DateTimeZone.UTC);
 	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " RI TagGroups on hour " + hour + " (" + time + ") for operation " + t);
 	    }
-	    
-	    logger.info("  First leftover: " + riTagGroups.get(0));
+	    if (riTagGroups.size() > 0)
+	    	logger.info("  First leftover: " + riTagGroups.get(0));
 	}
 }

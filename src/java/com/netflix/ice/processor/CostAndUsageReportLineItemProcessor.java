@@ -156,10 +156,10 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
         
         int count = Integer.parseInt(lineItem.getReservationNumberOfReservations());
-        long start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).getMillis();
-        long end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).getMillis();
+        // Truncate start and end times to current hour.
+        long start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
+        long end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
         PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();
-        
         
         Double usageQuantity = Double.parseDouble(lineItem.getUsageQuantity());
         double hourlyFixedPrice = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod()) / usageQuantity;

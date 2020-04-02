@@ -225,6 +225,8 @@ public class BasicLineItemProcessorTest {
 		if (tag == null) {
 			return expect == null;
 		}
+		if (tag instanceof Product)
+			return ((Product)tag).getIceName().equals(expect);
 		return tag.name.equals(expect);
 	}
 	
