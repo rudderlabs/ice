@@ -44,8 +44,6 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
-import com.netflix.ice.common.TagGroupRI;
-import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
 import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 import com.netflix.ice.processor.pricelist.PriceListService;

@@ -133,7 +133,7 @@ public class BasicReservationService implements ReservationService {
     	Reservation reservation = reservationsByArn.get(arn);
     	if (reservation == null)
     		return null;
-	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.hourlyFixedPrice, reservation.usagePrice);
+	    return new ReservationInfo(reservation.tagGroup, reservation.count, reservation.start, reservation.end, reservation.hourlyFixedPrice, reservation.usagePrice);
     }
     
     /*
@@ -214,7 +214,7 @@ public class BasicReservationService implements ReservationService {
 	        hourlyCost = hourlyCost / count;
 	    }
 	    
-	    return new ReservationInfo(TagGroupRI.get(tagGroup), count, upfrontAmortized, hourlyCost);
+	    return new ReservationInfo(TagGroupRI.get(tagGroup), count, 0, 0, upfrontAmortized, hourlyCost);
 	}
 
 }

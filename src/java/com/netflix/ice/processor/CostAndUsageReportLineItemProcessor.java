@@ -156,10 +156,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         }
         
         int count = Integer.parseInt(lineItem.getReservationNumberOfReservations());
-        // Truncate start and end times to current hour.
-        long start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
-        long end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
-        PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();
+    	// AWS Reservations are applied within the hour they are purchased. We process full hours, so adjust to start of hour.
+        // The reservations stop being applied during the hour in which the reservation expires. We process full hours, so extend to end of hour.
+        DateTime start = new DateTime(lineItem.getReservationStartTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0);
+        DateTime end = new DateTime(lineItem.getReservationEndTime(), DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).plusHours(1);
+        PurchaseOption purchaseOption = ((ReservationOperation) tg.operation).getPurchaseOption();        
         
         Double usageQuantity = Double.parseDouble(lineItem.getUsageQuantity());
         double hourlyFixedPrice = Double.parseDouble(lineItem.getAmortizedUpfrontFeeForBillingPeriod()) / usageQuantity;
@@ -173,7 +174,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         if (unusedUsagePrice > 0.0 && Math.abs(unusedUsagePrice - usagePrice) > 0.0001)
         	logger.info(fileName + " used and unused usage prices are different, used: " + usagePrice + ", unused: " + unusedUsagePrice + ", tg: " + tg);
 		
-        Reservation r = new Reservation(tg, count, start, end, purchaseOption, hourlyFixedPrice, usagePrice);
+        Reservation r = new Reservation(tg, count, start.getMillis(), end.getMillis(), purchaseOption, hourlyFixedPrice, usagePrice);
         costAndUsageData.addReservation(r);
         
         if (ReservationArn.debugReservationArn != null && tg.arn == ReservationArn.debugReservationArn) {
