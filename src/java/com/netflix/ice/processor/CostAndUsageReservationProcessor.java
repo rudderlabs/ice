@@ -275,11 +275,11 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    }
 	    
 	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupRI
-	    cleanup(hour, usageData, "usage", startMilli);
-	    cleanup(hour, costData, "cost", startMilli);
+	    cleanup(hour, usageData, "usage", startMilli, reservationService);
+	    cleanup(hour, costData, "cost", startMilli, reservationService);
 	}
 	    
-	private void cleanup(int hour, ReadWriteData data, String which, long startMilli) {
+	private void cleanup(int hour, ReadWriteData data, String which, long startMilli, ReservationService reservationService) {
 	    List<TagGroupRI> riTagGroups = Lists.newArrayList();
 	    for (TagGroup tagGroup: data.getTagGroups(hour)) {
 	    	if (tagGroup instanceof TagGroupRI) {
@@ -293,6 +293,10 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	i = 1 + ((i == null) ? 0 : i);
 	    	leftovers.put(tg.operation, i);
 	    	
+	    	if (tg.operation.isBonus()) {
+	    		logger.info("Bonus reservation at hour " + hour + ": " + reservationService.getReservation(tg.arn));
+	    	}
+
 	    	Double v = data.remove(hour, tg);
 	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
 	    	add(data, hour, newTg, v);
@@ -301,7 +305,5 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	DateTime time = new DateTime(startMilli + hour * AwsUtils.hourMillis, DateTimeZone.UTC);
 	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " RI TagGroups on hour " + hour + " (" + time + ") for operation " + t);
 	    }
-	    if (riTagGroups.size() > 0)
-	    	logger.info("  First leftover: " + riTagGroups.get(0));
 	}
 }
