@@ -81,9 +81,9 @@ class DashboardController {
 		getUtilizationOps: "GET",
 		getTagConfigs: "GET",
 		getAccounts: "GET",
-		getRegions: "GET",
-		getZones: "GET",
-		getProducts: "GET",
+		getRegions: "POST",
+		getZones: "POST",
+		getProducts: "POST",
 		userTagValues: "POST",
 		getOperations: "POST",
 		getUsageTypes: "POST",
@@ -158,7 +158,9 @@ class DashboardController {
     }
 
     def getRegions = {
-        List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
+        def text = request.reader.text;
+        JSONObject query = (JSONObject)JSON.parse(text);
+        List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
 
         TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
         Collection<Region> data = tagGroupManager == null ? [] : tagGroupManager.getRegions(new TagLists(accounts));
@@ -168,8 +170,10 @@ class DashboardController {
     }
 
     def getZones = {
-        List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
-        List<Region> regions = Region.getRegions(listParams("region"));
+        def text = request.reader.text;
+        JSONObject query = (JSONObject)JSON.parse(text);
+        List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
+        List<Region> regions = Region.getRegions(listParams(query, "region"));
 
         TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
         Collection<Zone> data = tagGroupManager == null ? [] : tagGroupManager.getZones(new TagLists(accounts, regions));
@@ -179,11 +183,13 @@ class DashboardController {
     }
 
     def getProducts = {
-        List<Account> accounts = getConfig().accountService.getAccounts(listParams("account"));
-        List<Region> regions = Region.getRegions(listParams("region"));
-        List<Zone> zones = Zone.getZones(listParams("zone"));
-        List<Operation> operations = Operation.getOperations(listParams("operation"));
-        List<Product> products = getConfig().productService.getProducts(listParams("product"));
+        def text = request.reader.text;
+        JSONObject query = (JSONObject)JSON.parse(text);
+        List<Account> accounts = getConfig().accountService.getAccounts(listParams(query, "account"));
+        List<Region> regions = Region.getRegions(listParams(query, "region"));
+        List<Zone> zones = Zone.getZones(listParams(query, "zone"));
+        List<Operation> operations = Operation.getOperations(listParams(query,"operation"));
+        List<Product> products = getConfig().productService.getProducts(listParams(query,"product"));
         boolean resources = params.getBoolean("resources");
         boolean showZones = params.getBoolean("showZones");
         if (showZones && (zones == null || zones.size() == 0)) {

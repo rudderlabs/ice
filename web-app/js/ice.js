@@ -752,9 +752,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
 
       $http({
-        method: "GET",
+        method: "POST",
         url: "getRegions",
-        params: params
+        data: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.regions = result.data;
@@ -788,9 +788,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
 
       $http({
-        method: "GET",
+        method: "POST",
         url: "getZones",
-        params: params
+        data: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.zones = result.data;
@@ -828,9 +828,9 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }
 
       $http({
-        method: "GET",
+        method: "POST",
         url: "getProducts",
-        params: params
+        data: params
       }).success(function (result) {
         if (result.status === 200 && result.data) {
           $scope.products = result.data;
