@@ -241,6 +241,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        case SavingsPlanCoveredUsage:
 	        	costValue = Double.parseDouble(lineItem.getSavingsPlanEffectiveCost());
 	        	break;
+	        
+	        case Tax:
+	        	break;
 	        	
 	        default:
 	        	
@@ -534,7 +537,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	usageTypeStr = usageTypeStr + "arge";
         }
         
-        if (usageTypeStr.startsWith("ElasticIP:")) {
+        if (lineItem.getLineItemType() == LineItemType.Tax) {
+        	operation = Operation.getOperation("Tax - " + lineItem.getTaxType());
+            usageType = UsageType.getUsageType(usageTypeStr, "");
+        }
+        else if (usageTypeStr.startsWith("ElasticIP:")) {
             product = productService.getProduct(Product.Code.Eip);
         }
         else if (usageTypeStr.startsWith("EBS:") || operationStr.equals("EBS Snapshot Copy") || usageTypeStr.startsWith("EBSOptimized:")) {

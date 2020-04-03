@@ -287,6 +287,7 @@ public class BasicLineItemProcessorTest {
 		public String savingsPlanTotalCommitmentToDate = "";
 		public String savingsPlanUsedCommitment = "";
 		public String savingsPlanPaymentOption = "";
+		public String taxType = "";
 		
 		
 		// For basic testing
@@ -302,7 +303,7 @@ public class BasicLineItemProcessorTest {
 					description, term, null, null, null, cost, purchaseOption, term == PricingTerm.reserved ? "arn" : "");
 			lineItemType = LineItemType.Usage;
 		}
-						
+								
 		private void init(LineItemType lineItemType, String account, String region, String zone, String product, String type, String operation, 
 				String description, PricingTerm term, String start, String end, String quantity, String cost, String purchaseOption,
 				String reservationARN) {
@@ -395,6 +396,11 @@ public class BasicLineItemProcessorTest {
 			this.savingsPlanEffectiveCost = savingsPlanEffectiveCost;
 			this.savingsPlanPaymentOption = savingsPlanPaymentOption;
 			this.publicOnDemandCost = publicOnDemandCost;
+		}
+		
+		// For Tax testing
+		public void setTaxFields(String taxType) {
+			this.taxType = taxType;
 		}
 		
 		String[] getDbrLine() {
@@ -491,6 +497,10 @@ public class BasicLineItemProcessorTest {
 				set(lineItem.getSavingsPlanEffectiveCostIndex(), items, savingsPlanEffectiveCost);
 				set(lineItem.getSavingsPlanPaymentOptionIndex(), items, savingsPlanPaymentOption);
 				set(lineItem.getPublicOnDemandCostIndex(), items, publicOnDemandCost);
+				break;
+				
+			case Tax:
+				set(lineItem.getTaxTypeIndex(), items, taxType);
 				break;
 				
 			default:
@@ -700,7 +710,7 @@ public class BasicLineItemProcessorTest {
 				else if (which == Which.cau && tg.operation == Operation.reservedInstancesCredits) {
 					assertFalse(reportName + " TagGroup is instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
-				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport()) {
+				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport() && !tg.product.isEc2()) {
 					assertTrue(reportName + " TagGroup is not instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
 
@@ -1236,5 +1246,22 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "global", null, "Premium Support", "None", "Dollar", null };
 		ProcessTest test = new ProcessTest(line, tag, 0.0, -645.0, Result.hourly, 30);
 		test.run(Which.cau, "2019-11-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
+	
+	@Test
+	public void testTax() throws Exception {
+		// Full month
+		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "7.44", "");
+		line.setTaxFields("GST");
+		String[] tag = new String[] { "us-east-1", null, "EC2", "Tax - GST", "HeavyUsage:c4.large", null };
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
+		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+
+		// Partial month
+		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "4.37", "");
+		line.setTaxFields("USSalesTax");
+		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
+		test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }

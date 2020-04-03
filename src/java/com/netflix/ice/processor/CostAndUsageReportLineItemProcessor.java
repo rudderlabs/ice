@@ -74,8 +74,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     	
     	// Cost and Usage report-specific checks
     	LineItemType lit = lineItem.getLineItemType();
-    	if (lit == LineItemType.Tax ||
-    		lit == LineItemType.EdpDiscount ||
+    	if (lit == LineItemType.EdpDiscount ||
     		lit == LineItemType.RiVolumeDiscount ||
     		lit == LineItemType.SavingsPlanNegation ||
     		lit == LineItemType.SavingsPlanUpfrontFee) {
@@ -397,6 +396,9 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	
         case Credit:
         	return processDelayed ? Result.monthly : Result.delay;
+        
+        case Tax:
+        	break;
         	
         default:
         	break;

@@ -320,6 +320,10 @@ public abstract class LineItem {
 	public String getProductServiceCode() {
 		return null;
 	}
+	
+	public String getTaxType() {
+		return null;
+	}
 
 	public String getReservationStartTime() {
 		return null;

@@ -48,6 +48,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int reservationArnIndex;
 	private int productRegionIndex;
 	private int productServicecodeIndex;
+	private int lineItemTaxTypeIndex;
 	
 	// First appeared in 2018-01 (Net versions added in 2019-01)
 	private int reservationAmortizedUpfrontCostForUsageIndex;
@@ -136,6 +137,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         reservationArnIndex = report.getColumnIndex("reservation", "ReservationARN");
         productRegionIndex = report.getColumnIndex("product", "region");
         productServicecodeIndex = report.getColumnIndex("product", "servicecode");
+        lineItemTaxTypeIndex = report.getColumnIndex("lineItem", "TaxType");
         
         // SavingsPlan beginning 2019-11
         if (!report.getStartTime().isBefore(new DateTime("2019-11", DateTimeZone.UTC))) {
@@ -291,8 +293,7 @@ public class CostAndUsageReportLineItem extends LineItem {
     	return items[reservedIndex].toLowerCase().equals("reserved")
     			|| lineItemType == LineItemType.DiscountedUsage
     			|| lineItemType == LineItemType.RIFee
-    			|| items[usageTypeIndex].contains("HeavyUsage")
-    			|| !items[reservationArnIndex].isEmpty();
+    			|| ((items[usageTypeIndex].contains("HeavyUsage") || !items[reservationArnIndex].isEmpty()) && lineItemType != LineItemType.Tax);
     }
 
 	@Override
@@ -529,6 +530,15 @@ public class CostAndUsageReportLineItem extends LineItem {
 		return "";
 	}
 	
+	public int getTaxTypeIndex() {
+		return lineItemTaxTypeIndex;
+	}
+	
+	@Override
+	public String getTaxType() {
+		return items[lineItemTaxTypeIndex];
+	}
+
 	public int getReservationStartTimeIndex() {
 		return reservationStartTimeIndex;
 	}
