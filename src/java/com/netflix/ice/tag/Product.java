@@ -154,6 +154,14 @@ public class Product extends Tag {
         return this.iceName;
     }
 
+    @Override
+    public int compareTo(Tag t) {
+        if (t == aggregated)
+            return -t.compareTo(this);
+        int result = ("a" + this.iceName).compareTo("a" + ((Product)t).iceName);
+        return result;
+    }
+
     protected static String canonicalName(String name) {
     	String s = name;
     	// Strip off "Amazon" or "AWS"
