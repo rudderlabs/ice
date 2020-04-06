@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.util.List;
 import java.util.zip.GZIPInputStream;
 
 import org.junit.BeforeClass;
@@ -14,6 +15,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.netflix.ice.basic.BasicAccountService;
 import com.netflix.ice.basic.BasicProductService;
 import com.netflix.ice.common.AccountService;
@@ -37,8 +39,9 @@ public class ReadOnlyDataTest {
 
 	@Test
 	public void testFileRead() throws IOException, BadZone {
-        String filename = "cost_hourly_EC2Instance_2020-01";
-        int numUserTags = 15;
+        String filename = "cost_daily_505vubukj9ayygz7z5jbws97j_2020";
+        boolean forReservations = false;
+        int numUserTags = 16;
        
         File file = new File(dataDir, filename + ".gz");
         
@@ -52,13 +55,15 @@ public class ReadOnlyDataTest {
         ReadOnlyData data = new ReadOnlyData(numUserTags);
         
         try {
-            data.deserialize(as, ps, numUserTags, in, true);
+            data.deserialize(as, ps, numUserTags, in, forReservations);
         }
         finally {
             if (in != null)
                 in.close();
         }
 
+        dump(data);
+        
         String outFilename = dataDir + "/" + filename + "_ro.csv";
         
         FileWriter out;
@@ -73,6 +78,8 @@ public class ReadOnlyDataTest {
 
         for (Integer i = 0; i < data.getNum(); i++) {
             Double[] values = data.getData(i);
+            if (values == null)
+            	continue;
         	for (int j = 0; j < values.length; j++) {
 	            TagGroup tg = data.tagGroups.get(j);
 	            
@@ -86,6 +93,16 @@ public class ReadOnlyDataTest {
 	            out.write("\n");
         	}
         }
+    }
+    
+    private void dump(ReadOnlyData data) {
+    	for (int i = 0; i < data.getNum(); i++) {
+    		Double[] ds = data.getData(i);
+    		if (ds != null) {
+	    		List<Double> d = Lists.newArrayList(ds);
+	    		logger.info("  " + i + ": " + d);    		
+    		}
+    	}
     }
     
 }
