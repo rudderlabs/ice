@@ -24,12 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Tag;
 
 public class SavingsPlanProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -122,6 +124,10 @@ public class SavingsPlanProcessor {
     		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
 	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
 	    }
+	    
+	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupSP
+	    cleanup(hour, usageData, "usage", savingsPlans);
+	    cleanup(hour, costData, "cost", savingsPlans);
 	}
 	
 	private void add(ReadWriteData data, int hour, TagGroup tg, double value) {
@@ -130,5 +136,32 @@ public class SavingsPlanProcessor {
 			amount = 0.0;
 		amount += value;
 		data.put(hour, tg, amount);
+	}
+	
+	private void cleanup(int hour, ReadWriteData data, String which, Map<String, SavingsPlan> savingsPlans) {
+	    List<TagGroupSP> spTagGroups = Lists.newArrayList();
+	    for (TagGroup tagGroup: data.getTagGroups(hour)) {
+	    	if (tagGroup instanceof TagGroupSP) {
+	    		spTagGroups.add((TagGroupSP) tagGroup);
+	    	}
+	    }
+	    
+	    Map<Tag, Integer> leftovers = Maps.newHashMap();
+	    for (TagGroupSP tg: spTagGroups) {
+	    	Integer i = leftovers.get(tg.operation);
+	    	i = 1 + ((i == null) ? 0 : i);
+	    	leftovers.put(tg.operation, i);
+	    	
+//	    	if (tg.operation.isBonus()) {
+//	    		logger.info("Bonus savings plan at hour " + hour + ": " + savingsPlans.get(tg.arn));
+//	    	}
+
+	    	Double v = data.remove(hour, tg);
+	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
+	    	add(data, hour, newTg, v);
+	    }
+	    for (Tag t: leftovers.keySet()) {
+	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " SP TagGroups on hour " + hour + " for operation " + t);
+	    }
 	}
 }

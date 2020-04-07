@@ -95,7 +95,7 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
     }
 
     /**
-     * Set the supplied data in the map.
+     * Set the supplied data in the map. Called by the cost and usage data archiver to merge summary data.
      */
     void setData(List<Map<TagGroup, T>> newData, int startIndex) {
         for (int i = 0; i < newData.size(); i++) {
@@ -108,11 +108,28 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
                 data.add(newData.get(i));
             }
             else {
-                data.set(index, newData.get(i));
+            	Map<TagGroup, T> removed = data.set(index, newData.get(i));
+            	if (removed != null) {
+	            	for (TagGroup tg: removed.keySet()) {
+	            		// See if we can purge the value from the cache
+	            		boolean found = false;
+	            		for (int j = 0; j < data.size(); j++) {
+	            			Map<TagGroup, T> d = data.get(j);
+	            			if (d.containsKey(tg)) {
+	            				found = true;
+	            				break;
+	            			}
+	            		}
+	            		if (!found)
+	            			tagGroups.remove(tg);
+	            	}
+            	}
             }
             tagGroups.addAll(newData.get(i).keySet());
         }
     }
+    
+    abstract protected T add(T a, T b);
     
     /**
      * Merge all the data from the source into the existing destination.
@@ -128,9 +145,10 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
             }
             else {
                 Map<TagGroup, T> existed = data.get(i);
-                for (Map.Entry<TagGroup, T> entry: newData.get(i).entrySet()) {
-                	TagGroup tagGroup = entry.getKey();
-                    existed.put(tagGroup, entry.getValue());
+                for (TagGroup tg: newData.get(i).keySet()) {
+                	T existingValue = existed.get(tg);
+                	T value = newData.get(i).get(tg);
+                    existed.put(tg, existingValue == null ? value : add(existingValue, value));
                 }
             }
         }
@@ -201,7 +219,9 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
         for (int j = 0; j < numKeys; j++) {
-            keys.add(TagGroup.Serializer.deserialize(accountService, productService, in));
+        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, in);
+            keys.add(tg);
+        	tagGroups.add(tg);
         }
 
         List<Map<TagGroup, T>> data = Lists.newArrayList();

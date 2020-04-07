@@ -62,6 +62,11 @@ public class ReadWriteData extends ReadWriteGenericData<Double> {
         return v != 0 ? v : null;
 	}
 	
+	@Override
+    protected Double add(Double a, Double b) {
+		return a + b;
+	}
+
 	
     public void serializeCsv(OutputStreamWriter out) throws IOException {
     	// write the header

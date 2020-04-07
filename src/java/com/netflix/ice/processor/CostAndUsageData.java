@@ -303,11 +303,16 @@ public class CostAndUsageData {
      * @throws Exception
      */
     private void verifyTagGroupsForProduct(Collection<TagGroup> tagGroups) throws Exception {
+    	int count = 0;
         for (TagGroup tg: tagGroups) {
     		// verify that all the tag groups are instances of TagGroup and not TagGroupArn
-        	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
-        		throw new Exception("Non-baseclass tag group in archive cost data: " + tg);
+        	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP) {
+        		count++;
+        		//throw new Exception("Non-baseclass tag group in archive cost data: " + tg);
+        	}
         }
+        if (count > 0)
+        	logger.error("Non-baseclass tag groups in archive cost data. Found " + count + " TagGroupRI or TagGroupSP tagGroups");
     }
     
     private Future<Status> archiveJson(final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) {
@@ -466,7 +471,7 @@ public class CostAndUsageData {
     protected DataWriter getDataWriter(String name, ReadWriteDataSerializer data, boolean load) throws Exception {
         return new DataWriter(name, data, load, workBucketConfig, accountService, productService);
     }
-
+    
     protected void archiveSummaryProduct(DateTime monthDateTime, DateTime startDate, String prodName, ReadWriteData data, String prefix, Collection<TagGroup> tagGroups) throws Exception {
         // init daily, weekly and monthly
         List<Map<TagGroup, Double>> daily = Lists.newArrayList();

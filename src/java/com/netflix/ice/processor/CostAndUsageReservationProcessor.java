@@ -293,9 +293,9 @@ public class CostAndUsageReservationProcessor extends ReservationProcessor {
 	    	i = 1 + ((i == null) ? 0 : i);
 	    	leftovers.put(tg.operation, i);
 	    	
-	    	if (tg.operation.isBonus()) {
-	    		logger.info("Bonus reservation at hour " + hour + ": " + reservationService.getReservation(tg.arn));
-	    	}
+//	    	if (tg.operation.isBonus()) {
+//	    		logger.info("Bonus reservation at hour " + hour + ": " + reservationService.getReservation(tg.arn));
+//	    	}
 
 	    	Double v = data.remove(hour, tg);
 	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);

@@ -211,7 +211,7 @@ public class Operand {
 		}
 		if (usageTypeTagFilter != null) {
 			String ut = usageTypeTagFilter.getTag(usageType == null ? "" : usageType.name);
-			usageType = UsageType.getUsageType(ut, usageType == null ? null : usageType.unit);
+			usageType = UsageType.getUsageType(ut, usageType == null ? "" : usageType.unit);
 		}
 		
 		ResourceGroup resourceGroup = null;		
