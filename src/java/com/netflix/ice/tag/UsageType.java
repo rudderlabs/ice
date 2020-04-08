@@ -63,6 +63,11 @@ public class UsageType extends Tag {
     }
 
     public static UsageType getUsageType(String name, String unit) {
+    	if (unit == null) {
+    		logger.error("getUsageType called with null unit");
+    		new Exception().printStackTrace();
+    		unit = "";
+    	}
         UsageType usageType = usageTypes.get(name);
         if (usageType == null) {
             usageTypes.putIfAbsent(name, new UsageType(name, unit));

@@ -89,7 +89,7 @@ public class ReadWriteDataTest {
 	
 	@Test
 	public void testFileRead() throws IOException, BadZone {
-        String filename = "cost_monthly_all";
+        String filename = "cost_daily_505vubukj9ayygz7z5jbws97j_2020";
        
         File file = new File(dataDir, filename + ".gz");
         
@@ -134,13 +134,14 @@ public class ReadWriteDataTest {
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
         map.put(tg, value);
-		data.setData(list, 0, false);
+		data.setData(list, 0);
 		
 		ReadWriteData result = serializeDeserialize(as, ps, data);
 		
+		assertEquals("Wrong number of tags in in tagGroups", 1, result.getTagGroups().size());
 		assertEquals("Length of data is wrong", 1, result.getNum());
 		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
-		assertEquals("Value of first num is wrong", value, result.getData(0).get(tg), 0.001);
+		assertEquals("Value of first num is wrong", value, result.get(0, tg), 0.001);
 	}
 	
 	@Test
@@ -151,7 +152,7 @@ public class ReadWriteDataTest {
         List<Map<TagGroup, Double>> list = Lists.newArrayList();
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, 0);
         map.put(tg, 1.0);
-		data.setData(list, 0, false);
+		data.setData(list, 0);
 		
 		data = serializeDeserialize(as, ps, data);
 		
@@ -160,15 +161,16 @@ public class ReadWriteDataTest {
 		list = Lists.newArrayList();
 		map = ReadWriteData.getCreateData(list, 0);
 		map.put(tg2, 2.0);
-		data.setData(list, 1, false);
+		data.setData(list, 1);
 		
 		ReadWriteData result = serializeDeserialize(as, ps, data);
 		
+		assertEquals("Wrong number of tags in in tagGroups", 1, result.getTagGroups().size());
 		assertEquals("Length of data is wrong", 2, result.getNum());
 		assertEquals("Length of first num is wrong", 1, result.getData(0).size());
-		assertEquals("Value of first num is wrong", 1.0, result.getData(0).get(tg), 0.001);
+		assertEquals("Value of first num is wrong", 1.0, result.get(0, tg), 0.001);
 		assertEquals("Length of second num is wrong", 1, result.getData(1).size());
-		assertEquals("Value of second num is wrong", 2.0, result.getData(1).get(tg2), 0.001);
+		assertEquals("Value of second num is wrong", 2.0, result.get(1, tg2), 0.001);
 		assertEquals("Tags don't match", tg, tg2);
 	}
 	
@@ -176,9 +178,10 @@ public class ReadWriteDataTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         DataOutput out = new DataOutputStream(output);
 		
-		data.serialize(out);
+		data.serialize(out, null);
 		ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
 		DataInput in = new DataInputStream(input);
+		data = new ReadWriteData();
 		data.deserialize(as, ps, in);
 		return data;
 	}
@@ -201,4 +204,21 @@ public class ReadWriteDataTest {
         }
     }
     
+    @Test
+    public void testPutAll() {
+    	// test the merging of two data sets.
+    	ReadWriteData a = new ReadWriteData();
+    	ReadWriteData b = new ReadWriteData();
+    	
+		TagGroup tg1 = TagGroup.getTagGroup(as.getAccountByName("Account1"), Region.US_WEST_2, null, ps.getProduct(Product.Code.S3), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
+		TagGroup tg2 = TagGroup.getTagGroup(as.getAccountByName("Account2"), Region.US_WEST_2, null, ps.getProduct(Product.Code.S3), Operation.getOperation("StandardStorage"), UsageType.getUsageType("TimedStorage-ByteHrs", "GB"), null);
+    	
+    	a.put(0, tg1, 1.0);
+    	a.put(0, tg2, 2.0);
+    	b.put(0, tg2, 4.0);
+    	a.putAll(b);
+    	
+    	assertEquals("TagGroup 1 is not correct", 1.0, a.get(0, tg1), .001);
+    	assertEquals("TagGroup 2 is not correct", 6.0, a.get(0, tg2), .001);
+    }
 }

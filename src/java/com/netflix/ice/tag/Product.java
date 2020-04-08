@@ -44,8 +44,8 @@ public class Product extends Tag {
 	/*
 	 * serviceCode is used for naming product-specific files
 	 */
-	private final String serviceName;
-	private final String serviceCode;
+	private String serviceName; // The service name as it appears in reports and pricing services
+	private String iceName; // The product name displayed in dashboards
 	private final Source source;
 	private final Code code;
 	
@@ -119,10 +119,11 @@ public class Product extends Tag {
      * The Canonical name is always used by the TagGroup serializer so that changing
      * the override name won't corrupt the data files.
      */
-    public Product(String serviceName, String serviceCode, Source source) {  
-    	super(getOverride(canonicalName(serviceName)));
+    public Product(String serviceName, String serviceCode, Source source) {
+    	// ServiceCode which is immutable goes into the parent.
+    	super(serviceCode);
+    	this.iceName = getOverride(canonicalName(serviceName));
     	this.serviceName = serviceName;
-    	this.serviceCode = serviceCode;
     	this.source = source;
     	
     	Code code = null;
@@ -136,11 +137,29 @@ public class Product extends Tag {
     }
     
     public Product(Code code) {
-    	super(getOverride(canonicalName(code.serviceName)));
+    	super(code.serviceCode);
+    	this.iceName = getOverride(canonicalName(code.serviceName));
     	this.serviceName = code.serviceName;
-    	this.serviceCode = code.serviceCode;
     	this.source = Source.code;
     	this.code = code;
+    }
+    
+    public void update(String serviceName, String iceName) {
+    	this.serviceName = serviceName;
+    	this.iceName = iceName;
+    }
+
+    @Override
+    public String toString() {
+        return this.iceName;
+    }
+
+    @Override
+    public int compareTo(Tag t) {
+        if (t == aggregated)
+            return -t.compareTo(this);
+        int result = ("a" + this.iceName).compareTo("a" + ((Product)t).iceName);
+        return result;
     }
 
     protected static String canonicalName(String name) {
@@ -192,11 +211,15 @@ public class Product extends Tag {
     }
 
     public String getServiceCode() {
-    	return serviceCode;
+    	return super.name;
     }
     
     public String getServiceName() {
     	return serviceName;
+    }
+    
+    public String getIceName() {
+    	return iceName;
     }
     
     public Source getSource() {

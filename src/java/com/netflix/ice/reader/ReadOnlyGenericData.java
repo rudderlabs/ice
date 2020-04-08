@@ -84,7 +84,9 @@ public abstract class ReadOnlyGenericData<D> {
         for (int j = 0; j < numKeys; j++) {
         	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, in);
 //        	if (keys.contains(tg))
-//        		logger.error("Duplicate tag group in data file: " + tg);
+//        		logger.error("Duplicate tag group in data file: " + tg + ", existing at index: " + keys.indexOf(tg));
+        	if (tg.resourceGroup != null && tg.resourceGroup.getUserTags().length != numUserTags)
+        		logger.error("Wrong number of user tags: " + tg);
             keys.add(tg);
         }
 
@@ -135,7 +137,7 @@ public abstract class ReadOnlyGenericData<D> {
     		addIndex(tagGroupsByTagAndTagType.get(TagType.UsageType), tg.usageType, tg, i);
     		
     		if (numUserTags > 0) {
-	    		if (tg.resourceGroup == null || tg.resourceGroup.isProductName()) {
+	    		if (tg.resourceGroup == null) {
 		    		for (int j = 0; j < numUserTags; j++)
 		    			addIndex(tagGroupsByUserTag.get(j), emptyUserTag, tg, i);
 	    		}

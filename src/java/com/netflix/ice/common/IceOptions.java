@@ -82,6 +82,11 @@ public class IceOptions {
     public static final String BILLING_ACCESS_EXTERNALID = "ice.billing_accessExternalId";
     
     /**
+     * Billing data config file basename. This optional parameter allows you to override the default basename of "ice_config". Both ".json" and ".yml" extensions are supported.
+     */
+    public static final String BILLING_ICE_CONFIG_BASENAME = "ice.billingConfigBasename";
+    
+    /**
      * Root name to be used in parent paths for an account. The path expresses where the account is positioned in the organization hierarchy.
      * For multiple payer accounts, root names can be specified delimited by comma ",".
      */
@@ -147,6 +152,11 @@ public class IceOptions {
      * User can configure their additional tags to add to custom tags displayed in tag coverage dashboard.
      */
     public static final String ADDITIONAL_TAGS = "ice.additionalTags";
+
+    /**
+     * Boolean flag to indicated whether to include reservation IDs as an additional custom tag.
+     */
+    public static final String RESERVATION_ID_TAGS = "ice.reservationIdTags";
 
     /**
      * Boolean Flag whether to use blended or Unblended Costs.  Default is UnBlended Cost(false)

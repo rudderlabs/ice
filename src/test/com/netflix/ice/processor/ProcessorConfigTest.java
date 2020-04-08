@@ -61,11 +61,11 @@ public class ProcessorConfigTest {
 				AWSCredentialsProvider credentialsProvider,
 				ProductService productService,
 				ReservationService reservationService,
-				PriceListService priceListService, boolean compress)
+				PriceListService priceListService)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
 					reservationService,
-					priceListService, compress);
+					priceListService);
 		}
 		
 		@Override
@@ -120,8 +120,7 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            priceListService,
-	            true);
+	            priceListService);
 		
 		// discount prior to start
 		assertEquals("Wrong discount", 0.00, config.getDiscount(new DateTime("2018-12-31T00:00:00Z", DateTimeZone.UTC)), 0.0001);
@@ -144,8 +143,7 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            priceListService,
-	            true);
+	            priceListService);
 		
 		Map<String, AccountConfig> accounts = Maps.newHashMap();
 		String id = "123456789012";
@@ -178,8 +176,7 @@ public class ProcessorConfigTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            priceListService,
-	            true);
+	            priceListService);
 		
 		Map<String, AccountConfig> accounts = Maps.newHashMap();
 		String id1 = "123456789012";

@@ -19,6 +19,8 @@ package com.netflix.ice.processor.postproc;
 
 import static org.junit.Assert.*;
 
+import java.util.List;
+
 import org.junit.Test;
 
 public class EvaluatorTest {
@@ -38,4 +40,25 @@ public class EvaluatorTest {
 		assertEquals("Wrong evaluator result", expect, new Evaluator().eval(expr), 0.001);		
 	}
 
+	@Test
+	public void testDivideByZero() throws Exception {
+		String expr = "1.0 / 0.0";
+		assertEquals("Divide by zero should return 0.0", 0.0, new Evaluator().eval(expr), 0.001);
+	}
+	
+	@Test
+	public void testZeroValue() throws Exception {
+		String expr = "0.0 * -9.123242853155332E-7 / 6660.573763753991";
+		assertEquals("Value should be zero", 0.0, new Evaluator().eval(expr), 0.001);
+	}
+	
+	@Test
+	public void testParse() throws Exception {
+		String expr = "0.0 * -9.123242853155332E-7 / 6660.573763753991";
+		Double expect = 0.0 * -9.123242853155332E-7 / 6660.573763753991;
+		Evaluator e = new Evaluator();
+		List<String> tokens = e.parse(expr);
+		assertEquals("wrong number of tokens", 5, tokens.size());
+		assertEquals("wrong value", expect, e.eval(expr), 0.001);
+	}
 }

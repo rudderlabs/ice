@@ -75,6 +75,14 @@ public class BasicAccountService implements AccountService {
     // Used by test code
     public BasicAccountService() {}
     
+    // testing methods
+    protected boolean hasAccountByIceName(String name) {
+    	return accountsByIceName.containsKey(name);
+    }
+    protected boolean hasAccountById(String name) {
+    	return accountsById.containsKey(name);
+    }
+    
     // Accounts for the reader are refreshed from the work bucket data configuration after each processor run
     public void updateAccounts(List<Account> accounts) {
      	// Run through the account list and update our maps
@@ -86,8 +94,11 @@ public class BasicAccountService implements AccountService {
     			accountsByIceName.put(a.getIceName(), a);
     		}
     		else {
+    			// Remove the account by old name
+    			accountsByIceName.remove(existing.getIceName());
     			// Update account organization info
     			existing.update(a);
+    			accountsByIceName.put(a.getIceName(), a);
     		}
     	}
     }

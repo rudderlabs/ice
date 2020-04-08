@@ -40,7 +40,7 @@ public class Tagger {
 		
 	public Tagger(List<String> tagsToCopy, List<KubernetesNamespaceMapping> namespaceMappings, ResourceService resourceService) {
 		this.resourceService = resourceService;
-		this.numCustomTags = resourceService.getCustomTags() == null ? 0 : resourceService.getCustomTags().length;
+		this.numCustomTags = resourceService.getCustomTags() == null ? 0 : resourceService.getCustomTags().size();
 		this.rules = Lists.newArrayList();
 		if (namespaceMappings != null) {
 			for (KubernetesNamespaceMapping m: namespaceMappings) {

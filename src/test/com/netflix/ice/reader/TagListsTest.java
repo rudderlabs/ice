@@ -46,13 +46,11 @@ public class TagListsTest {
 	public void testContainsTagGroup() {
 		class Test {
 			String resourceGroupName;
-			boolean isProductName;
 			boolean shouldBeTrue;
 			List<ResourceGroup> resourceGroups;
 			
-			Test(String resourceGroupName, boolean isProductName, boolean shouldBeTrue, List<ResourceGroup> resourceGroups) {
+			Test(String resourceGroupName, boolean shouldBeTrue, List<ResourceGroup> resourceGroups) {
 				this.resourceGroupName = resourceGroupName;
-				this.isProductName = isProductName;
 				this.shouldBeTrue = shouldBeTrue;
 				this.resourceGroups = resourceGroups;				
 			}
@@ -68,7 +66,7 @@ public class TagListsTest {
 						resourceGroups
 						);
 				
-				TagGroup tg = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProduct("Product", "ProductCode"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup(resourceGroupName, isProductName));
+				TagGroup tg = TagGroup.getTagGroup(accounts[0], Region.getRegionByName("us-east-1"), null, ps.getProduct("Product", "ProductCode"), Operation.getOperation("Operation"), UsageType.getUsageType("UsageType", ""), ResourceGroup.getResourceGroup(resourceGroupName));
 				ResourceGroup resourceGroupInTagLists = resourceGroups == null || resourceGroups.size() == 0 ? null : resourceGroups.get(0);
 				if (shouldBeTrue)
 					assertTrue("TagGroup not found in TagLists, resource group name: " + resourceGroupName + ", groups: " + resourceGroupInTagLists, tagLists.contains(tg));
@@ -79,15 +77,15 @@ public class TagListsTest {
 		
 		Test[] tests = new Test[]{
 				// TagGroup with a match due to null entries in TagLists
-				new Test("foo", false, true, null),
+				new Test("foo", true, null),
 				// TagGroup with a match on single resource name
-				new Test("foo", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo", false))),
+				new Test("foo", true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo"))),
 				// TagGroup with a match on multi-field resource name
-				new Test("foo,bar", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo,bar", false))),
+				new Test("foo|bar", true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo|bar"))),
 				// TagGroup with a match on second-field of resource name
-				new Test(",bar", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup(",bar", false))),
+				new Test("|bar", true, Lists.newArrayList(ResourceGroup.getResourceGroup("|bar"))),
 				// TagGroup with a second-field matching to null list
-				new Test(",bar", false, true, null),
+				new Test("|bar", true, null),
 		};
 		
 		for (Test t: tests) {
@@ -100,13 +98,11 @@ public class TagListsTest {
 	public void testContainsTag() {
 		class Test {
 			String resourceGroupName;
-			boolean isProductName;
 			boolean shouldBeTrue;
 			List<ResourceGroup> resourceGroups;
 			
-			Test(String resourceGroupName, boolean isProductName, boolean shouldBeTrue, List<ResourceGroup> resourceGroups) {
+			Test(String resourceGroupName, boolean shouldBeTrue, List<ResourceGroup> resourceGroups) {
 				this.resourceGroupName = resourceGroupName;
-				this.isProductName = isProductName;
 				this.shouldBeTrue = shouldBeTrue;
 				this.resourceGroups = resourceGroups;				
 			}
@@ -123,22 +119,22 @@ public class TagListsTest {
 						);
 				
 				if (shouldBeTrue)
-					assertTrue("ResourceGroup " + resourceGroupName + " not found in TagLists", tagLists.contains(ResourceGroup.getResourceGroup(resourceGroupName, isProductName), TagType.ResourceGroup, 0));
+					assertTrue("ResourceGroup " + resourceGroupName + " not found in TagLists", tagLists.contains(ResourceGroup.getResourceGroup(resourceGroupName), TagType.ResourceGroup, 0));
 				else
-					assertFalse("ResourceGroup " + resourceGroupName + " incorrectly found in TagLists", tagLists.contains(ResourceGroup.getResourceGroup(resourceGroupName, isProductName), TagType.ResourceGroup, 0));
+					assertFalse("ResourceGroup " + resourceGroupName + " incorrectly found in TagLists", tagLists.contains(ResourceGroup.getResourceGroup(resourceGroupName), TagType.ResourceGroup, 0));
 			}
 		}
 		Test[] tests = new Test[]{
 				// TagGroup with a match due to null entries in TagLists
-				new Test("foo", false, true, null),
+				new Test("foo", true, null),
 				// TagGroup with a match on single resource name
-				new Test("foo", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo", false))),
+				new Test("foo", true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo"))),
 				// TagGroup with a match on multi-field resource name
-				new Test("foo,bar", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo,bar", false))),
+				new Test("foo|bar", true, Lists.newArrayList(ResourceGroup.getResourceGroup("foo|bar"))),
 				// TagGroup with a match on second-field of resource name
-				new Test(",bar", false, true, Lists.newArrayList(ResourceGroup.getResourceGroup(",bar", false))),
+				new Test("|bar", true, Lists.newArrayList(ResourceGroup.getResourceGroup("|bar"))),
 				// TagGroup with a second-field matching to null list
-				new Test(",bar", false, true, null),
+				new Test("|bar", true, null),
 		};
 		for (Test t: tests) {
 			t.Run();

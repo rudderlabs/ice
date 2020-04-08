@@ -111,7 +111,9 @@ class BootStrap {
 			if (prop.getProperty(IceOptions.PROCESSOR_THREADS) != null)
 				properties.setProperty(IceOptions.PROCESSOR_THREADS, prop.getProperty(IceOptions.PROCESSOR_THREADS));				
 			properties.setProperty(IceOptions.TAG_COVERAGE, prop.getProperty(IceOptions.TAG_COVERAGE, ""));
-				
+			if (prop.getProperty(IceOptions.HOURLY_DATA) != null)
+				properties.setProperty(IceOptions.HOURLY_DATA, prop.getProperty(IceOptions.HOURLY_DATA));
+
 			// Stash any debug properties
 			for (String name: prop.stringPropertyNames()) {
 				if (name.startsWith(IceOptions.DEBUG + ".")) {
@@ -146,6 +148,7 @@ class BootStrap {
                 properties.setProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, prop.getProperty(IceOptions.BILLING_PAYER_ACCOUNT_ID, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_ROLENAME, prop.getProperty(IceOptions.BILLING_ACCESS_ROLENAME, ""));
                 properties.setProperty(IceOptions.BILLING_ACCESS_EXTERNALID, prop.getProperty(IceOptions.BILLING_ACCESS_EXTERNALID, ""));
+				properties.setProperty(IceOptions.BILLING_ICE_CONFIG_BASENAME, prop.getProperty(IceOptions.BILLING_ICE_CONFIG_BASENAME, ""));
                 properties.setProperty(IceOptions.ROOT_NAME, prop.getProperty(IceOptions.ROOT_NAME, ""));
                 properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_NAME, ""));
                 properties.setProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, prop.getProperty(IceOptions.KUBERNETES_S3_BUCKET_REGION, ""));
@@ -172,6 +175,7 @@ class BootStrap {
 					
                 properties.setProperty(IceOptions.CUSTOM_TAGS, prop.getProperty(IceOptions.CUSTOM_TAGS, ""));
 				properties.setProperty(IceOptions.ADDITIONAL_TAGS, prop.getProperty(IceOptions.ADDITIONAL_TAGS, ""));
+				properties.setProperty(IceOptions.RESERVATION_ID_TAGS, prop.getProperty(IceOptions.RESERVATION_ID_TAGS, "false"));
 				
                 properties.setProperty(IceOptions.RESOURCE_GROUP_COST, prop.getProperty(IceOptions.RESOURCE_GROUP_COST, "modeled"));
 				properties.setProperty(IceOptions.WRITE_JSON_FILES, prop.getProperty(IceOptions.WRITE_JSON_FILES, ""));
@@ -189,8 +193,7 @@ class BootStrap {
                         credentialsProvider,
                         productService,
                         reservationService,
-						priceListService,
-						true)
+						priceListService)
 				processorConfig.start();
             }
 
@@ -208,8 +211,6 @@ class BootStrap {
 					properties.setProperty(IceOptions.COMPANY_NAME, prop.getProperty(IceOptions.COMPANY_NAME));
 				if (prop.getProperty(IceOptions.DASHBOARD_NOTICE) != null)
 					properties.setProperty(IceOptions.DASHBOARD_NOTICE, prop.getProperty(IceOptions.DASHBOARD_NOTICE));
-				if (prop.getProperty(IceOptions.HOURLY_DATA) != null)
-					properties.setProperty(IceOptions.HOURLY_DATA, prop.getProperty(IceOptions.HOURLY_DATA));
 
                 readerConfig = new ReaderConfig(
                         properties,

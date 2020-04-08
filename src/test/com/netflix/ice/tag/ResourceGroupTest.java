@@ -25,10 +25,10 @@ public class ResourceGroupTest {
 
 	@Test
 	public void testGetResourceGroup() {
-		ResourceGroup rg = ResourceGroup.getResourceGroup("foo", false);
+		ResourceGroup rg = ResourceGroup.getResourceGroup("foo");
 		assertEquals("single name incorrect", "foo", rg.name);		
 	
-		rg = ResourceGroup.getResourceGroup("|foo", false);
+		rg = ResourceGroup.getResourceGroup("|foo");
 		assertEquals("group with only second tag name incorrect", "|foo", rg.name);		
 	}
 

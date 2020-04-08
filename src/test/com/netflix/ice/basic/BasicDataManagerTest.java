@@ -104,7 +104,7 @@ public class BasicDataManagerTest {
 	
 	    logger.info("Products:");
 	    for (Product p: products)
-	    	logger.info("  " + p.name);
+	    	logger.info("  " + p.getIceName());
 	}
 	
 	@Test
@@ -128,7 +128,7 @@ public class BasicDataManagerTest {
 	
 	    logger.info("Products:");
 	    for (Product p: products)
-	    	logger.info("  " + p.name);
+	    	logger.info("  " + p.getIceName());
 	    
 	    for (int i = 0; i < rod.getNum(); i++) {
 	    	List<TagGroup> tagGroups = (List<TagGroup>) rod.getTagGroups();
@@ -323,7 +323,7 @@ public class BasicDataManagerTest {
 		Interval interval = new Interval(testMonth, testMonth.plusHours(1));
 		
 		// First test with operations specified
-		List<Operation> operations = Lists.newArrayList((Operation) Operation.upfrontAmortizedAllUpfront);
+		List<Operation> operations = Lists.newArrayList((Operation) Operation.amortizedAllUpfront);
 		List<UsageType> usageTypes = Lists.newArrayList(UsageType.getUsageType("r4.2xlarge", "hours"));
 		TagLists tagLists = new TagLists(null, null, null, null, operations, usageTypes, null);
 		

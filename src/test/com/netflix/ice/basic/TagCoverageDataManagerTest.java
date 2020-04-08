@@ -152,7 +152,7 @@ public class TagCoverageDataManagerTest {
 	
 	    logger.info("Products:");
 	    for (Product p: products)
-	    	logger.info("  " + p.name);
+	    	logger.info("  " + p.getIceName());
 	    logger.info("Accounts:");
 	    for (Account a: accounts)
 	    	logger.info("  " + a.getIceName());

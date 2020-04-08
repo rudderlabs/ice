@@ -20,6 +20,7 @@ package com.netflix.ice.processor.postproc;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.time.StopWatch;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AggregationTagGroup;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.ResourceService;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.CostAndUsageData;
 import com.netflix.ice.processor.ReadWriteData;
@@ -38,16 +40,23 @@ import com.netflix.ice.tag.Product;
 
 public class PostProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
+    protected boolean debug = false;
 
 	private List<RuleConfig> rules;
 	private AccountService accountService;
 	private ProductService productService;
-	private Map<String, Double[]> operandValueCache;
+	private ResourceService resourceService;
 	
-	public PostProcessor(List<RuleConfig> rules, AccountService accountService, ProductService productService) {
+	private int cacheMisses;
+	private int cacheHits;
+	
+	public PostProcessor(List<RuleConfig> rules, AccountService accountService, ProductService productService, ResourceService resourceService) {
 		this.rules = rules;
 		this.accountService = accountService;
 		this.productService = productService;
+		this.resourceService = resourceService;
+		this.cacheMisses = 0;
+		this.cacheHits = 0;
 	}
 	
 	public void process(CostAndUsageData data) {
@@ -79,19 +88,27 @@ public class PostProcessor {
 			logger.error("Post processing rule " + rc.getName() + " has no product specified for the 'in' operand");
 			return;
 		}
+		
+		// Cache the single values across the resource and non-resource based passes
+		// in case we can reuse them. This save a lot of time on operands that
+		// aggregate a large amount of data into a single value and are not grouping
+		// by any user tags.
+		Map<String, Double[]> operandSingleValueCache = Maps.newHashMap();
+
 		logger.info("Post-process with rule " + rc.getName() + " on non-resource data");
-		Rule rule = new Rule(rc, accountService, productService);
-		processReadWriteData(rule, data, true);
+		
+		Rule rule = new Rule(rc, accountService, productService, resourceService);
+		processReadWriteData(rule, data, true, operandSingleValueCache);
 		
 		logger.info("Post-process with rule " + rc.getName() + " on resource data");
-		processReadWriteData(rule, data, false);
+		processReadWriteData(rule, data, false, operandSingleValueCache);
 	}
 		
-	protected void processReadWriteData(Rule rule, CostAndUsageData data, boolean isNonResource) throws Exception {
+	protected void processReadWriteData(Rule rule, CostAndUsageData data, boolean isNonResource, Map<String, Double[]> operandSingleValueCache) throws Exception {
 		// Get data maps for operands
-		// We only want to walk each ReadWriteData set once, so collect up all the operands for each
 		int opDataSize = 0;
-		Map<ReadWriteData, Map<String, InputOperand>> dataToOperandMap = Maps.newHashMap();
+		Map<String, Map<Product, ReadWriteData>> dataByOperand = Maps.newHashMap();
+		
 		for (String name: rule.getOperands().keySet()) {			
 			List<Product> products = isNonResource ? Lists.newArrayList(new Product[]{null}) : rule.getOperand(name).getProducts(productService);			
 			for (Product p: products) {
@@ -99,18 +116,16 @@ public class PostProcessor {
 				if (rwd == null)
 					continue;
 				
-				Map<String, InputOperand> operands = dataToOperandMap.get(rwd);
-				if (operands == null) {
-					operands = Maps.newHashMap();
-					dataToOperandMap.put(rwd, operands);
+				Map<Product, ReadWriteData> dataMap = dataByOperand.get(name);
+				if (dataMap == null) {
+					dataMap = Maps.newHashMap();
+					dataByOperand.put(name, dataMap);
 				}
-				operands.put(name, rule.getOperand(name));
+				dataMap.put(p, rwd);
 				opDataSize++;
 			}
 		}
-		
-		logger.info("opData size: " + opDataSize);
-		
+				
 		// Get data maps for results. Handle case where we're creating a new product
 		List<ReadWriteData> resultData = Lists.newArrayList();
 		for (Operand result: rule.getResults()) {
@@ -126,15 +141,18 @@ public class PostProcessor {
 			resultData.add(rwd);
 		}
 		
-		logger.info("resultData size: " + resultData.size());
+		logger.info("  -- opData size: " + opDataSize + ", resultData size: " + resultData.size());
 			
+		int maxNum = data.getMaxNum();
+		
 		// Get the aggregated value for the input operand
-		Map<AggregationTagGroup, Double[]> inData = getInData(rule, data, isNonResource);
-		operandValueCache = Maps.newHashMap();
-		logger.info("  -- apply rule " + rule.config.getName() + " -- in data size = " + inData.size());
-						
-		Map<AggregationTagGroup, Map<String, Double[]>> opValues = getOperandValues(rule, inData, dataToOperandMap, data.getMaxNum());
-		int results = applyRule(rule, inData, opValues, resultData);
+		Map<AggregationTagGroup, Double[]> inData = getInData(rule, data, isNonResource, maxNum);
+		logger.info("  -- in data size = " + inData.size());
+		
+		Map<String, Double[]> opSingleValues = getOperandSingleValues(rule, dataByOperand, isNonResource, maxNum, operandSingleValueCache);
+		
+		Map<AggregationTagGroup, Map<String, Double[]>> opValues = getOperandValues(rule, inData, dataByOperand, isNonResource, maxNum);
+		int results = applyRule(rule, inData, opValues, opSingleValues, resultData, isNonResource, maxNum);
 		
 		logger.info("  -- data for rule " + rule.config.getName() + " -- in data size = " + inData.size() + ", --- results size = " + results);
 	}
@@ -143,18 +161,22 @@ public class PostProcessor {
 	 * Aggregate the data using the regex groups contained in the input filters
 	 * @throws Exception 
 	 */
-	protected Map<AggregationTagGroup, Double[]> getInData(Rule rule, CostAndUsageData data, boolean isNonResource) throws Exception {
-		int maxHours = data.getMaxNum();
+	protected Map<AggregationTagGroup, Double[]> getInData(Rule rule, CostAndUsageData data,
+			boolean isNonResource, int maxNum) throws Exception {
+		StopWatch sw = new StopWatch();
+		sw.start();
+		
 		InputOperand in = rule.getIn();
+		int maxHours = in.isMonthly() ? 1 : maxNum;
 		Map<AggregationTagGroup, Double[]> inValues = Maps.newHashMap();
 		List<Product> inProducts = isNonResource ? Lists.newArrayList(new Product[]{null}) : in.getProducts(productService);			
-		
+
 		for (Product inProduct: inProducts) {
 			ReadWriteData inData = in.getType() == OperandType.cost ? data.getCost(inProduct) : data.getUsage(inProduct);
+			if (inData == null)
+				continue;
+			
 			for (TagGroup tg: inData.getTagGroups()) {
-				if (!isNonResource && !inProducts.contains(tg.product))
-					continue;
-				
 				AggregationTagGroup aggregatedTagGroup = in.aggregateTagGroup(tg, accountService, productService);
 				if (aggregatedTagGroup == null)
 					continue;
@@ -167,143 +189,318 @@ public class PostProcessor {
 					inValues.put(aggregatedTagGroup, values);
 				}
 				for (int hour = 0; hour < inData.getNum(); hour++) {
-					Double v = inData.getData(hour).get(tg);
+					Double v = inData.get(hour, tg);
 					if (v != null)
-						values[hour] += v;
+						values[in.isMonthly() ? 0 : hour] += v;
 				}
 			}
 		}
+		logger.info("  -- getInData elapsed time: " + sw);
 		return inValues;
 	}
 	
-	protected Map<AggregationTagGroup, Map<String, Double[]>> getOperandValues(Rule rule, Map<AggregationTagGroup, Double[]> in, Map<ReadWriteData, Map<String, InputOperand>> dataToOperandMap, int maxHours) {
-		//logger.info("get operand values");
+	/*
+	 * Returns a map containing the operand values needed to compute the results for each input aggregation tag group.
+	 * Each aggregation tag group entry hold a map of Double arrays keyed by the operand name.
+	 */
+	protected Map<AggregationTagGroup, Map<String, Double[]>> getOperandValues(Rule rule, Map<AggregationTagGroup, Double[]> in, 
+			Map<String, Map<Product, ReadWriteData>> dataByOperand, boolean isNonResource, int maxHours) throws Exception {
+		StopWatch sw = new StopWatch();
+		sw.start();
+		
 		Map<AggregationTagGroup, Map<String, Double[]>> operandValueMap = Maps.newHashMap();
-				
-		// Get what we can from the cache
-		Map<AggregationTagGroup, List<String>> nonCachedOperands = Maps.newHashMap();
-		for (AggregationTagGroup atg: in.keySet()) {
-			for (String opName: rule.getOperands().keySet()) {
-				String key = rule.getOperand(opName).key(atg);
-				if (operandValueCache.containsKey(key)) {
-					Map<String, Double[]> opValuesMap = operandValueMap.get(atg);
-					if (opValuesMap == null) {
-						opValuesMap = Maps.newHashMap();
-						operandValueMap.put(atg, opValuesMap);
-					}
-					opValuesMap.put(opName, operandValueCache.get(key));
-				}
-				else {
-					List<String> opNames = nonCachedOperands.get(atg);
-					if (opNames == null) {
-						opNames = Lists.newArrayList();
-						nonCachedOperands.put(atg, opNames);
-					}
-					opNames.add(opName);
-				}
+		Map<String, Double[]> operandValueCache = Maps.newHashMap();
+		cacheMisses = 0;
+		cacheHits = 0;
+		
+		// Determine which operands are aggregations that require scanning all the data
+		Map<String, InputOperand> aggregationOperands = Maps.newHashMap();
+		for (String opName: rule.getOperands().keySet()) {
+			InputOperand op = rule.getOperand(opName);
+			if (op.isSingle())
+				continue;
+			
+			if (op.hasAggregation()) {
+				// Queue the operand for tagGroup scanning
+				aggregationOperands.put(opName, op);
+			}
+			else {
+				// Get the values directly
+				getValuesForOperand(opName, op, in, dataByOperand.get(opName), isNonResource, maxHours, operandValueMap, operandValueCache);
 			}
 		}
-		
-		for (ReadWriteData rwd: dataToOperandMap.keySet()) {
-			Map<String, InputOperand> operands = dataToOperandMap.get(rwd);
-			for (TagGroup tg: rwd.getTagGroups()) {
-				for (AggregationTagGroup atg: in.keySet()) {
-					Map<String, Double[]> opValuesMap = operandValueMap.get(atg);
-					if (opValuesMap == null) {
-						opValuesMap = Maps.newHashMap();
-						operandValueMap.put(atg, opValuesMap);
-					}
-					
-					
-					for (String opName: operands.keySet()) {
-						List<String> nonCachedOpNames = nonCachedOperands.get(atg);
-						if (nonCachedOpNames == null || !nonCachedOpNames.contains(opName))
-							continue; // we pulled it from the cache
-						
-						Double[] values = opValuesMap.get(opName);
-						if (values == null) {
-							values = new Double[maxHours];
-							opValuesMap.put(opName, values);
-							for (int i = 0; i < values.length; i++)
-								values[i] = 0.0;
-						}
-							
-						InputOperand operand = operands.get(opName);
-								
-						if (operand.matches(atg, tg)) {
-							for (int hour = 0; hour < rwd.getNum(); hour++) {
-								Double v = rwd.getData(hour).get(tg);
-								if (v != null)
-									values[hour] += v;
-							}
-						}					
-					}
-				}
-			}
+		if (!aggregationOperands.isEmpty()) {
+			getAggregatedOperandValues(rule, aggregationOperands, in, dataByOperand, maxHours, operandValueMap, operandValueCache);
 		}
-		
-		// Add opValues to the cache
-		for (AggregationTagGroup atg: in.keySet()) {
-			for (String opName: rule.getOperands().keySet()) {
-				String key = rule.getOperand(opName).key(atg);
-				if (!operandValueCache.containsKey(key)) {
-					Map<String, Double[]> opValuesMap = operandValueMap.get(atg);
-					operandValueCache.put(key, opValuesMap.get(opName));
-				}
-			}
-		}
-		
+		logger.info("  -- getOperandValues elapsed time: " + sw + ", cache hits = " + cacheHits + ", cache misses = " + cacheMisses);
 		return operandValueMap;
 	}
 	
-	protected Map<String, Double[]> getOperandValueCache() {
-		return operandValueCache;
+	/*
+	 * Returns a map containing the single operand values needed to compute the results.
+	 */
+	protected Map<String, Double[]> getOperandSingleValues(Rule rule, Map<String, Map<Product, ReadWriteData>> dataByOperand,
+			boolean isNonResource, int maxHours,
+			Map<String, Double[]> operandSingleValueCache) throws Exception {
+				
+		Map<String, Double[]> operandSingleValues = Maps.newHashMap();
+		for (String opName: rule.getOperands().keySet()) {
+			
+			Map<Product, ReadWriteData> dataMap = dataByOperand.get(opName);
+			if (dataMap == null || dataMap.size() == 0)
+				continue;
+			
+			InputOperand op = rule.getOperand(opName);
+			if (!op.isSingle())
+				continue;
+			
+			String cacheKey = null;
+			if (!op.hasGroupByTags()) {
+				// See if the values are in the cache
+				cacheKey = op.cacheKey(null);
+				if (operandSingleValueCache.containsKey(cacheKey)) {
+					operandSingleValues.put(opName, operandSingleValueCache.get(cacheKey));
+					logger.info("  -- getOperandSingleValues found values in cache for operand \"" + opName + "\", value[0] = " + operandSingleValueCache.get(cacheKey)[0]);
+					continue;
+				}
+			}
+			
+			Double[] values = new Double[op.isMonthly() ? 1 : maxHours];
+			for (int i = 0; i < values.length; i++)
+				values[i] = 0.0;
+			
+			operandSingleValues.put(opName, values);
+			if (!op.hasGroupByTags()) {
+				operandSingleValueCache.put(cacheKey, values);
+			}
+
+			if (op.hasAggregation()) {
+				for (ReadWriteData rwd: dataMap.values()) {					
+					for (TagGroup tg: rwd.getTagGroups()) {															
+						if (op.matches(null, tg)) {
+							getData(rwd, tg, values, maxHours, op.isMonthly());
+						}					
+					}					
+				}
+			}
+			else {
+				if (dataMap.size() > 1)
+					throw new Exception("operand \"" + opName + "\" has more than one data map, but is non-aggregating");
+				
+				ReadWriteData data = dataMap.values().iterator().next();
+				TagGroup tg = op.tagGroup(null, accountService, productService, isNonResource);
+				getData(data, tg, values, maxHours, op.isMonthly());
+			}
+			if (op.isMonthly())
+				logger.info("  -- single monthly operand " + opName + " has value " + values[0]);
+		}
+		return operandSingleValues;
 	}
 	
-	protected int applyRule(Rule rule, Map<AggregationTagGroup, Double[]> in, Map<AggregationTagGroup, Map<String, Double[]>> opValues, List<ReadWriteData> resultData) throws Exception {
-		int numResults = 0;
+	private void getData(ReadWriteData data, TagGroup tg, Double[] values, int maxHours, boolean isMonthly) {
+		for (int hour = 0; hour < data.getNum(); hour++) {
+			Double v = data.get(hour, tg);
+			if (v != null)
+				values[isMonthly ? 0 : hour] += v;
+		}
+	}
+	
+	protected void getValuesForOperand(
+			String opName,
+			InputOperand op,
+			Map<AggregationTagGroup, Double[]> in, 
+			Map<Product, ReadWriteData> dataMap,
+			boolean isNonResource,
+			int maxHours,
+			Map<AggregationTagGroup, Map<String, Double[]>> operandValueMap,
+			Map<String, Double[]> operandValueCache) throws Exception {
+		
+		logger.info("  -- getValuesForOperand... ");
+		StopWatch sw = new StopWatch();
+		sw.start();
 		
 		for (AggregationTagGroup atg: in.keySet()) {
+			TagGroup tg = op.tagGroup(atg, accountService, productService, isNonResource);
 			
-			// For each result operand...
-			for (int i = 0; i < rule.getResults().size(); i++) {
-				//logger.info("result " + i + " for atg: " + atg);
-				ResultOperand result = rule.getResult(i);
-				TagGroup outTagGroup = result.getTagGroup(atg, productService);
+			
+			for (Product product: dataMap.keySet()) {
+				// Skip resource-based data sets with non-matching product
+				if (product != null && product != tg.product)
+					continue;
+				
+				ReadWriteData data = dataMap.get(product);
+				
+				Map<String, Double[]> opValuesMap = operandValueMap.get(atg);
+				if (opValuesMap == null) {
+					opValuesMap = Maps.newHashMap();
+					operandValueMap.put(atg, opValuesMap);
+				}
+				
+				// See if the values are in the cache
+				String cacheKey = op.cacheKey(atg);
+				if (operandValueCache.containsKey(cacheKey)) {
+					opValuesMap.put(opName, operandValueCache.get(cacheKey));
+					cacheHits++;
+					continue;
+				}
+	
+				Double[] values = new Double[op.isMonthly() ? 1 : maxHours];
+				for (int i = 0; i < values.length; i++)
+					values[i] = 0.0;
+				opValuesMap.put(opName, values);
+				getData(data, tg, values, maxHours, op.isMonthly());
+				operandValueCache.put(cacheKey, values);
+				cacheMisses++;
+			}
+		}
+		logger.info("  -- getValuesForOperand elapsed time: " + sw);
+	}
+	
+	protected void getAggregatedOperandValues(
+			Rule rule,
+			Map<String, InputOperand> aggregationOperands, 
+			Map<AggregationTagGroup, Double[]> in, 
+			Map<String, Map<Product, ReadWriteData>> dataByOperand, 
+			int maxHours,
+			Map<AggregationTagGroup, Map<String, Double[]>> operandValueMap,
+			Map<String, Double[]> operandValueCache) {
+		
+		logger.info("  -- getAggregatedOperandValues... ");
+		StopWatch sw = new StopWatch();
+		sw.start();
+				
+		for (AggregationTagGroup atg: in.keySet()) {
+			for (String opName: aggregationOperands.keySet()) {
+				
+				Map<String, Double[]> opValuesMap = operandValueMap.get(atg);
+				if (opValuesMap == null) {
+					opValuesMap = Maps.newHashMap();
+					operandValueMap.put(atg, opValuesMap);
+				}
+				
+				InputOperand op = rule.getOperand(opName);
+				
+				// See if the values are in the cache
+				String cacheKey = op.cacheKey(atg);
+				if (operandValueCache.containsKey(cacheKey)) {
+					opValuesMap.put(opName, operandValueCache.get(cacheKey));
+					cacheHits++;
+					continue;
+				}
+
+				Double[] values = new Double[op.isMonthly() ? 1 : maxHours];
+				opValuesMap.put(opName, values);
+				for (int i = 0; i < values.length; i++)
+					values[i] = 0.0;
+				
+				for (ReadWriteData rwd: dataByOperand.get(opName).values()) {					
+					for (TagGroup tg: rwd.getTagGroups()) {															
+						if (op.matches(atg, tg)) {
+							getData(rwd, tg, values, maxHours, op.isMonthly());
+						}					
+					}					
+				}
+				operandValueCache.put(cacheKey, values);
+				if (debug)
+					logger.info("  -- operand " + opName + " value for hour 0: " + values[0]);
+				cacheMisses++;				
+			}
+		}
+				
+		logger.info("  -- getAggregatedOperandValues elapsed time: " + sw);
+	}
+	
+	protected int applyRule(
+			Rule rule,
+			Map<AggregationTagGroup, Double[]> in,
+			Map<AggregationTagGroup, Map<String, Double[]>> opValues,
+			Map<String, Double[]> opSingleValues,
+			List<ReadWriteData> resultData,
+			boolean isNonResource,
+			int maxNum) throws Exception {
+		
+		int numResults = 0;
+		
+		// For each result operand...
+		for (int i = 0; i < rule.getResults().size(); i++) {
+			//logger.info("result " + i + " for atg: " + atg);
+			Operand result = rule.getResult(i);
+			
+			if (result.isSingle()) {
+				TagGroup outTagGroup = result.tagGroup(null, accountService, productService, isNonResource);
 				
 				String expr = rule.getResultValue(i);
 				if (expr != null && !expr.isEmpty()) {
 					//logger.info("process hour data");
-					eval(rule, expr, in.get(atg), opValues.get(atg), resultData.get(i), outTagGroup);
+					eval(i, rule, expr, null, null, opSingleValues, resultData.get(i), outTagGroup, result.isMonthly() ? 1 : maxNum);
 					numResults++;
 				}
 			}
+			else {
+				for (AggregationTagGroup atg: in.keySet()) {
+				
+					TagGroup outTagGroup = result.tagGroup(atg, accountService, productService, isNonResource);
+					
+					String expr = rule.getResultValue(i);
+					if (expr != null && !expr.isEmpty()) {
+						//logger.info("process hour data");
+						eval(i, rule, expr, in.get(atg), opValues.get(atg), opSingleValues, resultData.get(i), outTagGroup, maxNum);
+						numResults++;
+					}
+					
+					debug = false;
+				}
+			}
 		}
+		
 		return numResults;
 	}
 	
-	private void eval(Rule rule, 
+	private void eval(
+			int index,
+			Rule rule, 
 			String outExpr, 
 			Double[] inValues, 
-			Map<String, Double[]> opValuesMap, 
+			Map<String, Double[]> opValuesMap,
+			Map<String, Double[]> opSingleValuesMap,
 			ReadWriteData resultData,
-			TagGroup outTagGroup) throws Exception {
+			TagGroup outTagGroup,
+			int maxNum) throws Exception {
 
-		// Process each hour of data
-		for (int hour = 0; hour < inValues.length; hour++) {
+		int maxHours = inValues == null ? maxNum : inValues.length;
+		
+		// Process each hour of data - we'll only have one if 'in' is a monthly operand
+		for (int hour = 0; hour < maxHours; hour++) {
 			// Replace variables
-			String expr = outExpr.replace("${in}", inValues[hour].toString());
+			String expr = inValues == null ? outExpr : outExpr.replace("${in}", inValues[hour].toString());
 			
-			for (String op: rule.getOperands().keySet()) {			
+			for (String opName: rule.getOperands().keySet()) {			
 				// Get the operand values from the proper data source
-				Double opValue = opValuesMap.get(op)[hour];
-				expr = expr.replace("${" + op + "}", opValue.toString());
+				InputOperand op = rule.getOperand(opName);
+				Double[] opValues = op.isSingle() ? opSingleValuesMap.get(opName) : opValuesMap.get(opName);
+				Double opValue = opValues == null ? 0.0 : opValues[op.isMonthly() ? 0 : hour];
+				expr = expr.replace("${" + opName + "}", opValue.toString());
 			}
-			Double value = new Evaluator().eval(expr);		
-			resultData.getData(hour).put(outTagGroup, value);
+			try {
+				Double value = new Evaluator().eval(expr);
+				if (debug && hour == 0)
+					logger.info("eval(" + index + "): " + outExpr + " = " + expr + " = " + value + ", " + outTagGroup);
+				resultData.put(hour, outTagGroup, value);
+			}
+			catch (Exception e) {
+				logger.error("Error processing expression \"" + expr + "\", " + e.getMessage());
+				throw e;
+			}
 			
 			//if (hour == 0)
 			//	logger.info("eval: " + outExpr + " = "  + expr + " = " + value + ", tg: " + outTagGroup);
 		}
+	}
+	
+	public int getCacheMisses() {
+		return cacheMisses;
+	}
+	public int getCacheHits() {
+		return cacheHits;
 	}
 }

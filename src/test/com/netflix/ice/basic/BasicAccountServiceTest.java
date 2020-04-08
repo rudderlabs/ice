@@ -80,19 +80,38 @@ public class BasicAccountServiceTest {
 		List<String> parents = Lists.newArrayList("OrgRoot");
 		Map<String, String> tags = Maps.newHashMap();
 		tags.put("Environment", "Production");
-		accounts.add(new Account(id, "NewName", "NewAwsName", "NewEmail", parents, "SUSPENDED", tags));
+		Account newAccount = new Account(id, "NewName", "NewAwsName", "NewEmail", parents, "SUSPENDED", tags);
+		accounts.add(newAccount);
 		
 		bas.updateAccounts(accounts);
 		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());
 		assertEquals("Account object not the same", origAccount, bas.getAccountById(id));
 		assertNotNull("Missing account after update fetch by ID", bas.getAccountById(id));
-		assertNotNull("Missing account after update fetch by Name", bas.getAccountByName("NewName"));
+
+		// Check that the old name is no longer in the accounts map
+		assertFalse("Account still available by old name", bas.hasAccountByIceName("OldName"));
+		
+		// Make sure lookup by new name doesn't create a new account
+		bas.getAccountByName("NewName");
+		assertEquals("Lookup by new name created additional account", 1, bas.getAccounts().size());
+		
 		assertEquals("Wrong account name after update", "NewName", bas.getAccountById(id).getIceName());
 		assertEquals("Wrong account id after update", id, bas.getAccountById(id).getId());
 		assertEquals("Wrong account email after update", "NewEmail", bas.getAccountById(id).getEmail());
 		assertEquals("Wrong parent", parents, bas.getAccountById(id).getParents());
 		assertEquals("Wrong status", "SUSPENDED", bas.getAccountById(id).getStatus());
 		assertEquals("Wrong tags", tags, bas.getAccountById(id).getTags());
+		
+		// Remove separate ICE name
+		newAccount = new Account(id, "NewAwsName", "NewAwsName", "NewEmail", parents, "SUSPENDED", tags);
+		accounts = Lists.newArrayList();	
+		accounts.add(newAccount);
+		bas.updateAccounts(accounts);
+		// Check that the old name is no longer in the accounts map
+		assertFalse("Account still available by old name", bas.hasAccountByIceName("NewName"));
+		assertEquals("Wrong number of accounts after update", 1, bas.getAccounts().size());
+		assertEquals("Account object not the same", origAccount, bas.getAccountById(id));
+		
 	}
 	
 	@Test

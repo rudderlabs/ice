@@ -18,6 +18,7 @@
 package com.netflix.ice.processor.postproc;
 
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.collect.Lists;
 
@@ -29,18 +30,30 @@ import com.google.common.collect.Lists;
  * of values. For accounts the account ID is used, not the account name. If the values for these
  * attributes is left blank or not specified, then no filtering is done.
  * 
- * The product, operation, and usageType fields are regex patterns used to both filter and capture
+ * The account, region, zone, product, operation, and usageType fields are regex patterns used to both filter and capture
  * substrings which can be used to build result field values.
  * 
- * If the aggregate attribute is provided, any attribute names listed will be merged and not broken
- * out as separate values in the result.
+ * If the groupBy attribute is provided, any attribute names not listed will be merged and not broken
+ * out as separate values in the result. If groupBy is not provided, no merging will be performed. If
+ * groupBy is provided but is an empty list, all tag types will be merged.
  * 
- * Allowed aggregate values are: Account, Region, Zone, Product, Operation, UsageType, ResourceGroup
+ * Allowed groupBy values are: Account, Region, Zone, Product, Operation, UsageType
+ * 
+ * If the groupByUserTag attribute is provided, any user tag names not listed will be merged and not
+ * broken out as separate values in the result. If groupByUserTag is not provided, no merging will be performed.
+ * If groupByUserTag is provided but is an empty map, all user tags will be merged.
+ * 
+ * Allowed groupByUserTag values are the names specified for ice.customTags in the ice.properties configuration file.
  * 
  * If the exclude attribute is provided, then for each list of attributes, the specified values
  * for each of that attribute are excluded from the aggregation.
  * 
  * Allowed exclude values are: Account, Region, Zone
+ * 
+ * The monthly attribute can be set to produce a single value for the month rather than per hour.
+ * 
+ * The single attribute can be set to indicate that the operand has no dependencies on another operand and will produce
+ * a single hourly or monthly value set.
  */
 public class OperandConfig {
 	public enum OperandType {
@@ -58,8 +71,12 @@ public class OperandConfig {
 	private String product;
 	private String operation;
 	private String usageType;
-	private List<String> aggregate;
+	private Map<String, String> userTags;
+	private List<String> groupBy;
+	private List<String> groupByTags;
 	private List<String> exclude;
+	private boolean monthly;
+	private boolean single;
 	
 	public OperandConfig() {
 		accounts = Lists.newArrayList();
@@ -126,16 +143,30 @@ public class OperandConfig {
 	public String getUsageType() {
 		return usageType;
 	}
-	public void setUsgaeType(String usageType) {
+	public void setUsageType(String usageType) {
 		this.usageType = usageType;
 	}
-
-	public List<String> getAggregate() {
-		return aggregate;
+	public Map<String, String> getUserTags() {
+		return userTags;
+	}
+	public void setUserTags(Map<String, String> userTags) {
+		this.userTags = userTags;
 	}
 
-	public void setAggregate(List<String> aggregate) {
-		this.aggregate = aggregate;
+	public List<String> getGroupBy() {
+		return groupBy;
+	}
+
+	public void setGroupBy(List<String> groupBy) {
+		this.groupBy = groupBy;
+	}
+
+	public List<String> getGroupByTags() {
+		return groupByTags;
+	}
+
+	public void setGroupByTags(List<String> groupByTags) {
+		this.groupByTags = groupByTags;
 	}
 
 	public List<String> getExclude() {
@@ -146,4 +177,19 @@ public class OperandConfig {
 		this.exclude = exclude;
 	}
 
+	public boolean isMonthly() {
+		return monthly;
+	}
+	
+	public void setMonthly(boolean monthly) {
+		this.monthly = monthly;
+	}
+
+	public boolean isSingle() {
+		return single;
+	}
+
+	public void setSingle(boolean single) {
+		this.single = single;
+	}
 }

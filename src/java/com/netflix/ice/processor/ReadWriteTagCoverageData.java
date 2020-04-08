@@ -54,5 +54,12 @@ public class ReadWriteTagCoverageData extends ReadWriteGenericData<TagCoverageMe
 	protected TagCoverageMetrics readValue(DataInput in) throws IOException {
 		Boolean hasValue = in.readBoolean();
 		return hasValue ? TagCoverageMetrics.deserialize(in, numUserTags) : null;
-	}        
+	}
+	
+	@Override
+    protected TagCoverageMetrics add(TagCoverageMetrics a, TagCoverageMetrics b) {
+		a.add(b);
+		return a;
+	}
+
 }

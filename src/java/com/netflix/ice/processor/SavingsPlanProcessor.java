@@ -24,12 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
+import com.netflix.ice.tag.Tag;
 
 public class SavingsPlanProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -58,14 +60,12 @@ public class SavingsPlanProcessor {
 		
 		for (int i = 0; i < usageData.getNum(); i++) {
 			// For each hour of usage...
-		    Map<TagGroup, Double> usageMap = usageData.getData(i);
-		    Map<TagGroup, Double> costMap = costData.getData(i);
-
-			processHour(product, i, usageMap, costMap);
-		}
+			processHour(product, i, usageData, costData);
+		}		
 	}
 	
-	private void processHour(Product product, int hour, Map<TagGroup, Double> usageMap, Map<TagGroup, Double> costMap) {
+	private void processHour(Product product, int hour, ReadWriteData usageData, ReadWriteData costData) {
+	    Map<TagGroup, Double> usageMap = usageData.getData(hour);
 		Map<String, SavingsPlan> savingsPlans = data.getSavingsPlans();
 
 		List<TagGroupSP> spTagGroups = Lists.newArrayList();
@@ -84,17 +84,28 @@ public class SavingsPlanProcessor {
 	    		logger.error("No savings plan in the map at hour " + hour + " for tagGroup: " + bonusTg);
 	    		continue;
 	    	}
-	    	double cost = costMap.remove(bonusTg);
-	    	double usage = usageMap.remove(bonusTg);
+	    	double cost = costData.remove(hour, bonusTg);
+	    	double usage = usageData.remove(hour, bonusTg);
 	    	
+    		String accountId = sp.arn.getAccountId();
 	    	if (sp.paymentOption != PurchaseOption.NoUpfront) {
 	    		// Add amortization
-	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
-	    		add(costMap, tg, cost * sp.normalizedAmortization);
+	    		Operation amortOp = null;
+	    		if (accountId.equals(bonusTg.account.getId())) {
+	    			amortOp = Operation.getSavingsPlanAmortized(sp.paymentOption);
+	    		}
+	    		else {
+	    			amortOp = Operation.getSavingsPlanBorrowedAmortized(sp.paymentOption);
+	    			// Create Lent records for account that owns the savings plan
+	        		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLentAmortized(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
+	    	    	add(costData, hour, tg, cost * sp.normalizedAmortization);
+	    		}	    		
+	    		
+	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, amortOp, bonusTg.usageType, bonusTg.resourceGroup);
+	    		add(costData, hour, tg, cost * sp.normalizedAmortization);
 	    	}
 	    	
     		Operation op = null;
-    		String accountId = sp.arn.getAccountId();
     		if (accountId.equals(bonusTg.account.getId())) {
     			op = Operation.getSavingsPlanUsed(sp.paymentOption);
     		}
@@ -103,23 +114,54 @@ public class SavingsPlanProcessor {
     			
     			// Create Lent records for account that owns the savings plan
         		TagGroup tg = TagGroup.getTagGroup(accountService.getAccountById(accountId), bonusTg.region, bonusTg.zone, bonusTg.product, Operation.getSavingsPlanLent(sp.paymentOption), bonusTg.usageType, bonusTg.resourceGroup);
-        		add(usageMap, tg, usage);
+        		add(usageData, hour, tg, usage);
         		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
-    	    	add(costMap, tg, cost * sp.normalizedRecurring);
+    	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
     		}
     		
     		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, op, bonusTg.usageType, bonusTg.resourceGroup);
-    		add(usageMap, tg, usage);
+    		add(usageData, hour, tg, usage);
     		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
-	    	add(costMap, tg, cost * sp.normalizedRecurring);
+	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
 	    }
+	    
+	    // Scan the usage and cost maps to clean up any leftover entries with TagGroupSP
+	    cleanup(hour, usageData, "usage", savingsPlans);
+	    cleanup(hour, costData, "cost", savingsPlans);
 	}
 	
-	private void add(Map<TagGroup, Double> map, TagGroup tg, double value) {
-		Double amount = map.get(tg);
+	private void add(ReadWriteData data, int hour, TagGroup tg, double value) {
+		Double amount = data.get(hour, tg);
 		if (amount == null)
 			amount = 0.0;
 		amount += value;
-		map.put(tg, amount);
+		data.put(hour, tg, amount);
+	}
+	
+	private void cleanup(int hour, ReadWriteData data, String which, Map<String, SavingsPlan> savingsPlans) {
+	    List<TagGroupSP> spTagGroups = Lists.newArrayList();
+	    for (TagGroup tagGroup: data.getTagGroups(hour)) {
+	    	if (tagGroup instanceof TagGroupSP) {
+	    		spTagGroups.add((TagGroupSP) tagGroup);
+	    	}
+	    }
+	    
+	    Map<Tag, Integer> leftovers = Maps.newHashMap();
+	    for (TagGroupSP tg: spTagGroups) {
+	    	Integer i = leftovers.get(tg.operation);
+	    	i = 1 + ((i == null) ? 0 : i);
+	    	leftovers.put(tg.operation, i);
+	    	
+//	    	if (tg.operation.isBonus()) {
+//	    		logger.info("Bonus savings plan at hour " + hour + ": " + savingsPlans.get(tg.arn));
+//	    	}
+
+	    	Double v = data.remove(hour, tg);
+	    	TagGroup newTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
+	    	add(data, hour, newTg, v);
+	    }
+	    for (Tag t: leftovers.keySet()) {
+	    	logger.info("Found " + leftovers.get(t) + " unconverted " + which + " SP TagGroups on hour " + hour + " for operation " + t);
+	    }
 	}
 }

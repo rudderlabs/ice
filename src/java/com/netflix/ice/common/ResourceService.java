@@ -39,7 +39,7 @@ public abstract class ResourceService {
      */
     abstract public void init();
     
-    abstract public String[] getCustomTags();
+    abstract public List<String> getCustomTags();
     abstract public List<String> getUserTags();
 
     abstract public Map<String, Map<String, TagConfig>> getTagConfigs();
@@ -61,11 +61,9 @@ public abstract class ResourceService {
      * @param millisStart
      * @return
      */
-    public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart){
-        return ResourceGroup.getResourceGroup(product.name, true);
-    }
+    abstract public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart);
     
-    abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags);
+    abstract public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags, long millisStart);
 
     /**
      * Commit resource mappings. This method will be called at the end of billing file processing to commit your mappings.

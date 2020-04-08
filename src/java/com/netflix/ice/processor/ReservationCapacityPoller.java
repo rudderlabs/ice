@@ -584,7 +584,7 @@ public class ReservationCapacityPoller extends Poller {
             
             ResourceGroup resourceGroup = null;
             if (resourceService != null)
-            	resourceGroup = resourceService.getResourceGroup(account, product, reservedInstances.getTags());
+            	resourceGroup = resourceService.getResourceGroup(account, product, reservedInstances.getTags(), startTime);
             ReservationArn arn = ReservationArn.get(account, region, product, reservedInstances.getReservationId());
             TagGroupRI reservationKey = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(utilization), usageType, resourceGroup, arn);
             Reservation reservation = new Reservation( reservationKey, reservedInstances.getInstanceCount(), startTime, endTime, utilization, hourlyFixedPrice, usagePrice);

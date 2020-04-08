@@ -19,7 +19,6 @@ package com.netflix.ice.processor.kubernetes;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.joda.time.DateTime;
@@ -127,11 +126,10 @@ public class KubernetesProcessor {
 	protected void process(ReadWriteData costData) {
 		// Process each hour of data
 		for (int i = 0; i < costData.getNum(); i++) {
-			Map<TagGroup, Double> hourCostData = costData.getData(i);
 			// Get a copy of the key set since we'll be updating the map
-			Set<TagGroup> tagGroups = Sets.newHashSet(hourCostData.keySet());
+			Set<TagGroup> tagGroups = Sets.newHashSet(costData.getTagGroups(i));
 			for (TagGroup tg: tagGroups) {
-				if (tg.resourceGroup == null || tg.resourceGroup.isProductName())
+				if (tg.resourceGroup == null)
 					continue;
 				
 				UserTag[] ut = tg.resourceGroup.getUserTags();
@@ -143,7 +141,7 @@ public class KubernetesProcessor {
 							for (String clusterName: clusterNames) {
 								List<String[]> hourClusterData = report.getData(clusterName, i);
 								if (hourClusterData != null) {
-									processHourClusterData(hourCostData, tg, clusterName, report, hourClusterData);
+									processHourClusterData(costData, i, tg, clusterName, report, hourClusterData);
 								}
 							}
 						}
@@ -153,8 +151,8 @@ public class KubernetesProcessor {
 		}
 	}
 		
-	protected void processHourClusterData(Map<TagGroup, Double> hourCostData, TagGroup tg, String cluster, KubernetesReport report, List<String[]> hourClusterData) {		
-		Double totalCost = hourCostData.get(tg);
+	protected void processHourClusterData(ReadWriteData costData, int hour, TagGroup tg, String cluster, KubernetesReport report, List<String[]> hourClusterData) {		
+		Double totalCost = costData.get(hour, tg);
 		if (totalCost == null)
 			return;
 		
@@ -177,7 +175,7 @@ public class KubernetesProcessor {
 			
 			TagGroup allocated = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, ResourceGroup.getResourceGroup(userTags));
 			
-			hourCostData.put(allocated,  allocatedCost);
+			costData.put(hour, allocated,  allocatedCost);
 			
 			unusedCost -= allocatedCost;
 		}
@@ -186,8 +184,8 @@ public class KubernetesProcessor {
 		UserTag[] userTags = tg.resourceGroup.getUserTags().clone();
 		userTags[namespaceIndex] = UserTag.get("unused");
 		TagGroup unused = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, ResourceGroup.getResourceGroup(userTags));
-		hourCostData.remove(tg);
-		hourCostData.put(unused, unusedCost);
+		costData.remove(hour, tg);
+		costData.put(hour, unused, unusedCost);
 	}
 	
 	private double getAllocatedCost(TagGroup tg, double cost, KubernetesReport report, String[] item) {

@@ -44,9 +44,13 @@ import com.netflix.ice.common.ProductService;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.common.Config.TagCoverage;
+import com.netflix.ice.common.TagGroupRI;
+import com.netflix.ice.common.TagGroupSP;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.reader.InstanceMetrics;
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.ReservationArn;
 
@@ -220,209 +224,348 @@ public class CostAndUsageData {
     		tagCoverage.put(product, data);
     	}
     	
-    	Map<TagGroup, TagCoverageMetrics> hourData = data.getData(index);    	
-    	hourData.put(tagGroup, TagCoverageMetrics.add(hourData.get(tagGroup), userTagCoverage));
+    	data.put(index, tagGroup, TagCoverageMetrics.add(data.get(index, tagGroup), userTagCoverage));
+    }
+    
+    class Status {
+    	public boolean failed;
+    	public String filename;
+    	public Exception exception;
+    	
+    	Status(String filename, Exception exception) {
+    		this.failed = true;
+    		this.filename = filename;
+    		this.exception = exception;
+    	}
+    	
+    	Status(String filename) {
+    		this.failed = false;
+    		this.filename = filename;
+    		this.exception = null;
+    	}
+    	
+    	public String toString() {
+    		return filename + ", " + exception;
+    	}
     }
 
-    public void archive(DateTime startDate, boolean compress, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, PriceListService priceListService, int numThreads) throws Exception {
-    	// Make sure all SP and RI TagGroups have been aggregated back to regular TagGroups
-    	//verifyTagGroups();
+    // If archiveHourlyData is false, only archive hourly data used for reservations and savings plans
+    public void archive(DateTime startDate, List<JsonFileType> jsonFiles, InstanceMetrics instanceMetrics, 
+    		PriceListService priceListService, int numThreads, boolean archiveHourlyData) throws Exception {
+    	
+    	verifyTagGroups();
     	
     	ExecutorService pool = Executors.newFixedThreadPool(numThreads);
-    	List<Future<Void>> futures = Lists.newArrayList();
+    	List<Future<Status>> futures = Lists.newArrayList();
     	
     	for (JsonFileType jft: jsonFiles)
         	futures.add(archiveJson(jft, instanceMetrics, priceListService, pool));
     	
         for (Product product: costDataByProduct.keySet()) {
-        	futures.add(archiveTagGroups(startMilli, product, pool));
+        	futures.add(archiveTagGroups(startMilli, product, costDataByProduct.get(product).getTagGroups(), pool));
         }
 
-        archiveSummary(startDate, usageDataByProduct, "usage_", compress, pool, futures);
-        archiveSummary(startDate, costDataByProduct, "cost_", compress, pool, futures);
-        archiveSummaryTagCoverage(startDate, compress, pool, futures);
-
-        archiveHourly(usageDataByProduct, "usage_", compress, pool, futures);
-        archiveHourly(costDataByProduct, "cost_", compress, pool, futures);  
-        //archiveHourlyTagCoverage(compress);
-
+        archiveHourly(usageDataByProduct, "usage_", archiveHourlyData, pool, futures);
+        archiveHourly(costDataByProduct, "cost_", archiveHourlyData, pool, futures);  
     
+        archiveSummary(startDate, usageDataByProduct, "usage_", pool, futures);
+        archiveSummary(startDate, costDataByProduct, "cost_", pool, futures);
+        archiveSummaryTagCoverage(startDate, pool, futures);
+
 		// Wait for completion
-		for (Future<Void> f: futures) {
-			f.get();
+		for (Future<Status> f: futures) {
+			Status s = f.get();
+			if (s.failed) {
+				logger.error("Error archiving file: " + s);
+			}
 		}
     }
-
-/*
-    private void verifyTagGroups() throws Exception {
+    
+    private void verifyTagGroups() throws Exception {    	
         for (Product product: costDataByProduct.keySet()) {
-        	if (product == null || product.isEc2Instance() || product.isRdsInstance() || product.isRedshift() || product.isElastiCache() || product.isElasticsearch()) {
-        		// verify that all the tag groups are instances of TagGroup and not TagGroupArn
-                Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
-                for (TagGroup tg: tagGroups) {
-                	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
-                		throw new Exception("Non-baseclass tag group in archive cost data: " + tg);
-                }
-                tagGroups = usageDataByProduct.get(product).getTagGroups();
-                for (TagGroup tg: tagGroups) {
-                	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP)
-                		throw new Exception("Non-baseclass tag group in archive usage data: " + tg);
-                }
+        	boolean verify = product == null || product.isEc2Instance() || product.isRdsInstance() || product.isRedshift() || product.isElastiCache() || product.isElasticsearch();
+        	if (!verify)
+        		continue;
+        	
+            Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();            
+        	verifyTagGroupsForProduct(tagGroups);
+
+        	if (usageDataByProduct.get(product) != null) {
+	            tagGroups = usageDataByProduct.get(product).getTagGroups();
+	            verifyTagGroupsForProduct(tagGroups);
         	}
         }
     }
-*/    
-    private Future<Void> archiveJson(final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) throws Exception {
-    	return pool.submit(new Callable<Void>() {
+    
+    /**
+     * Make sure all SP and RI TagGroups have been aggregated back to regular TagGroups
+     * @param tagGroups
+     * @throws Exception
+     */
+    private void verifyTagGroupsForProduct(Collection<TagGroup> tagGroups) throws Exception {
+    	int count = 0;
+        for (TagGroup tg: tagGroups) {
+    		// verify that all the tag groups are instances of TagGroup and not TagGroupArn
+        	if (tg instanceof TagGroupRI || tg instanceof TagGroupSP) {
+        		count++;
+        		//throw new Exception("Non-baseclass tag group in archive cost data: " + tg);
+        	}
+        }
+        if (count > 0)
+        	logger.error("Non-baseclass tag groups in archive cost data. Found " + count + " TagGroupRI or TagGroupSP tagGroups");
+    }
+    
+    private Future<Status> archiveJson(final JsonFileType writeJsonFiles, final InstanceMetrics instanceMetrics, final PriceListService priceListService, ExecutorService pool) {
+    	return pool.submit(new Callable<Status>() {
     		@Override
-    		public Void call() throws Exception {
+    		public Status call() {
     	        logger.info("archiving " + writeJsonFiles.name() + " JSON data...");
-    	        
     	        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-    	        DataJsonWriter writer = new DataJsonWriter(writeJsonFiles.name() + "_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json",
-    	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService, workBucketConfig);
-    	        writer.archive();
-    	        return null;
+    	        String filename = writeJsonFiles.name() + "_all_" + AwsUtils.monthDateFormat.print(monthDateTime) + ".json";
+    	        try {
+	    	        DataJsonWriter writer = new DataJsonWriter(filename,
+	    	        		monthDateTime, userTags, writeJsonFiles, costDataByProduct, usageDataByProduct, instanceMetrics, priceListService, workBucketConfig);
+	    	        writer.archive();
+    	        }
+    	        catch (Exception e) {
+    				e.printStackTrace();
+    	        	return new Status(filename, e);
+    	        }
+    	        return new Status(filename);
     		}
     	});        
     }
     
-    private Future<Void> archiveTagGroups(final long startMilli, final Product product, ExecutorService pool) throws Exception {
-    	return pool.submit(new Callable<Void>() {
+    private Future<Status> archiveTagGroups(final long startMilli, final Product product, final Collection<TagGroup> tagGroups, ExecutorService pool) {
+    	return pool.submit(new Callable<Status>() {
     		@Override
-    		public Void call() throws Exception {
-                TagGroupWriter writer = new TagGroupWriter(product == null ? "all" : product.getServiceCode(), true, workBucketConfig, accountService, productService);
-                Collection<TagGroup> tagGroups = costDataByProduct.get(product).getTagGroups();
-                writer.archive(startMilli, tagGroups);
-    	        return null;
+    		public Status call() {
+    			String name = product == null ? "all" : product.getServiceCode();
+    			try {
+	                TagGroupWriter writer = new TagGroupWriter(name, true, workBucketConfig, accountService, productService);
+	                writer.archive(startMilli, tagGroups);
+    			}
+    			catch (Exception e) {
+    				logger.error("Failed to archive TagGroups: " + TagGroupWriter.DB_PREFIX + name + ", " + e);
+    				e.printStackTrace();
+    				return new Status(TagGroupWriter.DB_PREFIX + name, e);
+    			}
+    	        return new Status(TagGroupWriter.DB_PREFIX + name);
     		}
     	});        
     }
     
-    private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveHourly(Map<Product, ReadWriteData> dataMap, String prefix, boolean archiveHourlyData, ExecutorService pool, List<Future<Status>> futures) {
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
         for (Product product: dataMap.keySet()) {
+        	if (!archiveHourlyData && product != null)
+        		continue;
+        	
             String prodName = product == null ? "all" : product.getServiceCode();
             String name = prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime);
-            futures.add(archiveHourlyFile(name, dataMap.get(product), compress, pool));
+            futures.add(archiveHourlyFile(name, dataMap.get(product), archiveHourlyData, pool));
         }
     }
     
-    private Future<Void> archiveHourlyFile(final String name, final ReadWriteDataSerializer data, final boolean compress, ExecutorService pool) {
-    	return pool.submit(new Callable<Void>() {
+    public class RiSpTagGroupFilter implements TagGroupFilter {
+
+		@Override
+		public Collection<TagGroup> getTagGroups(Collection<TagGroup> tagGroups) {
+			List<TagGroup> filtered = Lists.newArrayList();
+			for (TagGroup tg: tagGroups) {
+				if (tg.operation instanceof Operation.ReservationOperation || tg.operation instanceof Operation.SavingsPlanOperation)
+					filtered.add(tg);
+			}
+			return filtered;
+		}
+    	
+    }
+    
+    private Future<Status> archiveHourlyFile(final String name, final ReadWriteDataSerializer data, final boolean archiveHourlyData, ExecutorService pool) {
+    	return pool.submit(new Callable<Status>() {
     		@Override
-    		public Void call() throws Exception {
-                DataWriter writer = new DataWriter(name, data, compress, false, workBucketConfig, accountService, productService);
-                writer.archive();
-                return null;
+    		public Status call() {
+    			try {
+	                DataWriter writer = getDataWriter(name, data, false);
+	                writer.archive(archiveHourlyData ? null : new RiSpTagGroupFilter());
+	                writer.delete(); // delete local copy to save disk space since we don't need it anymore
+    			}
+    			catch (Exception e) {
+    				e.printStackTrace();
+    				return new Status(name, e);
+    			}
+                return new Status(name);
     		}
     	});
     }
 
-//    private void archiveHourlyTagCoverage(boolean compress) throws Exception {
-//    	logger.info("archiving tag coverage data... ");
-//        DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
-//        for (Product product: tagCoverage.keySet()) {
-//            String prodName = product == null ? "all" : product.getFileName();
-//	        DataWriter writer = new DataWriter("coverage_hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime), tagCoverage.get(product), compress, false);
-//	        writer.archive();
-//        }
-//    }
-
-    private void addValue(List<Map<TagGroup, Double>> list, int index, TagGroup tagGroup, double v) {
+    protected void addValue(List<Map<TagGroup, Double>> list, int index, TagGroup tagGroup, double v) {
         Map<TagGroup, Double> map = ReadWriteData.getCreateData(list, index);
         Double existedV = map.get(tagGroup);
         map.put(tagGroup, existedV == null ? v : existedV + v);
     }
 
 
-    private void archiveSummary(DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveSummary(DateTime startDate, Map<Product, ReadWriteData> dataMap, String prefix,
+    		ExecutorService pool, List<Future<Status>> futures) {
 
         DateTime monthDateTime = new DateTime(startMilli, DateTimeZone.UTC);
 
+        // Queue the non-resource version first because it takes longer and we
+        // don't like to have it last with other threads idle.
+        ReadWriteData data = dataMap.get(null);
+        futures.add(archiveSummaryProductFuture(monthDateTime, startDate, "all", data, prefix, pool));
+                
         for (Product product: dataMap.keySet()) {
-            String prodName = product == null ? "all" : product.getServiceCode();
-            ReadWriteData data = dataMap.get(product);
-            
-            futures.add(archiveSummaryProduct(monthDateTime, startDate, prodName, data, prefix, compress, pool));
+        	if (product == null)
+        		continue;
+        	
+            data = dataMap.get(product);            
+            futures.add(archiveSummaryProductFuture(monthDateTime, startDate, product.getServiceCode(), data, prefix, pool));
         }
     }
     
-    private Future<Void> archiveSummaryProduct(final DateTime monthDateTime, final DateTime startDate, final String prodName, final ReadWriteData data, final String prefix, final boolean compress, ExecutorService pool) {
-    	return pool.submit(new Callable<Void>() {
+    protected void aggregateSummaryData(
+    		ReadWriteData data,
+    		Collection<TagGroup> tagGroups,
+    		int daysFromLastMonth,
+            List<Map<TagGroup, Double>> daily,
+            List<Map<TagGroup, Double>> weekly,
+            List<Map<TagGroup, Double>> monthly
+    		) {
+        // aggregate to daily, weekly and monthly
+        for (int hour = 0; hour < data.getNum(); hour++) {
+            // this month, add to weekly, monthly and daily
+            Map<TagGroup, Double> map = data.getData(hour);
+
+            for (TagGroup tagGroup: tagGroups) {
+                Double v = map.get(tagGroup);
+                if (v != null && v != 0) {
+                    addValue(monthly, 0, tagGroup, v);
+                    addValue(daily, hour/24, tagGroup, v);
+                    addValue(weekly, (hour + daysFromLastMonth*24) / 24/7, tagGroup, v);
+                }
+            }
+        }
+    }
+    
+    protected void getPartialWeek(
+    		ReadWriteData dailyData,
+    		int startDay,
+    		int numDays,
+    		int week,
+    		Collection<TagGroup> tagGroups,
+    		List<Map<TagGroup, Double>> weekly) {
+    	
+        for (int day = 0; day < numDays; day++) {
+            Map<TagGroup, Double> prevData = dailyData.getData(startDay + day);
+            for (TagGroup tagGroup: tagGroups) {
+                Double v = prevData.get(tagGroup);
+                if (v != null && v != 0) {
+                    addValue(weekly, week, tagGroup, v);
+                }
+            }
+        }
+    }
+    
+    protected DataWriter getDataWriter(String name, ReadWriteDataSerializer data, boolean load) throws Exception {
+        return new DataWriter(name, data, load, workBucketConfig, accountService, productService);
+    }
+    
+    protected void archiveSummaryProduct(DateTime monthDateTime, DateTime startDate, String prodName, ReadWriteData data, String prefix, Collection<TagGroup> tagGroups) throws Exception {
+        // init daily, weekly and monthly
+        List<Map<TagGroup, Double>> daily = Lists.newArrayList();
+        List<Map<TagGroup, Double>> weekly = Lists.newArrayList();
+        List<Map<TagGroup, Double>> monthly = Lists.newArrayList();
+
+        // get last month data so we can properly update weekly data for weeks that span two months
+        int year = monthDateTime.getYear();
+        ReadWriteData dailyData = null;
+        DataWriter writer = null;
+        int daysFromLastMonth = monthDateTime.getDayOfWeek() - 1; // Monday is first day of week == 1
+        
+        if (monthDateTime.isAfter(startDate)) {
+            int lastMonthYear = monthDateTime.minusMonths(1).getYear();
+            int lastMonthNumDays = monthDateTime.minusMonths(1).dayOfMonth().getMaximumValue();
+            int lastMonthDayOfYear = monthDateTime.minusMonths(1).getDayOfYear();
+            int startDay = lastMonthDayOfYear + lastMonthNumDays - daysFromLastMonth - 1;
+            
+            dailyData = new ReadWriteData();
+            writer = getDataWriter(prefix + "daily_" + prodName + "_" + lastMonthYear, dailyData, true);
+            getPartialWeek(dailyData, startDay, daysFromLastMonth, 0, tagGroups, weekly);
+            if (year != lastMonthYear) {
+            	writer.delete(); // don't need local copy of last month daily data any more
+            	writer = null;
+            	dailyData = null;
+            }
+        }
+        int daysInNextMonth = 7 - (monthDateTime.plusMonths(1).getDayOfWeek() - 1);
+        if (daysInNextMonth == 7)
+        	daysInNextMonth = 0;
+        
+        aggregateSummaryData(data, tagGroups, daysFromLastMonth, daily, weekly, monthly);
+        
+        if (daysInNextMonth > 0) {
+        	// See if we have data processed for the following month that needs to be added to the last week of this month
+        	if (monthDateTime.getMonthOfYear() < 12) {
+        		if (writer == null) {
+                    dailyData = new ReadWriteData();
+                    writer = getDataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, true);
+                    int monthDayOfYear = monthDateTime.plusMonths(1).getDayOfYear() - 1;
+                    if (dailyData.getNum() > monthDayOfYear)
+                    	getPartialWeek(dailyData, monthDayOfYear, daysInNextMonth, weekly.size() - 1, tagGroups, weekly);
+        		}
+        	}
+        	else {
+                ReadWriteData nextYearDailyData = new ReadWriteData();
+                DataWriter nextYearWriter = getDataWriter(prefix + "daily_" + prodName + "_" + (year + 1), nextYearDailyData, true);
+                if (nextYearDailyData.getNum() > 0)
+                	getPartialWeek(nextYearDailyData, 0, daysInNextMonth, weekly.size() - 1, tagGroups, weekly);
+                nextYearWriter.delete();
+        	}
+        }
+        
+        // archive daily
+        if (writer == null) {
+            dailyData = new ReadWriteData();
+            writer = getDataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, true);
+        }
+        dailyData.setData(daily, monthDateTime.getDayOfYear() -1);
+        writer.archive();
+
+        // archive monthly
+        ReadWriteData monthlyData = new ReadWriteData();
+        int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
+        writer = getDataWriter(prefix + "monthly_" + prodName, monthlyData, true);
+        monthlyData.setData(monthly, numMonths);            
+        writer.archive();
+
+        // archive weekly
+        DateTime weekStart = monthDateTime.withDayOfWeek(1);
+        int index;
+        if (!weekStart.isAfter(startDate))
+            index = 0;
+        else
+            index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
+        ReadWriteData weeklyData = new ReadWriteData();
+        writer = getDataWriter(prefix + "weekly_" + prodName, weeklyData, true);
+        weeklyData.setData(weekly, index);
+        writer.archive();
+    }
+    
+    private Future<Status> archiveSummaryProductFuture(final DateTime monthDateTime, final DateTime startDate, final String prodName,
+    		final ReadWriteData data, final String prefix, ExecutorService pool) {
+    	return pool.submit(new Callable<Status>() {
     		@Override
-    		public Void call() throws Exception {
-    		
-	            Collection<TagGroup> tagGroups = data.getTagGroups();
-	
-	            // init daily, weekly and monthly
-	            List<Map<TagGroup, Double>> daily = Lists.newArrayList();
-	            List<Map<TagGroup, Double>> weekly = Lists.newArrayList();
-	            List<Map<TagGroup, Double>> monthly = Lists.newArrayList();
-	
-	            // get last month data
-	            ReadWriteData lastMonthData = new ReadWriteData();
-	            DataWriter writer = new DataWriter(prefix + "hourly_" + prodName + "_" + AwsUtils.monthDateFormat.print(monthDateTime.minusMonths(1)), lastMonthData, compress, true, workBucketConfig, accountService, productService);
-	
-	            // aggregate to daily, weekly and monthly
-	            int dayOfWeek = monthDateTime.getDayOfWeek();
-	            int daysFromLastMonth = dayOfWeek - 1;
-	            int lastMonthNumHours = monthDateTime.minusMonths(1).dayOfMonth().getMaximumValue() * 24;
-	            for (int hour = 0 - daysFromLastMonth * 24; hour < data.getNum(); hour++) {
-	                if (hour < 0) {
-	                    // handle data from last month, add to weekly
-	                    Map<TagGroup, Double> prevData = lastMonthData.getData(lastMonthNumHours + hour);
-	                    for (TagGroup tagGroup: tagGroups) {
-	                        Double v = prevData.get(tagGroup);
-	                        if (v != null && v != 0) {
-	                            addValue(weekly, 0, tagGroup, v);
-	                        }
-	                    }
-	                }
-	                else {
-	                    // this month, add to weekly, monthly and daily
-	                    Map<TagGroup, Double> map = data.getData(hour);
-	
-	                    for (TagGroup tagGroup: tagGroups) {
-	                        Double v = map.get(tagGroup);
-	                        if (v != null && v != 0) {
-	                            addValue(monthly, 0, tagGroup, v);
-	                            addValue(daily, hour/24, tagGroup, v);
-	                            addValue(weekly, (hour + daysFromLastMonth*24) / 24/7, tagGroup, v);
-	                        }
-	                    }
-	                }
-	            }
-	            
-	            // delete the local hourly data from last month, we no longer need it
-	            writer.delete();
-	            
-	            // archive daily
-	            int year = monthDateTime.getYear();
-	            ReadWriteData dailyData = new ReadWriteData();
-	            writer = new DataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, compress, true, workBucketConfig, accountService, productService);
-	            dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
-	            writer.archive();
-	
-	            // archive monthly
-	            ReadWriteData monthlyData = new ReadWriteData();
-	            int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
-	            writer = new DataWriter(prefix + "monthly_" + prodName, monthlyData, compress, true, workBucketConfig, accountService, productService);
-	            monthlyData.setData(monthly, numMonths, false);            
-	            writer.archive();
-	
-	            // archive weekly
-	            DateTime weekStart = monthDateTime.withDayOfWeek(1);
-	            int index;
-	            if (!weekStart.isAfter(startDate))
-	                index = 0;
-	            else
-	                index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
-	            ReadWriteData weeklyData = new ReadWriteData();
-	            writer = new DataWriter(prefix + "weekly_" + prodName, weeklyData, compress, true, workBucketConfig, accountService, productService);
-	            weeklyData.setData(weekly, index, true);
-	            writer.archive();
-	            return null;
+    		public Status call() {
+    			try {
+    				archiveSummaryProduct(monthDateTime, startDate, prodName, data, prefix, data.getTagGroups());  
+    			}
+    			catch (Exception e) {
+    				e.printStackTrace();
+    				return new Status(prefix + "<interval>_" + prodName, e);
+    			}
+				return new Status(prefix + "<interval>_" + prodName);
     		}
         });
     }
@@ -440,7 +583,7 @@ public class CostAndUsageData {
     /**
      * Archive summary data for tag coverage. For tag coverage, we don't keep hourly data.
      */
-    private void archiveSummaryTagCoverage(DateTime startDate, boolean compress, ExecutorService pool, List<Future<Void>> futures) throws Exception {
+    private void archiveSummaryTagCoverage(DateTime startDate, ExecutorService pool, List<Future<Status>> futures) {
     	if (tagCoverage == null) {
     		return;
     	}
@@ -452,90 +595,96 @@ public class CostAndUsageData {
             String prodName = product == null ? "all" : product.getServiceCode();
             ReadWriteTagCoverageData data = tagCoverage.get(product);
             
-            futures.add(archiveSummaryTagCoverageProduct(monthDateTime, startDate, prodName, data, compress, pool));
+            futures.add(archiveSummaryTagCoverageProduct(monthDateTime, startDate, prodName, data, pool));
         }
         
     }
     
-    private Future<Void> archiveSummaryTagCoverageProduct(final DateTime monthDateTime, final DateTime startDate, final String prodName, final ReadWriteTagCoverageData data, final boolean compress, ExecutorService pool) {
-    	return pool.submit(new Callable<Void>() {
+    private Future<Status> archiveSummaryTagCoverageProduct(final DateTime monthDateTime, final DateTime startDate, final String prodName, 
+    		final ReadWriteTagCoverageData data, ExecutorService pool) {
+    	return pool.submit(new Callable<Status>() {
     		@Override
-    		public Void call() throws Exception {
-    	        int numUserTags = userTags == null ? 0 : userTags.size();
-                Collection<TagGroup> tagGroups = data.getTagGroups();
-
-                // init daily, weekly and monthly
-                List<Map<TagGroup, TagCoverageMetrics>> daily = Lists.newArrayList();
-                List<Map<TagGroup, TagCoverageMetrics>> weekly = Lists.newArrayList();
-                List<Map<TagGroup, TagCoverageMetrics>> monthly = Lists.newArrayList();
-
-                int dayOfWeek = monthDateTime.getDayOfWeek();
-                int daysFromLastMonth = dayOfWeek - 1;
-                DataWriter writer = null;
-                
-                if (daysFromLastMonth > 0) {
-                	// Get the daily data from last month so we can add it to the weekly data
-                	DateTime previousMonthStartDay = monthDateTime.minusDays(daysFromLastMonth);
-    	            int previousMonthYear = previousMonthStartDay.getYear();
-    	            
-    	            ReadWriteTagCoverageData previousDailyData = new ReadWriteTagCoverageData(numUserTags);
-    	            writer = new DataWriter("coverage_daily_" + prodName + "_" + previousMonthYear, previousDailyData, compress, true, workBucketConfig, accountService, productService);
-    	            
-    	            int day = previousMonthStartDay.getDayOfYear();
-    	            for (int i = 0; i < daysFromLastMonth; i++) {
-                        Map<TagGroup, TagCoverageMetrics> prevData = previousDailyData.getData(day);
-                        day++;
-                        for (TagGroup tagGroup: tagGroups) {
-                            TagCoverageMetrics v = prevData.get(tagGroup);
-                            if (v != null) {
-                            	addTagCoverageValue(weekly, 0, tagGroup, v);
-                            }
-                        }
-    	            }
-                }
-                
-                // aggregate to daily, weekly and monthly
-                for (int hour = 0; hour < data.getNum(); hour++) {
-                    // this month, add to weekly, monthly and daily
-                    Map<TagGroup, TagCoverageMetrics> map = data.getData(hour);
-
-                    for (TagGroup tagGroup: tagGroups) {
-                        TagCoverageMetrics v = map.get(tagGroup);
-                        if (v != null) {
-                        	addTagCoverageValue(monthly, 0, tagGroup, v);
-                        	addTagCoverageValue(daily, hour/24, tagGroup, v);
-                        	addTagCoverageValue(weekly, (hour + daysFromLastMonth*24) / 24/7, tagGroup, v);
-                        }
-                    }
-                }
-                
-                // archive daily
-                ReadWriteTagCoverageData dailyData = new ReadWriteTagCoverageData(numUserTags);
-                writer = new DataWriter("coverage_daily_" + prodName + "_" + monthDateTime.getYear(), dailyData, compress, true, workBucketConfig, accountService, productService);
-                dailyData.setData(daily, monthDateTime.getDayOfYear() -1, false);
-                writer.archive();
-
-                // archive monthly
-                ReadWriteTagCoverageData monthlyData = new ReadWriteTagCoverageData(numUserTags);
-                int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
-                writer = new DataWriter("coverage_monthly_" + prodName, monthlyData, compress, true, workBucketConfig, accountService, productService);
-                monthlyData.setData(monthly, numMonths, false);            
-                writer.archive();
-
-                // archive weekly
-                DateTime weekStart = monthDateTime.withDayOfWeek(1);
-                int index;
-                if (!weekStart.isAfter(startDate))
-                    index = 0;
-                else
-                    index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
-                ReadWriteTagCoverageData weeklyData = new ReadWriteTagCoverageData(numUserTags);
-                writer = new DataWriter("coverage_weekly_" + prodName, weeklyData, compress, true, workBucketConfig, accountService, productService);
-                weeklyData.setData(weekly, index, true);
-                writer.archive();
-                return null;
-            }
-    			
+    		public Status call() {
+    			try {
+	    	        int numUserTags = userTags == null ? 0 : userTags.size();
+	                Collection<TagGroup> tagGroups = data.getTagGroups();
+	
+	                // init daily, weekly and monthly
+	                List<Map<TagGroup, TagCoverageMetrics>> daily = Lists.newArrayList();
+	                List<Map<TagGroup, TagCoverageMetrics>> weekly = Lists.newArrayList();
+	                List<Map<TagGroup, TagCoverageMetrics>> monthly = Lists.newArrayList();
+	
+	                int dayOfWeek = monthDateTime.getDayOfWeek();
+	                int daysFromLastMonth = dayOfWeek - 1;
+	                DataWriter writer = null;
+	                
+	                if (daysFromLastMonth > 0) {
+	                	// Get the daily data from last month so we can add it to the weekly data
+	                	DateTime previousMonthStartDay = monthDateTime.minusDays(daysFromLastMonth);
+	    	            int previousMonthYear = previousMonthStartDay.getYear();
+	    	            
+	    	            ReadWriteTagCoverageData previousDailyData = new ReadWriteTagCoverageData(numUserTags);
+	    	            writer = getDataWriter("coverage_daily_" + prodName + "_" + previousMonthYear, previousDailyData, true);
+	    	            
+	    	            int day = previousMonthStartDay.getDayOfYear();
+	    	            for (int i = 0; i < daysFromLastMonth; i++) {
+	                        Map<TagGroup, TagCoverageMetrics> prevData = previousDailyData.getData(day);
+	                        day++;
+	                        for (TagGroup tagGroup: tagGroups) {
+	                            TagCoverageMetrics v = prevData.get(tagGroup);
+	                            if (v != null) {
+	                            	addTagCoverageValue(weekly, 0, tagGroup, v);
+	                            }
+	                        }
+	    	            }
+	                }
+	                
+	                // aggregate to daily, weekly and monthly
+	                for (int hour = 0; hour < data.getNum(); hour++) {
+	                    // this month, add to weekly, monthly and daily
+	                    Map<TagGroup, TagCoverageMetrics> map = data.getData(hour);
+	
+	                    for (TagGroup tagGroup: tagGroups) {
+	                        TagCoverageMetrics v = map.get(tagGroup);
+	                        if (v != null) {
+	                        	addTagCoverageValue(monthly, 0, tagGroup, v);
+	                        	addTagCoverageValue(daily, hour/24, tagGroup, v);
+	                        	addTagCoverageValue(weekly, (hour + daysFromLastMonth*24) / 24/7, tagGroup, v);
+	                        }
+	                    }
+	                }
+	                
+	                // archive daily
+	                ReadWriteTagCoverageData dailyData = new ReadWriteTagCoverageData(numUserTags);
+	                writer = getDataWriter("coverage_daily_" + prodName + "_" + monthDateTime.getYear(), dailyData, true);
+	                dailyData.setData(daily, monthDateTime.getDayOfYear() -1);
+	                writer.archive();
+	
+	                // archive monthly
+	                ReadWriteTagCoverageData monthlyData = new ReadWriteTagCoverageData(numUserTags);
+	                int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
+	                writer = getDataWriter("coverage_monthly_" + prodName, monthlyData, true);
+	                monthlyData.setData(monthly, numMonths);            
+	                writer.archive();
+	
+	                // archive weekly
+	                DateTime weekStart = monthDateTime.withDayOfWeek(1);
+	                int index;
+	                if (!weekStart.isAfter(startDate))
+	                    index = 0;
+	                else
+	                    index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
+	                ReadWriteTagCoverageData weeklyData = new ReadWriteTagCoverageData(numUserTags);
+	                writer = getDataWriter("coverage_weekly_" + prodName, weeklyData, true);
+	                weeklyData.setData(weekly, index);
+	                writer.archive();
+	            }
+	    		catch (Exception e) {
+    				e.printStackTrace();
+	        		return new Status("coverage_<interval>_" + prodName, e);
+	    		}
+	    		return new Status("coverage_<interval>_" + prodName);
+    		}
     	});
     }
 

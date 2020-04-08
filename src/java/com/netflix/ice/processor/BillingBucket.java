@@ -33,11 +33,12 @@ public class BillingBucket {
     public String accessRoleName;
     public String accessExternalId;
     public String rootName;
+    public String configBasename;
     
     public BillingBucket() {
     }
     
-    public BillingBucket(String s3BucketName, String s3BucketRegion, String s3BucketPrefix, String accountId, String accessRoleName, String accessExternalId, String rootName) {
+    public BillingBucket(String s3BucketName, String s3BucketRegion, String s3BucketPrefix, String accountId, String accessRoleName, String accessExternalId, String rootName, String configBasename) {
     	this.s3BucketName = s3BucketName;
     	this.s3BucketRegion = s3BucketRegion;
     	this.s3BucketPrefix = s3BucketPrefix;
@@ -45,6 +46,7 @@ public class BillingBucket {
     	this.accessRoleName = accessRoleName;
     	this.accessExternalId = accessExternalId;
     	this.rootName = rootName;
+    	this.configBasename = configBasename;
     }
     
     /**
@@ -73,5 +75,6 @@ public class BillingBucket {
     	this.accessRoleName = bb.accessRoleName;
     	this.accessExternalId = bb.accessExternalId;
     	this.rootName = bb.rootName;
+    	this.configBasename = bb.configBasename;
     }
 }

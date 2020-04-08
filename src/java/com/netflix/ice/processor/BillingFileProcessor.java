@@ -52,7 +52,6 @@ public class BillingFileProcessor extends Poller {
 
     private ProcessorConfig config;
     private WorkBucketConfig workBucketConfig;
-    private boolean compress;
     private Long startMilli;
     private Long endMilli;
     /**
@@ -68,10 +67,9 @@ public class BillingFileProcessor extends Poller {
     private MonthlyReportProcessor cauProcessor;
     
 
-    public BillingFileProcessor(ProcessorConfig config, boolean compress) throws Exception {
+    public BillingFileProcessor(ProcessorConfig config) throws Exception {
     	this.config = config;
     	this.workBucketConfig = config.workBucketConfig;
-    	this.compress = compress;
         
         dbrProcessor = new DetailedBillingReportProcessor(config);
         cauProcessor = new CostAndUsageReportProcessor(config);
@@ -79,9 +77,16 @@ public class BillingFileProcessor extends Poller {
 
     @Override
     protected void poll() throws Exception {
-        TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = dbrProcessor.getReportsToProcess();
-        reportsToProcess.putAll(cauProcessor.getReportsToProcess());
         boolean wroteConfig = false;
+        TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = null;
+        
+        if (config.startDate.isEqual(config.costAndUsageStartDate) || config.startDate.isAfter(config.costAndUsageStartDate))
+        	reportsToProcess = Maps.newTreeMap();
+        else
+        	reportsToProcess = dbrProcessor.getReportsToProcess();
+        
+        if (config.costAndUsageStartDate.isBefore(DateTime.now(DateTimeZone.UTC)))
+        	reportsToProcess.putAll(cauProcessor.getReportsToProcess());        
         
         for (DateTime dataTime: reportsToProcess.keySet()) {
             startMilli = endMilli = dataTime.getMillis();
@@ -183,7 +188,7 @@ public class BillingFileProcessor extends Poller {
             kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
             
             // Run the post processor
-            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService);
+            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService, config.resourceService);
             pp.process(costAndUsageData);
 
             if (hasTags && config.resourceService != null)
@@ -192,8 +197,8 @@ public class BillingFileProcessor extends Poller {
             logger.info("archive product list...");
             config.productService.archive(workBucketConfig.localDir, workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix);
 
-            logger.info("archiving results for " + dataTime + "...");
-            costAndUsageData.archive(config.startDate, compress, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads);
+            logger.info("archiving results for " + dataTime + (config.hourlyData ? " with" : " without") + " hourly data...");
+            costAndUsageData.archive(config.startDate, config.jsonFiles, config.priceListService.getInstanceMetrics(), config.priceListService, config.numthreads, config.hourlyData);
             
             logger.info("archiving instance data...");
             archiveInstances();
@@ -248,13 +253,13 @@ public class BillingFileProcessor extends Poller {
     			TagGroup savingsTag = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, ReservationOperation.spotInstanceSavings, tg.usageType, tg.resourceGroup);
     			for (int i = 0; i < usageData.getNum(); i++) {
     				// For each hour of usage...
-    				Double usage = usageData.getData(i).get(tg);
-    				Double cost = costData.getData(i).get(tg);
+    				Double usage = usageData.get(i, tg);
+    				Double cost = costData.get(i, tg);
     				if (usage != null && cost != null) {
     					double onDemandRate = ec2Prices.getOnDemandRate(tg.region, tg.usageType);
     					// Don't include the EDP discount on top of the spot savings
     					double edpRate = onDemandRate * (1 - edpDiscount);
-    					costData.getData(i).put(savingsTag, edpRate * usage - cost);
+    					costData.put(i, savingsTag, edpRate * usage - cost);
     				}
     			}
     		}

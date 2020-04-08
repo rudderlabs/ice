@@ -166,9 +166,8 @@ public class BillingFileProcessorTest {
 		            Properties properties,
 		            ProductService productService,
 		            ReservationService reservationService,
-		            PriceListService priceListService,
-		            boolean compress) throws Exception {
-				super(properties, null, productService, reservationService, priceListService, compress);
+		            PriceListService priceListService) throws Exception {
+				super(properties, null, productService, reservationService, priceListService);
 			}
 			
 			@Override
@@ -191,14 +190,13 @@ public class BillingFileProcessorTest {
 			}
 		}
 		
-		ResourceService resourceService = new BasicResourceService(productService, new String[]{}, new String[]{});
+		ResourceService resourceService = new BasicResourceService(productService, new String[]{}, new String[]{}, false);
 		
 		ProcessorConfig config = new TestProcessorConfig(
 										properties,
 										productService,
 										reservationService,
-										priceListService,
-										false);
+										priceListService);
 		Long startMilli = config.startDate.getMillis();
 		BillingFileProcessor bfp = ProcessorConfig.billingFileProcessor;
 		bfp.init(startMilli);

@@ -21,16 +21,17 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 
 import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 public class DataWriter extends DataFile {
-    private ReadWriteDataSerializer data;
+    protected ReadWriteDataSerializer data;
 
-    DataWriter(String name, ReadWriteDataSerializer data, boolean compress, boolean load, WorkBucketConfig workBucketConfig,
+    DataWriter(String name, ReadWriteDataSerializer data, boolean load, WorkBucketConfig workBucketConfig,
     		AccountService accountService, ProductService productService) throws Exception {
-    	super(name, compress, workBucketConfig);
+    	super(name, workBucketConfig);
         this.data = data;
 
         if (!load)
@@ -40,8 +41,7 @@ public class DataWriter extends DataFile {
 
         if (file.exists()) {
         	InputStream is = new FileInputStream(file);
-        	if (compress)
-        		is = new GZIPInputStream(is);
+        	is = new GZIPInputStream(is);
             DataInputStream in = new DataInputStream(is);
             try {
                 data.deserialize(accountService, productService, in);		
@@ -56,10 +56,10 @@ public class DataWriter extends DataFile {
     }
     
 	@Override
-	protected void write() throws IOException {
+	protected void write(TagGroupFilter filter) throws IOException {
     	DataOutputStream out = new DataOutputStream(os);
         try {
-        	data.serialize(out);
+        	data.serialize(out, filter);
     		out.flush();
         }
         finally {

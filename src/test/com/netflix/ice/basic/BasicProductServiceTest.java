@@ -19,8 +19,10 @@ package com.netflix.ice.basic;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import org.junit.Test;
-
 import com.netflix.ice.common.ProductService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Product.Source;
@@ -31,19 +33,16 @@ public class BasicProductServiceTest {
 	public void testGetProduct() {
 		BasicProductService ps = new BasicProductService();
 		Product product1 = ps.getProduct("AWS ProductA", "AWSProductA");
-		assertEquals("Wrong product name", "ProductA", product1.name);
+		assertEquals("Wrong product name", "ProductA", product1.getIceName());
 		
 		// get product again and make sure it's the same
 		assertEquals("Didn't get the same product the second time", product1, ps.getProduct("AWS ProductA", "AWSProductA"));
 		
 		Product product2 = ps.getProduct("Amazon ProductA", "AmazonProductA");
-		assertEquals("Wrong product name", "ProductA", product2.name);
+		assertEquals("Wrong product name", "ProductA", product2.getIceName());
 		
 		// get product again and make sure it's the same
 		assertEquals("Didn't get the same product the second time", product2, ps.getProduct("Amazon ProductA", "AmazonProductA"));
-		
-		// Should automatically match AWS and Amazon prefixes
-		assertEquals("Both product strings should refer to the same object", product1, product2);
 		
 		Product ec2 = ps.getProduct("Amazon Elastic Compute Cloud", "AmazonEC2");
 		assertTrue("isEC2 returned wrong state", ec2.isEc2());
@@ -59,8 +58,8 @@ public class BasicProductServiceTest {
 	@Test
 	public void testGetProductByName() {
 		ProductService ps = new BasicProductService();
-		Product product1 = ps.getProductByServiceName("Product1");
-		assertTrue("Wrong product name, expected Product, got " + product1.name, product1.name.equals("Product1"));
+		Product product1 = ps.getProductByServiceName("Amazon Product1");
+		assertEquals("Wrong product name", "Product1", product1.getIceName());
 		
 		Product product2 = ps.getProduct("Amazon Product1", "AmazonProduct1");		
 		assertEquals("Both product strings should refer to the same object", product1, product2);
@@ -82,6 +81,33 @@ public class BasicProductServiceTest {
 		BasicProductService ps = new BasicProductService();
 		Product rds = ps.addProduct(new Product("Amazon Relational Database Service", "AmazonRDS", Source.pricing));
 		Product rdsEmptyName = ps.getProduct("", "AmazonRDS");
-		assertEquals("Changed product name to empty string", rds.name, rdsEmptyName.name);
+		assertEquals("Changed product name to empty string", rds.getIceName(), rdsEmptyName.getIceName());
+	}
+	
+	@Test
+	public void testReadCsv() throws IOException {
+		BasicProductService ps = new BasicProductService();
+		
+		String[] csv = new String[] {
+				"Name,ServiceName,ServiceCode,Source",
+				 "S3,Amazon Simple Storage Service,AmazonS3,pricing",
+				 "8icvdraalzbfrdevgamoddblf,8icvdraalzbfrdevgamoddblf,8icvdraalzbfrdevgamoddblf,cur",
+		};
+		
+        Reader reader = new StringReader(String.join("\n", csv));
+        ps.readCsv(reader);
+		assertEquals("wrong number of products", 2, ps.getProducts().size());
+		assertEquals("wrong service code for product", "8icvdraalzbfrdevgamoddblf", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getServiceCode());
+		assertEquals("wrong service name for product", "8icvdraalzbfrdevgamoddblf", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getServiceName());
+		assertEquals("wrong ice name for product", "8icvdraalzbfrdevgamoddblf", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getIceName());
+		
+		csv[2] = "OpenVPN Access Server,OpenVPN Access Server (10 Connected Devices),8icvdraalzbfrdevgamoddblf,cur";
+		
+        reader = new StringReader(String.join("\n", csv));
+		ps.readCsv(reader);
+		
+		assertEquals("wrong service code for updated product", "8icvdraalzbfrdevgamoddblf", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getServiceCode());
+		assertEquals("wrong service name for updated product", "OpenVPN Access Server (10 Connected Devices)", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getServiceName());
+		assertEquals("wrong ice name for updated product", "OpenVPN Access Server", ps.getProductByServiceCode("8icvdraalzbfrdevgamoddblf").getIceName());
 	}
 }

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 
 public abstract class DataFile {
     private final static Logger logger = LoggerFactory.getLogger(DataWriter.class);
@@ -37,18 +38,16 @@ public abstract class DataFile {
     protected final WorkBucketConfig config;
     protected final String dbName;
     protected final File file;
-    protected final boolean compress;
     
     protected OutputStream os;
 
-    DataFile(String name, boolean compress, WorkBucketConfig config) throws Exception {
-    	this.compress = compress;
+    DataFile(String name, WorkBucketConfig config) throws Exception {
     	this.config = config;
         dbName = name;
         os = null;
         
-        String filename = dbName + (compress ? compressExtension : "");
-        file = new File(config.localDir, filename);
+        String filename = dbName + compressExtension;
+        file = config == null ? new File(filename) : new File(config.localDir, filename);
     }
     
     // For unit testing
@@ -56,13 +55,11 @@ public abstract class DataFile {
     	config = null;
     	dbName = null;
     	file = null;
-    	compress = true;
     }
     
     public void open() throws IOException {
     	os = new FileOutputStream(file);
-    	if (compress)
-    		os = new GZIPOutputStream(os);
+    	os = new GZIPOutputStream(os);
     }
     
     public void close() throws IOException {
@@ -74,8 +71,12 @@ public abstract class DataFile {
     }
     
     void archive() throws IOException {
+    	archive(null);
+    }
+    
+    void archive(TagGroupFilter filter) throws IOException {
     	open();
-    	write();
+    	write(filter);
     	close();
     }
     
@@ -83,5 +84,5 @@ public abstract class DataFile {
     	file.delete();
     }
 
-    abstract protected void write() throws IOException;
+    abstract protected void write(TagGroupFilter filter) throws IOException;
 }

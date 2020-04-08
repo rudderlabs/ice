@@ -20,13 +20,19 @@ package com.netflix.ice.processor;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Collection;
 
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public interface ReadWriteDataSerializer {
-    public void serialize(DataOutput out) throws IOException;
+    public interface TagGroupFilter {
+    	public Collection<TagGroup> getTagGroups(Collection<TagGroup> tagGroups);
+    }
+    
+    public void serialize(DataOutput out, TagGroupFilter filter) throws IOException;
 
     public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone;
 }

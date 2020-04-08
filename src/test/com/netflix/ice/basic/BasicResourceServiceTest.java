@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -56,6 +58,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"Prod", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -69,7 +72,7 @@ public class BasicResourceServiceTest {
 				"Environment", "Product", "CostCenter"
 			};
 		BasicAccountService as = new BasicAccountService();
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.initHeader(li.getResourceTagsHeader(), "123456789012");
 		Map<String, String> defaultTags = Maps.newHashMap();
 		defaultTags.put("CostCenter", "1234");
@@ -85,7 +88,7 @@ public class BasicResourceServiceTest {
 		String[] customTags = new String[]{
 				"Environment", "Product"
 			};
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		List<String> userTags = rs.getUserTags();
 		assertEquals("userTags list length is incorrect", 2, userTags.size());
 	}
@@ -112,7 +115,7 @@ public class BasicResourceServiceTest {
 		tagValues.put("QA", Lists.newArrayList("test", "quality assurance"));
 		TagConfig tc = new TagConfig("Environment", null, tagValues);
 		
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		List<TagConfig> configs = Lists.newArrayList();
 		configs.add(tc);
 		rs.setTagConfigs("234567890123", configs);
@@ -175,6 +178,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -188,13 +192,64 @@ public class BasicResourceServiceTest {
 		Map<String, String> defaultTags = Maps.newHashMap();
 		defaultTags.put("Environment", "Prod");
 		
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.putDefaultTags("12345", defaultTags);
 		rs.initHeader(li.getResourceTagsHeader(), "12345");		
 		
-		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		ResourceGroup resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		UserTag[] userTags = resourceGroup.getUserTags();
-		assertEquals("default resource group not set", userTags[0].name, "Prod");
+		assertEquals("default resource group not set", "Prod", userTags[0].name);
+		
+		//
+		// Test multiple default tags with effective dates
+		//
+		// First set the effective date for a new value
+		defaultTags.put("Environment", "Prod/2020-02=Dev");
+		rs.putDefaultTags("12345", defaultTags);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Prod", userTags[0].name);
+		
+		// Now check after the effective date of the second value
+		item[2] = "2020-02-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Dev", userTags[0].name);
+		
+		// Make sure out-of-time-ordered effective dates don't break things
+		defaultTags.put("Environment", "Prod/2020-02=Dev/2018=QA/2018-02=Test");
+		rs.putDefaultTags("12345", defaultTags);
+		
+		item[2] = "2018-01-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "QA", userTags[0].name);
+		
+		item[2] = "2019-01-01T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "Test", userTags[0].name);
+		
+		// Check that we can stop setting values with a trailing '='
+		defaultTags.put("Environment", "Prod/2020-02=/2018=QA/2018-02=Test");
+		rs.putDefaultTags("12345", defaultTags);
+		item[2] = "2020-02-21T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "", userTags[0].name);
+		
+		// Check that we ignore a trailing '/'
+		defaultTags.put("Environment", "Prod/2020-02=/2018=QA/2018-02=Test/");
+		rs.putDefaultTags("12345", defaultTags);
+		item[2] = "2020-02-21T00:00:00Z";
+		li.setItems(item);
+		resourceGroup = rs.getResourceGroup(new Account("12345", "AccountTagTest", null), null, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		userTags = resourceGroup.getUserTags();
+		assertEquals("default resource group not set correctly", "", userTags[0].name);		
 	}
 	
 	@Test
@@ -255,7 +310,7 @@ public class BasicResourceServiceTest {
 				return "123456789012";
 			}
 		}
-		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, customTags, new String[]{}, false);
 		rs.initHeader(new String[]{ "user:Email", "user:Department", "user:Environment" }, "1234");
 		LineItem lineItem = new TestLineItem(new String[]{ "joe@company.com", "1234", "" });
 		boolean[] coverage = rs.getUserTagCoverage(lineItem);
@@ -287,7 +342,7 @@ public class BasicResourceServiceTest {
 		
 		BasicAccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
-		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{});
+		ResourceService rs = new BasicResourceService(ps, new String[]{"Env", "Product"}, new String[]{}, false);
 		rs.setTagConfigs("123456789012", tagConfigs);
 		
 		Map<String, String> defaultTags = Maps.newHashMap();
@@ -299,6 +354,7 @@ public class BasicResourceServiceTest {
 		String[] item = {
 				"123456789012", // PayerAccountId
 				"DiscountedUsage", // LineItemType
+				"2020-01-01T00:00:00Z", // Usage start date
 				"foobar@example.com", // resourceTags/user:Email
 				"", // resourceTags/user:Environment
 				"", // resourceTags/user:environment
@@ -309,20 +365,20 @@ public class BasicResourceServiceTest {
 		
 		// Test with mapped value
 		li.setItems(item);
-		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test with value on resource
-		item[3] = "test";
+		item[4] = "test";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "test" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test without mapped value or resource tag - should use account default
-		item[3] = "";
-		item[5] = "";
+		item[4] = "";
+		item[6] = "";
 		li.setItems(item);
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "", resource.name);
 		
 		// Test include filtering
@@ -332,13 +388,13 @@ public class BasicResourceServiceTest {
 		tc = mapper.readValue(yamlWithFilters, tc.getClass());
 		tagConfigs = Lists.newArrayList(tc);
 		rs.setTagConfigs("123456789012", tagConfigs);
-		item[5] = "serviceAPI";
+		item[6] = "serviceAPI";
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
 		// Test exclude filtering
@@ -350,10 +406,34 @@ public class BasicResourceServiceTest {
 		rs.setTagConfigs("123456789012", tagConfigs);
 		li.setItems(item);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI", resource.name);
 		
-		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
+		resource = rs.getResourceGroup(as.getAccountByName("234567890123"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
 		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		// Test start date
+		String yamlWithStart = yaml + 
+				"  - start: 2020-02\n" +
+				"    maps:\n" +
+				"      QA2:\n" +
+				"        Product: [serviceAPI]\n" +
+				"      2345678:\n" +
+				"        Product: [webServer]\n";
+
+		tc = new TagConfig();
+		tc = mapper.readValue(yamlWithStart, tc.getClass());
+		tagConfigs = Lists.newArrayList(tc);
+		rs.setTagConfigs("123456789012", tagConfigs);
+		li.setItems(item);
+		
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		assertEquals("Resource name doesn't match", "QA" + ResourceGroup.separator + "serviceAPI", resource.name);
+		
+		item[2] = "2020-02-01T00:00:00Z";
+		li.setItems(item);
+
+		resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, new DateTime(item[2], DateTimeZone.UTC).getMillis());
+		assertEquals("Resource name doesn't match", "QA2" + ResourceGroup.separator + "serviceAPI", resource.name);		
 	}
 }

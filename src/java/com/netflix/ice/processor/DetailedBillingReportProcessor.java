@@ -190,7 +190,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
                 String[] items = reader.getValues();
                 try {
                 	lineItem.setItems(items);
-                    processOneLine(delayedItems, root, lineItem, costAndUsageData, instances);
+                    processOneLine(fileName, delayedItems, root, lineItem, costAndUsageData, instances);
                     String accountID = lineItem.getAccountId();
                     if (!accountID.isEmpty()) {
                         reservationProcessor.addBorrower(config.accountService.getAccountById(accountID));
@@ -223,13 +223,13 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 
         for (String[] items: delayedItems) {
         	lineItem.setItems(items);
-            processOneLine(null, root, lineItem, costAndUsageData, instances);
+            processOneLine(fileName, null, root, lineItem, costAndUsageData, instances);
         }
     }
 
-    private void processOneLine(List<String[]> delayedItems, String root, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
+    private void processOneLine(String fileName, List<String[]> delayedItems, String root, LineItem lineItem, CostAndUsageData costAndUsageData, Instances instances) {
 
-        LineItemProcessor.Result result = lineItemProcessor.process(delayedItems == null, root, lineItem, costAndUsageData, instances, 0.0);
+        LineItemProcessor.Result result = lineItemProcessor.process(fileName, delayedItems == null, root, lineItem, costAndUsageData, instances, 0.0);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());
@@ -266,7 +266,7 @@ public class DetailedBillingReportProcessor implements MonthlyReportProcessor {
 		 * Constructor used for testing only
 		 */
 		BillingFile(S3ObjectSummary s3ObjectSummary, MonthlyReportProcessor processor) {
-			super(s3ObjectSummary, new BillingBucket(null, null, null, null, null, null, ""), processor);
+			super(s3ObjectSummary, new BillingBucket(null, null, null, null, null, null, "", ""), processor);
 		}
 		
 		@Override

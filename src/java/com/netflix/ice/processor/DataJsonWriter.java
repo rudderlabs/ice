@@ -42,6 +42,7 @@ import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.PurchaseOption;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.ProcessorConfig.JsonFileType;
+import com.netflix.ice.processor.ReadWriteDataSerializer.TagGroupFilter;
 import com.netflix.ice.processor.pricelist.InstancePrices;
 import com.netflix.ice.processor.pricelist.InstancePrices.OfferingClass;
 import com.netflix.ice.processor.pricelist.InstancePrices.RateKey;
@@ -73,7 +74,7 @@ public class DataJsonWriter extends DataFile {
 			Map<Product, ReadWriteData> usageDataByProduct,
 			InstanceMetrics instanceMetrics, PriceListService priceListService, WorkBucketConfig workBucketConfig)
 			throws Exception {
-		super(name, true, workBucketConfig);
+		super(name, workBucketConfig);
 		this.monthDateTime = monthDateTime;
 		this.tagNames = tagNames;
 		this.fileType = fileType;
@@ -111,7 +112,7 @@ public class DataJsonWriter extends DataFile {
 
 
 	@Override
-	protected void write() throws IOException {
+	protected void write(TagGroupFilter filter) throws IOException {
         for (Product product: costDataByProduct.keySet()) {
         	// Skip the "null" product map that doesn't have resource tags
         	if (product == null)
@@ -132,7 +133,7 @@ public class DataJsonWriter extends DataFile {
             if (costMap.size() == 0)
             	continue;
             
-            Map<TagGroup, Double> usageMap = usage.getData(i);
+            Map<TagGroup, Double> usageMap = usage == null ? null : usage.getData(i);
             for (Entry<TagGroup, Double> costEntry: costMap.entrySet()) {
             	TagGroup tg = costEntry.getKey();
             	boolean rates = false;
@@ -162,13 +163,13 @@ public class DataJsonWriter extends DataFile {
         // Aggregate
         for (int hour = 0; hour < cost.getNum(); hour++) {
             Map<TagGroup, Double> costMap = cost.getData(hour);
-            Map<TagGroup, Double> usageMap = usage.getData(hour);
+            Map<TagGroup, Double> usageMap = usage == null ? null : usage.getData(hour);
 
             for (TagGroup tagGroup: tagGroups) {
                 Double v = costMap.get(tagGroup);
                 if (v != null && v != 0)
                     addValue(dailyCost, hour/24, tagGroup, v);
-                v = usageMap.get(tagGroup);
+                v = usageMap == null ? null : usageMap.get(tagGroup);
                 if (v != null && v != 0)
                     addValue(dailyUsage, hour/24, tagGroup, v);
             }
@@ -199,9 +200,6 @@ public class DataJsonWriter extends DataFile {
 	
 	public class ResourceGroupSerializer implements JsonSerializer<ResourceGroup> {
 		public JsonElement serialize(ResourceGroup rg, Type typeOfSrc, JsonSerializationContext context) {
-			if (rg.isProductName())
-				return null;
-			
 			JsonObject tags = new JsonObject();
 			
 			UserTag[] userTags = rg.getUserTags();
@@ -302,7 +300,7 @@ public class DataJsonWriter extends DataFile {
 			account = tg.account.getIceName();
 			region = tg.region.name;
 			zone = tg.zone == null ? null : tg.zone.name;
-			product = tg.product.name;
+			product = tg.product.getIceName();
 			operation = tg.operation.name;
 			usageType = tg.usageType.name;
 			tags = tg.resourceGroup;

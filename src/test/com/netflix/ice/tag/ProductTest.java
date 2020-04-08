@@ -34,12 +34,12 @@ public class ProductTest {
 	@Test
 	public void testConstructor() {
 		Product product = new Product("Amazon Elastic MapReduce", "ElasticMapReduce", Source.pricing);
-		assertEquals("Wrong product name", "Elastic MapReduce", product.name);
+		assertEquals("Wrong product name", "Elastic MapReduce", product.getIceName());
 		assertEquals("Wrong service name", "Amazon Elastic MapReduce", product.getServiceName());
 		assertEquals("Wrong service code", "ElasticMapReduce", product.getServiceCode());
 
 		product = new Product("AWS CloudTrail", "AWSCloudTrail", Source.pricing);
-		assertEquals("Wrong product name", "CloudTrail",  product.name);		
+		assertEquals("Wrong product name", "CloudTrail",  product.getIceName());		
 		assertEquals("Wrong service name", "AWS CloudTrail", product.getServiceName());
 		assertEquals("Wrong service code", "AWSCloudTrail", product.getServiceCode());
 	}
@@ -56,7 +56,7 @@ public class ProductTest {
 	@Test
 	public void testOverrideFromCanonicalName() {
 		Product product = new Product(Product.getOverride("Product"), "Code", Source.pricing);
-		assertEquals("Wrong product name", "Product (P)", product.name);
+		assertEquals("Wrong product name", "Product (P)", product.getIceName());
 		
 		String alt = Product.getOverride("Product");
 		assertEquals("Wrong product name from getOverride()", "Product (P)", alt);
@@ -68,7 +68,7 @@ public class ProductTest {
 	@Test
 	public void testAlternateFromAlternateName() {
 		Product product = new Product(Product.getOverride("Product (P)"), "Code", Source.pricing);
-		assertEquals("Wrong product name", "Product (P)", product.name);
+		assertEquals("Wrong product name", "Product (P)", product.getIceName());
 		
 		String alt = Product.getOverride("Product");
 		assertEquals("Wrong product name from getOverride()", "Product (P)", alt);

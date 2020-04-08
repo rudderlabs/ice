@@ -69,11 +69,11 @@ public class KubernetesProcessorTest {
 				AWSCredentialsProvider credentialsProvider,
 				ProductService productService,
 				ReservationService reservationService,
-				PriceListService priceListService, boolean compress, String[] formulae)
+				PriceListService priceListService, String[] formulae)
 				throws Exception {
 			super(properties, credentialsProvider, productService,
 					reservationService,
-					priceListService, compress);
+					priceListService);
 			
 			initKubernetesConfigs(formulae);
 		}
@@ -172,8 +172,7 @@ public class KubernetesProcessorTest {
 	            credentialsProvider,
 	            productService,
 	            reservationService,
-	            null,
-	            true, formulae);
+	            null, formulae);
 		
 		return new TestKubernetesProcessor(config, null);
 	}
@@ -203,27 +202,28 @@ public class KubernetesProcessorTest {
 		String clusterName = "dev-usw2a";
 		
 		TagGroup tg = getTagGroup(clusterName);
-		Map<TagGroup, Double> hourCostData = Maps.newHashMap();
-		hourCostData.put(tg, 40.0);
+		ReadWriteData costData = new ReadWriteData();
+		costData.put(0, tg, 40.0);
 		
 		List<String[]> hourClusterData = tkr.getData(clusterName, testDataHour);
-		kp.processHourClusterData(hourCostData, tg, clusterName, tkr, hourClusterData);
+		kp.processHourClusterData(costData, 0, tg, clusterName, tkr, hourClusterData);
 		
 		String[] atags = new String[]{ clusterName, "compute", "kube-system", "Dev", };
 		ResourceGroup arg = ResourceGroup.getResourceGroup(atags);
 		TagGroup atg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, arg);
 		
-		Double allocatedCost = hourCostData.get(atg);
+		Double allocatedCost = costData.get(0, atg);
 		assertNotNull("No allocated cost for kube-system namespace", allocatedCost);
 		assertEquals("Incorrect allocated cost", 0.4133, allocatedCost, 0.0001);
 		String[] unusedTags = new String[]{ clusterName, "compute", "unused", "Dev", };
 		TagGroup unusedTg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, ResourceGroup.getResourceGroup(unusedTags));
-		double unusedCost = hourCostData.get(unusedTg);
+		double unusedCost = costData.get(0, unusedTg);
 		assertEquals("Incorrect unused cost", 21.1983, unusedCost, 0.0001);
 		
 		// Add up all the cost values to see if we get back to 40.0
 		double total = 0.0;
-		for (double v: hourCostData.values())
+		Map<TagGroup, Double> hourZeroCostData = costData.getData(0);
+		for (double v: hourZeroCostData.values())
 			total += v;
 		assertEquals("Incorrect total cost when adding unused and allocated values", 40.0, total, 0.001);		
 	}
@@ -250,7 +250,7 @@ public class KubernetesProcessorTest {
 		
 		for (int i = 0; i < clusterTags.length; i++) {
 			tgs[i] = getTagGroup(clusterTags[i]);
-			hourCostData.put(tgs[i], 40.0);
+			costData.put(testDataHour, tgs[i], 40.0);
 		}
 						
 		kp.process(costData);

@@ -64,7 +64,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(long startMilli, String root, LineItem lineItem) {
+    protected boolean ignore(String fileName, long startMilli, String root, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -88,11 +88,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		// All other cases are ignored here.
 	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
 	        if (lineItem.getStartMillis() >= nextMonthStartMillis) {
-	        	logger.error("line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
 	        if (lineItem.getEndMillis() > nextMonthStartMillis) {
-	        	logger.error("line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
     	}
@@ -119,13 +119,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return region == null ? Region.US_EAST_1 : region;
     }
     
-    protected Zone getZone(Region region, LineItem lineItem) {
+    protected Zone getZone(String fileName, Region region, LineItem lineItem) {
     	String zoneStr = lineItem.getZone();
     	if (zoneStr.isEmpty() || region.name.equals(zoneStr))
     		return null;
     	
     	if (!zoneStr.startsWith(region.name)) {
-			logger.warn("LineItem with mismatched regions: Product=" + lineItem.getProduct() + ", UsageType=" + lineItem.getUsageType() + ", AvailabilityZone=" + lineItem.getZone() + ", Region=" + region + ", Description=" + lineItem.getDescription());
+			logger.warn(fileName + " LineItem with mismatched regions: Product=" + lineItem.getProduct() + ", UsageType=" + lineItem.getUsageType() + ", AvailabilityZone=" + lineItem.getZone() + ", Region=" + region + ", Description=" + lineItem.getDescription());
     		return null;
     	}
     	
@@ -133,7 +133,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 		try {
 			zone = region.getZone(zoneStr);
 		} catch (BadZone e) {
-			logger.error("Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
+			logger.error(fileName + " Error getting zone " + lineItem.getZone() + " in region " + region + ": " + e.getMessage() + ", " + lineItem.toString());
 			return null;
 		}     
 		return zone;
@@ -150,6 +150,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     }
     
     public Result process(
+    		String fileName,
     		boolean processDelayed,
     		String root,
     		LineItem lineItem,
@@ -158,13 +159,13 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		double edpDiscount) {
     	
     	long startMilli = costAndUsageData.getStartMilli();
-    	if (ignore(startMilli, root, lineItem))
+    	if (ignore(fileName, startMilli, root, lineItem))
     		return Result.ignore;
     	
 
         Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         Region region = getRegion(lineItem);
-        Zone zone = getZone(region, lineItem);
+        Zone zone = getZone(fileName, region, lineItem);
 
         long millisStart = lineItem.getStartMillis();
         long millisEnd = lineItem.getEndMillis();
@@ -182,7 +183,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         else if (origProduct.isSupport()) {
         	// Put the whole fee in the first hour
         	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
-        	logger.info("Support: " + lineItem);
+        	logger.info(fileName + " Support: " + lineItem);
         }
         
         PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(millisStart);
@@ -225,7 +226,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        	if (processDelayed) {
 	                // Grab the unused rates for the reservation processor.
 	            	TagGroupRI tgri = TagGroupRI.get(account, region, zone, product, Operation.getReservedInstances(((Operation.ReservationOperation) operation).getPurchaseOption()), usageType, resourceGroup, reservationArn);
-	            	addReservation(lineItem, costAndUsageData, tgri, startMilli);
+	            	addReservation(fileName, lineItem, costAndUsageData, tgri, startMilli);
 	        	}
 	        	break;
 	        	
@@ -239,6 +240,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        	
 	        case SavingsPlanCoveredUsage:
 	        	costValue = Double.parseDouble(lineItem.getSavingsPlanEffectiveCost());
+	        	break;
+	        
+	        case Tax:
 	        	break;
 	        	
 	        default:
@@ -288,11 +292,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (resourceService != null) {
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
-        addData(lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
+        addData(fileName, lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
     }
 
-    protected void addData(LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
+    protected void addData(String fileName, LineItem lineItem, TagGroup tagGroup, TagGroup resourceTagGroup,
     		CostAndUsageData costAndUsageData, double usageValue, double costValue, boolean monthly, int[] indexes, double edpDiscount, long startMilli) {
         final ReadWriteData usageData = costAndUsageData.getUsage(null);
         final ReadWriteData costData = costAndUsageData.getCost(null);
@@ -310,57 +314,43 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         
         for (int i : indexes) {
-            Map<TagGroup, Double> usages = usageData.getData(i);
-            Map<TagGroup, Double> costs = costData.getData(i);
             //
             // For DBR reports, Redshift and RDS have cost as a monthly charge, but usage appears hourly.
             //		EC2 has cost reported in each usage lineitem.
             // The reservation processor handles determination on what's unused.
             if (!monthly || !(product.isRedshift() || product.isRdsInstance())) {
-            	addValue(usages, tagGroup, usageValue);                	
+            	addValue(usageData, i, tagGroup, usageValue);                	
             }
 
-            addValue(costs, tagGroup, costValue);
+            addValue(costData, i, tagGroup, costValue);
             
             if (resourceService != null) {
-	            if (resourceTagGroup != null) {
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-	
-	                if (!((product.isRedshift() || product.isRds()) && monthly)) {
-	                	addValue(usagesOfResource, resourceTagGroup, usageValue);
-	                }
-	                
-	                addValue(costsOfResource, resourceTagGroup, costValue);
-	                
-	                // Collect statistics on tag coverage
-	            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
-	            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
-	            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
-	            }
-	            else {
-	            	// Save the non-resource-based costs using the product name - same as if it wasn't tagged.
-	                Map<TagGroup, Double> usagesOfResource = usageDataOfProduct.getData(i);
-	                Map<TagGroup, Double> costsOfResource = costDataOfProduct.getData(i);
-	
-	                TagGroup tg = TagGroup.getTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, product, tagGroup.operation, tagGroup.usageType, ResourceGroup.getResourceGroup(product.name, true));
-	            	addValue(usagesOfResource, tg, usageValue);
-	                addValue(costsOfResource, tg, costValue);           	
-	            }
+                if (!((product.isRedshift() || product.isRds()) && monthly)) {
+                	addValue(usageDataOfProduct, i, resourceTagGroup, usageValue);
+                }
+                
+                addValue(costDataOfProduct, i, resourceTagGroup, costValue);
+                
+                // Collect statistics on tag coverage
+            	boolean[] userTagCoverage = resourceService.getUserTagCoverage(lineItem);
+            	costAndUsageData.addTagCoverage(null, i, tagGroup, userTagCoverage);
+            	costAndUsageData.addTagCoverage(product, i, resourceTagGroup, userTagCoverage);
             }
         }
     }
 
-    protected void addValue(Map<TagGroup, Double> map, TagGroup tagGroup, double value) {
-        Double oldV = map.get(tagGroup);
+    protected void addValue(ReadWriteData rwd, int i, TagGroup tagGroup, double value) {
+        Double oldV = rwd.get(i, tagGroup);
         if (oldV != null) {
             value += oldV;
         }
 
-        map.put(tagGroup, value);
+        rwd.put(i, tagGroup, value);
     }
     
-    protected void addReservation(LineItem lineItem,
+    protected void addReservation(
+    		String fileName,
+    		LineItem lineItem,
     		CostAndUsageData costAndUsageData,
     		TagGroupRI tg, long startMilli) {    	
         return;        
@@ -547,7 +537,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	usageTypeStr = usageTypeStr + "arge";
         }
         
-        if (usageTypeStr.startsWith("ElasticIP:")) {
+        if (lineItem.getLineItemType() == LineItemType.Tax) {
+        	operation = Operation.getOperation("Tax - " + lineItem.getTaxType());
+            usageType = UsageType.getUsageType(usageTypeStr, "");
+        }
+        else if (usageTypeStr.startsWith("ElasticIP:")) {
             product = productService.getProduct(Product.Code.Eip);
         }
         else if (usageTypeStr.startsWith("EBS:") || operationStr.equals("EBS Snapshot Copy") || usageTypeStr.startsWith("EBSOptimized:")) {
@@ -658,7 +652,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         // Usage type string is empty for Support recurring fees.
         if (usageTypeStr.equals("Unknown") || usageTypeStr.equals("Not Applicable") || usageTypeStr.isEmpty()) {
-            usageTypeStr = product.name;
+            usageTypeStr = product.getIceName();
         }
 
         if (operation == null) {

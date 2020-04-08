@@ -70,7 +70,7 @@ public class CostAndUsageReport extends MonthlyReport {
 	 * Constructor used for testing only
 	 */
 	public CostAndUsageReport(File manifest, MonthlyReportProcessor processor) {
-		super(null, new BillingBucket(null, null, null, null, null, null, ""), processor);
+		super(null, new BillingBucket(null, null, null, null, null, null, "", ""), processor);
 		if (manifest == null)
 			return;
 		

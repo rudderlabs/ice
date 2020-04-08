@@ -26,26 +26,29 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
-import com.netflix.ice.tag.ResourceGroup;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
+import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone;
 
 public class Aggregation {
     private Map<AggregationTagGroup, AggregationTagGroup> tagGroups;
     private List<TagType> groupByTags;
-    
-    public Aggregation(List<TagType> groupByTags) {
+    private List<Integer> groupByUserTagIndeces; // Indices of custom tags we want to group by
+
+    public Aggregation(List<TagType> groupByTags, List<Integer> groupByUserTagIndeces) {
     	this.groupByTags = groupByTags;
+    	this.groupByUserTagIndeces = groupByUserTagIndeces;
     	this.tagGroups = Maps.newConcurrentMap();
     }
 
     public AggregationTagGroup getAggregationTagGroup(TagGroup tagGroup) throws Exception {
-    	return getAggregationTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, tagGroup.operation, tagGroup.usageType, tagGroup.resourceGroup);
+    	UserTag[] userTags = tagGroup.resourceGroup == null ? null : tagGroup.resourceGroup.getUserTags();
+    	return getAggregationTagGroup(tagGroup.account, tagGroup.region, tagGroup.zone, tagGroup.product, tagGroup.operation, tagGroup.usageType, userTags);
     }
     
-    public AggregationTagGroup getAggregationTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, ResourceGroup resourceGroup) throws Exception {
+    public AggregationTagGroup getAggregationTagGroup(Account account, Region region, Zone zone, Product product, Operation operation, UsageType usageType, UserTag[] userTagArray) throws Exception {
     	List<Tag> tags = Lists.newArrayListWithCapacity(groupByTags.size());
     	for (TagType tt: groupByTags) {
     		switch (tt) {
@@ -55,12 +58,20 @@ public class Aggregation {
     		case Product: 		tags.add(product); break;
     		case Operation: 	tags.add(operation); break;
     		case UsageType: 	tags.add(usageType); break;
-    		case ResourceGroup: tags.add(resourceGroup); break;
 			default:
 				throw new Exception("Unsupported tag type aggregation");
     		}
     	}
-    	AggregationTagGroup newOne = new AggregationTagGroup(tags, groupByTags);
+    	
+    	// Pull the user tags from the resource group
+    	List<UserTag> userTags = null;
+    	if (userTagArray != null) {
+        	userTags = Lists.newArrayList();
+        	for (Integer i: groupByUserTagIndeces)
+        		userTags.add(userTagArray[i]);
+    	}
+    	
+    	AggregationTagGroup newOne = new AggregationTagGroup(tags, groupByTags, userTags, userTags == null ? null : groupByUserTagIndeces);
     	AggregationTagGroup oldOne = tagGroups.get(newOne);
         if (oldOne != null) {
             return oldOne;
@@ -69,5 +80,13 @@ public class Aggregation {
             tagGroups.put(newOne, newOne);
             return newOne;
         }
+    }
+    
+    public boolean groupBy(TagType tagType) {
+    	return groupByTags.contains(tagType);
+    }
+    
+    public boolean groupByUserTag(Integer index) {
+    	return groupByUserTagIndeces.contains(index);
     }
 }

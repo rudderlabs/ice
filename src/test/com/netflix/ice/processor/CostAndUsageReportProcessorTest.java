@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.lang.StringUtils;
-import org.joda.time.DateTime;
 import org.junit.Test;
 
 import com.netflix.ice.common.LineItem;
@@ -38,22 +37,6 @@ public class CostAndUsageReportProcessorTest {
 		assertEquals("Incorrect report name", "hourly-cost-and-usage", reportName);
 	}
 
-	@Test
-	public void testGetDateTimeFromCostAndUsageReportNotNull() {
-		String reportName = "hourly-cost-and-usage";
-		String key = "hourly/hourly-cost-and-usage/20170601-20170701/hourly-cost-and-usage-Manifest.json";
-		DateTime dataTime = CostAndUsageReportProcessor.getDateTimeFromCostAndUsageReport(key, CostAndUsageReportProcessor.getPattern(reportName));
-		assertNotEquals("Returned time is null", dataTime, null);
-	}
-	
-	@Test
-	public void testGetDateTimeFromCostAndUsageReportNull() {
-		String reportName = "hourly-cost-and-usage";
-		String key = "hourly/hourly-cost-and-usage/20170601-20170701/f255bdaf-4148-4b28-8201-c3d190f27a13/hourly-cost-and-usage-Manifest.json";
-		DateTime dataTime = CostAndUsageReportProcessor.getDateTimeFromCostAndUsageReport(key, CostAndUsageReportProcessor.getPattern(reportName));
-		assertEquals("Returned time is null", dataTime, null);
-	}
-	
 	private LineItem getLineItem(String line) throws IOException {
 		CostAndUsageReportProcessor cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir + "/manifestTest.json");
