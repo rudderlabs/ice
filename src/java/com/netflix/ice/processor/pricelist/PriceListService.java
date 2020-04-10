@@ -417,6 +417,7 @@ public class PriceListService {
 		InstanceCapacityLarge("Instance Capacity - large"),
 		InstanceCapacityMedium("Instance Capacity - medium"),
 		InstanceCapacityXlarge("Instance Capacity - xlarge"),
+		InstanceCapacityMetal("Instance Capacity - metal"),
 		InstanceSKU("instanceSKU"),
 		IntelAvxAvailable("Intel AVX Available"),
 		IntelAvx2Available("Intel AVX2 Available"),
