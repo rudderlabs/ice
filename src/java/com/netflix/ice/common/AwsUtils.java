@@ -272,7 +272,7 @@ public class AwsUtils {
     	AWSOrganizations organizations = null;
     	
         try {
-        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
+        	organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
                         
             ListTagsForResourceRequest request = new ListTagsForResourceRequest().withResourceId(accountId);
             List<com.amazonaws.services.organizations.model.Tag> results = Lists.newLinkedList();
