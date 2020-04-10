@@ -382,6 +382,12 @@ public class ProcessorConfig extends Config {
             	continue;            
             done.add(bb.accountId);
             
+            if (!AwsUtils.isMasterAccount(bb.accountId, bb.accessRoleName, bb.accessExternalId)) {
+            	// Billing bucket account is no longer a master account, so don't look up linked accounts.
+            	logger.info("Billing account " + bb.accountId + " is no longer a master account. Not pulling accounts from organizations service.");
+            	continue;
+            }
+            
             Map<String, AccountConfig> accounts = getOrganizationAccounts(bb, customTags);
             for (Entry<String, AccountConfig> entry: accounts.entrySet()) {
             	result.put(entry.getKey(), entry.getValue());

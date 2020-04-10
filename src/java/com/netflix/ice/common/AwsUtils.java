@@ -26,6 +26,8 @@ import com.amazonaws.retry.RetryPolicy;
 import com.amazonaws.services.organizations.AWSOrganizations;
 import com.amazonaws.services.organizations.AWSOrganizationsClientBuilder;
 import com.amazonaws.services.organizations.model.Account;
+import com.amazonaws.services.organizations.model.DescribeOrganizationRequest;
+import com.amazonaws.services.organizations.model.DescribeOrganizationResult;
 import com.amazonaws.services.organizations.model.ListAccountsForParentRequest;
 import com.amazonaws.services.organizations.model.ListAccountsForParentResult;
 import com.amazonaws.services.organizations.model.ListAccountsRequest;
@@ -189,6 +191,43 @@ public class AwsUtils {
         return simpleDBClient;
     }
     
+    private static AWSOrganizations getOrganizationsClient(String accountId, String assumeRole, String externalId) {
+        if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
+        	return AWSOrganizationsClientBuilder.standard()
+        						.withRegion(AwsUtils.workS3BucketRegion)
+        						.withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+        						.withClientConfiguration(clientConfig)
+        						.build();
+        }
+        else {
+        	return AWSOrganizationsClientBuilder.standard()
+        						.withRegion(AwsUtils.workS3BucketRegion)
+        						.withCredentials(awsCredentialsProvider)
+        						.withClientConfiguration(clientConfig)
+        						.build();
+        }
+    }
+    
+    /**
+     * See if an account is a master account so we know whether or not we can query the organizations service
+     */
+    public static boolean isMasterAccount(String accountId, String assumeRole, String externalId) {
+    	AWSOrganizations organizations = null;
+    	boolean isMaster = false;
+        try {
+        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
+        	
+        	DescribeOrganizationRequest request = new DescribeOrganizationRequest();
+        	DescribeOrganizationResult result = organizations.describeOrganization(request);
+        	isMaster = result.getOrganization().getMasterAccountId().equals(accountId);
+        }
+        finally {
+        	if (organizations != null)
+        		organizations.shutdown();
+        }
+        return isMaster;
+    }
+    
     /**
      * List all accounts in the organization.
      * @param accountId
@@ -200,20 +239,7 @@ public class AwsUtils {
     	AWSOrganizations organizations = null;
 
         try {
-            if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
-            						.withClientConfiguration(clientConfig)
-            						.build();
-            }
-            else {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(awsCredentialsProvider)
-            						.withClientConfiguration(clientConfig)
-            						.build();
-            }
+        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
             
             ListAccountsRequest request = new ListAccountsRequest();
             List<Account> results = Lists.newLinkedList();
@@ -246,20 +272,7 @@ public class AwsUtils {
     	AWSOrganizations organizations = null;
     	
         try {
-            if (!StringUtils.isEmpty(payerAccountId) && !StringUtils.isEmpty(assumeRole)) {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId))
-            						.withClientConfiguration(clientConfigOrganizationsTags)
-            						.build();
-            }
-            else {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(awsCredentialsProvider)
-            						.withClientConfiguration(clientConfigOrganizationsTags)
-            						.build();
-            }
+        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
                         
             ListTagsForResourceRequest request = new ListTagsForResourceRequest().withResourceId(accountId);
             List<com.amazonaws.services.organizations.model.Tag> results = Lists.newLinkedList();
@@ -285,20 +298,7 @@ public class AwsUtils {
     public static Map<String, List<String>> getAccountParents(String payerAccountId, String assumeRole, String externalId, String rootName) {
     	AWSOrganizations organizations = null;
         try {
-            if (!StringUtils.isEmpty(payerAccountId) && !StringUtils.isEmpty(assumeRole)) {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(getAssumedCredentialsProvider(payerAccountId, assumeRole, externalId))
-            						.withClientConfiguration(clientConfigOrganizationsTags)
-            						.build();
-            }
-            else {
-            	organizations = AWSOrganizationsClientBuilder.standard()
-            						.withRegion(AwsUtils.workS3BucketRegion)
-            						.withCredentials(awsCredentialsProvider)
-            						.withClientConfiguration(clientConfigOrganizationsTags)
-            						.build();
-            }
+        	organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
             
         	Map<String, List<String>> accountParents = Maps.newHashMap();
         	
