@@ -18,6 +18,10 @@
 
 package com.netflix.ice
 
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import grails.converters.JSON
 
 import com.netflix.ice.tag.ConsolidatedOperation
@@ -370,15 +374,7 @@ class DashboardController {
     }
 	
 	private download_accounts() {
-		def accounts = doGetAccounts();
-		StringWriter writer = new StringWriter(1024);
-		CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(Account.header()));
-		
-		for (Account a: accounts) {
-			printer.printRecord((Object[]) a.values());
-		}
-		printer.close(true);
-		String body = writer.toString();
+		String body = getConfig().accountService.getAccountsReport();
 		
 		response.setContentType("application/octet-stream;");
 		response.setContentLength(body.length());		

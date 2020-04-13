@@ -22,10 +22,14 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.processor.config.AccountConfig;
 import com.netflix.ice.tag.Account;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -168,4 +172,31 @@ public class BasicAccountService implements AccountService {
     public Map<Account, String> getReservationAccessExternalIds() {
         return reservationAccessExternalIds;
     }
+    
+    /**
+     * Helper function for report generation
+     */
+	public String getAccountsReport() throws IOException {
+		// Get the tagKeys
+		Set<String> tagKeys = Sets.newHashSet();
+		for (Account a: accountsById.values()) {
+			tagKeys.addAll(a.getTags().keySet());			
+		}
+		Set<String> sortedTagKeys = Sets.newTreeSet(tagKeys);
+		
+		// Build the header
+		List<String> names = Lists.newArrayList(new String[] {"ICE Name", "AWS Name", "ID", "Email", "Organization Path", "Status"});
+		for (String key: sortedTagKeys)
+			names.add(key);
+
+		StringWriter writer = new StringWriter(1024);
+		CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader((String[]) names.toArray(new String[names.size()])));
+		
+		for (Account a: accountsById.values()) {			
+			printer.printRecord(a.values(sortedTagKeys));
+		}
+		printer.close(true);
+		return writer.toString();
+	}
+
 }

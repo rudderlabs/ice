@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.tag;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -128,6 +129,21 @@ public class Account extends Tag {
 			getStatus(),
 			String.join(",", tagSet)
 		};
+	}
+	
+	public List<String> values(Collection<String> tagKeys) {
+		List<String> values = Lists.newArrayList();
+		values.add(getIceName());
+		values.add(getAwsName());
+		values.add(getId());
+		values.add(getEmail());
+		values.add(String.join("/", getParents()));
+		values.add(getStatus());
+		for (String key: tagKeys) {
+			String v = tags.get(key);
+			values.add(v == null ? "" : v);
+		}
+		return values;
 	}
 
 }
