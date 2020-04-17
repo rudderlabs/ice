@@ -25,7 +25,6 @@ import com.google.common.collect.Sets;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.Config.TagCoverage;
 import com.netflix.ice.common.Config.WorkBucketConfig;
-import com.netflix.ice.processor.Instances;
 import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Account;
@@ -124,8 +123,8 @@ public class BasicManagers extends Poller implements Managers {
         return tagCoverageManagers.get(new Key(product, consolidateType));
     }
     
-    public Instances getInstances() {
-    	return instancesService.getInstances();
+    public Collection<Instance> getInstances(String id) {
+    	return instancesService.getInstances(id);
     }
 
     @Override

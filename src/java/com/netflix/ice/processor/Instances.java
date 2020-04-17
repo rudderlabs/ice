@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.zip.GZIPInputStream;
@@ -79,6 +80,10 @@ public class Instances {
 	
 	public Instance get(String id) {
 		return data.get(id);
+	}
+	
+	public Collection<Instance> values() {
+		return data.values();
 	}
 	
 	public int size() {
