@@ -387,18 +387,6 @@ div.legendIcon {float: left; margin-right: 3px; width: 16px; height: 12px; borde
     margin-top: 20px;
     font-size: 14px;
 }
-/* clear floats after the columns */
-.resourceColumns:after {
-    content: "";
-    display: table;
-    clear: both;
-}
-.resourceInfo {
-    float: left;
-}
-.resourceExamples {
-    float: right;
-}
 .resourcesFilter {
     width: 200px;
     margin-bottom: 10px;

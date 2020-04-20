@@ -18,7 +18,6 @@
 package com.netflix.ice.reader;
 
 import com.netflix.ice.common.*;
-import com.netflix.ice.processor.Instances;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Product;
@@ -108,7 +107,7 @@ public interface Managers {
     /**
      * 
      */
-    Instances getInstances();
+    Collection<Instance> getInstances(String id);
     
     /**
      * shutdown all manager instances

@@ -218,19 +218,20 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         return result;
     }
 
-    public Collection<Account> getAccounts(Interval interval, TagLists tagLists) {
-        Set<Account> result = Sets.newTreeSet();
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+    public Collection<Account> getAccounts(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+        Set<Account> accounts = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup))
-                result.add(tagGroup.account);
+            	accounts.add(tagGroup.account);
         }
 
+        List<Account> result = Lists.newArrayList(accounts);
+        result.sort(null);
         return result;
     }
 
-    public Collection<Region> getRegions(Interval interval, TagLists tagLists) {
+    public Collection<Region> getRegions(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
     	class RegionComparator implements Comparator<Region> {
 
 			@Override
@@ -246,81 +247,88 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
 			}    		
     	}
     	
-        Set<Region> result = Sets.newTreeSet(new RegionComparator());
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+        Set<Region> regions = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup))
-                result.add(tagGroup.region);
+            	regions.add(tagGroup.region);
         }
 
+        List<Region> result = Lists.newArrayList(regions);
+        result.sort(new RegionComparator());
         return result;
     }
 
-    public Collection<Zone> getZones(Interval interval, TagLists tagLists) {
-        Set<Zone> result = Sets.newTreeSet();
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+    public Collection<Zone> getZones(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+        Set<Zone> zones = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup) && tagGroup.zone != null)
-                result.add(tagGroup.zone);
+                zones.add(tagGroup.zone);
         }
 
+        List<Zone> result = Lists.newArrayList(zones);
+        result.sort(null);
         return result;
     }
 
-    public Collection<Product> getProducts(Interval interval, TagLists tagLists) {
-        Set<Product> result = Sets.newTreeSet();
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+    public Collection<Product> getProducts(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+        Set<Product> products = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup))
-                result.add(tagGroup.product);
+                products.add(tagGroup.product);
         }
 
+        List<Product> result = Lists.newArrayList(products);
+        result.sort(null);
         return result;
     }
 
-    public Collection<Operation> getOperations(Interval interval, TagLists tagLists) {
-        Set<Operation> result = Sets.newTreeSet();
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+    public Collection<Operation> getOperations(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+        Set<Operation> operations = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup))
-                result.add(tagGroup.operation);
+                operations.add(tagGroup.operation);
         }
 
+        List<Operation> result = Lists.newArrayList(operations);
+        result.sort(null);
         return result;
     }
 
-    public Collection<UsageType> getUsageTypes(Interval interval, TagLists tagLists) {
-        Set<UsageType> result = Sets.newTreeSet();
-        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+    public Collection<UsageType> getUsageTypes(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+        Set<UsageType> usageTypes = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup))
-                result.add(tagGroup.usageType);
+                usageTypes.add(tagGroup.usageType);
         }
 
+        List<UsageType> result = Lists.newArrayList(usageTypes);
+        result.sort(null);
         return result;
     }
 
     public Collection<ResourceGroup> getResourceGroups(Interval interval, TagLists tagLists) {
-        Set<ResourceGroup> result = Sets.newTreeSet();
+        Set<ResourceGroup> groups = Sets.newHashSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
 
         // Add ResourceGroup tags that are non-null, just the product name, or userTag CSVs.
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
-                result.add(tagGroup.resourceGroup);
+                groups.add(tagGroup.resourceGroup);
             }
         }
 
+        List<ResourceGroup> result = Lists.newArrayList(groups);
+        result.sort(null);
         return result;
     }
 
     public Collection<UserTag> getResourceGroupTags(Interval interval, TagLists tagLists, int userTagGroupByIndex) {
-        Set<UserTag> result = Sets.newTreeSet();
+        Set<UserTag> userTags = Sets.newHashSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
         
         UserTag emptyUserTag = UserTag.get("");
@@ -331,7 +339,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             if (tagLists.contains(tagGroup)) {
             	try {
             		UserTag t = tagGroup.resourceGroup == null ? emptyUserTag : tagGroup.resourceGroup.getUserTags()[userTagGroupByIndex];
-            		result.add(t);
+            		userTags.add(t);
             	}
             	catch (Exception e) {
             		logger.error("Bad resourceGroup: " + tagGroup.resourceGroup + ", " + e);
@@ -339,31 +347,33 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             }
         }
 
+        List<UserTag> result = Lists.newArrayList(userTags);
+        result.sort(null);
         return result;
     }
 
     public Collection<Account> getAccounts(TagLists tagLists) {
-        return this.getAccounts(totalInterval, tagLists);
+        return this.getAccounts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<Region> getRegions(TagLists tagLists) {
-        return this.getRegions(totalInterval, tagLists);
+        return this.getRegions(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<Zone> getZones(TagLists tagLists) {
-        return this.getZones(totalInterval, tagLists);
+        return this.getZones(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<Product> getProducts(TagLists tagLists) {
-        return this.getProducts(totalInterval, tagLists);
+        return this.getProducts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<Operation> getOperations(TagLists tagLists) {
-        return this.getOperations(totalInterval, tagLists);
+        return this.getOperations(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<UsageType> getUsageTypes(TagLists tagLists) {
-        return this.getUsageTypes(totalInterval, tagLists);
+        return this.getUsageTypes(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
     }
 
     public Collection<ResourceGroup> getResourceGroups(TagLists tagLists) {
@@ -377,10 +387,13 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent) {
     	return getTagListsMap(interval, tagLists, groupBy, forReservation, showLent, 0);
     }
+    
     public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent, int userTagGroupByIndex) {
         Map<Tag, TagLists> result = Maps.newHashMap();
         
-        // Get all the GroupBy tags. If we're not grouping by ResourceGroup or Tag, then work with a TagLists that doesn't contain resourceGroups.
+        Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
+        
+        // Get all the GroupBy tags. If we're not grouping by ResourceGroup or User Tag, then work with a TagLists that doesn't contain resourceGroups.
         // Filtering of results against resourceGroup values is handled later.
         TagLists tagListsForTag = tagLists;
         boolean tagListsHasResourceGroups = tagLists.resourceGroups != null && tagLists.resourceGroups.size() > 0;
@@ -389,18 +402,19 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             tagListsForTag = tagLists.getTagListsWithNullResourceGroup();
         }
         
-        // If not the reservations dashboard, we must always specify all the operations so that we can remove
-        // EC2 Instance Savings and choose between Borrowed and Lent Operations so we don't double count the cost
-        if (!forReservation && (tagListsForTag.operations == null || tagListsForTag.operations.size() == 0)) {
-        	List<Operation> ops = Lists.newArrayList();
-        	for (Operation op: getOperations(interval, tagListsForTag)) {
-        		if ((showLent ? op.isBorrowed() : op.isLent()) || op.isSavings())
-        			continue;
-        		ops.add(op);
-        	}
-        	//logger.info("getTagListsWithOperations");
-        	tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
-        }
+        // We must always specify all the operations so that we can remove
+        // EC2 Instance Savings if not the reservation dashboard and 
+        // for all dashboards choose between Borrowed and Lent Operations so we don't double count the cost/usage
+    	List<Operation> requestOps = tagListsForTag.operations;
+        if (requestOps == null || requestOps.size() == 0)
+        	requestOps = (List<Operation>) getOperations(tagGroupsInRange, tagListsForTag);
+        List<Operation> ops = Lists.newArrayList();
+    	for (Operation op: requestOps) {
+    		if ((showLent ? op.isBorrowed() : op.isLent()) || (!forReservation && op.isSavings()))
+    			continue;
+    		ops.add(op);
+    	}
+        tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
 
         if (groupBy == null || groupBy == TagType.TagKey) {
             result.put(Tag.aggregated, tagListsForTag);
@@ -411,22 +425,22 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         List<Tag> groupByTags = Lists.newArrayList();
         switch (groupBy) {
             case Account:
-                groupByTags.addAll(getAccounts(interval, tagListsForTag));
+                groupByTags.addAll(getAccounts(tagGroupsInRange, tagListsForTag));
                 break;
             case Region:
-                groupByTags.addAll(getRegions(interval, tagListsForTag));
+                groupByTags.addAll(getRegions(tagGroupsInRange, tagListsForTag));
                 break;
             case Zone:
-                groupByTags.addAll(getZones(interval, tagListsForTag));
+                groupByTags.addAll(getZones(tagGroupsInRange, tagListsForTag));
                 break;
             case Product:
-                groupByTags.addAll(getProducts(interval, tagListsForTag));
+                groupByTags.addAll(getProducts(tagGroupsInRange, tagListsForTag));
                 break;
             case Operation:
-                groupByTags.addAll(getOperations(interval, tagListsForTag));
+                groupByTags.addAll(getOperations(tagGroupsInRange, tagListsForTag));
                 break;
             case UsageType:
-                groupByTags.addAll(getUsageTypes(interval, tagListsForTag));
+                groupByTags.addAll(getUsageTypes(tagGroupsInRange, tagListsForTag));
                 break;
             case ResourceGroup:
                 groupByTags.addAll(getResourceGroups(interval, tagListsForTag));
@@ -444,39 +458,18 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
 //        		logger.info("groupBy tag<" + tagLists.contains(tag, groupBy, userTagGroupByIndex) + ">: " + tag);
 //        }
         
-        boolean groupByOperationOnReservationDashboard = groupBy == TagType.Operation && forReservation;
-        
-        for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
-            groupByTags.remove(op);
-        if (!groupByOperationOnReservationDashboard) {
-			for (Operation savingsOp: Operation.savingsOperations)
-				groupByTags.remove(savingsOp);
-        }
+        // Get the TagLists with the ResourceGroups, but use the already filtered operations
+        tagListsForTag = tagLists.getTagListsWithOperations(ops);
+
         for (Tag tag: groupByTags) {
-            if (tagLists.contains(tag, groupBy, userTagGroupByIndex)) {
+            if (tagListsForTag.contains(tag, groupBy, userTagGroupByIndex)) {
                 //logger.info("get tag lists for " + tag + ", " + groupByOperationOnReservationDashboard);
-                TagLists tmp = tagLists.getTagLists(tag, groupBy, userTagGroupByIndex);
-                if (tmp.operations == null || tmp.operations.size() == 0) {
-                	//logger.info("       get new operations list and remove lent and savings ops");
-                	TagLists tl = new TagLists(tmp.accounts, tmp.regions, tmp.zones, tmp.products, tmp.operations, tmp.usageTypes);
-                    List<Operation> operations = Lists.newArrayList(getOperations(interval, tl));
-                    //logger.info("     operations: " + operations);
-                    tmp = tmp.copyWithOperations(operations);
-                }
-                // Only include one of lent or borrowed based on showLent flag
-                for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
-                    tmp.operations.remove(op);
-                
-            	// Don't include savings if we're not doing groupBy Operation on the Reservation Dashboard
-                if (!groupByOperationOnReservationDashboard) {
-        			for (Operation savingsOp: Operation.savingsOperations)
-        				tmp.operations.remove(savingsOp);
-                }
+                TagLists tmp = tagListsForTag.getTagLists(tag, groupBy, userTagGroupByIndex);
         			
                 result.put(tag, tmp);
             }
         }
         return result;
     }
-    
+
 }
