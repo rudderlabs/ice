@@ -19,8 +19,8 @@ package com.netflix.ice.reader;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.netflix.ice.common.TagGroup;
@@ -35,7 +35,7 @@ import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone;
 
 public class TagListsWithUserTags extends TagLists {
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    //private final Logger logger = LoggerFactory.getLogger(getClass());
 	/*
 	 * Broken-out lists of tags for resource groups
 	 */
@@ -68,7 +68,7 @@ public class TagListsWithUserTags extends TagLists {
         if (!super.contains(tagGroup))
         	return false;
         
-        logger.debug("           contains - resourceGroup: " + tagGroup.resourceGroup + ", " + resourceGroups + ", " + resourceUserTagLists);
+        //logger.debug("           contains - resourceGroup: " + tagGroup.resourceGroup + ", " + resourceGroups + ", " + resourceUserTagLists);
         
         if (tagGroup.resourceGroup == null) {
         	if (useResource) {

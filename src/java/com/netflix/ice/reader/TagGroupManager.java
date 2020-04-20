@@ -81,62 +81,6 @@ public interface TagGroupManager {
     Collection<ResourceGroup> getResourceGroups(TagLists tagLists);
 
     /**
-     * Get all accounts that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of accounts
-     */
-    Collection<Account> getAccounts(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all regions that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of regions
-     */
-    Collection<Region> getRegions(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all zones that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of zones
-     */
-    Collection<Zone> getZones(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all products that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of products
-     */
-    Collection<Product> getProducts(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all operations that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of operations
-     */
-    Collection<Operation> getOperations(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all usage types that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of usage types
-     */
-    Collection<UsageType> getUsageTypes(Interval interval, TagLists tagLists);
-
-    /**
-     * Get all resource groups that meet query in tagLists and in specifed interval.
-     * @param interval
-     * @param tagLists
-     * @return collection of resource groups
-     */
-    Collection<ResourceGroup> getResourceGroups(Interval interval, TagLists tagLists);
-
-    /**
      * Get overlapping interval
      * @param interval
      * @return overlapping interval
