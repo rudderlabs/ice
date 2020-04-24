@@ -73,6 +73,7 @@ public class BasicLineItemProcessorTest {
     private static final String es = Product.Code.Elasticsearch.serviceName;
     private static final String ec = Product.Code.ElastiCache.serviceName;
     private static final String redshift = Product.Code.Redshift.serviceName;
+    private static final String awsConfig = "AWSConfig";
     
     private static final String emptyTags = "|";
 
@@ -289,6 +290,7 @@ public class BasicLineItemProcessorTest {
 		public String savingsPlanUsedCommitment = "";
 		public String savingsPlanPaymentOption = "";
 		public String taxType = "";
+		public String legalEntity = "";
 		
 		
 		// For basic testing
@@ -400,8 +402,9 @@ public class BasicLineItemProcessorTest {
 		}
 		
 		// For Tax testing
-		public void setTaxFields(String taxType) {
+		public void setTaxFields(String taxType, String legalEntity) {
 			this.taxType = taxType;
+			this.legalEntity = legalEntity;
 		}
 		
 		String[] getDbrLine() {
@@ -502,6 +505,7 @@ public class BasicLineItemProcessorTest {
 				
 			case Tax:
 				set(lineItem.getTaxTypeIndex(), items, taxType);
+				set(lineItem.getLegalEntityIndex(), items, legalEntity);
 				break;
 				
 			default:
@@ -620,6 +624,7 @@ public class BasicLineItemProcessorTest {
 					manifest = manifest2018;
 					break;
 				case 2019:
+				case 2020:
 					manifest = dt.getMonthOfYear() == 12 ? manifest2019a : manifest2019;
 					break;
 				default:
@@ -708,7 +713,7 @@ public class BasicLineItemProcessorTest {
 					if (!tg.operation.isUnused() && !tg.operation.isSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
-				else if (which == Which.cau && (tg.operation == Operation.reservedInstancesCredits || tg.operation == Operation.ondemandInstanceCredits)) {
+				else if (which == Which.cau && tg.operation.name.contains("Credit")) {
 					assertFalse(reportName + " TagGroup is instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
 				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport() && !tg.product.isEc2()) {
@@ -1171,6 +1176,14 @@ public class BasicLineItemProcessorTest {
 	}
 	
 	@Test
+	public void testConfigCredit() throws Exception {
+		Line line = new Line(LineItemType.Credit, "us-west-2", "", awsConfig, "USW2-ConfigurationItemRecorded", "", "AWS Config rules- credits to support pricing model change TT: 123456789012", PricingTerm.none, "2019-08-01T00:00:00Z", "2019-08-01T01:00:01Z", "0.0000000000", "-0.00492", "");
+		String[] tag = new String[] { "us-west-2", null, "Config", "Credits", "ConfigurationItemRecorded", null };
+		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.00492, null);
+		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
+	
+	@Test
 	public void testSavingsPlanRecurringFee() throws Exception {
 		// Test No Upfront with 50% usage
 		Line line = new Line(LineItemType.SavingsPlanRecurringFee, "global", "", "Savings Plans for AWS Compute usage", "ComputeSP:1yrNoUpfront", "", "1 year No Upfront Compute Savings Plan", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-01T01:00:00Z", "1", "0.12", "");
@@ -1253,16 +1266,25 @@ public class BasicLineItemProcessorTest {
 	public void testTax() throws Exception {
 		// Full month
 		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "7.44", "");
-		line.setTaxFields("GST");
+		line.setTaxFields("GST", "Amazon Web Services, Inc.");
 		String[] tag = new String[] { "us-east-1", null, "EC2", "Tax - GST", "HeavyUsage:c4.large", null };
 		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
 		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 
 		// Partial month
 		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "4.37", "");
-		line.setTaxFields("USSalesTax");
+		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
 		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
 		test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
+	
+	@Test
+	public void testMonthlyVAT() throws Exception {
+		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "", "", "Tax for product code AmazonEC2", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "744.0", "");
+		line.setTaxFields("VAT", "AWS EMEA SARL");
+		String[] tag = new String[] { "global", null, "EC2", "Tax - VAT", "Tax - AWS EMEA SARL", null };
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 1.0, Result.hourly, 31);
+		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }

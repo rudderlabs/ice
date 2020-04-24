@@ -19,6 +19,7 @@ package com.netflix.ice.processor;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Interval;
 
 import com.netflix.ice.basic.BasicLineItemProcessor;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
@@ -61,7 +62,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(String fileName, DateTime reportStart, String root, LineItem lineItem) {    	
+    protected boolean ignore(String fileName, DateTime reportStart, String root, Interval usageInterval, LineItem lineItem) {    	
     	BillType billType = lineItem.getBillType();
     	if (billType == BillType.Purchase || billType == BillType.Refund) {
             Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
@@ -81,7 +82,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		return true;
     	}
     	
-    	return super.ignore(fileName, reportStart, root, lineItem);
+    	return super.ignore(fileName, reportStart, root, usageInterval, lineItem);
     }
 
 	@Override
@@ -91,6 +92,11 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 		//  2. lineItem/AvailabilityZone
 		//  3. product/region
     	String usageTypeStr = lineItem.getUsageType();
+    	
+		// If it's a tax line item with no usageType, put it in the global region
+    	if (lineItem.getLineItemType() == LineItemType.Tax && usageTypeStr.isEmpty())
+    		return Region.GLOBAL;
+    	
         int index = usageTypeStr.indexOf("-");
         String regionShortName = index > 0 ? usageTypeStr.substring(0, index) : "";
         
@@ -186,7 +192,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         // 	so unlike EC2, we have to process the monthly line item to capture the cost,
         // 	but we don't want to add the monthly line items to the usage.
         // The reservation processor handles determination on what's unused.
-		return lineItemType != LineItemType.Credit && !monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch() || product.isElastiCache());
+		return lineItemType != LineItemType.Credit && (!monthly || !(product.isRedshift() || product.isRdsInstance() || product.isEc2Instance() || product.isElasticsearch() || product.isElastiCache()));
 	}
 	
 	private void addHourData(
@@ -395,7 +401,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	return Result.hourly;
         	
         case Credit:
-        	return processDelayed ? Result.monthly : Result.delay;
+        	return processDelayed ? Result.hourly : Result.delay;
         
         case Tax:
         	break;

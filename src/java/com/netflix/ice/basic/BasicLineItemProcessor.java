@@ -65,7 +65,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(String fileName, DateTime reportStart, String root, LineItem lineItem) {
+    protected boolean ignore(String fileName, DateTime reportStart, String root, Interval usageInterval, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -77,24 +77,28 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
         
-    	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-            (StringUtils.isEmpty(lineItem.getOperation()) && lineItem.getLineItemType() != LineItemType.SavingsPlanRecurringFee && !product.isSupport()) ||
-            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
-    		return true;
+        LineItemType lineItemType = lineItem.getLineItemType();
+    	if (lineItemType != LineItemType.Credit && lineItemType != LineItemType.Tax) {
+    		// Not a Credit or Tax line item, so must have some non-empty fields
+    		if (StringUtils.isEmpty(lineItem.getUsageType()) ||
+	            (StringUtils.isEmpty(lineItem.getOperation()) && lineItemType != LineItemType.SavingsPlanRecurringFee && !product.isSupport()) ||
+	            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
+    	    	
+    			return true;
+    		}
     	}
 
     	if (!product.isRegistrar() && lineItem.getLineItemType() != LineItemType.RIFee) {
     		// Registrar product renewals occur before they expire, so often start in the following month.
     		// We handle the out-of-date-range problem later.
     		// All other cases are ignored here.
-    		DateTime nextMonthStart = reportStart.plusMonths(1);
-	        if (lineItem.getStartMillis() >= nextMonthStart.getMillis()) {
-	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+    		long nextMonthStartMillis = reportStart.plusMonths(1).getMillis();
+	        if (usageInterval.getStartMillis() >= nextMonthStartMillis) {
+	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItemType + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
-    		// Credit records sometimes end 1 second into the next month, so add a second.
-	        if (lineItem.getEndMillis() > nextMonthStart.plusSeconds(1).getMillis()) {
-	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        if (usageInterval.getEndMillis() > nextMonthStartMillis) {
+	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItemType + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
     	}
@@ -170,6 +174,11 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	millisEnd = new DateTime(millisStart, DateTimeZone.UTC).plusHours(1).getMillis();
         	logger.info(fileName + " Support: " + lineItem);
         }
+        else if (lineItem.getLineItemType() == LineItemType.Credit) {
+        	// Most credits have end times that are one second into the next hour
+        	// Truncate partial seconds end time.
+        	millisEnd = new DateTime(millisEnd, DateTimeZone.UTC).withSecondOfMinute(0).getMillis();
+        }
         return new Interval(millisStart, millisEnd, DateTimeZone.UTC);
     }
     
@@ -184,15 +193,14 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	
     	final long startMilli = costAndUsageData.getStartMilli();
     	final DateTime reportStart = new DateTime(startMilli, DateTimeZone.UTC);
-    	if (ignore(fileName, reportStart, root, lineItem))
+        final Interval usageInterval = getUsageInterval(fileName, reportStart, lineItem); 
+        
+    	if (ignore(fileName, reportStart, root, usageInterval, lineItem))
     		return Result.ignore;
     	
-
         final Account account = accountService.getAccountById(lineItem.getAccountId(), root);
         final Region region = getRegion(lineItem);
         final Zone zone = getZone(fileName, region, lineItem);
-
-        final Interval usageInterval = getUsageInterval(fileName, reportStart, lineItem);        
        
         PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(usageInterval.getStartMillis());
         String purchaseOption = lineItem.getPurchaseOption();
@@ -548,7 +556,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         if (lineItem.getLineItemType() == LineItemType.Tax) {
         	operation = Operation.getOperation("Tax - " + lineItem.getTaxType());
-            usageType = UsageType.getUsageType(usageTypeStr, "");
+            usageType = UsageType.getUsageType(usageTypeStr.isEmpty() ? "Tax - " + lineItem.getLegalEntity() : usageTypeStr, "");
         }
         else if (usageTypeStr.startsWith("ElasticIP:")) {
             product = productService.getProduct(Product.Code.Eip);
@@ -665,7 +673,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (operation == null) {
-            operation = Operation.getOperation(operationStr);
+            operation = Operation.getOperation(isCredit ? "Credits" : operationStr);
         }
 
         if (operation instanceof Operation.ReservationOperation) {
