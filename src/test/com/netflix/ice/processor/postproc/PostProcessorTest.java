@@ -102,11 +102,11 @@ public class PostProcessorTest {
     	}
 
     	public TagGroup getTagGroup() throws Exception {
-    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, "", resourceGroup, as, ps);
     	}
     	
     	public TagGroup getTagGroup(String account) throws Exception {
-    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, null, resourceGroup, as, ps);
+    		return TagGroup.getTagGroup(account, region, null, productServiceCode, operation, usageType, "", resourceGroup, as, ps);
     	}
     }
     
