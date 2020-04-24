@@ -61,7 +61,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(String fileName, long startMilli, String root, LineItem lineItem) {    	
+    protected boolean ignore(String fileName, DateTime reportStart, String root, LineItem lineItem) {    	
     	BillType billType = lineItem.getBillType();
     	if (billType == BillType.Purchase || billType == BillType.Refund) {
             Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
@@ -81,7 +81,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		return true;
     	}
     	
-    	return super.ignore(fileName, startMilli, root, lineItem);
+    	return super.ignore(fileName, reportStart, root, lineItem);
     }
 
 	@Override
