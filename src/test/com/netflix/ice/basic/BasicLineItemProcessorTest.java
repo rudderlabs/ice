@@ -1276,7 +1276,14 @@ public class BasicLineItemProcessorTest {
 		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
 		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
 		test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
-		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Zero tax - should ignore
+		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "0", "");
+		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
+		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
+		test = new ProcessTest(line, tag, null, null, Result.ignore, 31);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");		
 	}
 	
 	@Test

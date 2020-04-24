@@ -82,6 +82,9 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		return true;
     	}
     	
+    	if (lit == LineItemType.Tax && Double.parseDouble(lineItem.getCost()) == 0)
+    		return true;
+    	
     	return super.ignore(fileName, reportStart, root, usageInterval, lineItem);
     }
 
