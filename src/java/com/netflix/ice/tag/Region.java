@@ -52,6 +52,7 @@ public class Region extends Tag {
     public static final Region AP_SOUTH_1 = new Region("ap-south-1", "APS3", "Asia Pacific (Mumbai)");
     public static final Region SA_EAST_1 = new Region("sa-east-1", "SAE1", "South America (Sao Paulo)");
     public static final Region ME_SOUTH_1 = new Region("me-south-1", "MES1", "Middle East (Bahrain)");
+    public static final Region AF_SOUTH_1 = new Region("af-south-1", "AFS1", "Africa (Cape Town)");
 
     private static ConcurrentMap<String, Region> regionsByName = Maps.newConcurrentMap();
     private static ConcurrentMap<String, Region> regionsByShortName = Maps.newConcurrentMap();
@@ -77,6 +78,7 @@ public class Region extends Tag {
         regionsByShortName.put(AP_SOUTH_1.shortName, AP_SOUTH_1);
         regionsByShortName.put(SA_EAST_1.shortName, SA_EAST_1);
         regionsByShortName.put(ME_SOUTH_1.shortName, ME_SOUTH_1);
+        regionsByShortName.put(AF_SOUTH_1.shortName, AF_SOUTH_1);
 
         // Populate regions used to serve edge locations for CloudFront
         regionsByShortName.put("US", US_EAST_1);		/* US United States*/
@@ -111,6 +113,7 @@ public class Region extends Tag {
         regionsByName.put(AP_SOUTH_1.name, AP_SOUTH_1);
         regionsByName.put(SA_EAST_1.name, SA_EAST_1);
         regionsByName.put(ME_SOUTH_1.name, ME_SOUTH_1);
+        regionsByName.put(AF_SOUTH_1.name, AF_SOUTH_1);
     }
 
     public final String shortName;
