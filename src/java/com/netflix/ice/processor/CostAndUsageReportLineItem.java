@@ -49,6 +49,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	private int productRegionIndex;
 	private int productServicecodeIndex;
 	private int lineItemTaxTypeIndex;
+	private int lineItemLegalEntityIndex;
 	
 	// First appeared in 2018-01 (Net versions added in 2019-01)
 	private int reservationAmortizedUpfrontCostForUsageIndex;
@@ -138,6 +139,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         productRegionIndex = report.getColumnIndex("product", "region");
         productServicecodeIndex = report.getColumnIndex("product", "servicecode");
         lineItemTaxTypeIndex = report.getColumnIndex("lineItem", "TaxType");
+        lineItemLegalEntityIndex = report.getColumnIndex("lineItem", "LegalEntity");
         
         // SavingsPlan beginning 2019-11
         if (!report.getStartTime().isBefore(new DateTime("2019-11", DateTimeZone.UTC))) {
@@ -547,6 +549,15 @@ public class CostAndUsageReportLineItem extends LineItem {
 	@Override
 	public String getTaxType() {
 		return items[lineItemTaxTypeIndex];
+	}
+
+	public int getLegalEntityIndex() {
+		return lineItemLegalEntityIndex;
+	}
+	
+	@Override
+	public String getLegalEntity() {
+		return items[lineItemLegalEntityIndex];
 	}
 
 	public int getReservationStartTimeIndex() {

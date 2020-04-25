@@ -325,6 +325,10 @@ public abstract class LineItem {
 		return null;
 	}
 
+	public String getLegalEntity() {
+		return null;
+	}
+
 	public String getReservationStartTime() {
 		return null;
 	}

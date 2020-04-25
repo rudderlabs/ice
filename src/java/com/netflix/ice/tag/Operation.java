@@ -68,6 +68,7 @@ public class Operation extends Tag {
     public static final ReservationOperation spotInstanceSavings = new ReservationOperation("Savings - Spot", null);
     public static final ReservationOperation spotInstances = new ReservationOperation("Spot Instances", null);
     public static final ReservationOperation ondemandInstances = new ReservationOperation("On-Demand Instances", null);
+    public static final ReservationOperation ondemandInstanceCredits = new ReservationOperation("On-Demand Instance Credits", null);
 
     public static final ReservationOperation savingsNoUpfront = new ReservationOperation(Category.Savings, PurchaseOption.NoUpfront);
     public static final ReservationOperation reservedInstancesNoUpfront = new ReservationOperation(Category.Used, PurchaseOption.NoUpfront);

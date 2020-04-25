@@ -29,6 +29,7 @@ import com.netflix.ice.tag.Zone.BadZone;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(String fileName, long startMilli, String root, LineItem lineItem) {
+    protected boolean ignore(String fileName, DateTime reportStart, String root, Interval usageInterval, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -76,23 +77,28 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
         
-    	if (StringUtils.isEmpty(lineItem.getUsageType()) ||
-            (StringUtils.isEmpty(lineItem.getOperation()) && lineItem.getLineItemType() != LineItemType.SavingsPlanRecurringFee && !product.isSupport()) ||
-            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
-    		return true;
+        LineItemType lineItemType = lineItem.getLineItemType();
+    	if (lineItemType != LineItemType.Credit && lineItemType != LineItemType.Tax) {
+    		// Not a Credit or Tax line item, so must have some non-empty fields
+    		if (StringUtils.isEmpty(lineItem.getUsageType()) ||
+	            (StringUtils.isEmpty(lineItem.getOperation()) && lineItemType != LineItemType.SavingsPlanRecurringFee && !product.isSupport()) ||
+	            StringUtils.isEmpty(lineItem.getUsageQuantity())) {
+    	    	
+    			return true;
+    		}
     	}
 
     	if (!product.isRegistrar() && lineItem.getLineItemType() != LineItemType.RIFee) {
     		// Registrar product renewals occur before they expire, so often start in the following month.
     		// We handle the out-of-date-range problem later.
     		// All other cases are ignored here.
-	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
-	        if (lineItem.getStartMillis() >= nextMonthStartMillis) {
-	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+    		long nextMonthStartMillis = reportStart.plusMonths(1).getMillis();
+	        if (usageInterval.getStartMillis() >= nextMonthStartMillis) {
+	        	logger.error(fileName + " line item starts in a later month. Line item type = " + lineItemType + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
-	        if (lineItem.getEndMillis() > nextMonthStartMillis) {
-	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItem.getLineItemType() + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
+	        if (usageInterval.getEndMillis() > nextMonthStartMillis) {
+	        	logger.error(fileName + " line item ends in a later month. Line item type = " + lineItemType + ", product = " + lineItem.getProduct() + ", cost = " + lineItem.getCost());
 	        	return true;
 	        }
     	}
@@ -149,6 +155,33 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return TagGroup.getTagGroup(account, region, zone, product, operation, usageType, rg);
     }
     
+    private Interval getUsageInterval(String fileName, DateTime reportStart, LineItem lineItem) {
+        long millisStart = lineItem.getStartMillis();
+        long millisEnd = lineItem.getEndMillis();
+
+        Product origProduct = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
+        if (origProduct.isRegistrar()) {
+        	// Put all out-of-month registrar fees at the start of the month
+	        long nextMonthStartMillis = reportStart.plusMonths(1).getMillis();
+        	if (millisStart > nextMonthStartMillis) {
+        		millisStart = reportStart.getMillis();
+        	}
+        	// Put the whole fee in the first hour
+        	millisEnd = new DateTime(millisStart, DateTimeZone.UTC).plusHours(1).getMillis();
+        }
+        else if (origProduct.isSupport()) {
+        	// Put the whole fee in the first hour
+        	millisEnd = new DateTime(millisStart, DateTimeZone.UTC).plusHours(1).getMillis();
+        	logger.info(fileName + " Support: " + lineItem);
+        }
+        else if (lineItem.getLineItemType() == LineItemType.Credit) {
+        	// Most credits have end times that are one second into the next hour
+        	// Truncate partial seconds end time.
+        	millisEnd = new DateTime(millisEnd, DateTimeZone.UTC).withSecondOfMinute(0).getMillis();
+        }
+        return new Interval(millisStart, millisEnd, DateTimeZone.UTC);
+    }
+    
     public Result process(
     		String fileName,
     		boolean processDelayed,
@@ -158,35 +191,18 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     		Instances instances,
     		double edpDiscount) {
     	
-    	long startMilli = costAndUsageData.getStartMilli();
-    	if (ignore(fileName, startMilli, root, lineItem))
+    	final long startMilli = costAndUsageData.getStartMilli();
+    	final DateTime reportStart = new DateTime(startMilli, DateTimeZone.UTC);
+        final Interval usageInterval = getUsageInterval(fileName, reportStart, lineItem); 
+        
+    	if (ignore(fileName, reportStart, root, usageInterval, lineItem))
     		return Result.ignore;
     	
-
-        Account account = accountService.getAccountById(lineItem.getAccountId(), root);
-        Region region = getRegion(lineItem);
-        Zone zone = getZone(fileName, region, lineItem);
-
-        long millisStart = lineItem.getStartMillis();
-        long millisEnd = lineItem.getEndMillis();
-        
-        Product origProduct = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
-        if (origProduct.isRegistrar()) {
-        	// Put all out-of-month registrar fees at the start of the month
-	        long nextMonthStartMillis = new DateTime(startMilli).plusMonths(1).getMillis();
-        	if (millisStart > nextMonthStartMillis) {
-        		millisStart = startMilli;
-        	}
-        	// Put the whole fee in the first hour
-        	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
-        }
-        else if (origProduct.isSupport()) {
-        	// Put the whole fee in the first hour
-        	millisEnd = new DateTime(millisStart).plusHours(1).getMillis();
-        	logger.info(fileName + " Support: " + lineItem);
-        }
-        
-        PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(millisStart);
+        final Account account = accountService.getAccountById(lineItem.getAccountId(), root);
+        final Region region = getRegion(lineItem);
+        final Zone zone = getZone(fileName, region, lineItem);
+       
+        PurchaseOption defaultReservationPurchaseOption = reservationService.getDefaultPurchaseOption(usageInterval.getStartMillis());
         String purchaseOption = lineItem.getPurchaseOption();
         ReservationArn reservationArn = ReservationArn.get(lineItem.getReservationArn());
         if (StringUtils.isEmpty(purchaseOption) && !reservationArn.name.isEmpty()) {
@@ -196,7 +212,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         		       
         // Remap assignments for product, operation, and usageType to break out reserved instances and split out a couple EC2 types like ebs and eip
-        ReformedMetaData reformedMetaData = reform(millisStart, lineItem, defaultReservationPurchaseOption);
+        ReformedMetaData reformedMetaData = reform(lineItem, defaultReservationPurchaseOption);
         
         final Product product = reformedMetaData.product;
         final Operation operation = reformedMetaData.operation;
@@ -204,8 +220,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         final TagGroup tagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, null);
         
-        int startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
-        int endIndex = (int)((millisEnd + 1000 - startMilli)/ AwsUtils.hourMillis);
+        int startIndex = (int)((usageInterval.getStartMillis() - startMilli)/ AwsUtils.hourMillis);
+        int endIndex = (int)((usageInterval.getEndMillis() + 1000 - startMilli)/ AwsUtils.hourMillis);
 
         // Add all resources to the instance catalog
         addResourceInstance(lineItem, instances, tagGroup);
@@ -215,7 +231,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 
         ResourceGroup resourceGroup = null;
         if (resourceService != null) {
-            resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, millisStart);
+            resourceGroup = resourceService.getResourceGroup(account, region, product, lineItem, usageInterval.getStartMillis());
         }
         
         // Do line-item-specific processing
@@ -259,7 +275,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	double usageValue = Double.parseDouble(lineItem.getUsageQuantity());
 
         if (result == Result.daily) {
-            millisStart = new DateTime(millisStart, DateTimeZone.UTC).withTimeAtStartOfDay().getMillis();
+            long millisStart = usageInterval.getStart().withTimeAtStartOfDay().getMillis();
             startIndex = (int)((millisStart - startMilli)/ AwsUtils.hourMillis);
             endIndex = startIndex + 24;
         }
@@ -519,7 +535,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return Operation.getBonusReservedInstances(defaultReservationPurchaseOption);
     }
     
-    protected ReformedMetaData reform(long millisStart, LineItem lineItem, PurchaseOption defaultReservationPurchaseOption) {
+    protected ReformedMetaData reform(LineItem lineItem, PurchaseOption defaultReservationPurchaseOption) {
 
     	Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
     	
@@ -531,6 +547,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         String usageTypeStr = getUsageTypeStr(lineItem.getUsageType(), product);
         final String operationStr = lineItem.getOperation();
         boolean reservationUsage = lineItem.isReserved();
+        boolean isCredit = lineItem.getLineItemType() == LineItemType.Credit;
 
         if (product.isRds() && usageTypeStr.endsWith("xl")) {
             // Many of the "m" and "r" families end with "xl" rather than "xlarge" (e.g. db.m4.10xl", so need to fix it.
@@ -539,7 +556,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         
         if (lineItem.getLineItemType() == LineItemType.Tax) {
         	operation = Operation.getOperation("Tax - " + lineItem.getTaxType());
-            usageType = UsageType.getUsageType(usageTypeStr, "");
+            usageType = UsageType.getUsageType(usageTypeStr.isEmpty() ? "Tax - " + lineItem.getLegalEntity() : usageTypeStr, "");
         }
         else if (usageTypeStr.startsWith("ElasticIP:")) {
             product = productService.getProduct(Product.Code.Eip);
@@ -562,7 +579,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             else if (spot)
             	operation = Operation.spotInstances;
             else
-                operation = Operation.ondemandInstances;
+                operation = isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
             os = getInstanceOs(operationStr);
         }
         else if (product.isRedshift() && usageTypeStr.startsWith("Node") && operationStr.startsWith("RunComputeNode")) {
@@ -573,7 +590,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
-	            operation = Operation.ondemandInstances;
+	            operation = isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
             }
             os = getInstanceOs(operationStr);
         }
@@ -590,7 +607,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
-            	operation = Operation.ondemandInstances;
+            	operation = isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
             }
             db = getInstanceDb(operationStr);
         }
@@ -600,7 +617,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
             }
             else {
-            	operation = Operation.ondemandInstances;
+            	operation = isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
             }
         }
         else if (product.isElastiCache() && usageTypeStr.startsWith("NodeUsage") && operationStr.startsWith("CreateCacheCluster")) {
@@ -609,7 +626,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             	operation = getReservationOperation(lineItem, product, defaultReservationPurchaseOption);
 	        }
 	        else {
-	        	operation = Operation.ondemandInstances;
+	        	operation = isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
 	        }
         }
         else if (usageTypeStr.startsWith("HeavyUsage") || usageTypeStr.startsWith("MediumUsage") || usageTypeStr.startsWith("LightUsage")) {
@@ -656,7 +673,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (operation == null) {
-            operation = Operation.getOperation(operationStr);
+            operation = Operation.getOperation(isCredit ? "Credits" : operationStr);
         }
 
         if (operation instanceof Operation.ReservationOperation) {
@@ -667,7 +684,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        else if (product.isRds()) {
 	            product = productService.getProduct(Product.Code.RdsInstance);
 	            usageTypeStr = usageTypeStr + "." + db;
-	            operation = operation.isBonus() ? operation : Operation.ondemandInstances;
+	            operation = operation.isBonus() ? operation : isCredit ? Operation.ondemandInstanceCredits : Operation.ondemandInstances;
 	        }
 	        else if (product.isElasticsearch()) {
 	            usageTypeStr = usageTypeStr.substring(usageTypeStr.indexOf(":") + 1);
@@ -713,16 +730,6 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         return InstanceCache.withCode(cacheStr);
     }
 
-    protected Operation getOperation(String operationStr, boolean reservationUsage, PurchaseOption purchaseOption) {
-        if (operationStr.startsWith("RunInstances") ||
-        		operationStr.startsWith("RunComputeNode") ||
-        		operationStr.startsWith("CreateDBInstance") ||
-        		operationStr.equals("ESDomain")) {
-            return (reservationUsage ? Operation.getBonusReservedInstances(purchaseOption) : Operation.ondemandInstances);
-        }
-        return null;
-    }
-    
     protected static final Map<String, String> redshiftUsageTypeMap = Maps.newHashMap();
     static {
     	redshiftUsageTypeMap.put("dw.hs1.xlarge", "ds1.xlarge");

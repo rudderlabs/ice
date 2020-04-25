@@ -68,10 +68,12 @@ public class BasicLineItemProcessorTest {
     private static final String manifest2019 = "manifest-2019-01.json";
     private static final String manifest2019a = "manifest-2019-12.json";
     
-    private static final String ec2 = "Amazon Elastic Compute Cloud";
-    private static final String rds = "Amazon Relational Database Service";
-    private static final String es = "Amazon Elasticsearch Service";
-    private static final String ec = "Amazon ElastiCache";
+    private static final String ec2 = Product.Code.Ec2.serviceName;
+    private static final String rds = Product.Code.RdsFull.serviceName;
+    private static final String es = Product.Code.Elasticsearch.serviceName;
+    private static final String ec = Product.Code.ElastiCache.serviceName;
+    private static final String redshift = Product.Code.Redshift.serviceName;
+    private static final String awsConfig = "AWSConfig";
     
     private static final String emptyTags = "|";
 
@@ -127,7 +129,7 @@ public class BasicLineItemProcessorTest {
     private ReformedMetaData testReform(Line line, PurchaseOption purchaseOption) throws IOException {
 		CostAndUsageReportLineItem lineItem = newCurLineItem(manifest2017, null);
 		lineItem.setItems(line.getCauLine(lineItem));
-		return newBasicLineItemProcessor().reform(0L, lineItem, purchaseOption);
+		return newBasicLineItemProcessor().reform(lineItem, purchaseOption);
     }
     
     @Test
@@ -288,6 +290,7 @@ public class BasicLineItemProcessorTest {
 		public String savingsPlanUsedCommitment = "";
 		public String savingsPlanPaymentOption = "";
 		public String taxType = "";
+		public String legalEntity = "";
 		
 		
 		// For basic testing
@@ -399,8 +402,9 @@ public class BasicLineItemProcessorTest {
 		}
 		
 		// For Tax testing
-		public void setTaxFields(String taxType) {
+		public void setTaxFields(String taxType, String legalEntity) {
 			this.taxType = taxType;
+			this.legalEntity = legalEntity;
 		}
 		
 		String[] getDbrLine() {
@@ -501,6 +505,7 @@ public class BasicLineItemProcessorTest {
 				
 			case Tax:
 				set(lineItem.getTaxTypeIndex(), items, taxType);
+				set(lineItem.getLegalEntityIndex(), items, legalEntity);
 				break;
 				
 			default:
@@ -619,6 +624,7 @@ public class BasicLineItemProcessorTest {
 					manifest = manifest2018;
 					break;
 				case 2019:
+				case 2020:
 					manifest = dt.getMonthOfYear() == 12 ? manifest2019a : manifest2019;
 					break;
 				default:
@@ -707,7 +713,7 @@ public class BasicLineItemProcessorTest {
 					if (!tg.operation.isUnused() && !tg.operation.isSavings())
 					assertTrue(reportName + " TagGroup is not instance of TagGroupSP", tg instanceof TagGroupSP);
 				}
-				else if (which == Which.cau && tg.operation == Operation.reservedInstancesCredits) {
+				else if (which == Which.cau && tg.operation.name.contains("Credit")) {
 					assertFalse(reportName + " TagGroup is instance of TagGroupRI", tg instanceof TagGroupRI);
 				}
 				else if (which == Which.cau && !tg.operation.isSpot() && !tg.product.isDynamoDB() && !tg.product.isSupport() && !tg.product.isEc2()) {
@@ -1160,14 +1166,22 @@ public class BasicLineItemProcessorTest {
 		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 		
-// TODO: add support for credits
-//	@Test
-//	public void testLambdaCredit() throws Exception {
-//		String rawLineItem = "3s5n7gjxiw5rbappdpqwtq5yx2fiwznedfq5qhw2f3jdiecjlx6q,2019-01-01T00:00:00Z/2019-02-01T00:00:00Z,123456789,AWS,Anniversary,123456789012,2019-01-01T00:00:00Z,2019-02-01T00:00:00Z,234567890123,Credit,2019-01-01T00:00:00Z,2019-02-01T00:00:00Z,AWSDataTransfer,USW2-DataTransfer-Regional-Bytes,,,,0,,,USD,,-35.576771,,-35.576771,AWS Lambda Data Transfer Pricing Adjustment,,,-35.576771,Amazon Web Services. Inc.,AWS Data Transfer,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,US West (Oregon),AWS Region,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Data Transfer,,,,,,us-west-2,,,,,,,,,AWSDataTransfer,AWS Data Transfer,62WNQUZDQQ6GRJC5,,,,,,,,,,,,US West (Oregon),AWS Region,,,IntraRegion,,USW2-DataTransfer-Regional-Bytes,,,,,,,,,,,,331970144,0.0000000000,0.0100000000,OnDemand,GB,,,,,,,,,,,,,,,,,,1387008443,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,";
-//		String[] tag = new String[] { "us-west-2", null, "DataTransfer", "", "USW2-DataTransfer-Regional-Bytes", null };
-//		ProcessTest test = new ProcessTest(null, tag, 0.0, -35.576771 / 31, Result.monthly, 31);
-//		test.run("2019-01-01T00:00:00Z", "2019-02-01T00:00:00Z", rawLineItem.split(","));
-//	}
+	@Test
+	public void testRedshiftCredit() throws Exception {
+		// Credits sometimes end one second into next month, so make sure we deal with that
+		Line line = new Line(LineItemType.Credit, "us-east-1", "", redshift, "Node:ds2.xlarge", "RunComputeNode:0001", "AWS Credit", PricingTerm.onDemand, "2020-03-01T00:00:00Z", "2020-04-01T00:00:01Z", "0.0000000000", "-38.3100000000", "");
+		String[] tag = new String[] { "us-east-1", null, "Redshift", "On-Demand Instance Credits", "ds2.xlarge", null };
+		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
+		test.run(Which.cau, "2020-03-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
+	
+	@Test
+	public void testConfigCredit() throws Exception {
+		Line line = new Line(LineItemType.Credit, "us-west-2", "", awsConfig, "USW2-ConfigurationItemRecorded", "", "AWS Config rules- credits to support pricing model change TT: 123456789012", PricingTerm.none, "2019-08-01T00:00:00Z", "2019-08-01T01:00:01Z", "0.0000000000", "-0.00492", "");
+		String[] tag = new String[] { "us-west-2", null, "Config", "Credits", "ConfigurationItemRecorded", null };
+		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.00492, null);
+		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+	}
 	
 	@Test
 	public void testSavingsPlanRecurringFee() throws Exception {
@@ -1252,16 +1266,32 @@ public class BasicLineItemProcessorTest {
 	public void testTax() throws Exception {
 		// Full month
 		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "7.44", "");
-		line.setTaxFields("GST");
+		line.setTaxFields("GST", "Amazon Web Services, Inc.");
 		String[] tag = new String[] { "us-east-1", null, "EC2", "Tax - GST", "HeavyUsage:c4.large", null };
 		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
 		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 
 		// Partial month
 		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "4.37", "");
-		line.setTaxFields("USSalesTax");
+		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
 		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
 		test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
-		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");				
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		
+		// Zero tax - should ignore
+		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "0", "");
+		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
+		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
+		test = new ProcessTest(line, tag, null, null, Result.ignore, 31);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");		
+	}
+	
+	@Test
+	public void testMonthlyVAT() throws Exception {
+		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "", "", "Tax for product code AmazonEC2", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "744.0", "");
+		line.setTaxFields("VAT", "AWS EMEA SARL");
+		String[] tag = new String[] { "global", null, "EC2", "Tax - VAT", "Tax - AWS EMEA SARL", null };
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 1.0, Result.hourly, 31);
+		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }
