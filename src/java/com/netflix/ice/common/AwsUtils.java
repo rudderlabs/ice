@@ -196,14 +196,14 @@ public class AwsUtils {
         	return AWSOrganizationsClientBuilder.standard()
         						.withRegion(AwsUtils.workS3BucketRegion)
         						.withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
-        						.withClientConfiguration(clientConfig)
+        						.withClientConfiguration(clientConfigOrganizationsTags)
         						.build();
         }
         else {
         	return AWSOrganizationsClientBuilder.standard()
         						.withRegion(AwsUtils.workS3BucketRegion)
         						.withCredentials(awsCredentialsProvider)
-        						.withClientConfiguration(clientConfig)
+        						.withClientConfiguration(clientConfigOrganizationsTags)
         						.build();
         }
     }
