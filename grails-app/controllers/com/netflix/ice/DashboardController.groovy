@@ -134,8 +134,9 @@ class DashboardController {
 	
 	def getSavingsPlanOps = {
 		def data = [];
-		data.add(Operation.spotInstances.name);
-		data.add(Operation.ondemandInstances.name);
+		for (Operation op: Operation.getReservationOperations()) {
+			data.add(op.name);
+		}		
 		for (Operation op: Operation.getSavingsPlanOperations()) {
 			data.add(op.name);
 		}
