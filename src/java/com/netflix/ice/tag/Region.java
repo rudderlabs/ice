@@ -31,7 +31,17 @@ public class Region extends Tag {
 	
     public static List<String> cloudFrontRegions = Lists.newArrayList(new String[]{"AP","AU","CA","EU","IN","JP","ME","SA","US","ZA"});
 	
-	public static final Region GLOBAL = new Region("global", "", "Global");
+	public static final Region GLOBAL = new Region("global", "", "Global") {
+		private static final long serialVersionUID = 1L;
+		// Always put global first unless comparing to aggregated tag.
+		@Override
+        public int compareTo(Tag t) {
+	        if (t == aggregated)
+	            return -t.compareTo(this);
+            return this == t ? 0 : -1;
+        }		
+	};	
+	
 	public static final Region US_EAST_1 = new Region("us-east-1", "USE1", "US East (N. Virginia)");
     public static final Region US_EAST_2 = new Region("us-east-2", "USE2", "US East (Ohio)");
     public static final Region US_WEST_1 = new Region("us-west-1", "USW1", "US West (N. California)");
@@ -127,6 +137,19 @@ public class Region extends Tag {
         super(name);
         this.shortName = shortName;
         this.priceListName = priceListName;
+    }
+
+    @Override
+    public int compareTo(Tag t) {
+        if (t instanceof Region) {
+        	Region r = (Region) t;
+        	if (r == GLOBAL)
+        		return -r.compareTo(this);
+            int result = this.getName().compareTo(t.getName());
+            return result;
+        }
+        else
+            return super.compareTo(t);
     }
 
     public Collection<Zone> getZones() {

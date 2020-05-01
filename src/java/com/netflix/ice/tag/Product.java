@@ -150,16 +150,8 @@ public class Product extends Tag {
     }
 
     @Override
-    public String toString() {
+    public String getName() {
         return this.iceName;
-    }
-
-    @Override
-    public int compareTo(Tag t) {
-        if (t == aggregated)
-            return -t.compareTo(this);
-        int result = ("a" + this.iceName).compareTo("a" + ((Product)t).iceName);
-        return result;
     }
 
     protected static String canonicalName(String name) {

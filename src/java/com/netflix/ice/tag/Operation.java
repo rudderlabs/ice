@@ -443,7 +443,7 @@ public class Operation extends Tag {
         if (t instanceof Operation) {
             Operation o = (Operation)t;
             int result = this.seq - o.seq;
-            return result == 0 ? this.name.compareTo(t.name) : result;
+            return result == 0 ? this.getName().compareToIgnoreCase(t.getName()) : result;
         }
         else
             return super.compareTo(t);

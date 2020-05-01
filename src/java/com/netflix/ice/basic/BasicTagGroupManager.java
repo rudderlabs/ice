@@ -232,21 +232,6 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
 
     public Collection<Region> getRegions(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
-    	class RegionComparator implements Comparator<Region> {
-
-			@Override
-			public int compare(Region o1, Region o2) {
-				if (o1 == o2)
-					return 0;
-				if (o1 == Region.GLOBAL)
-					return -1;
-				if (o2 == Region.GLOBAL)
-					return 1;
-				
-				return o1.compareTo(o2);
-			}    		
-    	}
-    	
         Set<Region> regions = Sets.newHashSet();
 
         for (TagGroup tagGroup: tagGroupsInRange) {
@@ -255,7 +240,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         }
 
         List<Region> result = Lists.newArrayList(regions);
-        result.sort(new RegionComparator());
+        result.sort(null);
         return result;
     }
 
