@@ -150,7 +150,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         	savingsPlanUsedCommitmentIndex = report.getColumnIndex("savingsPlan", "UsedCommitment");
         	savingsPlanPaymentOptionIndex = report.getColumnIndex("savingsPlan", "PaymentOption");
         	
-            if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate)) {
+            if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate) && report.getColumnIndex("savingsPlan", "NetSavingsPlanEffectiveCost") > 0) {
             	savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "NetAmortizedUpfrontCommitmentForBillingPeriod");
             	savingsPlanRecurringCommitmentForBillingPeriodIndex = report.getColumnIndex("savingsPlan", "NetRecurringCommitmentForBillingPeriod");
             	savingsPlanEffectiveCostIndex = report.getColumnIndex("savingsPlan", "NetSavingsPlanEffectiveCost");
