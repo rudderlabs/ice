@@ -97,7 +97,7 @@ public class CostAndUsageReportLineItem extends LineItem {
         usageQuantityIndex = report.getColumnIndex("lineItem", "UsageAmount");
         startTimeIndex = report.getColumnIndex("lineItem", "UsageStartDate");
         endTimeIndex = report.getColumnIndex("lineItem", "UsageEndDate");
-        if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate)) {        	
+        if (costAndUsageNetUnblendedStartDate != null && !report.getStartTime().isBefore(costAndUsageNetUnblendedStartDate) && report.getColumnIndex("lineItem", "NetUnblendedRate") > 0) {        	
             rateIndex = report.getColumnIndex("lineItem", "NetUnblendedRate");
             costIndex = report.getColumnIndex("lineItem", "NetUnblendedCost");
 	        reservationAmortizedUpfrontCostForUsageIndex = report.getColumnIndex("reservation", "NetAmortizedUpfrontCostForUsage");
@@ -305,12 +305,12 @@ public class CostAndUsageReportLineItem extends LineItem {
     	}
     	return items[reservedIndex].toLowerCase().equals("reserved") || 
     			items[usageTypeIndex].contains("HeavyUsage") ||
-    			!items[reservationArnIndex].isEmpty();
+    			!getReservationArn().isEmpty();
     }
 
 	@Override
 	public String getPurchaseOption() {
-		return items[purchaseOptionIndex];
+		return purchaseOptionIndex >= 0 ? items[purchaseOptionIndex] : "";
 	}
 
 	@Override
@@ -361,7 +361,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getPublicOnDemandCost() {
-		return items[publicOnDemandCostIndex];
+		return publicOnDemandCostIndex >= 0 ? items[publicOnDemandCostIndex] : "";
 	}
 	
 	public int getLineItemTypeIndex() {
@@ -382,9 +382,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public String getLineItemNormalizationFactor() {
-		if (lineItemNormalizationFactorIndex >= 0)
-			return items[lineItemNormalizationFactorIndex];
-		return "";
+		return lineItemNormalizationFactorIndex >= 0 ? items[lineItemNormalizationFactorIndex] : "";
 	}
 
 	public int getProductNormalizationSizeFactorIndex() {
@@ -405,12 +403,12 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public Region getProductRegion() {
-		String region = items[productRegionIndex];
+		String region = productRegionIndex >= 0 ? items[productRegionIndex] : "";
 		return region.isEmpty() ? Region.US_EAST_1 : Region.getRegionByName(region);
 	}
 
 	public String getPricingUnit() {
-		String unit = items[pricingUnitIndex];
+		String unit = pricingUnitIndex >= 0 ? items[pricingUnitIndex] : "";
 		if (unit.equals("Hrs")) {
 			unit = "hours";
 		}
@@ -426,23 +424,12 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getLineItemId() {
-		return items[lineItemIdIndex];
+		return lineItemIdIndex >= 0 ? items[lineItemIdIndex] : "";
 	}
 	
 	@Override
 	public String getReservationArn() {
-		String arn = items[reservationArnIndex];
-		return arn;
-		/*
-		// First try the form for ec2 reservations
-		// Note: Prior to October 2017 RDS reservation IDs used the EC2 form and did not match the RDS RI ID.
-		int i = arn.indexOf("/");
-		if (i < 0) {
-			// try the rds form
-			i = arn.lastIndexOf(":");
-		}
-		return i > 0 ? arn.substring(i + 1) : arn;
-		*/
+		return reservationArnIndex >= 0 ? items[reservationArnIndex] : "";
 	}
 
 	public int getAmortizedUpfrontCostForUsageIndex() {
@@ -451,9 +438,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getAmortizedUpfrontCostForUsage() {
-		if (reservationAmortizedUpfrontCostForUsageIndex >= 0)
-			return items[reservationAmortizedUpfrontCostForUsageIndex];
-		return "";
+		return reservationAmortizedUpfrontCostForUsageIndex >= 0 ? items[reservationAmortizedUpfrontCostForUsageIndex] : "";
 	}
 	
 	@Override
@@ -467,9 +452,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public String getAmortizedUpfrontFeeForBillingPeriod() {
-		if (reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0)
-			return items[reservationAmortizedUpfrontFeeForBillingPeriodIndex];
-		return "";
+		return reservationAmortizedUpfrontFeeForBillingPeriodIndex >= 0 ? items[reservationAmortizedUpfrontFeeForBillingPeriodIndex] : "";
 	}
 
 	@Override
@@ -483,9 +466,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getRecurringFeeForUsage() {
-		if (reservationRecurringFeeForUsageIndex >= 0)
-			return items[reservationRecurringFeeForUsageIndex];
-		return "";
+		return reservationRecurringFeeForUsageIndex >= 0 ? items[reservationRecurringFeeForUsageIndex] : "";
 	}
 	
 	public int getUnusedAmortizedUpfrontFeeForBillingPeriodIndex() {
@@ -548,7 +529,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getTaxType() {
-		return items[lineItemTaxTypeIndex];
+		return lineItemTaxTypeIndex >= 0 ? items[lineItemTaxTypeIndex] : "";
 	}
 
 	public int getLegalEntityIndex() {
@@ -557,7 +538,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getLegalEntity() {
-		return items[lineItemLegalEntityIndex];
+		return lineItemLegalEntityIndex >= 0 ? items[lineItemLegalEntityIndex] : "";		
 	}
 
 	public int getReservationStartTimeIndex() {
@@ -566,9 +547,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public String getReservationStartTime() {
-		if (reservationStartTimeIndex >= 0)
-			return items[reservationStartTimeIndex];
-		return null;
+		return reservationStartTimeIndex >= 0 ? items[reservationStartTimeIndex] : null;
 	}
 	
 	public int getReservationEndTimeIndex() {
@@ -577,9 +556,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public String getReservationEndTime() {
-		if (reservationEndTimeIndex >= 0)
-			return items[reservationEndTimeIndex];
-		return null;
+		return reservationEndTimeIndex >= 0 ? items[reservationEndTimeIndex] : null;
 	}
 	
 	public int getReservationNumberOfReservationsIndex() {
@@ -588,9 +565,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 
 	@Override
 	public String getReservationNumberOfReservations() {
-		if (reservationNumberOfReservationsIndex >= 0)
-			return items[reservationNumberOfReservationsIndex];
-		return null;
+		return reservationNumberOfReservationsIndex >= 0 ? items[reservationNumberOfReservationsIndex] : null;
 	}
 
 	/**
@@ -626,44 +601,32 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getSavingsPlanAmortizedUpfrontCommitmentForBillingPeriod() {
-		if (savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex >= 0)
-			return items[savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex];
-		return null;
+		return savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex >= 0 ? items[savingsPlanAmortizedUpfrontCommitmentForBillingPeriodIndex] : null;
 	}
 	
 	@Override
 	public String getSavingsPlanRecurringCommitmentForBillingPeriod() {
-		if (savingsPlanRecurringCommitmentForBillingPeriodIndex >= 0)
-			return items[savingsPlanRecurringCommitmentForBillingPeriodIndex];
-		return null;
+		return savingsPlanRecurringCommitmentForBillingPeriodIndex >= 0 ? items[savingsPlanRecurringCommitmentForBillingPeriodIndex] : null;
 	}
 
 	@Override
 	public String getSavingsPlanStartTime() {
-		if (savingsPlanStartTimeIndex >= 0)
-			return items[savingsPlanStartTimeIndex];
-		return null;
+		return savingsPlanStartTimeIndex >= 0 ? items[savingsPlanStartTimeIndex] : null;
 	}
 
 	@Override
 	public String getSavingsPlanEndTime() {
-		if (savingsPlanEndTimeIndex >= 0)
-			return items[savingsPlanEndTimeIndex];
-		return null;
+		return savingsPlanEndTimeIndex >= 0 ? items[savingsPlanEndTimeIndex] : null;
 	}
 
 	@Override
 	public String getSavingsPlanArn() {
-		if (savingsPlanArnIndex >= 0)
-			return items[savingsPlanArnIndex];
-		return null;
+		return savingsPlanArnIndex >= 0 ? items[savingsPlanArnIndex] : null;
 	}
 
 	@Override
 	public String getSavingsPlanEffectiveCost() {
-		if (savingsPlanEffectiveCostIndex >= 0)
-			return items[savingsPlanEffectiveCostIndex];
-		return null;
+		return savingsPlanEffectiveCostIndex >= 0 ? items[savingsPlanEffectiveCostIndex] : null;
 	}
 
 	@Override
@@ -678,9 +641,7 @@ public class CostAndUsageReportLineItem extends LineItem {
 	
 	@Override
 	public String getSavingsPlanPaymentOption() {
-		if (savingsPlanPaymentOptionIndex >= 0)
-			return items[savingsPlanPaymentOptionIndex];
-		return null;
+		return savingsPlanPaymentOptionIndex >= 0 ? items[savingsPlanPaymentOptionIndex] : null;
 	}
 
 }
