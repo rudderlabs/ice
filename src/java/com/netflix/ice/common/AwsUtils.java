@@ -20,6 +20,7 @@ package com.netflix.ice.common;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.metrics.AwsSdkMetrics;
 import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition;
 import com.amazonaws.retry.PredefinedRetryPolicies;
 import com.amazonaws.retry.RetryPolicy;
@@ -136,7 +137,7 @@ public class AwsUtils {
      * This method must be called before all methods can be used.
      * @param credentialsProvider
      */
-    public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion) {
+    public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion, String metricsNamespace) {
         awsCredentialsProvider = credentialsProvider;
         clientConfig = new ClientConfiguration();
         clientConfigOrganizationsTags = new ClientConfiguration();
@@ -172,6 +173,12 @@ public class AwsUtils {
     			new RetryPolicy(new OrgRetryCondition(),
     				PredefinedRetryPolicies.DYNAMODB_DEFAULT_BACKOFF_STRATEGY,
     				PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY, false));
+    	
+    	if (!StringUtils.isEmpty(metricsNamespace)) {
+    		AwsSdkMetrics.enableDefaultMetrics();
+    		AwsSdkMetrics.setCredentialProvider(awsCredentialsProvider);
+    		AwsSdkMetrics.setMetricNameSpace(metricsNamespace);
+    	}
     }
 
     public static AmazonS3Client getAmazonS3Client() {
