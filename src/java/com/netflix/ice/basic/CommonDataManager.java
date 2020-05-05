@@ -46,7 +46,7 @@ import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
 
-public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  extends DataFilePoller<T> implements DataManager {
+public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  extends DataFileCache<T> implements DataManager {
 
     protected TagGroupManager tagGroupManager;
     

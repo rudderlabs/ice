@@ -21,10 +21,14 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 
-import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.common.StalePoller;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class InstanceMetricsService extends StalePoller {
+import com.netflix.ice.common.AwsUtils;
+
+public class InstanceMetricsService implements DataCache {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
 	private final String localDir;
 	private final String workS3BucketName;
 	private final String workS3BucketPrefix;
@@ -35,8 +39,6 @@ public class InstanceMetricsService extends StalePoller {
 		this.workS3BucketName = workS3BucketName;
 		this.workS3BucketPrefix = workS3BucketPrefix;
 		this.instanceMetrics = null;
-		
-		start();
     }
 	    
     /**
@@ -44,8 +46,8 @@ public class InstanceMetricsService extends StalePoller {
      * @throws Exception
      */
     @Override
-    protected boolean stalePoll() throws Exception {    	
-        logger.info(InstanceMetrics.dbName + " start polling...");
+    public boolean refresh() {    	
+        logger.info(InstanceMetrics.dbName + " refresh...");
         File file = new File(localDir, InstanceMetrics.dbName);
         try {
             logger.info("trying to download " + file);

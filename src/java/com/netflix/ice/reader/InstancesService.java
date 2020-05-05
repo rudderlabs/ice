@@ -22,16 +22,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.Instance;
 import com.netflix.ice.common.ProductService;
-import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.processor.Instances;
 
-public class InstancesService extends StalePoller {
+public class InstancesService implements DataCache {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
 	private final Instances instances;
 	private final AccountService accountService;
 	private final ProductService productService;
@@ -41,8 +44,6 @@ public class InstancesService extends StalePoller {
 		instances = new Instances(localDir, workS3BucketName, workS3BucketPrefix);
 		this.accountService = accountService;
 		this.productService = productService;
-		
-		start();
 	}
 	
 	public Collection<Instance> getInstances(String id) {
@@ -76,8 +77,8 @@ public class InstancesService extends StalePoller {
 	}
 
 	@Override
-	protected boolean stalePoll() throws Exception {
-        logger.info("Instances start polling...");
+	public boolean refresh() {
+        logger.info("Instances refresh...");
         try {
         	// Ask for one day prior to make sure we've processed a report if at
         	// start of month.
