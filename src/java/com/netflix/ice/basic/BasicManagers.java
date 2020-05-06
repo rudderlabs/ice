@@ -128,12 +128,13 @@ public class BasicManagers extends Poller implements Managers {
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
+       	lastPollMillis = lastProcessedPoller.getLastProcessedMillis();
+       	
     	WorkBucketConfig wbc = config.workBucketConfig;
     	
     	// Refresh all the data manager caches
     	refreshDataManagers(wbc);
     	    	
-       	lastPollMillis = DateTime.now().getMillis();
     	
         logger.info("trying to find new tag group and data managers...");
         Set<Product> products = Sets.newHashSet(this.products);
