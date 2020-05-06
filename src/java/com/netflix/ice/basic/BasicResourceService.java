@@ -378,6 +378,24 @@ public class BasicResourceService extends ResourceService {
     	return value;
     }
     
+    /**
+     * Efficient string replace to remove spaces - much faster than String.replace()
+     */
+    private String stripSpaces(String s) {
+    	if (s.isEmpty())
+    		return "";
+    	
+    	char[] ca = s.toCharArray();
+    	StringBuilder ret = new StringBuilder(ca.length);
+    	
+    	for (int i = 0; i < ca.length; i++) {
+    		if (ca[i] == ' ')
+    			continue;
+    		ret.append(ca[i]);
+    	}    	
+    	return ret.toString();
+    }
+    
     @Override
     public String getUserTagValue(LineItem lineItem, String tag) {
     	if (includeReservationIds && tag == reservationIdsKeyName) {
@@ -394,7 +412,7 @@ public class BasicResourceService extends ResourceService {
     	for (int index: tagLineItemIndeces.get(tag)) {
     		if (lineItem.getResourceTagsSize() > index) {
     	    	// cut all white space from tag value
-    			String val = lineItem.getResourceTag(index).replace(" ", "");
+    			String val = stripSpaces(lineItem.getResourceTag(index));
     			
     			if (!StringUtils.isEmpty(val)) {
     				if (invertedIndex != null && invertedIndex.containsKey(val.toLowerCase())) {
