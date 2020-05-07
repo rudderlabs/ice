@@ -32,6 +32,9 @@ import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -41,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.csvreader.CsvReader;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
@@ -377,19 +379,18 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	}
 
 	private long processReportFile(String fileName, InputStream in, String root, CostAndUsageReportLineItem lineItem, List<String[]> delayedItems, CostAndUsageData costAndUsageData, double edpDiscount) {
-
-        CsvReader reader = new CsvReader(new InputStreamReader(in), ',');
-        
+    	CSVFormat format = CSVFormat.DEFAULT.withFirstRecordAsHeader();
+    	
         long endMilli = startMilli;
         long lineNumber = 0;
+        CSVParser records = null;
         try {
-            reader.readRecord();
-            
-            // skip over the header
-            reader.getValues();
-
-            while (reader.readRecord()) {
-                String[] items = reader.getValues();
+        	records = format.parse(new InputStreamReader(in));
+    	    for (CSVRecord record : records) {
+                String[] items = new String[record.size()];
+                for (int i = 0; i < record.size(); i++)
+                	items[i] = record.get(i);
+                	
                 try {
                 	lineItem.setItems(items);
                     endMilli = processOneLine(fileName, delayedItems, root, lineItem, costAndUsageData, endMilli, edpDiscount);
@@ -403,12 +404,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
             logger.error("Error processing " + fileName + " at line " + lineNumber, e);
         }
         finally {
-            try {
-                reader.close();
-            }
-            catch (Exception e) {
-                logger.error("Cannot close BufferedReader...", e);
-            }
+        	if (records != null)
+        		try { records.close(); } catch (IOException e) { logger.error("Cannot close csv parser...", e); };
         }
         return endMilli;
 	}
