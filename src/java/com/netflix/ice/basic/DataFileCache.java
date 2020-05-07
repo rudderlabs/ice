@@ -30,6 +30,8 @@ import java.util.zip.GZIPInputStream;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.joda.time.PeriodType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazonaws.AmazonServiceException;
 import com.google.common.cache.CacheBuilder;
@@ -43,14 +45,16 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ConsolidateType;
-import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.ProductService;
+import com.netflix.ice.reader.DataCache;
 import com.netflix.ice.tag.Zone.BadZone;
 
 /**
  * This class reads data from s3 bucket and feeds the data to UI
  */
-abstract public class DataFilePoller<T> extends StalePoller {
+abstract public class DataFileCache<T> implements DataCache {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
     protected static final String compressExtension = ".gz";
 
     protected final DateTime startDate;
@@ -67,7 +71,7 @@ abstract public class DataFilePoller<T> extends StalePoller {
     // data cache
     protected LoadingCache<DateTime, T> data;
     
-    public DataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
+    public DataFileCache(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
     		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService) {
     	this.startDate = startDate;
         this.consolidateType = consolidateType;
@@ -78,7 +82,6 @@ abstract public class DataFilePoller<T> extends StalePoller {
         this.productService = productService;
         
         buildCache(monthlyCacheSize);
-        start();
     }
     
     protected void buildCache(int monthlyCacheSize) {
@@ -100,11 +103,10 @@ abstract public class DataFilePoller<T> extends StalePoller {
     
     /**
      * We check if new data is available periodically
-     * @throws Exception
      */
     @Override
-    protected boolean stalePoll() throws Exception {
-        logger.info(dbName + " start polling...");
+    public boolean refresh() {
+        logger.info(dbName + " refresh...");
         for (DateTime key: Sets.newHashSet(fileCache.keySet())) {
             File file = fileCache.get(key);
             try {
@@ -124,11 +126,6 @@ abstract public class DataFilePoller<T> extends StalePoller {
         return false;
     }
 
-    @Override
-    protected String getThreadName() {
-        return this.dbName;
-    }
-    
     abstract protected T newEmptyData();
 
     private T loadData(DateTime monthDate) throws InterruptedException {

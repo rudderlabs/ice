@@ -60,10 +60,10 @@ public class BasicDataManagerTest {
     protected Logger logger = LoggerFactory.getLogger(getClass());
 	private static final String dataDir = "src/test/data/";
 
-	class TestDataFilePoller extends BasicDataManager {
+	class TestDataFileCache extends BasicDataManager {
 		private ReadOnlyData data;
 		
-		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
+		TestDataFileCache(DateTime startDate, final String dbName, ConsolidateType consolidateType, TagGroupManager tagGroupManager, boolean compress, int numUserTags,
 	    		int monthlyCacheSize, WorkBucketConfig workBucketConfig, AccountService accountService, ProductService productService, ReadOnlyData data) {
 			super(startDate, dbName, consolidateType, tagGroupManager, compress, numUserTags, monthlyCacheSize, workBucketConfig, accountService, productService, null);
 			this.data = data;
@@ -71,10 +71,6 @@ public class BasicDataManagerTest {
 		
 		@Override
 		protected void buildCache(int monthlyCacheSize) {				
-		}
-		
-		@Override
-		public void start() {				
 		}
 		
 		@Override
@@ -88,7 +84,7 @@ public class BasicDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
+		BasicDataManager data = new TestDataFileCache(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
 	    
 	    File f = new File(dataDir + "cost_hourly_EC2_Instance_2018-06.gz");
 	    if (!f.exists())
@@ -112,7 +108,7 @@ public class BasicDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
+		BasicDataManager data = new TestDataFileCache(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
 	    
 	    File f = new File(dataDir + "cost_monthly_all.gz");
 	    if (!f.exists())
@@ -177,7 +173,7 @@ public class BasicDataManagerTest {
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFileCache(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
@@ -218,7 +214,7 @@ public class BasicDataManagerTest {
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFileCache(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
@@ -258,7 +254,7 @@ public class BasicDataManagerTest {
 		DateTime testMonth = DateTime.parse("2018-01-01");
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, tagGroups);
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFileCache(testMonth, null, ConsolidateType.monthly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusMonths(1));
 		List<List<UserTag>> userTagLists = Lists.newArrayList();
@@ -301,7 +297,7 @@ public class BasicDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		BasicDataManager data = new TestDataFilePoller(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
+		BasicDataManager data = new TestDataFileCache(DateTime.now(), null, null, null, true, 0, 0, null, as, ps, null);
 	    
 	    File f = new File(dataDir + "cost_hourly_EC2Instance_2019-01.gz");
 	    if (!f.exists())
@@ -318,7 +314,7 @@ public class BasicDataManagerTest {
 		DateTime testMonth = new DateTime("2020-01-01", DateTimeZone.UTC);
 		TagGroupManager tagGroupManager = makeTagGroupManager(testMonth, rod.getTagGroups());
 		
-		BasicDataManager dataManager = new TestDataFilePoller(testMonth, null, ConsolidateType.hourly, tagGroupManager, true, 0, 0, null, as, ps, rod);
+		BasicDataManager dataManager = new TestDataFileCache(testMonth, null, ConsolidateType.hourly, tagGroupManager, true, 0, 0, null, as, ps, rod);
 		
 		Interval interval = new Interval(testMonth, testMonth.plusHours(1));
 		

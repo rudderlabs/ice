@@ -72,6 +72,7 @@ public class BasicManagers extends Poller implements Managers {
     private InstancesService instancesService = null;
     private Long lastPollMillis = 0L;
 	private ExecutorService pool;
+	private ExecutorService refreshPool;
     
     BasicManagers(boolean compress) {
     	this.compress = compress;
@@ -79,25 +80,13 @@ public class BasicManagers extends Poller implements Managers {
     
     public void shutdown() {
     	lastProcessedPoller.shutdown();
-    	
-        for (Poller tagGroupManager: tagGroupManagers.values()) {
-            tagGroupManager.shutdown();
-        }
-        for (Poller dataManager: costManagers.values()) {
-            dataManager.shutdown();
-        }
-        for (Poller dataManager: usageManagers.values()) {
-            dataManager.shutdown();
-        }
-        for (Poller dataManager: tagCoverageManagers.values()) {
-        	dataManager.shutdown();
-        }
     }
 
     public void init() {
         config = ReaderConfig.getInstance();
         lastProcessedPoller = new LastProcessedPoller(config.startDate, config.workBucketConfig);
         pool = Executors.newFixedThreadPool(config.numthreads);
+        refreshPool = Executors.newFixedThreadPool(config.numthreads);
                 		
         doWork();
         start(1*60, 1*60, false);
@@ -139,32 +128,13 @@ public class BasicManagers extends Poller implements Managers {
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
-    	// Mark all the data managers so they update their caches
-    	for (StalePoller m: tagGroupManagers.values()) {
-    		m.stale();
-    	}
-    	for (StalePoller p: costManagers.values()) {
-    		p.stale();
-    	}
-    	for (StalePoller p: usageManagers.values()) {
-    		p.stale();
-    	}
-    	for (StalePoller p: tagCoverageManagers.values()) {
-    		p.stale();
-    	}
-    	
+       	lastPollMillis = lastProcessedPoller.getLastProcessedMillis();
+       	
     	WorkBucketConfig wbc = config.workBucketConfig;
     	
-    	if (instancesService == null) {
-            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
-            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
-    	}
-    	else {
-	    	instancesService.stale();
-	    	instanceMetricsService.stale();
-    	}
-    	
-    	lastPollMillis = DateTime.now().getMillis();
+    	// Refresh all the data manager caches
+    	refreshDataManagers(wbc);
+    	    	
     	
         logger.info("trying to find new tag group and data managers...");
         Set<Product> products = Sets.newHashSet(this.products);
@@ -232,6 +202,40 @@ public class BasicManagers extends Poller implements Managers {
             this.tagGroupManagers = tagGroupManagers;
             this.products = products;
         }
+    }
+    
+    private void refreshDataManagers(WorkBucketConfig wbc) {
+    	for (DataCache d: tagGroupManagers.values()) {
+    		refresh(d);
+    	}
+    	for (DataCache d: costManagers.values()) {
+    		refresh(d);
+    	}
+    	for (DataCache d: usageManagers.values()) {
+    		refresh(d);
+    	}
+    	for (DataCache d: tagCoverageManagers.values()) {
+    		refresh(d);
+    	}
+    	
+    	if (instancesService == null) {
+            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
+            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
+    	}
+    	else {
+	    	refresh(instancesService);
+	    	refresh(instanceMetricsService);
+    	}    	
+    }
+
+    private Future<Void> refresh(final DataCache dataCache) {
+    	return refreshPool.submit(new Callable<Void>() {
+    		@Override
+    		public Void call() throws Exception {
+    			dataCache.refresh();
+    			return null;
+    		}
+    	});    	
     }
 
     private static class Key implements Comparable<Key> {

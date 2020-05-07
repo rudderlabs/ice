@@ -24,9 +24,9 @@ import com.netflix.ice.common.AccountService;
 import com.netflix.ice.common.AwsUtils;
 import com.netflix.ice.common.Config.WorkBucketConfig;
 import com.netflix.ice.common.ProductService;
-import com.netflix.ice.common.StalePoller;
 import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.processor.TagGroupWriter;
+import com.netflix.ice.reader.DataCache;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.tag.*;
@@ -35,6 +35,8 @@ import com.netflix.ice.tag.Zone.BadZone;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -44,7 +46,9 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-public class BasicTagGroupManager extends StalePoller implements TagGroupManager {
+public class BasicTagGroupManager implements TagGroupManager, DataCache {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
     public static final String compressExtension = ".gz";
 
     private final WorkBucketConfig workBucketConfig;
@@ -64,13 +68,8 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     	this.productService = productService;
         this.dbName = TagGroupWriter.DB_PREFIX + (product == null ? "all" : product.getServiceCode());
         file = new File(workBucketConfig.localDir, dbName + (compress ? compressExtension : ""));
-        try {
-            poll();
-        }
-        catch (Exception e) {
-            logger.error("cannot poll data for " + file, e);
-        }
-        start(DefaultStalePollIntervalSecs, DefaultStalePollIntervalSecs, false);
+        
+        refresh();
     }
     
     // For unit testing
@@ -139,15 +138,18 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
     
     @Override
-    protected boolean stalePoll() throws IOException, BadZone {
+    public boolean refresh() {
         boolean downloaded = AwsUtils.downloadFileIfChanged(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix, file);
         if (downloaded || tagGroups == null) {
-            logger.info("trying to read from " + file);
-            InputStream is = new FileInputStream(file);
-            if (compress)
-            	is = new GZIPInputStream(is);
-            DataInputStream in = new DataInputStream(is);
-            try {
+	        logger.info("trying to read from " + file);
+	        InputStream is = null;
+	        DataInputStream in = null;
+	        try {
+	            is = new FileInputStream(file);
+	            if (compress)
+	            	is = new GZIPInputStream(is);
+	            in = new DataInputStream(is);
+	            
                 TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups = TagGroup.Serializer.deserializeTagGroups(accountService, productService, in);
                 TreeMap<Long, Collection<TagGroup>> tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
                 Interval totalInterval = null;
@@ -160,18 +162,21 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                 logger.info("done reading " + file);
             }
             catch (IOException e) {
-            	throw e;
+                logger.error("failed to download " + file, e);
             }
+	        catch (BadZone e) {
+                logger.error("failed to download " + file, e);
+	        }
             finally {
-                in.close();
-            }
+            	if (in != null) {
+	                try { in.close(); } catch (Exception e) {};
+            	}
+            	else if (is != null) {
+	                try { is.close(); } catch (Exception e) {};
+            	}
+	        }
         }
         return false;
-    }
-
-    @Override
-    protected String getThreadName() {
-        return this.dbName;
     }
 
     private TreeMap<Long, Collection<TagGroup>> removeResourceGroups(TreeMap<Long, Collection<TagGroup>> tagGroups) {
