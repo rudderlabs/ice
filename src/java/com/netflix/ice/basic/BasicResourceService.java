@@ -23,8 +23,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -43,7 +43,7 @@ import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
 
 public class BasicResourceService extends ResourceService {
-    //private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
+    private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
 
     protected final List<String> customTags;
     private final List<String> userTags;
@@ -94,7 +94,7 @@ public class BasicResourceService extends ResourceService {
      *      ...
      *  </pre>
      */
-    private Map<String, Map<String, Map<Long, MappedTags>>> mappedTags;
+    private Map<String, Map<String, Map<Long, List<MappedTags>>>> mappedTags;
     
     /**
      * 
@@ -113,6 +113,10 @@ public class BasicResourceService extends ResourceService {
 				Map<String, List<String>> configValueMaps = config.maps.get(mappedValue);
 				for (String sourceTag: configValueMaps.keySet()) {
 					Integer sourceTagIndex = tagResourceGroupIndeces.get(sourceTag);
+					if (sourceTagIndex == null) {
+						logger.error("Tag mapping rule references invalid source tag: " + sourceTag);
+						continue;
+					}
 					Map<String, String> mappedValues = maps.get(sourceTagIndex);
 					if (mappedValues == null) {
 						mappedValues = Maps.newHashMap();
@@ -246,14 +250,19 @@ public class BasicResourceService extends ResourceService {
 		this.tagValuesInverted.put(payerAccountId, indeces);
 		
 		// Create the maps setting tags based on the values of other tags
-		Map<String, Map<Long, MappedTags>> mapped = Maps.newHashMap();
+		Map<String, Map<Long, List<MappedTags>>> mapped = Maps.newHashMap();
 		for (TagConfig config: tagConfigs) {
 			if (config.mapped == null || config.mapped.isEmpty())
 				continue;
-			Map<Long, MappedTags> mappedTags = Maps.newTreeMap();
+			Map<Long, List<MappedTags>> mappedTags = Maps.newTreeMap();
 			for (TagMappings m: config.mapped) {
 				MappedTags mt = new MappedTags(m);
-				mappedTags.put(mt.startMillis, mt);
+				List<MappedTags> l = mappedTags.get(mt.startMillis);
+				if (l == null) {
+					l = Lists.newArrayList();
+					mappedTags.put(mt.startMillis, l);
+				}
+				l.add(mt);
 			}
 			mapped.put(config.name, mappedTags);			
 		}
@@ -336,43 +345,45 @@ public class BasicResourceService extends ResourceService {
     
     private String getMappedUserTagValue(Account account, String payerAccount, String tag, String[] tags, long startMillis) {
     	// return the user tag value for the specified account if there is a mapping configured.
-    	Map<String, Map<Long, MappedTags>> mappedTagsForPayerAccount = mappedTags.get(payerAccount);
+    	Map<String, Map<Long, List<MappedTags>>> mappedTagsForPayerAccount = mappedTags.get(payerAccount);
     	if (mappedTagsForPayerAccount == null)
     		return null;
     	
     	// Get the time-ordered values
-    	Map<Long, MappedTags> mappedTagsMap = mappedTagsForPayerAccount.get(tag);
-    	Collection<MappedTags> listOfMappedTags = mappedTagsMap == null ? null : mappedTagsMap.values();
-    	if (listOfMappedTags == null)
+    	Map<Long, List<MappedTags>> mappedTagsMap = mappedTagsForPayerAccount.get(tag);
+    	Collection<List<MappedTags>> timeOrderedListsOfMappedTags = mappedTagsMap == null ? null : mappedTagsMap.values();
+    	if (timeOrderedListsOfMappedTags == null)
     		return null;
     	
     	String value = null;
     	
-    	for (MappedTags mt: listOfMappedTags) {
-    		if (startMillis < mt.startMillis)
-    			break; // Remaining rules are not in effect yet
-    		
-        	Map<Integer, Map<String, String>> sourceTags = mt.maps;
-        	if (sourceTags == null)
-        		continue;
-        	
-        	// If we have an include filter, make sure the account is in the list
-        	if (!mt.include.isEmpty() && !mt.include.contains(account.getId()))
-        		continue;
-        	
-        	// If we have an exclude filter, make sure the account is not in the list
-        	if (!mt.exclude.isEmpty() && mt.exclude.contains(account.getId()))
-        		continue;
-        	
-        	for (Integer sourceTagIndex: sourceTags.keySet()) {
-        		String have = tags[sourceTagIndex];
-        		if (have == null)
-        			continue;
-        		Map<String, String> values = sourceTags.get(sourceTagIndex);
-        		value = values.get(have.toLowerCase());
-        		if (value != null)
-        			break; // done processing this rule set. Move on to any later rule sets
-        	}
+    	for (List<MappedTags> mappedTagList: timeOrderedListsOfMappedTags) {
+    		for (MappedTags mt: mappedTagList) {
+	    		if (startMillis < mt.startMillis)
+	    			break; // Remaining rules are not in effect yet
+	    		
+	        	Map<Integer, Map<String, String>> sourceTags = mt.maps;
+	        	if (sourceTags == null)
+	        		continue;
+	        	
+	        	// If we have an include filter, make sure the account is in the list
+	        	if (!mt.include.isEmpty() && !mt.include.contains(account.getId()))
+	        		continue;
+	        	
+	        	// If we have an exclude filter, make sure the account is not in the list
+	        	if (!mt.exclude.isEmpty() && mt.exclude.contains(account.getId()))
+	        		continue;
+	        	
+	        	for (Integer sourceTagIndex: sourceTags.keySet()) {
+	        		String have = tags[sourceTagIndex];
+	        		if (have == null)
+	        			continue;
+	        		Map<String, String> values = sourceTags.get(sourceTagIndex);
+	        		value = values.get(have.toLowerCase());
+	        		if (value != null)
+	        			break; // done processing this rule set. Move on to any later rule sets
+	        	}
+    		}
     	}
     	
     	return value;
