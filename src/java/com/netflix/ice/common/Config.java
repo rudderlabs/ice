@@ -91,9 +91,6 @@ public abstract class Config {
         this.setTagCoverage(properties.getProperty(IceOptions.TAG_COVERAGE, "").isEmpty() ? TagCoverage.none : TagCoverage.valueOf(properties.getProperty(IceOptions.TAG_COVERAGE)));
         this.hourlyData = Boolean.parseBoolean(properties.getProperty(IceOptions.HOURLY_DATA, "true"));
 
-        if (credentialsProvider != null)
-        	AwsUtils.init(credentialsProvider, workBucketConfig.workS3BucketRegion);
-        
         // Stash the arbitrary list of debug flags - names that start with "ice.debug."
         debugProperties = Maps.newHashMap();
         for (String name: properties.stringPropertyNames()) {
@@ -102,6 +99,9 @@ public abstract class Config {
         		debugProperties.put(key, properties.getProperty(name));
         	}
         }
+        
+        if (credentialsProvider != null)
+        	AwsUtils.init(credentialsProvider, workBucketConfig.workS3BucketRegion, debugProperties.get("sdkMetrics"));        
     }
 
 	public TagCoverage getTagCoverage() {

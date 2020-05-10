@@ -59,10 +59,6 @@ public class TagCoverageDataManagerTest {
 	    }
 	    
 		@Override
-	    public void start() {
-	    }
-
-		@Override
 		protected List<String> getUserTags() {
 			List<String> tags = Lists.newArrayList();
 			tags.add("Email");
@@ -105,10 +101,10 @@ public class TagCoverageDataManagerTest {
 	}
 	
 	
-	class TestDataFilePoller extends TagCoverageDataManager {
+	class TestDataFileCache extends TagCoverageDataManager {
 		private final int userTagSize;
 		
-		TestDataFilePoller(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
+		TestDataFileCache(DateTime startDate, final String dbName, ConsolidateType consolidateType, boolean compress,
 	    		int monthlyCacheSize, AccountService accountService, ProductService productService, int size) {
 			super(startDate, dbName, consolidateType, null, compress, Lists.<String>newArrayList(), monthlyCacheSize, null, accountService, productService);
 			userTagSize = size;
@@ -116,10 +112,6 @@ public class TagCoverageDataManagerTest {
 		
 		@Override
 		protected void buildCache(int monthlyCacheSize) {				
-		}
-		
-		@Override
-		public void start() {				
 		}
 		
 		@Override
@@ -133,7 +125,7 @@ public class TagCoverageDataManagerTest {
 		AccountService as = new BasicAccountService();
 		ProductService ps = new BasicProductService();
 		
-		TagCoverageDataManager data = new TestDataFilePoller(DateTime.now(), null, null, true, 0, as, ps, 12);
+		TagCoverageDataManager data = new TestDataFileCache(DateTime.now(), null, null, true, 0, as, ps, 12);
 	    
 	    File f = new File(dataDir + "coverage_hourly_all_2018-07.gz");
 	    if (!f.exists())

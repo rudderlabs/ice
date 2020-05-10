@@ -12,16 +12,16 @@
     "name":"UsageStartDate"
   },{
     "category":"resourceTags",
-    "name":"user:Email"
+    "name":"user:TagKey1"
   },{
     "category":"resourceTags",
-    "name":"user:Environment"
+    "name":"user:TagKey2"
   },{
     "category":"resourceTags",
-    "name":"user:environment"
+    "name":"user:TagKey3"
   },{
     "category":"resourceTags",
-    "name":"user:Product"
+    "name":"user:TagKey4"
   }],
   "charset":"UTF-8",
   "compression":"GZIP",
