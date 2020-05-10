@@ -243,7 +243,7 @@ public class BasicTagGroupManagerTest {
 		List<TagGroup> tagGroups = Lists.newArrayList();
 		int numLent = 0;
 		int numAmort = 0;
-		for (Operation op: Operation.getReservationOperations()) {
+		for (Operation op: Operation.getReservationOperations(true)) {
 			if (op.isLent())
 				numLent++;
 			if (op.isAmortized())
@@ -256,7 +256,7 @@ public class BasicTagGroupManagerTest {
 		BasicTagGroupManager manager = getTagGroupManager(tga);
 		
 		assertEquals("wrong number of lent operations", 11, numLent);
-		assertEquals("wrong number of amortized operations", 20, numAmort);
+		assertEquals("wrong number of amortized operations", 15, numAmort);
 		
 		List<Operation.Identity.Value> exclude = Lists.newArrayList(Operation.Identity.Value.Amortized);
 		Collection<Operation> ops = manager.getOperations(new TagLists(), exclude);

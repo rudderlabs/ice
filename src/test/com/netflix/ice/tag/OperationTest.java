@@ -34,7 +34,7 @@ public class OperationTest {
 
 	@Test
 	public void testGetSavingsPlanOperations() {
-		assertEquals("wrong number of savings plan operations", 26, Operation.getSavingsPlanOperations().size());
+		assertEquals("wrong number of savings plan operations", 21, Operation.getSavingsPlanOperations(false).size());
 	}
 	
 	@Test
@@ -55,7 +55,7 @@ public class OperationTest {
 	
 	@Test
 	public void testIdentity() {
-		List<Operation> operations = Operation.getReservationOperations();
+		List<Operation> operations = Operation.getReservationOperations(false);
 		List<Operation> excluded = Lists.newArrayList();
 		List<Operation.Identity.Value> exclude = Lists.newArrayList(Operation.Identity.Value.Amortized);
 		int bits = Operation.Identity.getIdentitySet(exclude);
@@ -63,7 +63,7 @@ public class OperationTest {
 			if (op.isOneOf(bits))
 				excluded.add(op);
 		}
-		assertEquals("wrong number of amortized items", 20, excluded.size());
+		assertEquals("wrong number of amortized items", 15, excluded.size());
 		
 		// Test tax
 		Operation.getTaxOperation("VAT");

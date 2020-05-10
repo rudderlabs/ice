@@ -123,8 +123,10 @@ class DashboardController {
     }
 	
 	def getReservationOps = {
+		boolean showLent = params.containsKey("showLent") ? params.getBoolean("showLent") : false;
+		
 		def data = [];
-		for (Operation op: Operation.getReservationOperations()) {
+		for (Operation op: Operation.getReservationOperations(showLent)) {
 			data.add(op.name);
 		}		
 		
@@ -133,11 +135,13 @@ class DashboardController {
 	}
 	
 	def getSavingsPlanOps = {
+		boolean showLent = params.containsKey("showLent") ? params.getBoolean("showLent") : false;
+		
 		def data = [];
-		for (Operation op: Operation.getReservationOperations()) {
+		for (Operation op: Operation.getReservationOperations(showLent)) {
 			data.add(op.name);
 		}		
-		for (Operation op: Operation.getSavingsPlanOperations()) {
+		for (Operation op: Operation.getSavingsPlanOperations(showLent)) {
 			data.add(op.name);
 		}
 		def result = [status: 200, data: data]
@@ -267,6 +271,8 @@ class DashboardController {
 				excludedOperations.add(Operation.Identity.Value.Credit);
 			else if (opStr.equals("tax"))
 				excludedOperations.add(Operation.Identity.Value.Tax);
+			else if (opStr.equals("savings"))
+				excludedOperations.add(Operation.Identity.Value.Savings);
 		}
 		if (!isCost || !(forReservation || forSavingsPlans)) {
 			excludedOperations.add(Operation.Identity.Value.Savings);

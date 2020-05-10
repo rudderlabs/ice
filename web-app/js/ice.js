@@ -952,7 +952,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       }
       params["usage_cost"] = $scope.usage_cost;
       params["showLent"] = $scope.reservationSharing === "lent";
-      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax) {
+      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax || !$scope.savings) {
         categories = [];
         if (!$scope.recurring)
           categories.push("recurring");
@@ -962,6 +962,8 @@ ice.factory('usage_db', function ($window, $http, $filter) {
           categories.push("credit");
         if (!$scope.tax)
           categories.push("tax");
+        if (!$scope.savings)
+          categories.push("savings");
 
         params["exclude"] = categories.join(',');
       }
@@ -1040,6 +1042,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       $http({
         method: "GET",
         url: "getReservationOps",
@@ -1060,6 +1063,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       $http({
         method: "GET",
         url: "getSavingsPlanOps",
@@ -1216,6 +1220,11 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.initialGroupByTag = '';
     $scope.showUserTags = false;
     $scope.predefinedQuery = null;
+    $scope.recurring = true;
+    $scope.amortized = true;
+    $scope.credit = true;
+    $scope.tax = true;
+    $scope.savings = true;
   }
 
   $scope.initUserTagVars = function ($scope) {
@@ -1420,10 +1429,6 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
-  $scope.recurring = true;
-  $scope.amortized = true;
-  $scope.credit = true;
-  $scope.tax = true;
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
@@ -1586,10 +1591,6 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
-  $scope.recurring = true;
-  $scope.amortized = true;
-  $scope.credit = true;
-  $scope.tax = true;
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
@@ -2070,10 +2071,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.initUserTagVars($scope);
-  $scope.recurring = true;
-  $scope.amortized = true;
-  $scope.credit = true;
-  $scope.tax = true;
   $scope.groupBys = [
     { name: "None" },
     { name: "OrgUnit" },
@@ -2256,10 +2253,6 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 function summaryCtrl($scope, $location, usage_db, highchart) {
 
   $scope.init($scope);
-  $scope.recurring = true;
-  $scope.amortized = true;
-  $scope.credit = true;
-  $scope.tax = true;
   $scope.usageUnit = "";
   $scope.groupBys = [
     { name: "OrgUnit" },

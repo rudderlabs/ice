@@ -128,6 +128,10 @@ public class Operation extends Tag {
     private static ConcurrentMap<String, Operation> operations = Maps.newConcurrentMap();
     private static List<Operation> reservationOperations = Lists.newArrayList();
     private static List<Operation> savingsPlanOperations = Lists.newArrayList();
+    private static List<Operation> reservationOperationsWithBorrowed = null;
+    private static List<Operation> reservationOperationsWithLent = null;
+    private static List<Operation> savingsPlanOperationsWithBorrowed = null;
+    private static List<Operation> savingsPlanOperationsWithLent = null;
     
     private enum Category {
     	None,
@@ -544,8 +548,25 @@ public class Operation extends Tag {
         return result;
     }
 
-    public static List<Operation> getReservationOperations() {
-        return reservationOperations;
+    public static List<Operation> getReservationOperations(boolean showLent) {
+    	if (showLent) {
+    		if (reservationOperationsWithLent == null) {
+    			List<Operation> ops = Lists.newArrayList(reservationOperations);
+    			List<Operation> borrowed = Lists.newArrayList(borrowedOperations);
+    			ops.removeAll(borrowed);
+    			reservationOperationsWithLent = ops;
+    		}
+    		return reservationOperationsWithLent;
+    	}
+    	else {
+	    	if (reservationOperationsWithBorrowed == null) {
+	    		List<Operation> ops = Lists.newArrayList(reservationOperations);
+				List<Operation> lent = Lists.newArrayList(lentOperations);
+				ops.removeAll(lent);
+				reservationOperationsWithBorrowed = ops;
+			}
+	    	return reservationOperationsWithBorrowed;
+    	}
     }
 
     public static class ReservationOperation extends Operation {
@@ -589,8 +610,25 @@ public class Operation extends Tag {
             return super.compareTo(t);
     }
         
-    public static List<Operation> getSavingsPlanOperations() {
-        return savingsPlanOperations;
+    public static List<Operation> getSavingsPlanOperations(boolean showLent) {
+    	if (showLent) {
+    		if (savingsPlanOperationsWithLent == null) {
+    			List<Operation> ops = Lists.newArrayList(savingsPlanOperations);
+    			List<Operation> borrowed = Lists.newArrayList(borrowedOperations);
+    			ops.removeAll(borrowed);
+    			savingsPlanOperationsWithLent = ops;
+    		}
+    		return savingsPlanOperationsWithLent;
+    	}
+    	else {
+    		if (savingsPlanOperationsWithBorrowed == null) {
+    			List<Operation> ops = Lists.newArrayList(savingsPlanOperations);
+    			List<Operation> lent = Lists.newArrayList(lentOperations);
+    			ops.removeAll(lent);
+    			savingsPlanOperationsWithBorrowed = ops;
+    		}
+    		return savingsPlanOperationsWithBorrowed;    		
+    	}
     }
 
     public static SavingsPlanOperation getSavingsPlanAmortized(PurchaseOption paymentOption) {

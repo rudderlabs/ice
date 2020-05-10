@@ -142,6 +142,7 @@
 	        <br><input ng-model="filter_operations" type="text" class="metaFilter" placeholder="filter">
 	        <button ng-click="selected_operations = operations; operationsChanged()" class="allNoneButton">+</button>
 	        <button ng-click="selected_operations = []; operationsChanged()" class="allNoneButton">-</button>
+	        <div style="padding-top: 5px"><input type="checkbox" ng-model="savings" ng-change="includeChanged()"> Savings</input></div>
       	</div>
       </td>
       <td>
