@@ -253,57 +253,30 @@ class DashboardController {
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 		boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
 		boolean showLent = query.has("showLent") ? query.getBoolean("showLent") : false;
+		List<String> exclude = listParams(query, "exclude");
+		boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
 		
-        Collection<Operation> data;
-        if (resources) {
-            data = Sets.newTreeSet();
-            if (products.size() == 0) {
-                products = Lists.newArrayList(getManagers().getProducts());
-            }
-            for (Product product: products) {
-                if (product == null)
-                    continue;
-
-                TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
-                Collection<Operation> tmp = tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
-                data.addAll(tmp);
-            }
-        }
-        else {
-            TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
-            data = tagGroupManager == null ? [] : tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
-        }
-
-        if (forReservation || forSavingsPlans) {
-			// Remove Lent or Borrowed operations
-			for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations) {
-            	data.remove(op);
-			}
-				
-			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
-			if (!isCost) {
-				// Remove Amortization and savings from the usage operations
-				for (Operation amortOp: Operation.amortizationOperations)
-					data.remove(amortOp);
-				for (Operation savingsOp: Operation.savingsOperations)
-					data.remove(savingsOp);
-			}
-        }
-		else {
-			// Don't show Savings operations unless it's the reservations dashboard
-			// and only show one of lent or borrowed based on query params
-            for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
-                data.remove(op);
-			for (Operation savingsOp: Operation.savingsOperations)
-				data.remove(savingsOp);
-        }
+		// Figure out what operations we should exclude
+		List<Operation.Identity.Value> excludedOperations = Lists.newArrayList();
+		for (String opStr: exclude) {
+			if (opStr.equals("recurring"))
+				excludedOperations.add(Operation.Identity.Value.Recurring);
+			else if (opStr.equals("amortized"))
+				excludedOperations.add(Operation.Identity.Value.Amortized);
+			else if (opStr.equals("credit"))
+				excludedOperations.add(Operation.Identity.Value.Credit);
+			else if (opStr.equals("tax"))
+				excludedOperations.add(Operation.Identity.Value.Tax);
+		}
+		if (!isCost || !(forReservation || forSavingsPlans)) {
+			excludedOperations.add(Operation.Identity.Value.Savings);
+		}
+		if (!isCost) {
+			excludedOperations.add(Operation.Identity.Value.Amortized);
+		}
+		excludedOperations.add(showLent ? Operation.Identity.Value.Borrowed : Operation.Identity.Value.Lent);
 		
-		logger.debug("operations: " + operations);
-		logger.debug("   accounts: " + accounts);
-		logger.debug("   regions: " + regions);
-		logger.debug("   zones: " + zones);
-		logger.debug("   products: " + products);
-		logger.debug("   data: " + data);
+        Collection<Operation> data = getManagers().getOperations(new TagLists(accounts, regions, zones, products, operations, null, null), products, excludedOperations, resources);
 		
         def result = [status: 200, data: data]
         render result as JSON

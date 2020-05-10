@@ -43,4 +43,81 @@ public class OperationTest {
 		List<String> ops = Lists.newArrayList(op);
 		assertEquals("missing operation", op, Operation.getOperations(ops).get(0).name);
 	}
+	
+	@Test
+	public void testTax() {
+		Operation.getTaxOperation("VAT");
+		List<String> opStrs = Lists.newArrayList("Tax - VAT");
+		List<Operation> operations = Operation.getOperations(opStrs);
+		assertEquals("did not find tax entry", 1, operations.size());
+		assertEquals("wrong name for tax entry", "Tax - VAT", operations.get(0).name);
+	}
+	
+	@Test
+	public void testIdentity() {
+		List<Operation> operations = Operation.getReservationOperations();
+		List<Operation> excluded = Lists.newArrayList();
+		List<Operation.Identity.Value> exclude = Lists.newArrayList(Operation.Identity.Value.Amortized);
+		int bits = Operation.Identity.getIdentitySet(exclude);
+		for (Operation op: operations) {
+			if (op.isOneOf(bits))
+				excluded.add(op);
+		}
+		assertEquals("wrong number of amortized items", 20, excluded.size());
+		
+		// Test tax
+		Operation.getTaxOperation("VAT");
+		List<String> opStrs = Lists.newArrayList("Tax - VAT");
+		operations = Operation.getOperations(opStrs);
+		exclude = Lists.newArrayList(Operation.Identity.Value.Tax);
+		bits = Operation.Identity.getIdentitySet(exclude);
+		excluded = Lists.newArrayList();
+		for (Operation op: operations) {
+			if (op.isOneOf(bits))
+				excluded.add(op);
+		}
+		assertEquals("wrong number of tax items", 1, excluded.size());
+		assertTrue("Tax not categorized as tax", excluded.get(0).isTax());
+		assertFalse("Tax incorrectly categorized as recurring", excluded.get(0).isRecurring());
+		
+		// Test credit
+		Operation.getCreditOperation("Foo");
+		opStrs = Lists.newArrayList("Credit - Foo");
+		operations = Operation.getOperations(opStrs);
+		exclude = Lists.newArrayList(Operation.Identity.Value.Credit);
+		bits = Operation.Identity.getIdentitySet(exclude);
+		excluded = Lists.newArrayList();
+		for (Operation op: operations) {
+			if (op.isOneOf(bits))
+				excluded.add(op);
+		}
+		assertEquals("wrong number of credit items", 1, excluded.size());
+		assertTrue("Credit not categorized as credit", excluded.get(0).isCredit());
+		assertFalse("Credit incorrectly categorized as recurring", excluded.get(0).isRecurring());
+		assertFalse("Credit incorrectly categorized as tax", excluded.get(0).isTax());
+		assertFalse("Credit incorrectly categorized as tax", excluded.get(0).isAmortized());
+	}
+	
+	@Test
+	public void testDeserializeCreditAndTax() {
+		// Make sure we properly categorize tax and credit entries
+		Operation taxOp = Operation.deserializeOperation("Tax - VAT");
+		assertTrue("tax operation not categorized correctly", taxOp.isTax());
+		assertEquals("tax operation has wrong name", "Tax - VAT", taxOp.name);
+		
+		Operation creditOp = Operation.deserializeOperation("Credit - Foo");
+		assertTrue("credit operation not categorized correctly", creditOp.isCredit());
+		assertEquals("credit operation has wrong name", "Credit - Foo", creditOp.name);
+	}
+	
+	@Test
+	public void testEmptyNameCreditAndTax() {
+		Operation taxOp = Operation.getTaxOperation("");
+		assertTrue("tax operation not categorized correctly", taxOp.isTax());
+		assertEquals("tax operation has wrong name", "Tax - None", taxOp.name);
+		
+		Operation creditOp = Operation.getCreditOperation("");
+		assertTrue("credit operation not categorized correctly", creditOp.isCredit());
+		assertEquals("credit operation has wrong name", "Credit - None", creditOp.name);
+	}
 }

@@ -157,7 +157,7 @@ public class BasicDataManagerTest {
 			tagGroupList.add(tg);
 		tagGroupsWithResourceGroups.put(testMonth.getMillis(), tagGroupList);
 		
-		return new BasicTagGroupManager(tagGroupsWithResourceGroups);
+		return new BasicTagGroupManager(tagGroupsWithResourceGroups, new Interval(testMonth, testMonth.plusMonths(1)));
 	}
 	
 	@Test

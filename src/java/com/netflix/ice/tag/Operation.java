@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.PurchaseOption;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
@@ -30,20 +31,98 @@ public class Operation extends Tag {
 	 * 
 	 */
 	private static final long serialVersionUID = 2L;
+	
+	private static final String taxPrefix = "Tax - ";
+	private static final String creditPrefix = "Credit - ";
 
 	protected final int seq;
 	protected final Category category;
+	protected final Identity identity;
+	
+	public static class Identity {
+		public enum Value {
+			Recurring(1 << 0),
+			Savings(1 << 1),
+			Borrowed(1 << 2),
+			Lent(1 << 3),
+			Amortized(1 << 4),
+			Credit(1 << 5),
+			Tax(1 << 6);
+			
+			private final int bit;
+			
+			Value(int bit) {
+				this.bit = bit;
+			}
+			
+			public int getBit() {
+				return bit;
+			}
+		}
+		
+		// Bitfield for fast comparison of multiple values at once
+		private final int bitfield;
+		
+		public final boolean isRecurring;
+		public final boolean isSavings;
+		public final boolean isBorrowed;
+		public final boolean isLent;
+		public final boolean isAmortized;
+		public final boolean isCredit;
+		public final boolean isTax;
+		
+		Identity(Category category) {
+			isRecurring = category == Category.None || 
+					      category == Category.Used || 
+					      category == Category.Bonus || 
+					      category == Category.Borrowed || 
+					      category == Category.Lent || 
+					      category == Category.Unused;
+			
+			isSavings = category == Category.Savings;
+			isBorrowed = category == Category.Borrowed || category == Category.BorrowedAmortized;
+			isLent = category == Category.Lent || category == Category.LentAmortized;
+			isAmortized = category == Category.Amortized || category == Category.UnusedAmortized || category == Category.LentAmortized || category == Category.BorrowedAmortized;
+			isCredit = category == Category.Credit;
+			isTax = category == Category.Tax;
+			
+			int bf = isRecurring ? Value.Recurring.getBit() : 0;
+			bf |= isSavings ? Value.Savings.getBit() : 0;
+			bf |= isBorrowed ? Value.Borrowed.getBit() : 0;
+			bf |= isLent ? Value.Lent.getBit() : 0;
+			bf |= isAmortized ? Value.Amortized.getBit() : 0;
+			bf |= isCredit ? Value.Credit.getBit() : 0;
+			bf |= isTax ? Value.Tax.getBit() : 0;
+			
+			bitfield = bf;			
+		}
+		
+		public static int getIdentitySet(Collection<Value> values) {
+			int bitfield = 0;
+			
+			for (Value v: values) {
+				bitfield |= v.getBit();
+			}
+			return bitfield;
+		}
+		
+		public boolean isOneOf(int bits) {
+			return (bits & bitfield) != 0;
+		}
+	}
 	
     private Operation(String name) {
         super(name);
         this.seq = Integer.MAX_VALUE;
         this.category = Category.None;
+        this.identity = new Identity(this.category);
     }
     
     private Operation(String name, int seq, Category category) {
         super(name);
         this.seq = seq;
         this.category = category;
+        this.identity = new Identity(this.category);
     }
     
     private static ConcurrentMap<String, Operation> operations = Maps.newConcurrentMap();
@@ -61,14 +140,16 @@ public class Operation extends Tag {
     	BorrowedAmortized,
     	LentAmortized,
     	Unused,
-    	UnusedAmortized;
+    	UnusedAmortized,
+    	Credit,
+    	Tax;
     }
-
+    
     private static int sequence = 0;
-    public static final ReservationOperation spotInstanceSavings = new ReservationOperation("Savings - Spot", null);
-    public static final ReservationOperation spotInstances = new ReservationOperation("Spot Instances", null);
-    public static final ReservationOperation ondemandInstances = new ReservationOperation("On-Demand Instances", null);
-    public static final ReservationOperation ondemandInstanceCredits = new ReservationOperation("On-Demand Instance Credits", null);
+    public static final ReservationOperation spotInstanceSavings = new ReservationOperation("Savings - Spot", Category.Savings);
+    public static final ReservationOperation spotInstances = new ReservationOperation("Spot Instances", Category.None);
+    public static final ReservationOperation ondemandInstances = new ReservationOperation("On-Demand Instances", Category.None);
+    public static final ReservationOperation ondemandInstanceCredits = new ReservationOperation(creditPrefix + "On-Demand Instance", Category.Credit);
 
     public static final ReservationOperation savingsNoUpfront = new ReservationOperation(Category.Savings, PurchaseOption.NoUpfront);
     public static final ReservationOperation reservedInstancesNoUpfront = new ReservationOperation(Category.Used, PurchaseOption.NoUpfront);
@@ -133,7 +214,7 @@ public class Operation extends Tag {
     public static final ReservationOperation unusedInstancesLight = new ReservationOperation(Category.Unused, PurchaseOption.Light);
     public static final ReservationOperation unusedAmortizedLight = new ReservationOperation(Category.UnusedAmortized, PurchaseOption.Light);
 
-    public static final ReservationOperation reservedInstancesCredits = new ReservationOperation("RI Credits", null);
+    public static final ReservationOperation reservedInstancesCredits = new ReservationOperation(creditPrefix + "RI", Category.Credit);
     
     public static final SavingsPlanOperation savingsPlanSavingsNoUpfront = new SavingsPlanOperation(Category.Savings, PurchaseOption.NoUpfront);
     public static final SavingsPlanOperation savingsPlanUsedNoUpfront = new SavingsPlanOperation(Category.Used, PurchaseOption.NoUpfront);
@@ -250,10 +331,10 @@ public class Operation extends Tag {
     	return category == Category.Bonus;
     }
     public boolean isLent() {
-    	return category == Category.Lent || category == Category.LentAmortized;
+    	return identity.isLent;
     }
     public boolean isBorrowed() {
-    	return category == Category.Borrowed || category == Category.BorrowedAmortized;
+    	return identity.isBorrowed;
     }
     public boolean isUsed() {
     	return category == Category.Used;
@@ -262,7 +343,7 @@ public class Operation extends Tag {
     	return category == Category.Unused || category == Category.UnusedAmortized;
     }
     public boolean isAmortized() {
-    	return category == Category.Amortized || category == Category.UnusedAmortized || category == Category.LentAmortized || category == Category.BorrowedAmortized;
+    	return identity.isAmortized;
     }
     public boolean isOnDemand() {
     	return this == ondemandInstances;
@@ -271,7 +352,21 @@ public class Operation extends Tag {
     	return this == spotInstances;
     }
     public boolean isSavings() {
-    	return category == Category.Savings || this == spotInstanceSavings;
+    	return identity.isSavings;
+    }
+    public boolean isTax() {
+    	return identity.isTax;
+    }
+    public boolean isCredit() {
+    	return identity.isCredit;
+    }
+    
+    public boolean isRecurring() {
+    	return identity.isRecurring;
+    }
+    
+    public boolean isOneOf(int bitSet) {
+    	return identity.isOneOf(bitSet);
     }
     
     public static ReservationOperation getReservedInstances(PurchaseOption purchaseOption) {
@@ -389,6 +484,34 @@ public class Operation extends Tag {
             default: throw new RuntimeException("Unknown PurchaseOption " + purchaseOption);
         }
     }
+    
+    public static Operation getTaxOperation(String name) {
+    	if (name.isEmpty())
+    		name = "None";
+
+    	String fullName = taxPrefix + name;
+        Operation operation = operations.get(fullName);
+        if (operation == null) {
+            operations.putIfAbsent(fullName, new Operation(fullName, Integer.MAX_VALUE, Category.Tax));
+            operation = operations.get(fullName);
+        }
+
+        return operation;
+    }
+
+    public static Operation getCreditOperation(String name) {
+    	if (name.isEmpty())
+    		name = "None";
+    	
+    	String fullName = creditPrefix + name;
+        Operation operation = operations.get(fullName);
+        if (operation == null) {
+            operations.putIfAbsent(fullName, new Operation(fullName, Integer.MAX_VALUE, Category.Credit));
+            operation = operations.get(fullName);
+        }
+
+        return operation;
+    }
 
     public static Operation getOperation(String name) {
     	if (name.isEmpty()) {
@@ -402,6 +525,16 @@ public class Operation extends Tag {
         }
 
         return operation;
+    }
+    
+    // Used by the reader when deserializing operation strings.
+    public static Operation deserializeOperation(String name) {
+    	if (name.startsWith(taxPrefix))
+    		return getTaxOperation(name.substring(taxPrefix.length()));
+    	else if (name.startsWith(creditPrefix))
+    		return getCreditOperation(name.substring(creditPrefix.length()));
+    	
+    	return getOperation(name);
     }
 
     public static List<Operation> getOperations(List<String> names) {
@@ -425,6 +558,13 @@ public class Operation extends Tag {
             operations.put(name, this);
             reservationOperations.add(this);
         }
+		
+		private ReservationOperation(String name, Category category) {
+			super(name, sequence++, category);
+			this.purchaseOption = null;
+			operations.put(name,  this);
+			reservationOperations.add(this);
+		}
 		
 		private ReservationOperation(Category category, PurchaseOption purchaseOption) {
             super(category.name() + " RIs - " + purchaseOption.name, sequence++, category);

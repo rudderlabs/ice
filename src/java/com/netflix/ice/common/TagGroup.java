@@ -264,7 +264,7 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             Zone zone = StringUtils.isEmpty(zoneStr) ? null : region.getZone(zoneStr);
             String prodStr = in.readUTF();
             Product product = productService.getProductByServiceCode(prodStr);
-            Operation operation = Operation.getOperation(in.readUTF());
+            Operation operation = Operation.deserializeOperation(in.readUTF());
             UsageType usageType = UsageType.deserialize(in);
             String resourceGroupStr = in.readUTF();
             ResourceGroup resourceGroup = StringUtils.isEmpty(resourceGroupStr) ? null : ResourceGroup.getResourceGroup(resourceGroupStr);

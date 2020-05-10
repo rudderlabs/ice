@@ -64,7 +64,14 @@ public interface TagGroupManager {
      * @param tagLists
      * @return collection of operations
      */
-    Collection<Operation> getOperations(TagLists tagLists);
+    Collection<Operation> getOperationsUnsorted(TagLists tagLists, Collection<Operation.Identity.Value> exclude);
+
+    /**
+     * Get all operations that meet query in tagLists.
+     * @param tagLists
+     * @return collection of operations
+     */
+    Collection<Operation> getOperations(TagLists tagLists, Collection<Operation.Identity.Value> exclude);
 
     /**
      * Get all usage types that meet query in tagLists.

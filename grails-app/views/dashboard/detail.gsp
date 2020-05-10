@@ -28,7 +28,7 @@
 <div class="" style="margin: auto; {{getBodyWidth('width: 1652px;')}} padding: 20px 30px"  ng-controller="detailCtrl">
   <table ng-show="!graphOnly()">
     <tr>
-      <td>Start</td>
+      <td class="metaStart">Start</td>
       <td>Show</td>
       <td class="metaAccounts">
       	<input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input>
@@ -46,6 +46,19 @@
         <input class="required" type="text" name="start" id="start" size="14"/>
         <div style="padding-top: 10px">End</div>
         <br><input class="required" type="text" name="end" id="end" size="14"/>
+        <div  ng-show="usage_cost=='cost'" style="padding-top: 10px">Include</div>
+        <div ng-show="usage_cost=='cost'" stype="padding-top: 10px">
+          <table class="includeTable">
+            <tr>
+        	  <td class="left"><input type="checkbox" ng-model="recurring" ng-change="includeChanged()"> Recurring Fees</input></td>
+		      <td class="right"><input type="checkbox" ng-model="credit" ng-change="includeChanged()"> Credits</input></td>    
+            </tr>
+		      <td class="left"><input type="checkbox" ng-model="amortized" ng-change="includeChanged()"> Amortization</input></td>        
+		      <td class="right"><input type="checkbox" ng-model="tax" ng-change="includeChanged()"> Taxes</input></td>        
+            <tr>
+            </tr>
+          </table>
+        </div>
       </td>
       <td nowrap="">
         <input type="radio" ng-model="usage_cost" value="cost" id="radio_cost"> <label for="radio_cost" style="cursor: pointer">Cost</label>&nbsp;&nbsp;

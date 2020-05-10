@@ -555,7 +555,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
         
         if (lineItem.getLineItemType() == LineItemType.Tax) {
-        	operation = Operation.getOperation("Tax - " + lineItem.getTaxType());
+        	operation = Operation.getTaxOperation(lineItem.getTaxType());
             usageType = UsageType.getUsageType(usageTypeStr.isEmpty() ? "Tax - " + lineItem.getLegalEntity() : usageTypeStr, "");
         }
         else if (usageTypeStr.startsWith("ElasticIP:")) {
@@ -673,7 +673,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         }
 
         if (operation == null) {
-            operation = Operation.getOperation(isCredit ? "Credits" : operationStr);
+            operation = isCredit ? Operation.getCreditOperation(operationStr) : Operation.getOperation(operationStr);
         }
 
         if (operation instanceof Operation.ReservationOperation) {

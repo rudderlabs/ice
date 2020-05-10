@@ -74,7 +74,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     }
     
     // For unit testing
-    BasicTagGroupManager(TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups) {
+    BasicTagGroupManager(TreeMap<Long, Collection<TagGroup>> tagGroupsWithResourceGroups, Interval totalInterval) {
     	this.tagGroupsWithResourceGroups = tagGroupsWithResourceGroups;
     	this.tagGroups = removeResourceGroups(tagGroupsWithResourceGroups);
     	this.workBucketConfig = null;
@@ -82,6 +82,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
     	this.productService = null;
     	this.dbName = null;
     	this.file = null;
+    	this.totalInterval = totalInterval;
     }
     
     public TreeMap<Long, Integer> getSizes() {
@@ -226,9 +227,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             	accounts.add(tagGroup.account);
         }
 
-        List<Account> result = Lists.newArrayList(accounts);
-        result.sort(null);
-        return result;
+        return accounts;
     }
 
     public Collection<Region> getRegions(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
@@ -239,9 +238,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             	regions.add(tagGroup.region);
         }
 
-        List<Region> result = Lists.newArrayList(regions);
-        result.sort(null);
-        return result;
+        return regions;
     }
 
     public Collection<Zone> getZones(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
@@ -252,9 +249,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                 zones.add(tagGroup.zone);
         }
 
-        List<Zone> result = Lists.newArrayList(zones);
-        result.sort(null);
-        return result;
+        return zones;
     }
 
     public Collection<Product> getProducts(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
@@ -265,22 +260,21 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                 products.add(tagGroup.product);
         }
 
-        List<Product> result = Lists.newArrayList(products);
-        result.sort(null);
-        return result;
+        return products;
     }
-
-    public Collection<Operation> getOperations(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
+    
+    public Set<Operation> getOperations(Set<TagGroup> tagGroupsInRange, TagLists tagLists, Collection<Operation.Identity.Value> exclude) {
         Set<Operation> operations = Sets.newHashSet();
-
+        int excludeBitSet = exclude == null ? 0 : Operation.Identity.getIdentitySet(exclude);
+        
         for (TagGroup tagGroup: tagGroupsInRange) {
-            if (tagLists.contains(tagGroup))
-                operations.add(tagGroup.operation);
+            if (tagLists.contains(tagGroup)) {
+            	if (excludeBitSet == 0 || !tagGroup.operation.isOneOf(excludeBitSet))
+            		operations.add(tagGroup.operation);
+            }
         }
 
-        List<Operation> result = Lists.newArrayList(operations);
-        result.sort(null);
-        return result;
+        return operations;
     }
 
     public Collection<UsageType> getUsageTypes(Set<TagGroup> tagGroupsInRange, TagLists tagLists) {
@@ -291,9 +285,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                 usageTypes.add(tagGroup.usageType);
         }
 
-        List<UsageType> result = Lists.newArrayList(usageTypes);
-        result.sort(null);
-        return result;
+        return usageTypes;
     }
 
     public Collection<ResourceGroup> getResourceGroups(Interval interval, TagLists tagLists) {
@@ -307,9 +299,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             }
         }
 
-        List<ResourceGroup> result = Lists.newArrayList(groups);
-        result.sort(null);
-        return result;
+        return groups;
     }
 
     public Collection<UserTag> getResourceGroupTags(Interval interval, TagLists tagLists, int userTagGroupByIndex) {
@@ -332,37 +322,53 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
             }
         }
 
-        List<UserTag> result = Lists.newArrayList(userTags);
-        result.sort(null);
-        return result;
+        return userTags;
     }
 
     public Collection<Account> getAccounts(TagLists tagLists) {
-        return this.getAccounts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    	List<Account> accounts = Lists.newArrayList(getAccounts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists));
+    	accounts.sort(null);
+        return accounts;
     }
 
     public Collection<Region> getRegions(TagLists tagLists) {
-        return this.getRegions(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    	List<Region> regions = Lists.newArrayList(getRegions(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists));
+    	regions.sort(null);
+        return regions;
     }
 
     public Collection<Zone> getZones(TagLists tagLists) {
-        return this.getZones(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    	List<Zone> zones = Lists.newArrayList(getZones(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists));
+    	zones.sort(null);
+        return zones;
     }
 
     public Collection<Product> getProducts(TagLists tagLists) {
-        return this.getProducts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    	List<Product> products = Lists.newArrayList(getProducts(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists));
+    	products.sort(null);
+    	return products;
     }
 
-    public Collection<Operation> getOperations(TagLists tagLists) {
-        return this.getOperations(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    public Collection<Operation> getOperationsUnsorted(TagLists tagLists, Collection<Operation.Identity.Value> exclude) {
+    	return getOperations(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists, exclude);
+    }
+
+    public Collection<Operation> getOperations(TagLists tagLists, Collection<Operation.Identity.Value> exclude) {
+    	List<Operation> operations = Lists.newArrayList(getOperationsUnsorted(tagLists, exclude));
+    	operations.sort(null);
+    	return operations;
     }
 
     public Collection<UsageType> getUsageTypes(TagLists tagLists) {
-        return this.getUsageTypes(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists);
+    	List<UsageType> usageTypes = Lists.newArrayList(getUsageTypes(getTagGroupsInRange(getMonthMillis(totalInterval)), tagLists));
+    	usageTypes.sort(null);
+    	return usageTypes;
     }
 
     public Collection<ResourceGroup> getResourceGroups(TagLists tagLists) {
-        return this.getResourceGroups(totalInterval, tagLists);
+    	List<ResourceGroup> resourceGroups = Lists.newArrayList(getResourceGroups(totalInterval, tagLists));
+    	resourceGroups.sort(null);
+    	return resourceGroups;
     }
 
     public Interval getOverlapInterval(Interval interval) {
@@ -390,15 +396,15 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
         // We must always specify all the operations so that we can remove
         // EC2 Instance Savings if not the reservation dashboard and 
         // for all dashboards choose between Borrowed and Lent Operations so we don't double count the cost/usage
-    	List<Operation> requestOps = tagListsForTag.operations;
-        if (requestOps == null || requestOps.size() == 0)
-        	requestOps = (List<Operation>) getOperations(tagGroupsInRange, tagListsForTag);
-        List<Operation> ops = Lists.newArrayList();
-    	for (Operation op: requestOps) {
-    		if ((showLent ? op.isBorrowed() : op.isLent()) || (!forReservation && op.isSavings()))
-    			continue;
-    		ops.add(op);
-    	}
+    	List<Operation> ops = tagListsForTag.operations;
+        if (ops == null || ops.size() == 0) {
+        	List<Operation.Identity.Value> exclude = Lists.newArrayList();
+        	if (!forReservation)
+        		exclude.add(Operation.Identity.Value.Savings);
+        	exclude.add(showLent ? Operation.Identity.Value.Borrowed : Operation.Identity.Value.Lent);
+        	
+        	ops = Lists.newArrayList(getOperations(tagGroupsInRange, tagListsForTag, exclude));
+        }
         tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
 
         if (groupBy == null || groupBy == TagType.TagKey) {
@@ -422,7 +428,7 @@ public class BasicTagGroupManager extends StalePoller implements TagGroupManager
                 groupByTags.addAll(getProducts(tagGroupsInRange, tagListsForTag));
                 break;
             case Operation:
-                groupByTags.addAll(getOperations(tagGroupsInRange, tagListsForTag));
+                groupByTags.addAll(getOperations(tagGroupsInRange, tagListsForTag, null));
                 break;
             case UsageType:
                 groupByTags.addAll(getUsageTypes(tagGroupsInRange, tagListsForTag));

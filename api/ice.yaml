@@ -212,6 +212,9 @@ paths:
               product:
                 description: Comma separated list of product names
                 type: string
+              operations:
+                description: Comma separated list of operation names
+                type: string
               resources:
                 description: If true, only return product names that can have tagged resources.
                 type: boolean
@@ -220,7 +223,13 @@ paths:
               forSavingsPlans:
                 type: boolean
               usage_cost:
-                description: If "cost" remove Lent operations. If "usage" remove Amortization and Savings operations.
+                description: If "usage" remove Amortization and Savings operations.
+                type: string
+              showLent:
+                description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
+                type: boolean
+              exclude:
+                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax
                 type: string
       responses:
         '200':
@@ -389,6 +398,9 @@ paths:
                 type: boolean
               showUserTags:
                 description: Enable filtering and/or group by user tags.
+                type: boolean
+              showLent:
+                description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
                 type: boolean
             additionalProperties:
                 description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>

@@ -29,6 +29,7 @@ import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Operation.Identity.Value;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
@@ -504,4 +505,38 @@ public class BasicManagers extends Poller implements Managers {
 
     	return intro + sb.toString();
     }
+
+	@Override
+	public Collection<Operation> getOperations(TagLists tagLists, Collection<Product> products, Collection<Value> exclude, boolean withUserTags) {
+		List<Operation> ops = null;
+		
+		if (withUserTags) {
+	        Set<Operation> operations = Sets.newHashSet();
+	        if (products.size() == 0) {
+	            products = Lists.newArrayList(getProducts());
+	        }
+	        for (Product product: products) {
+	            if (product == null)
+	                continue;
+
+	            List<Product> single = Lists.newArrayList(product);
+	            TagGroupManager tagGroupManager = getTagGroupManager(product);
+	            if (tagGroupManager == null)
+	            	continue;
+	            
+	            Collection<Operation> tmp = tagGroupManager.getOperationsUnsorted(tagLists.getTagListsWithProducts(single), exclude);
+	            operations.addAll(tmp);
+	        }
+	        ops = Lists.newArrayList(operations);
+			ops.sort(null);
+		}
+		else {
+			TagGroupManager tagGroupManager = getTagGroupManager(null);
+			if (tagGroupManager == null)
+				ops = Lists.newArrayList();
+			else
+				ops = Lists.newArrayList(tagGroupManager.getOperations(tagLists, exclude));
+		}
+		return ops;
+	}
 }

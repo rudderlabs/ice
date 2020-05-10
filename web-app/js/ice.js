@@ -950,7 +950,21 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["usage_cost"] = $scope.usage_cost;
       params["showLent"] = $scope.reservationSharing === "lent";
+      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax) {
+        categories = [];
+        if (!$scope.recurring)
+          categories.push("recurring");
+        if (!$scope.amortized)
+          categories.push("amortized");
+        if (!$scope.credit)
+          categories.push("credit");
+        if (!$scope.tax)
+          categories.push("tax");
+
+        params["exclude"] = categories.join(',');
+      }
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       if ($scope.dimensions[$scope.REGION_INDEX])
@@ -1406,6 +1420,10 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
 function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
+  $scope.recurring = true;
+  $scope.amortized = true;
+  $scope.credit = true;
+  $scope.tax = true;
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
@@ -1502,6 +1520,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     return usage_db.filterAccount($scope, filter_accounts);
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -1539,7 +1561,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
+    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), forReservation: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1564,6 +1586,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
 function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
+  $scope.recurring = true;
+  $scope.amortized = true;
+  $scope.credit = true;
+  $scope.tax = true;
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
@@ -1665,6 +1691,10 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.accountsChanged();
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -1697,7 +1727,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), usage_cost: $scope.usage_cost, forSavingsPlans: true };
+    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -2014,7 +2044,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function (data) {
-    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
+    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), forReservation: true };
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
 
@@ -2040,7 +2070,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.initUserTagVars($scope);
-  $scope.usageUnit = "Instances";
+  $scope.recurring = true;
+  $scope.amortized = true;
+  $scope.credit = true;
+  $scope.tax = true;
   $scope.groupBys = [
     { name: "None" },
     { name: "OrgUnit" },
@@ -2145,6 +2178,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.accountsChanged();
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -2182,7 +2219,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   var fn = function () {
     usage_db.processParams($scope);
 
-    usage_db.getAccounts($scope, function (data) {
+    usage_db.getAccounts($scope, function () {
         $scope.updateRegions($scope);
     });
 
@@ -2219,6 +2256,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 function summaryCtrl($scope, $location, usage_db, highchart) {
 
   $scope.init($scope);
+  $scope.recurring = true;
+  $scope.amortized = true;
+  $scope.credit = true;
+  $scope.tax = true;
   $scope.usageUnit = "";
   $scope.groupBys = [
     { name: "OrgUnit" },
