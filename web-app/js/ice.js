@@ -2645,6 +2645,7 @@ function tagconfigsCtrl($scope, $location, $http) {
                       destValue: destValue,
                       srcKey: srcKey,
                       srcValue: srcValues[i],
+                      start: tagConfigsForMapsItem.start,
                       filter: filter
                     });
                   }

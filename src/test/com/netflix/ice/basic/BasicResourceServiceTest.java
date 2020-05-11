@@ -424,6 +424,46 @@ public class BasicResourceServiceTest {
 	}
 	
 	@Test
+	public void testGetTagGroupMappedMultipleSrcKeys() throws Exception {
+		String payerAccount = "123456789012";
+		
+		// Mapping rules for new virtual tag
+		String yaml = "" +
+		"name: DestKey\n" +
+		"values:\n" +
+		"  DestValueDefault: [DestValueDefaultVariant]\n" +
+		"mapped:\n" +
+		"  - include: [" + payerAccount + "]\n" +
+		"    maps:\n" +
+		"      DestValue1:\n" +
+		"        TagKey1: [SrcValue1]\n" +
+		"        TagKey2: [SrcValue2]\n";
+		
+		String start = "2020-01-01T00:00:00Z";
+		String[] customTags = new String[]{"DestKey", "TagKey4", "TagKey1", "TagKey2"};
+		Map<String, String> payerDefaultTags = Maps.newHashMap();
+		payerDefaultTags.put("DestKey", "DestValueDefault");
+		
+		// Test default - should be DestValueDefault
+		String[] tags = { "", "", "", ""};
+		String[] expect = { "DestValueDefault", "", "", ""};
+		ResourceGroup resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test TagKey1 - should give SrcValue1
+		tags = new String[]{ "SrcValue1", "", "", "SrcValue4"};		
+		expect = new String[]{ "DestValue1", "SrcValue4", "SrcValue1", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+
+		// Test TagKey2 - should give SrcValue1
+		tags = new String[]{ "", "SrcValue2", "", "SrcValue4"};		
+		expect = new String[]{ "DestValue1", "SrcValue4", "", "SrcValue2"};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+	}
+	
+	@Test
 	public void testGetTagGroupMappedMultiple() throws Exception {
 		String payerAccount = "123456789012";
 		String account = "234567890123";
