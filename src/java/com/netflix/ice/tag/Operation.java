@@ -406,8 +406,13 @@ public class Operation extends Tag {
 
     public static List<Operation> getOperations(List<String> names) {
         List<Operation> result = Lists.newArrayList();
-        for (String name: names)
-            result.add(operations.get(name));
+        for (String name: names) {
+        	Operation op = operations.get(name);
+        	if (op == null)
+        		continue;
+        	
+            result.add(op);
+        }
         return result;
     }
 
