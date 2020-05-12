@@ -55,17 +55,17 @@
         	  <td class="left"><input type="checkbox" ng-model="recurring" ng-change="includeChanged()"> Recurring Fees</input></td>
 		      <td class="right"><input type="checkbox" ng-model="credit" ng-change="includeChanged()"> Credits</input></td>    
             </tr>
-		      <td class="left"><input type="checkbox" ng-model="amortized" ng-change="includeChanged()"> Amortization</input></td>        
-		      <td class="right"><input type="checkbox" ng-model="tax" ng-change="includeChanged()"> Taxes</input></td>        
             <tr>
-            </tr>
+		      <td class="left"><input type="checkbox" ng-model="amortized" ng-change="includeChanged()"> Amortization</input></td>        
+		      <td class="right"><input type="checkbox" ng-model="savings" ng-change="includeChanged()"> Savings</input></td>
+		    </tr> 
           </table>
         </div>
       </td>
       <td nowrap="">
         <input type="radio" ng-model="usage_cost" value="cost" id="radio_cost" ng-change="usageCostChanged()"> <label for="radio_cost" style="cursor: pointer">Cost</label>&nbsp;&nbsp;
         <input type="radio" ng-model="usage_cost" value="usage" id="radio_usage" ng-change="usageCostChanged()"> <label for="radio_usage" style="cursor: pointer">Usage</label>
-        <select ng-model="usageUnit">
+        <select ng-show="usage_cost=='usage'" ng-model="usageUnit">
           <option>Instances</option>
           <option>ECUs</option>
           <option>vCPUs</option>
@@ -142,7 +142,6 @@
 	        <br><input ng-model="filter_operations" type="text" class="metaFilter" placeholder="filter">
 	        <button ng-click="selected_operations = operations; operationsChanged()" class="allNoneButton">+</button>
 	        <button ng-click="selected_operations = []; operationsChanged()" class="allNoneButton">-</button>
-	        <div style="padding-top: 5px"><input type="checkbox" ng-model="savings" ng-change="includeChanged()"> Savings</input></div>
       	</div>
       </td>
       <td>
