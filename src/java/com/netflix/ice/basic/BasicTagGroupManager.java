@@ -410,6 +410,9 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
         }
         tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
 
+        if (ops.isEmpty())
+        	return result;
+        
         if (groupBy == null || groupBy == TagType.TagKey) {
             result.put(Tag.aggregated, tagListsForTag);
         	//logger.info("groupBy == null || groupBy == TagType.TagKey");
