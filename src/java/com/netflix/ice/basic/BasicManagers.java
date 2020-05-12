@@ -332,8 +332,7 @@ public class BasicManagers extends Poller implements Managers {
     		ConsolidateType consolidateType,
     		TagType groupBy,
     		AggregateType aggregate,
-    		boolean forReservation,
-    		boolean showLent,
+    		List<Operation.Identity.Value> exclude,
     		UsageUnit usageUnit,
     		List<List<UserTag>> userTagLists,
     		int userTagGroupByIndex) throws Exception {    	
@@ -375,8 +374,7 @@ public class BasicManagers extends Poller implements Managers {
                     tagLists,
                     groupBy,
                     aggregate,
-                    forReservation,
-                    showLent,
+                    exclude,
     				usageUnit,
     				userTagGroupByIndex,
     				dataManager));            
@@ -414,8 +412,7 @@ public class BasicManagers extends Poller implements Managers {
     		final TagLists tagLists,
     		final TagType groupBy,
     		final AggregateType aggregate,
-    		final boolean forReservation,
-    		final boolean showLent,
+    		final List<Operation.Identity.Value> exclude,
     		final UsageUnit usageUnit,
     		final int userTagGroupByIndex,
     		final DataManager dataManager) {
@@ -428,8 +425,7 @@ public class BasicManagers extends Poller implements Managers {
                         tagLists,
                         groupBy,
                         aggregate,
-                        forReservation,
-                        showLent,
+                        exclude,
         				usageUnit,
         				userTagGroupByIndex
                     );

@@ -380,11 +380,11 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
         return totalInterval == null ? null : totalInterval.overlap(interval);
     }
 
-    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent) {
-    	return getTagListsMap(interval, tagLists, groupBy, forReservation, showLent, 0);
+    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, List<Operation.Identity.Value> exclude) {
+    	return getTagListsMap(interval, tagLists, groupBy, exclude, 0);
     }
     
-    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent, int userTagGroupByIndex) {
+    public Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, List<Operation.Identity.Value> exclude, int userTagGroupByIndex) {
         Map<Tag, TagLists> result = Maps.newHashMap();
         
         Set<TagGroup> tagGroupsInRange = getTagGroupsInRange(getMonthMillis(interval));
@@ -400,15 +400,13 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
         
         // We must always specify all the operations so that we can remove
         // EC2 Instance Savings if not the reservation dashboard and 
-        // for all dashboards choose between Borrowed and Lent Operations so we don't double count the cost/usage
+        // for all dashboards choose between Borrowed and Lent Operations so we don't double count the cost/usage    	
     	List<Operation> ops = tagListsForTag.operations;
         if (ops == null || ops.size() == 0) {
-        	List<Operation.Identity.Value> exclude = Lists.newArrayList();
-        	if (!forReservation)
-        		exclude.add(Operation.Identity.Value.Savings);
-        	exclude.add(showLent ? Operation.Identity.Value.Borrowed : Operation.Identity.Value.Lent);
-        	
         	ops = Lists.newArrayList(getOperations(tagGroupsInRange, tagListsForTag, exclude));
+        }
+        else {
+        	ops = Operation.exclude(ops, exclude);
         }
         tagListsForTag = tagListsForTag.getTagListsWithOperations(ops);
 

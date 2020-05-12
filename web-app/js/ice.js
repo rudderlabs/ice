@@ -1118,6 +1118,22 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         tagCoverage: $scope.tagCoverage ? true : false,
         showLent: $scope.reservationSharing === "lent",
       }, params);
+      
+      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax || !$scope.savings) {
+        categories = [];
+        if (!$scope.recurring)
+          categories.push("recurring");
+        if (!$scope.amortized)
+          categories.push("amortized");
+        if (!$scope.credit)
+          categories.push("credit");
+        if (!$scope.tax)
+          categories.push("tax");
+        if (!$scope.savings)
+          categories.push("savings");
+
+        params["exclude"] = categories.join(',');
+      }
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts, $scope.organizationalUnit);

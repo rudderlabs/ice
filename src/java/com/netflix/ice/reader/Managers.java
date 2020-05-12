@@ -92,8 +92,7 @@ public interface Managers {
     		ConsolidateType consolidateType,
     		TagType groupBy,
     		AggregateType aggregate,
-    		boolean forReservation,
-    		boolean showLent,
+    		List<Operation.Identity.Value> exclude,
     		UsageUnit usageUnit,
     		List<List<UserTag>> userTagLists,
     		int userTagGroupByIndex) throws Exception;

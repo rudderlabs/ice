@@ -233,7 +233,7 @@ paths:
                 description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
                 type: boolean
               exclude:
-                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax
+                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax, savings
                 type: string
       responses:
         '200':
@@ -410,6 +410,9 @@ paths:
               showLent:
                 description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
                 type: boolean
+              exclude:
+                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax, savings
+                type: string
             additionalProperties:
                 description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>
                 type: string

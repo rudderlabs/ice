@@ -257,32 +257,11 @@ class DashboardController {
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 		boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
 		boolean showLent = query.has("showLent") ? query.getBoolean("showLent") : false;
-		List<String> exclude = listParams(query, "exclude");
 		boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
+
+		List<Operation.Identity.Value> exclude = Operation.exclude(listParams(query, "exclude"), showLent, isCost, forReservation || forSavingsPlans);
 		
-		// Figure out what operations we should exclude
-		List<Operation.Identity.Value> excludedOperations = Lists.newArrayList();
-		for (String opStr: exclude) {
-			if (opStr.equals("recurring"))
-				excludedOperations.add(Operation.Identity.Value.Recurring);
-			else if (opStr.equals("amortized"))
-				excludedOperations.add(Operation.Identity.Value.Amortized);
-			else if (opStr.equals("credit"))
-				excludedOperations.add(Operation.Identity.Value.Credit);
-			else if (opStr.equals("tax"))
-				excludedOperations.add(Operation.Identity.Value.Tax);
-			else if (opStr.equals("savings"))
-				excludedOperations.add(Operation.Identity.Value.Savings);
-		}
-		if (!isCost || !(forReservation || forSavingsPlans)) {
-			excludedOperations.add(Operation.Identity.Value.Savings);
-		}
-		if (!isCost) {
-			excludedOperations.add(Operation.Identity.Value.Amortized);
-		}
-		excludedOperations.add(showLent ? Operation.Identity.Value.Borrowed : Operation.Identity.Value.Lent);
-		
-        Collection<Operation> data = getManagers().getOperations(new TagLists(accounts, regions, zones, products, operations, null, null), products, excludedOperations, resources);
+        Collection<Operation> data = getManagers().getOperations(new TagLists(accounts, regions, zones, products, operations, null, null), products, exclude, resources);
 		
         def result = [status: 200, data: data]
         render result as JSON
@@ -545,6 +524,7 @@ class DashboardController {
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
 		boolean consolidateGroups = query.has("consolidateGroups") ? query.getBoolean("consolidateGroups") : false;
+		List<Operation.Identity.Value> exclude = Operation.exclude(listParams(query, "exclude"), showLent, isCost, forReservation || forSavingsPlans);
 		
 		// Still support the old name "showResourceGroupTags" for new name showUserTags
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
@@ -666,8 +646,7 @@ class DashboardController {
 				consolidateType,
 				groupBy,
 				aggregate,
-				forReservation || forSavingsPlans,
-				showLent,
+				exclude,
 				usageUnit,
 				userTagLists,
 				userTagGroupByIndex);			
@@ -681,8 +660,7 @@ class DashboardController {
                 new TagLists(accounts, regions, zones, products, operations, usageTypes),
                 groupBy,
                 aggregate,
-				forReservation || forSavingsPlans,
-				showLent,
+				exclude,
 				usageUnit,
 				userTagGroupByIndex
             );

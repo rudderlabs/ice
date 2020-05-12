@@ -552,6 +552,48 @@ public class Operation extends Tag {
         }
         return result;
     }
+    
+    public static List<Operation> exclude(List<Operation> operations, List<Identity.Value> exclude) {
+    	if (exclude == null || exclude.isEmpty())
+    		return operations;
+    	
+        int excludeBitSet = Identity.getIdentitySet(exclude);
+    	List<Operation> result = Lists.newArrayList();
+    	for (Operation op: operations) {
+    		if (op.isOneOf(excludeBitSet))
+    			continue;
+    		result.add(op);
+    	}
+    	return result;
+    }
+
+	public static List<Operation.Identity.Value> exclude(List<String> exclude, boolean showLent, boolean isCost, boolean isForReservationsOrSavingsPlans) {
+		// Figure out what operations we should exclude
+		List<Operation.Identity.Value> result = Lists.newArrayList();
+		if (exclude != null) {
+			for (String opStr: exclude) {
+				if (opStr.equals("recurring"))
+					result.add(Operation.Identity.Value.Recurring);
+				else if (opStr.equals("amortized"))
+					result.add(Operation.Identity.Value.Amortized);
+				else if (opStr.equals("credit"))
+					result.add(Operation.Identity.Value.Credit);
+				else if (opStr.equals("tax"))
+					result.add(Operation.Identity.Value.Tax);
+				else if (opStr.equals("savings"))
+					result.add(Operation.Identity.Value.Savings);
+			}
+		}
+		result.add(showLent ? Operation.Identity.Value.Borrowed : Operation.Identity.Value.Lent);
+		if (!isCost) {
+			result.add(Operation.Identity.Value.Amortized);
+		}
+		if (!isCost || !isForReservationsOrSavingsPlans) {
+			result.add(Operation.Identity.Value.Savings);
+		}
+
+		return result;
+	}
 
     public static List<Operation> getReservationOperations(boolean showLent) {
     	if (showLent) {
