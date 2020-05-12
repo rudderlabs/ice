@@ -1161,7 +1161,7 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testEC2Credit() throws Exception {
 		Line line = new Line(LineItemType.Credit, "us-east-1", "", ec2, "HeavyUsage:m4.large", "RunInstances", "MB - Pricing Adjustment", PricingTerm.reserved, "2019-08-01T00:00:00Z", "2019-09-01T00:00:00Z", "0.0000000000", "-38.3100000000", "");
-		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "RI Credits", "m4.large", null };
+		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "Credit - RI", "m4.large", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
 		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
@@ -1170,7 +1170,7 @@ public class BasicLineItemProcessorTest {
 	public void testRedshiftCredit() throws Exception {
 		// Credits sometimes end one second into next month, so make sure we deal with that
 		Line line = new Line(LineItemType.Credit, "us-east-1", "", redshift, "Node:ds2.xlarge", "RunComputeNode:0001", "AWS Credit", PricingTerm.onDemand, "2020-03-01T00:00:00Z", "2020-04-01T00:00:01Z", "0.0000000000", "-38.3100000000", "");
-		String[] tag = new String[] { "us-east-1", null, "Redshift", "On-Demand Instance Credits", "ds2.xlarge", null };
+		String[] tag = new String[] { "us-east-1", null, "Redshift", "Credit - On-Demand Instance", "ds2.xlarge", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
 		test.run(Which.cau, "2020-03-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
@@ -1178,7 +1178,7 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testConfigCredit() throws Exception {
 		Line line = new Line(LineItemType.Credit, "us-west-2", "", awsConfig, "USW2-ConfigurationItemRecorded", "", "AWS Config rules- credits to support pricing model change TT: 123456789012", PricingTerm.none, "2019-08-01T00:00:00Z", "2019-08-01T01:00:01Z", "0.0000000000", "-0.00492", "");
-		String[] tag = new String[] { "us-west-2", null, "Config", "Credits", "ConfigurationItemRecorded", null };
+		String[] tag = new String[] { "us-west-2", null, "Config", "Credit - None", "ConfigurationItemRecorded", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.00492, null);
 		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
