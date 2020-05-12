@@ -126,13 +126,17 @@ public class BasicManagers extends Poller implements Managers {
     	// Update the reader configuration from the work bucket data configuration
     	config.update();
     	
+    	WorkBucketConfig wbc = config.workBucketConfig;
+    	if (instancesService == null) {
+            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
+            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
+    	}
+    	
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
        	lastPollMillis = lastProcessedPoller.getLastProcessedMillis();
-       	
-    	WorkBucketConfig wbc = config.workBucketConfig;
-    	
+       	    	
     	// Refresh all the data manager caches
     	refreshDataManagers(wbc);
     	    	
@@ -219,14 +223,8 @@ public class BasicManagers extends Poller implements Managers {
     		refresh(d);
     	}
     	
-    	if (instancesService == null) {
-            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
-            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
-    	}
-    	else {
-	    	refresh(instancesService);
-	    	refresh(instanceMetricsService);
-    	}    	
+    	refresh(instancesService);
+    	refresh(instanceMetricsService);
     }
 
     private Future<Void> refresh(final DataCache dataCache) {
