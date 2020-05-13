@@ -65,7 +65,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return productService.getProductByServiceName(lineItem.getProduct());
     }
     
-    protected boolean ignore(String fileName, DateTime reportStart, String root, Interval usageInterval, LineItem lineItem) {
+    protected boolean ignore(String fileName, DateTime reportStart, DateTime reportModTime, String root, Interval usageInterval, LineItem lineItem) {
         if (StringUtils.isEmpty(lineItem.getAccountId()) ||
             StringUtils.isEmpty(lineItem.getProduct()) ||
             StringUtils.isEmpty(lineItem.getCost()))
@@ -102,7 +102,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
 	        	return true;
 	        }
     	}
-        
+    	
     	return false;
     }
     
@@ -174,16 +174,29 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	millisEnd = new DateTime(millisStart, DateTimeZone.UTC).plusHours(1).getMillis();
         	logger.info(fileName + " Support: " + lineItem);
         }
-        else if (lineItem.getLineItemType() == LineItemType.Credit) {
-        	// Most credits have end times that are one second into the next hour
-        	// Truncate partial seconds end time.
-        	millisEnd = new DateTime(millisEnd, DateTimeZone.UTC).withSecondOfMinute(0).getMillis();
+        
+        if (lineItem instanceof CostAndUsageReportLineItem) {
+	        switch (lineItem.getLineItemType()) {
+	        case Credit:
+	        	// Most credits have end times that are one second into the next hour
+	        	// Truncate partial seconds end time.
+	        	millisEnd = new DateTime(millisEnd, DateTimeZone.UTC).withSecondOfMinute(0).getMillis();
+	        	break;
+	        case Tax:
+	        	break;
+	        case RIFee:
+	        	break;
+	        default:
+	        	break;
+	        }
         }
+        
         return new Interval(millisStart, millisEnd, DateTimeZone.UTC);
     }
     
     public Result process(
     		String fileName,
+    		long reportMilli,
     		boolean processDelayed,
     		String root,
     		LineItem lineItem,
@@ -193,9 +206,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	
     	final long startMilli = costAndUsageData.getStartMilli();
     	final DateTime reportStart = new DateTime(startMilli, DateTimeZone.UTC);
-        final Interval usageInterval = getUsageInterval(fileName, reportStart, lineItem); 
+    	final DateTime reportModTime = new DateTime(reportMilli, DateTimeZone.UTC).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0);
+        final Interval usageInterval = getUsageInterval(fileName, reportStart, lineItem);
         
-    	if (ignore(fileName, reportStart, root, usageInterval, lineItem))
+    	if (ignore(fileName, reportStart, reportModTime, root, usageInterval, lineItem))
     		return Result.ignore;
     	
         final Account account = accountService.getAccountById(lineItem.getAccountId(), root);
@@ -227,7 +241,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         addResourceInstance(lineItem, instances, tagGroup);
 
         double costValue = Double.parseDouble(lineItem.getCost());
-        final Result result = getResult(lineItem, startMilli, tagGroup, processDelayed, lineItem.isReserved(), costValue);
+        final Result result = getResult(lineItem, reportStart, reportModTime, tagGroup, processDelayed, lineItem.isReserved(), costValue);
 
         ResourceGroup resourceGroup = null;
         if (resourceService != null) {
@@ -286,6 +300,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             usageValue = usageValue * endIndex / numHoursInMonth;
             costValue = costValue * endIndex / numHoursInMonth;
         }
+        else if (result == Result.hourlyTruncate) {
+            endIndex = Math.min(endIndex, costAndUsageData.getUsage(null).getNum());
+        }
 
         if (monthlyCost) {
             int numHoursInMonth = new DateTime(startMilli, DateTimeZone.UTC).dayOfMonth().getMaximumValue() * 24;
@@ -308,6 +325,10 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         if (resourceService != null) {
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
+        
+    	if (endIndex >= (int)((reportModTime.getMillis() - startMilli)/ AwsUtils.hourMillis))
+    		logger.info("Line item ends after report date, result " + result + ", end index " + endIndex + ", " + lineItem);
+    	
         addData(fileName, lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
     }
@@ -376,7 +397,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	return;
     }
 
-    protected Result getResult(LineItem lineItem, long startMilli, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {
+    protected Result getResult(LineItem lineItem, DateTime reportStart, DateTime reportModTime, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {
         Result result = Result.hourly;
         if (tg.product.isEc2Instance()) {
             result = processEc2Instance(processDelayed, reservationUsage, tg.operation, tg.zone);

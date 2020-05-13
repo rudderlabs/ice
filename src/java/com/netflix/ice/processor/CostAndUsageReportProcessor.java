@@ -47,7 +47,6 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.common.AwsUtils;
-import com.netflix.ice.common.LineItem;
 
 public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     protected Logger logger = LoggerFactory.getLogger(getClass());
@@ -56,7 +55,8 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private LineItemProcessor lineItemProcessor;
 
     private Instances instances;
-    private Long startMilli;
+    private long startMilli;
+    private long reportMilli;
 
 	private final ExecutorService pool;
 
@@ -151,6 +151,11 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     	                if (fileKey.contains(debugMonth)) {
     	                	fileKey = fileKey.substring(0, fileKey.lastIndexOf("/")) + "/" + debugManifest + fileKey.substring(fileKey.lastIndexOf("/"));
     	                	manifest.setKey(fileKey);
+    	                	
+    	                    List<S3ObjectSummary> debugManifestSummary = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion, fileKey,
+    	                            bb.accountId, bb.accessRoleName, bb.accessExternalId);
+
+    	                	manifest.setLastModified(debugManifestSummary.get(0).getLastModified());
     	                }
                     }
                    
@@ -205,7 +210,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				else
 					data.endMilli = processReportGzip(file, report.billingBucket.rootName, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
 				
-		        logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(data.endMilli)));
+	            logger.info("done processing " + file.getName() + ", end is " + new DateTime(data.endMilli).toString() + ", " + data.costAndUsageData.getCost(null).getNum() + " hours");
 		        file.delete();
 		        
 		        return data;
@@ -224,10 +229,13 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 
 		this.instances = instances;
 		startMilli = dataTime.getMillis();
+		reportMilli = report.getLastModifiedMillis();
 		
 		CostAndUsageReport cau = (CostAndUsageReport) report; 
         
 		String[] reportKeys = report.getReportKeys();
+		
+		logger.info("Process " + cau.getReportKey() + " - " + reportKeys.length + " files from " + new DateTime(report.getLastModifiedMillis(), DateTimeZone.UTC));
 		
 		if (reportKeys.length == 0)
 			return dataTime.getMillis();
@@ -289,6 +297,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		
 		this.instances = instances;
 		startMilli = dataTime.getMillis();
+		reportMilli = report.getLastModifiedMillis();
 		long endMilli = startMilli;
 		double edpDiscount = config.getDiscount(startMilli);
 		
@@ -305,7 +314,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 				endMilli = processReportZip(file, report.billingBucket.rootName, lineItem, delayedItems, costAndUsageData, edpDiscount);
 			else
 				endMilli = processReportGzip(file, report.billingBucket.rootName, lineItem, delayedItems, costAndUsageData, edpDiscount);
-            logger.info("done processing " + file.getName() + ", end is " + LineItem.amazonBillingDateFormat.print(new DateTime(endMilli)));
+            logger.info("done processing " + file.getName() + ", end is " + new DateTime(endMilli).toString() + ", " + costAndUsageData.getCost(null).getNum() + " hours");
 		}
 
         for (String[] items: delayedItems) {
@@ -411,7 +420,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 	}
 
     private long processOneLine(String fileName, List<String[]> delayedItems, String root, CostAndUsageReportLineItem lineItem, CostAndUsageData costAndUsageData, long endMilli, double edpDiscount) {
-        LineItemProcessor.Result result = lineItemProcessor.process(fileName, delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
+        LineItemProcessor.Result result = lineItemProcessor.process(fileName, reportMilli, delayedItems == null, root, lineItem, costAndUsageData, instances, edpDiscount);
 
         if (result == LineItemProcessor.Result.delay) {
             delayedItems.add(lineItem.getItems());

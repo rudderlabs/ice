@@ -22,6 +22,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -30,6 +31,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
@@ -51,7 +53,9 @@ public class BasicResourceServiceTest {
 
 	@Test
 	public void testGetResourceGroup() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"123456789012", // PayerAccountId
@@ -144,7 +148,9 @@ public class BasicResourceServiceTest {
 				"Hrs", // unit
 				"production", // resourceTags/user:Environment
 		};
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "LineItemTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		
@@ -171,7 +177,9 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testDefaultAccountTags() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"123456789012", // PayerAccountId
@@ -332,7 +340,9 @@ public class BasicResourceServiceTest {
 		
 		rs.putDefaultTags(payerAccount, payerDefaultTags);
 		
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		
 		rs.initHeader(li.getResourceTagsHeader(), payerAccount);

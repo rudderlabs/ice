@@ -21,10 +21,12 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.netflix.ice.common.LineItem;
 
 public class CostAndUsageReportProcessorTest {
@@ -40,7 +42,9 @@ public class CostAndUsageReportProcessorTest {
 	private LineItem getLineItem(String line) throws IOException {
 		CostAndUsageReportProcessor cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir + "/manifestTest.json");
-        CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+        CostAndUsageReport cauReport = new CostAndUsageReport(s3ObjectSummary, manifest, cauProc);
         LineItem lineItem = new CostAndUsageReportLineItem(true, null, cauReport);
 		lineItem.setItems(line.split(","));
 		return lineItem;

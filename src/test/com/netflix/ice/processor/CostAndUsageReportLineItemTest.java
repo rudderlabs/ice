@@ -20,8 +20,11 @@ package com.netflix.ice.processor;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.util.Date;
+
 import org.junit.Test;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.netflix.ice.common.LineItem;
 
 public class CostAndUsageReportLineItemTest {
@@ -56,7 +59,9 @@ public class CostAndUsageReportLineItemTest {
 	
 	@Test
 	public void testGetUsageQuantity() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "LineItemTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		assertEquals("Usage quantity is incorrect", Double.parseDouble(li.getUsageQuantity()), 1.0, 0.001);
@@ -64,7 +69,9 @@ public class CostAndUsageReportLineItemTest {
 	
 	@Test
 	public void testResourceTags() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "LineItemTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		assertEquals("Wrong resource tags size", 1, li.getResourceTagsSize());

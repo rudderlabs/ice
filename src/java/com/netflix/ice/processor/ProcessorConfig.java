@@ -141,7 +141,7 @@ public class ProcessorConfig extends Config {
         processBillingDataConfig(accountConfigs);
         processWorkBucketConfig(accountConfigs);
         for (AccountConfig ac: accountConfigs.values()) {
-        	logger.info("  Account " + ac.toString());
+        	logger.debug("  Account " + ac.toString());
     		if (resourceService != null)
     			resourceService.putDefaultTags(ac.getId(), ac.getDefaultTags());        			
         }
@@ -523,7 +523,7 @@ public class ProcessorConfig extends Config {
 	        			continue;
 	        		}
 	        		accountConfigs.put(account.id, account);
-	        		logger.info("Adding billing data config account: " + account.toString());
+	        		logger.debug("Adding billing data config account: " + account.toString());
 	        	}
         	}
         	

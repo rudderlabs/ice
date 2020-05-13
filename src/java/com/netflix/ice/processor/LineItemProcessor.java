@@ -25,6 +25,7 @@ import com.netflix.ice.common.LineItem;
 public interface LineItemProcessor {
     Result process(
     		String fileName,
+    		long reportMilli,
     		boolean processAll,
     		String root,
     		LineItem lineItem, 
@@ -36,6 +37,7 @@ public interface LineItemProcessor {
         delay,
         ignore,
         hourly,
+        hourlyTruncate, // delay and throw away items after the data end time.
         monthly,
         daily
     }
