@@ -1448,6 +1448,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -1610,6 +1611,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -1777,6 +1779,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.groupBys = [
     { name: "None" },
     { name: "TagKey" },
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -1950,6 +1953,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2089,6 +2093,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.initUserTagVars($scope);
   $scope.groupBys = [
     { name: "None" },
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2271,6 +2276,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
   $scope.init($scope);
   $scope.usageUnit = "";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },

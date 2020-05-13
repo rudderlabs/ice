@@ -25,6 +25,7 @@ import java.util.Set;
 import grails.converters.JSON
 
 import com.netflix.ice.tag.ConsolidatedOperation
+import com.netflix.ice.tag.CostType
 import com.netflix.ice.tag.FamilyTag
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
@@ -499,6 +500,9 @@ class DashboardController {
 		boolean groupByOrgUnit = groupBy == TagType.OrgUnit;
 		if (groupByOrgUnit)
 			groupBy = TagType.Account;
+		boolean groupByCostType = groupBy == TagType.CostType;
+		if (groupByCostType)
+			groupBy = TagType.Operation;
 		
         boolean isCost = query.has("isCost") ? query.getBoolean("isCost") : true;
         boolean breakdown = query.has("breakdown") ? query.getBoolean("breakdown") : false;
@@ -681,6 +685,8 @@ class DashboardController {
 				data = consolidateOperations(data);
 			else if (groupByOrgUnit)
 				data = consolidateAccounts(data);
+			else if (groupByCostType)
+				data = consolidateToCostTypes(data);
 	        stats = getStats(data);
 		}
 		
@@ -937,6 +943,35 @@ class DashboardController {
 			double[] consolidated = result[ou];
 			if (consolidated == null) {
 				result[ou] = values;
+			}
+			else {
+				for (int i = 0; i < consolidated.length; i++)
+					consolidated[i] += values[i];
+			}
+		}
+		return result;
+	}
+	
+	// consolidate operations down to cost types
+	private Map<Tag, double[]> consolidateToCostTypes(Map<Tag, double[]> data) {
+		// Run through the data reducing Operation Types to their cost types
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			if (entry.getKey() == Tag.aggregated) {
+				// Don't mess with the aggregated data series.
+				result[entry.getKey()] = entry.getValue();
+				continue;
+			}
+			CostType costType = CostType.other;
+			Tag t = entry.getKey();
+			if (t instanceof Operation) {
+				Operation op = (Operation) t;
+				costType = CostType.getCostType(op);
+			}
+			double[] values = entry.getValue();
+			double[] consolidated = result[costType];
+			if (consolidated == null) {
+				result[costType] = values;
 			}
 			else {
 				for (int i = 0; i < consolidated.length; i++)

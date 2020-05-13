@@ -112,6 +112,7 @@ public class DataJsonWriterTest {
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
 					"\"org\":\"\","+
+					"\"costType\":\"Recurring\","+
 					"\"accountId\":\"123456789012\","+
 					"\"account\":\"a1\","+
 					"\"region\":\"us-east-1\","+
@@ -127,6 +128,7 @@ public class DataJsonWriterTest {
 				"{" +
 					"\"hour\":\"2017-08-01T00:00:00Z\","+
 					"\"org\":\"\","+
+					"\"costType\":\"Recurring\","+
 					"\"accountId\":\"123456789012\","+
 					"\"account\":\"a1\","+
 					"\"region\":\"us-east-1\","+
