@@ -2091,6 +2091,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
 
   $scope.init($scope);
   $scope.initUserTagVars($scope);
+  $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "None" },
     { name: "CostType" },

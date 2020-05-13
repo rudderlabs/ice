@@ -48,9 +48,9 @@
         <input class="required" type="text" name="start" id="start" size="14"/>
         <div style="padding-top: 10px">End</div>
         <br><input class="required" type="text" name="end" id="end" size="14"/>
-        <div  ng-show="usage_cost=='cost'" style="padding-top: 10px">Include</div>
+        <div  ng-show="usage_cost=='cost'" style="padding-top: 10px">CostType</div>
         <div ng-show="usage_cost=='cost'" stype="padding-top: 10px">
-          <table class="includeTable">
+          <table class="costTypeTable">
             <tr>
         	  <td class="left"><input type="checkbox" ng-model="recurring" ng-change="includeChanged()"> Recurring Fees</input></td>
 		      <td class="right"><input type="checkbox" ng-model="credit" ng-change="includeChanged()"> Credits</input></td>    

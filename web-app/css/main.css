@@ -161,9 +161,9 @@ th.desc a             { background-image: url(../images/skin/sorted_desc.gif); }
 .list .sdb .serverId  { max-width:  80px; word-wrap: break-word; }
 .list .sdb .propKey   { max-width: 400px; word-wrap: break-word; }
 .list .sdb .propValue { max-width: 200px; word-wrap: break-word; }
-.includeTable { border: none; }
-.includeTable td.left { width: 70px; }
-.includeTable td.right { width: 40px; }
+.costTypeTable { border: none; }
+.costTypeTable td.left { width: 70px; }
+.costTypeTable td.right { width: 40px; }
 
 /* HEADINGS */
 caption { font-size: 16px; text-align: left; }
