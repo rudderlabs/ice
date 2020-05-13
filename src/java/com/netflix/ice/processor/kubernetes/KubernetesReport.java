@@ -275,7 +275,8 @@ public class KubernetesReport extends Report {
 	}
 	
 	public double getDouble(String[] item, KubernetesColumn col) {
-		return Double.parseDouble(getString(item, col));
+		String s = getString(item, col);
+		return s.isEmpty() || s.equalsIgnoreCase("nan") || s.equalsIgnoreCase("inf") ? 0 : Double.parseDouble(s);
 	}
 	
 	public String getUserTag(String[] item, String col) {
