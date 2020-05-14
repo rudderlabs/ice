@@ -22,7 +22,6 @@ import com.google.common.collect.Maps;
 import com.netflix.ice.common.*;
 import com.netflix.ice.common.LineItem.LineItemType;
 import com.netflix.ice.processor.*;
-import com.netflix.ice.processor.LineItemProcessor.Result;
 import com.netflix.ice.processor.ReservationService.ReservationInfo;
 import com.netflix.ice.tag.*;
 import com.netflix.ice.tag.Zone.BadZone;
