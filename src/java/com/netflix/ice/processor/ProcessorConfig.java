@@ -99,6 +99,7 @@ public class ProcessorConfig extends Config {
     public List<RuleConfig> postProcessorRules;
     
     private static final String billingDataConfigBasename = "ice_config";
+    private static final String debugCacheAccounts = "cacheAccounts";
 
     /**
      *
@@ -355,7 +356,8 @@ public class ProcessorConfig extends Config {
         File file = new File(workBucketConfig.localDir, localAccountConfigsFilename);
     	Map<String, AccountConfig> result = Maps.newHashMap();
     	
-        if (file.exists() && file.lastModified() > DateTime.now().minusHours(6).getMillis()) {
+    	boolean cacheAccounts = debugProperties.containsKey(debugCacheAccounts) && Boolean.parseBoolean(debugProperties.get(debugCacheAccounts));
+        if (cacheAccounts && file.exists() && file.lastModified() > DateTime.now().minusHours(12).getMillis()) {
         	// Save time by grabbing the accounts from the cached copy
 	    	String json;
 			try {
@@ -394,15 +396,17 @@ public class ProcessorConfig extends Config {
             }
         }
         
-        // Save a local copy
-        BillingDataConfig bdc = new BillingDataConfig();
-        bdc.accounts = Lists.newArrayList();
-        for (AccountConfig ac: result.values())
-        	bdc.accounts.add(ac);
-    	OutputStream os = new FileOutputStream(file);
-    	OutputStreamWriter writer = new OutputStreamWriter(os);
-    	writer.write(bdc.toJSON());
-    	writer.close();
+        if (cacheAccounts) {
+            // Save a local copy
+            BillingDataConfig bdc = new BillingDataConfig();
+            bdc.accounts = Lists.newArrayList();
+            for (AccountConfig ac: result.values())
+            	bdc.accounts.add(ac);
+        	OutputStream os = new FileOutputStream(file);
+        	OutputStreamWriter writer = new OutputStreamWriter(os);
+        	writer.write(bdc.toJSON());
+        	writer.close();
+        }
         
     	return result;
     }
