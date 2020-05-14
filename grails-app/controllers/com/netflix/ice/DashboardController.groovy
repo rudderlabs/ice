@@ -150,7 +150,7 @@ class DashboardController {
 	}
 	
 	def getUtilizationOps = {
-		List<Operation> resOps = Operation.getReservationOperations();
+		List<Operation> resOps = Operation.getReservationOperations(false);
 		def data = [];
 		for (Operation op: resOps) {
 			if (op.isOnDemand() || op.isSpot() || op.isUsed() || op.isBorrowed()) {

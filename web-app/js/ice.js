@@ -1457,7 +1457,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.groupBy = $scope.groupBys[5];
+  $scope.groupBy = $scope.groupBys[6];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1620,7 +1620,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.groupBy = $scope.groupBys[5];
+  $scope.groupBy = $scope.groupBys[6];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1953,7 +1953,6 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.usage_cost = "usage";
   $scope.usageUnit = "ECUs";
   $scope.groupBys = [
-    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2103,7 +2102,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "UsageType" },
     { name: "Tag" }
   ],
-  $scope.groupBy = $scope.groupBys[3];
+  $scope.groupBy = $scope.groupBys[4];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -2285,7 +2284,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ],
-  $scope.groupBy = $scope.groupBys[3];
+  $scope.groupBy = $scope.groupBys[4];
   var startMonth = $scope.end.getUTCMonth() - 6;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
