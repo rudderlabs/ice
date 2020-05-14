@@ -71,7 +71,9 @@
         </select>
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>
-          <input type="checkbox" ng-model="consolidateGroups" style=""> Consolidate</input>
+          <span ng-show="groupBy.name=='Operation' || groupBy.name=='UsageType'">
+            <input type="checkbox" ng-model="consolidateGroups" style=""> Consolidate</input>
+          </span>
         </div>
         <div style="padding-top: 5px">Aggregate
           <select ng-model="consolidate">

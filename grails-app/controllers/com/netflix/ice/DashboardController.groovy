@@ -672,6 +672,17 @@ class DashboardController {
 			logger.debug("  -- tags: " + data.keySet());
         }
 		
+		if (groupByOrgUnit)
+			data = consolidateAccounts(data);
+		else if (groupByCostType)
+			data = consolidateToCostTypes(data);
+		else if (consolidateGroups) {
+			if (groupBy == TagType.UsageType)
+				data = consolidateFamilies(data);
+			else if (groupBy == TagType.Operation)
+				data = consolidateOperations(data);
+		}
+			
 		def stats = [:];
 		if (elasticity) {
 			// consolidate the data to daily
@@ -679,14 +690,6 @@ class DashboardController {
 			consolidateType = ConsolidateType.daily;
 		}
 		else {
-			if (groupBy == TagType.UsageType && consolidateGroups)
-				data = consolidateFamilies(data);
-			else if (groupBy == TagType.Operation && consolidateGroups)
-				data = consolidateOperations(data);
-			else if (groupByOrgUnit)
-				data = consolidateAccounts(data);
-			else if (groupByCostType)
-				data = consolidateToCostTypes(data);
 	        stats = getStats(data);
 		}
 		
