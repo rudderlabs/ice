@@ -327,8 +327,8 @@ public class BasicLineItemProcessor implements LineItemProcessor {
             resourceTagGroup = getTagGroup(lineItem, account, region, zone, product, operation, usageType, resourceGroup);
         }
         
-    	if (endIndex >= (int)((reportModTime.getMillis() - startMilli)/ AwsUtils.hourMillis))
-    		logger.info("Line item ends after report date, result " + result + ", end index " + endIndex + ", " + lineItem);
+    	//if (endIndex >= (int)((reportModTime.getMillis() - startMilli)/ AwsUtils.hourMillis))
+    	//	logger.info("Line item ends after report date, result " + result + ", end index " + endIndex + ", " + lineItem);
     	
         addData(fileName, lineItem, tagGroup, resourceTagGroup, costAndUsageData, usageValue, costValue, result == Result.monthly, indexes, edpDiscount, startMilli);
         return result;
@@ -426,7 +426,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         	result = processElastiCache(processDelayed, reservationUsage, tg.operation, costValue);
         }
         
-        if (tg.product.isS3() && tg.usageType.name.startsWith("TimedStorage-"))
+        if (tg.product.isS3() && (tg.usageType.name.startsWith("TimedStorage-") || tg.usageType.name.startsWith("IATimedStorage-")))
             result = Result.daily;
 
         return result;

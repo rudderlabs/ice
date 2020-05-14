@@ -437,7 +437,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
                 result = Result.daily;
         }
         
-        if (tg.product.isS3() && tg.usageType.name.startsWith("TimedStorage-"))
+        if (tg.product.isS3() && (tg.usageType.name.startsWith("TimedStorage-") || tg.usageType.name.startsWith("IATimedStorage-")))
             result = Result.daily;
 
         return result;
