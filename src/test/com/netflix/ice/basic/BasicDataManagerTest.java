@@ -153,7 +153,7 @@ public class BasicDataManagerTest {
 			tagGroupList.add(tg);
 		tagGroupsWithResourceGroups.put(testMonth.getMillis(), tagGroupList);
 		
-		return new BasicTagGroupManager(tagGroupsWithResourceGroups);
+		return new BasicTagGroupManager(tagGroupsWithResourceGroups, new Interval(testMonth, testMonth.plusMonths(1)));
 	}
 	
 	@Test
@@ -186,7 +186,7 @@ public class BasicDataManagerTest {
 		
 		TagLists tagLists = new TagListsWithUserTags(null, null, null, null, null, null, userTagLists);
 		
-		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Tag, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Tag, AggregateType.data, null, UsageUnit.Instances, 1);
 		
 		for (Tag t: data.keySet()) {
 			logger.info("Tag: " + t + ": " + data.get(t)[0]);
@@ -227,7 +227,7 @@ public class BasicDataManagerTest {
 		
 		TagLists tagLists = new TagListsWithUserTags(null, null, null, null, null, null, userTagLists);
 		
-		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Tag, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, TagType.Tag, AggregateType.data, null, UsageUnit.Instances, 1);
 		
 		for (Tag t: data.keySet()) {
 			logger.info("Tag: " + t + ": " + data.get(t)[0]);
@@ -269,7 +269,7 @@ public class BasicDataManagerTest {
 		List<Operation> operations = Lists.newArrayList((Operation) Operation.ondemandInstances);
 		TagLists tagLists = new TagListsWithUserTags(null, null, null, null, operations, null, userTagLists);
 		
-		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, null, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		Map<Tag, double[]> data = dataManager.getData(interval, tagLists, null, AggregateType.data, null, UsageUnit.Instances, 1);
 		
 		for (Tag t: data.keySet()) {
 			logger.info("Tag: " + t + ": " + data.get(t)[0]);
@@ -281,7 +281,7 @@ public class BasicDataManagerTest {
 		// Now test without operations specified
 		tagLists = new TagListsWithUserTags(null, null, null, null, null, null, userTagLists);
 		
-		data = dataManager.getData(interval, tagLists, null, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		data = dataManager.getData(interval, tagLists, null, AggregateType.data, null, UsageUnit.Instances, 1);
 		
 		for (Tag t: data.keySet()) {
 			logger.info("Tag: " + t + ": " + data.get(t)[0]);
@@ -323,7 +323,7 @@ public class BasicDataManagerTest {
 		List<UsageType> usageTypes = Lists.newArrayList(UsageType.getUsageType("r4.2xlarge", "hours"));
 		TagLists tagLists = new TagLists(null, null, null, null, operations, usageTypes, null);
 		
-		Map<Tag, double[]> results = dataManager.getData(interval, tagLists, TagType.Account, AggregateType.data, false, false, UsageUnit.Instances, 1);
+		Map<Tag, double[]> results = dataManager.getData(interval, tagLists, TagType.Account, AggregateType.data, null, UsageUnit.Instances, 1);
 		
 		for (Tag t: results.keySet())
 			logger.info(t + ", " + results.get(t)[0]);

@@ -28,7 +28,7 @@
 <div class="" style="margin: auto; {{getBodyWidth('width: 1652px;')}} padding: 20px 30px"  ng-controller="detailCtrl">
   <table ng-show="!graphOnly()">
     <tr>
-      <td>Start</td>
+      <td class="metaStart">Start</td>
       <td>Show</td>
       <td class="metaAccounts">
       	<input type="checkbox" ng-model="dimensions[ACCOUNT_INDEX]" ng-change="accountsEnabled()"> Account</input>
@@ -46,11 +46,24 @@
         <input class="required" type="text" name="start" id="start" size="14"/>
         <div style="padding-top: 10px">End</div>
         <br><input class="required" type="text" name="end" id="end" size="14"/>
+        <div  ng-show="usage_cost=='cost'" style="padding-top: 10px">CostType</div>
+        <div ng-show="usage_cost=='cost'" stype="padding-top: 10px">
+          <table class="costTypeTable">
+            <tr>
+        	  <td class="left"><input type="checkbox" ng-model="recurring" ng-change="includeChanged()"> Recurring Fees</input></td>
+		      <td class="right"><input type="checkbox" ng-model="credit" ng-change="includeChanged()"> Credits</input></td>    
+            </tr>
+		      <td class="left"><input type="checkbox" ng-model="amortized" ng-change="includeChanged()"> Amortization</input></td>        
+		      <td class="right"><input type="checkbox" ng-model="tax" ng-change="includeChanged()"> Taxes</input></td>        
+            <tr>
+            </tr>
+          </table>
+        </div>
       </td>
       <td nowrap="">
         <input type="radio" ng-model="usage_cost" value="cost" id="radio_cost"> <label for="radio_cost" style="cursor: pointer">Cost</label>&nbsp;&nbsp;
         <input type="radio" ng-model="usage_cost" value="usage" id="radio_usage"> <label for="radio_usage" style="cursor: pointer">Usage</label>
-        <select ng-model="usageUnit">
+        <select ng-show="usage_cost=='usage'" ng-model="usageUnit">
           <option>Instances</option>
           <option>ECUs</option>
           <option>vCPUs</option>
@@ -58,7 +71,9 @@
         </select>
         <div style="padding-top: 10px">Group by
           <select ng-model="groupBy" ng-options="a.name for a in groupBys"></select>
-          <input type="checkbox" ng-model="consolidateGroups" style=""> Consolidate</input>
+          <span ng-show="groupBy.name=='Operation' || groupBy.name=='UsageType'">
+            <input type="checkbox" ng-model="consolidateGroups" style=""> Consolidate</input>
+          </span>
         </div>
         <div style="padding-top: 5px">Aggregate
           <select ng-model="consolidate">

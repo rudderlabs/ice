@@ -26,6 +26,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -112,7 +113,9 @@ public class BillingFileProcessorTest {
 			CostAndUsageReportProcessor cauProcessor = new CostAndUsageReportProcessor(config);
 			reservationProcessor = cauProcessor.getReservationProcessor();
 			File manifest = new File(cauReportDir, "hourly-cost-and-usage-Manifest.json");
-			CostAndUsageReport report = new CostAndUsageReport(manifest, cauProcessor);
+			S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+			s3ObjectSummary.setLastModified(new Date());
+			CostAndUsageReport report = new CostAndUsageReport(s3ObjectSummary, manifest, cauProcessor);
 			
 	    	List<File> files = Lists.newArrayList();
 	    	for (String key: report.getReportKeys()) {
@@ -145,6 +148,7 @@ public class BillingFileProcessorTest {
 			File dbr = new File(resourcesReportDir, "aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
 			S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
 			s3ObjectSummary.setKey("/aws-billing-detailed-line-items-with-resources-and-tags-2017-08.csv.zip");
+			s3ObjectSummary.setLastModified(new Date());
 			DetailedBillingReportProcessor.BillingFile report = dbrProcessor.new BillingFile(s3ObjectSummary, dbrProcessor);
 			
 	        return dbrProcessor.processReport(start, report, dbr,

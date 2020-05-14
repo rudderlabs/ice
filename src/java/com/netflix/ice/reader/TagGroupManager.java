@@ -64,7 +64,14 @@ public interface TagGroupManager {
      * @param tagLists
      * @return collection of operations
      */
-    Collection<Operation> getOperations(TagLists tagLists);
+    Collection<Operation> getOperationsUnsorted(TagLists tagLists, Collection<Operation.Identity.Value> exclude);
+
+    /**
+     * Get all operations that meet query in tagLists.
+     * @param tagLists
+     * @return collection of operations
+     */
+    Collection<Operation> getOperations(TagLists tagLists, Collection<Operation.Identity.Value> exclude);
 
     /**
      * Get all usage types that meet query in tagLists.
@@ -95,7 +102,7 @@ public interface TagGroupManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent);
+    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, List<Operation.Identity.Value> exclude);
     
     /**
      * Get map of tag lists based on group by.
@@ -105,7 +112,7 @@ public interface TagGroupManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, boolean forReservation, boolean showLent, int userTagGroupByIndex);
+    Map<Tag, TagLists> getTagListsMap(Interval interval, TagLists tagLists, TagType groupBy, List<Operation.Identity.Value> exclude, int userTagGroupByIndex);
     
     /**
      * Get sizes of the data

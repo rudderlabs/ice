@@ -161,6 +161,9 @@ th.desc a             { background-image: url(../images/skin/sorted_desc.gif); }
 .list .sdb .serverId  { max-width:  80px; word-wrap: break-word; }
 .list .sdb .propKey   { max-width: 400px; word-wrap: break-word; }
 .list .sdb .propValue { max-width: 200px; word-wrap: break-word; }
+.costTypeTable { border: none; }
+.costTypeTable td.left { width: 70px; }
+.costTypeTable td.right { width: 40px; }
 
 /* HEADINGS */
 caption { font-size: 16px; text-align: left; }
@@ -344,6 +347,7 @@ div.grippie { background: #EEEEEE url(../images/grippie.png) no-repeat scroll ce
 .chromeFrameInstallDefaultStyle { width: 96%; height: 90%; border: 5px solid blue; z-index: 1000; left: 410px; top: 360px; }
 
 .allNoneButton {padding: 0}
+.metaStart {width: 202px}
 .metaAccounts {width: 250px}
 .metaRegions {width: 130px}
 .metaProducts {width: 175px}

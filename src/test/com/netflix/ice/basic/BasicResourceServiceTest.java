@@ -22,6 +22,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -30,6 +31,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.collect.Lists;
@@ -51,7 +53,9 @@ public class BasicResourceServiceTest {
 
 	@Test
 	public void testGetResourceGroup() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"123456789012", // PayerAccountId
@@ -144,7 +148,9 @@ public class BasicResourceServiceTest {
 				"Hrs", // unit
 				"production", // resourceTags/user:Environment
 		};
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "LineItemTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "LineItemTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		li.setItems(item);
 		
@@ -171,7 +177,9 @@ public class BasicResourceServiceTest {
 	
 	@Test
 	public void testDefaultAccountTags() {
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
 				"123456789012", // PayerAccountId
@@ -332,7 +340,9 @@ public class BasicResourceServiceTest {
 		
 		rs.putDefaultTags(payerAccount, payerDefaultTags);
 		
-		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+		CostAndUsageReport caur = new CostAndUsageReport(s3ObjectSummary, new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		
 		rs.initHeader(li.getResourceTagsHeader(), payerAccount);
@@ -421,6 +431,46 @@ public class BasicResourceServiceTest {
 		start = "2020-02-01T00:00:00Z";
 		resource = getResourceGroup(yamlWithStart, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
 		assertEquals("Resource name doesn't match", "DestValue1a" + ResourceGroup.separator + "SrcValue4a", resource.name);		
+	}
+	
+	@Test
+	public void testGetTagGroupMappedMultipleSrcKeys() throws Exception {
+		String payerAccount = "123456789012";
+		
+		// Mapping rules for new virtual tag
+		String yaml = "" +
+		"name: DestKey\n" +
+		"values:\n" +
+		"  DestValueDefault: [DestValueDefaultVariant]\n" +
+		"mapped:\n" +
+		"  - include: [" + payerAccount + "]\n" +
+		"    maps:\n" +
+		"      DestValue1:\n" +
+		"        TagKey1: [SrcValue1]\n" +
+		"        TagKey2: [SrcValue2]\n";
+		
+		String start = "2020-01-01T00:00:00Z";
+		String[] customTags = new String[]{"DestKey", "TagKey4", "TagKey1", "TagKey2"};
+		Map<String, String> payerDefaultTags = Maps.newHashMap();
+		payerDefaultTags.put("DestKey", "DestValueDefault");
+		
+		// Test default - should be DestValueDefault
+		String[] tags = { "", "", "", ""};
+		String[] expect = { "DestValueDefault", "", "", ""};
+		ResourceGroup resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test TagKey1 - should give SrcValue1
+		tags = new String[]{ "SrcValue1", "", "", "SrcValue4"};		
+		expect = new String[]{ "DestValue1", "SrcValue4", "SrcValue1", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+
+		// Test TagKey2 - should give SrcValue1
+		tags = new String[]{ "", "SrcValue2", "", "SrcValue4"};		
+		expect = new String[]{ "DestValue1", "SrcValue4", "", "SrcValue2"};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
 	}
 	
 	@Test

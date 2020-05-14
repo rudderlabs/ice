@@ -31,6 +31,15 @@ public class TagTest {
 		private static final long serialVersionUID = 1L;
     };
     
+    public static final Tag emptyTag = new Tag("") {
+    	private static final long serialVersionUID = 1L;
+    };
+    
+    public static final Tag nullTag = new Tag(null) {
+    	private static final long serialVersionUID = 1L;
+    };
+    
+    
 	@Test
 	public void testCompareTo() {
 		Tag t = Tag.aggregated;
@@ -41,6 +50,10 @@ public class TagTest {
 		assertEquals("aaa not equal to itself", 0, aaaTag.compareTo(aaaTag));
 		assertTrue("aggregated not less than test tag", t.compareTo(aaaTag) < 0);
 		assertTrue("test tag not greater than aggregated", aaaTag.compareTo(t) > 0);
+		
+		assertTrue("null tag not greater than aggregated", t.compareTo(nullTag) < 0);
+		assertTrue("null tag not equal to empty tag", nullTag.compareTo(emptyTag) == 0);
+		assertTrue("null tag not set to empty string", nullTag.name.isEmpty());		
 	}
 
 }

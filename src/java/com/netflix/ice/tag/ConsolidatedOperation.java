@@ -89,7 +89,7 @@ public class ConsolidatedOperation extends Tag {
         if (t instanceof ConsolidatedOperation) {
 	    	ConsolidatedOperation o = (ConsolidatedOperation)t;
 	        int result = this.seq - o.seq;
-	        return result == 0 ? this.name.compareTo(t.name) : result;
+	        return result == 0 ? this.getName().compareToIgnoreCase(t.getName()) : result;
         }
         else {
         	return super.compareTo(t);

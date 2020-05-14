@@ -17,6 +17,7 @@
  */
 package com.netflix.ice.reader;
 
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
@@ -41,7 +42,7 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude, UsageUnit usageUnit);
 
     /**
      * Get map of data.
@@ -52,7 +53,7 @@ public interface DataManager {
      * @param forReservation
      * @return
      */
-    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit, int userTagGroupByIndex);
+    Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude, UsageUnit usageUnit, int userTagGroupByIndex);
 
     Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, int userTagGroupByIndex, List<UserTag> tagKeys);
 

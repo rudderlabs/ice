@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -29,6 +30,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.netflix.ice.basic.BasicLineItemProcessor.ReformedMetaData;
 import com.netflix.ice.basic.BasicReservationService.Reservation;
 import com.netflix.ice.common.AccountService;
@@ -106,7 +108,9 @@ public class BasicLineItemProcessorTest {
     private static CostAndUsageReportLineItem newCurLineItem(String manifestFilename, DateTime costAndUsageNetUnblendedStartDate) throws IOException {
 		CostAndUsageReportProcessor cauProc = new CostAndUsageReportProcessor(null);
 		File manifest = new File(resourcesDir, manifestFilename);
-        CostAndUsageReport cauReport = new CostAndUsageReport(manifest, cauProc);
+		S3ObjectSummary s3ObjectSummary = new S3ObjectSummary();
+		s3ObjectSummary.setLastModified(new Date());
+        CostAndUsageReport cauReport = new CostAndUsageReport(s3ObjectSummary, manifest, cauProc);
         return new CostAndUsageReportLineItem(false, costAndUsageNetUnblendedStartDate, cauReport);
     }
     
@@ -607,14 +611,16 @@ public class BasicLineItemProcessorTest {
 			run(which, "2017-06-01T00:00:00Z", null);
 		}
 		
-		public void run(Which which, String start, String netUnblendedStart) throws Exception {        
+		// For testing taxes which have the full month for the interval, but need to only be split across the hours in the partial month
+		public void run(Which which, String start, String netUnblendedStart, String reportDate) throws Exception {
 			DateTime dt = new DateTime(start, DateTimeZone.UTC);
 			long startMilli = dt.withDayOfMonth(1).getMillis();
+			long reportMilli = new DateTime(reportDate, DateTimeZone.UTC).getMillis();
 			
 			if (which == Which.dbr || which == Which.both) {
 		        LineItem dbrLineItem = new DetailedBillingReportLineItem(false, true, dbrHeader);
 		        dbrLineItem.setItems(line.getDbrLine());
-				runProcessTest(dbrLineItem, Which.dbr, false, startMilli);
+				runProcessTest(dbrLineItem, Which.dbr, false, startMilli, reportMilli);
 			}
 			
 			if (which == Which.cau || which == Which.both) {
@@ -634,11 +640,15 @@ public class BasicLineItemProcessorTest {
 
 				CostAndUsageReportLineItem lineItem = newCurLineItem(manifest, netUnblendedStart == null ? null : new DateTime(netUnblendedStart, DateTimeZone.UTC));
 				lineItem.setItems(line.getCauLine(lineItem));
-				runProcessTest(lineItem, Which.cau, true, startMilli);
+				runProcessTest(lineItem, Which.cau, true, startMilli, reportMilli);
 			}
 		}
 		
-		public void runProcessTest(LineItem lineItem, Which which, boolean isCostAndUsageReport, long startMilli) throws Exception {
+		public void run(Which which, String start, String netUnblendedStart) throws Exception {        
+			run(which, start, netUnblendedStart, new DateTime(DateTimeZone.UTC).toString());
+		}
+		
+		public void runProcessTest(LineItem lineItem, Which which, boolean isCostAndUsageReport, long startMilli, long reportMilli) throws Exception {
 			Instances instances = null;
 			String reportName = which == Which.dbr ? "DBR" : "CUR";
 			CostAndUsageData costAndUsageData = new CostAndUsageData(startMilli, null, null, TagCoverage.none, accountService, productService);
@@ -650,15 +660,14 @@ public class BasicLineItemProcessorTest {
 				costAndUsageData.getCost(null).getData(0);
 				costAndUsageData.getUsage(null).getData(0);
 			}
-	        
-			Result result = lineItemProc.process("", delayed, "", lineItem, costAndUsageData, instances, 0.0);
+			Result result = lineItemProc.process("", reportMilli, delayed, "", lineItem, costAndUsageData, instances, 0.0);
 			assertEquals(reportName + " Incorrect result", this.result, result);
 			
 			if (result == Result.delay) {
 				// Expand the data by number of hours in month
 				costAndUsageData.getUsage(null).getData(daysInMonth * 24 - 1);
 				costAndUsageData.getCost(null).getData(daysInMonth * 24 - 1);
-				result = lineItemProc.process("", true, "", lineItem, costAndUsageData, instances, 0.0);
+				result = lineItemProc.process("", reportMilli, true, "", lineItem, costAndUsageData, instances, 0.0);
 			}
 			
 			// Check usage data
@@ -1161,7 +1170,7 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testEC2Credit() throws Exception {
 		Line line = new Line(LineItemType.Credit, "us-east-1", "", ec2, "HeavyUsage:m4.large", "RunInstances", "MB - Pricing Adjustment", PricingTerm.reserved, "2019-08-01T00:00:00Z", "2019-09-01T00:00:00Z", "0.0000000000", "-38.3100000000", "");
-		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "RI Credits", "m4.large", null };
+		String[] tag = new String[] { "us-east-1", null, "EC2 Instance", "Credit - RI", "m4.large", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
 		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
@@ -1170,7 +1179,7 @@ public class BasicLineItemProcessorTest {
 	public void testRedshiftCredit() throws Exception {
 		// Credits sometimes end one second into next month, so make sure we deal with that
 		Line line = new Line(LineItemType.Credit, "us-east-1", "", redshift, "Node:ds2.xlarge", "RunComputeNode:0001", "AWS Credit", PricingTerm.onDemand, "2020-03-01T00:00:00Z", "2020-04-01T00:00:01Z", "0.0000000000", "-38.3100000000", "");
-		String[] tag = new String[] { "us-east-1", null, "Redshift", "On-Demand Instance Credits", "ds2.xlarge", null };
+		String[] tag = new String[] { "us-east-1", null, "Redshift", "Credit - On-Demand Instance", "ds2.xlarge", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.0515, null);
 		test.run(Which.cau, "2020-03-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
@@ -1178,7 +1187,7 @@ public class BasicLineItemProcessorTest {
 	@Test
 	public void testConfigCredit() throws Exception {
 		Line line = new Line(LineItemType.Credit, "us-west-2", "", awsConfig, "USW2-ConfigurationItemRecorded", "", "AWS Config rules- credits to support pricing model change TT: 123456789012", PricingTerm.none, "2019-08-01T00:00:00Z", "2019-08-01T01:00:01Z", "0.0000000000", "-0.00492", "");
-		String[] tag = new String[] { "us-west-2", null, "Config", "Credits", "ConfigurationItemRecorded", null };
+		String[] tag = new String[] { "us-west-2", null, "Config", "Credit - None", "ConfigurationItemRecorded", null };
 		ProcessTest test = new ProcessTest(line, tag, null, Result.delay, 31, null, false, 0, 1, -0.00492, null);
 		test.run(Which.cau, "2019-08-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
@@ -1191,7 +1200,7 @@ public class BasicLineItemProcessorTest {
 		String[] tag = new String[] { "global", null, "Savings Plans for AWS Compute usage", "SavingsPlan Unused - No Upfront", "ComputeSP:1yrNoUpfront", null };
 		
 		// Should produce one cost item for the unused recurring portion of the plan.
-		ProcessTest test = new ProcessTest(line, tag, null, Result.hourly, 31, 0.0, false, 0, 1, 0.0, 0.06);
+		ProcessTest test = new ProcessTest(line, tag, null, Result.hourlyTruncate, 31, 0.0, true, 0, 1, 0.0, 0.06);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
 
 		
@@ -1201,7 +1210,7 @@ public class BasicLineItemProcessorTest {
 		tag = new String[] { "global", null, "Savings Plans for AWS Compute usage", "SavingsPlan Unused - Partial Upfront", "ComputeSP:1yrPartialUpfront", null };
 		
 		// Should produce two cost items for the unused recurring and amortized portions of the plan.
-		test = new ProcessTest(line, tag, null, Result.hourly, 31, 0.035, false, 0, 2, 0.0, 0.025);
+		test = new ProcessTest(line, tag, null, Result.hourlyTruncate, 31, 0.035, true, 0, 2, 0.0, 0.025);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
 		
 		
@@ -1211,7 +1220,7 @@ public class BasicLineItemProcessorTest {
 		tag = new String[] { "global", null, "Savings Plans for AWS Compute usage", "SavingsPlan Unused - All Upfront", "ComputeSP:1yrAllUpfront", null };
 		
 		// Should produce one cost item for the unused amortized portion of the plan.
-		test = new ProcessTest(line, tag, null, Result.hourly, 31, 0.06, false, 0, 1, 0.0, 0.0);
+		test = new ProcessTest(line, tag, null, Result.hourlyTruncate, 31, 0.06, true, 0, 1, 0.0, 0.0);
 		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");		
 	}
 	
@@ -1268,15 +1277,22 @@ public class BasicLineItemProcessorTest {
 		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "7.44", "");
 		line.setTaxFields("GST", "Amazon Web Services, Inc.");
 		String[] tag = new String[] { "us-east-1", null, "EC2", "Tax - GST", "HeavyUsage:c4.large", null };
-		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 0.01, Result.delay, 31);
 		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 
-		// Partial month
+		// Partial month with tax reported as partial month
 		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "4.37", "");
 		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
 		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
-		test = new ProcessTest(line, tag, 1.0, 0.01, Result.hourly, 31);
-		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z");
+		test = new ProcessTest(line, tag, 1.0, 0.01, Result.delay, 31);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z", "2019-12-19T05:00:01Z");
+		
+		// Partial month with tax reported as full month
+		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2020-01-01T00:00:00Z", "1", "7.44", "");
+		line.setTaxFields("USSalesTax", "Amazon Web Services, Inc.");
+		tag = new String[] { "us-east-1", null, "EC2", "Tax - USSalesTax", "HeavyUsage:c4.large", null };
+		test = new ProcessTest(line, tag, 1.0, 0.01, Result.delay, 31);
+		test.run(Which.cau, "2019-12-01T00:00:00Z", "2019-01-01T00:00:00Z", "2019-12-19T05:00:01Z");
 		
 		// Zero tax - should ignore
 		line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "HeavyUsage:c4.large", "RunInstances", "Tax for product code AmazonEC2 usage type HeavyUsage:c4.large operation RunInstances", PricingTerm.none, "2019-12-01T00:00:00Z", "2019-12-19T05:00:01Z", "1", "0", "");
@@ -1291,7 +1307,7 @@ public class BasicLineItemProcessorTest {
 		Line line = new Line(LineItemType.Tax, "", "", "Amazon EC2", "", "", "Tax for product code AmazonEC2", PricingTerm.none, "2020-01-01T00:00:00Z", "2020-02-01T00:00:00Z", "1", "744.0", "");
 		line.setTaxFields("VAT", "AWS EMEA SARL");
 		String[] tag = new String[] { "global", null, "EC2", "Tax - VAT", "Tax - AWS EMEA SARL", null };
-		ProcessTest test = new ProcessTest(line, tag, 1.0, 1.0, Result.hourly, 31);
+		ProcessTest test = new ProcessTest(line, tag, 1.0, 1.0, Result.delay, 31);
 		test.run(Which.cau, "2020-01-01T00:00:00Z", "2019-01-01T00:00:00Z");				
 	}
 }

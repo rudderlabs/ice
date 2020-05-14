@@ -29,7 +29,7 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
 
     public static final Tag aggregated = new Tag("aggregated") {
 		private static final long serialVersionUID = 1L;
-
+		// Always put aggregated first
 		@Override
         public int compareTo(Tag t) {
             return this == t ? 0 : -1;
@@ -38,7 +38,7 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
 
     public final String name;
     Tag(String name) {
-        this.name = name;
+        this.name = name == null ? "" : name;
     }
 
     @Override
@@ -50,19 +50,26 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
     }
 
     @Override
-    public String toString() {
-        return this.name;
+    public int hashCode() {
+        return this.name.hashCode();
+    }
+    
+    /*
+     * Allow subclasses to override the name for tag sorting purposes
+     */
+    public String getName() {
+    	return this.name;
     }
 
     @Override
-    public int hashCode() {
-        return this.name.hashCode();
+    public String toString() {
+        return getName();
     }
 
     public int compareTo(Tag t) {
         if (t == aggregated)
             return -t.compareTo(this);
-        int result = ("a" + this.name).compareTo("a" + t.name);
+        int result = this.getName().compareToIgnoreCase(t.getName());
         return result;
     }
 }
