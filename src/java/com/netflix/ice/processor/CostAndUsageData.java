@@ -71,19 +71,19 @@ public class CostAndUsageData {
     
 	public CostAndUsageData(long startMilli, WorkBucketConfig workBucketConfig, List<String> userTags, Config.TagCoverage tagCoverage, AccountService accountService, ProductService productService) {
 		this.startMilli = startMilli;
+        this.userTags = userTags;
 		this.usageDataByProduct = Maps.newHashMap();
 		this.costDataByProduct = Maps.newHashMap();
-        this.usageDataByProduct.put(null, new ReadWriteData());
-        this.costDataByProduct.put(null, new ReadWriteData());
+        this.usageDataByProduct.put(null, new ReadWriteData(getNumUserTags()));
+        this.costDataByProduct.put(null, new ReadWriteData(getNumUserTags()));
         this.workBucketConfig = workBucketConfig;
         this.accountService = accountService;
         this.productService = productService;
         this.tagCoverage = null;
-        this.userTags = userTags;
         this.collectTagCoverageWithUserTags = tagCoverage == TagCoverage.withUserTags;
         if (userTags != null && tagCoverage != TagCoverage.none) {
     		this.tagCoverage = Maps.newHashMap();
-        	this.tagCoverage.put(null, new ReadWriteTagCoverageData(userTags.size()));
+        	this.tagCoverage.put(null, new ReadWriteTagCoverageData(getNumUserTags()));
         }
         this.reservations = Maps.newHashMap();
         this.savingsPlans = Maps.newHashMap();
@@ -91,6 +91,10 @@ public class CostAndUsageData {
 	
 	public long getStartMilli() {
 		return startMilli;
+	}
+	
+	public int getNumUserTags() {
+		return userTags == null ? 0 : userTags.size();
 	}
 	
 	public ReadWriteData getUsage(Product product) {
@@ -220,7 +224,7 @@ public class CostAndUsageData {
     	
     	ReadWriteTagCoverageData data = tagCoverage.get(product);
     	if (data == null) {
-    		data = new ReadWriteTagCoverageData(userTags == null ? 0 : userTags.size());
+    		data = new ReadWriteTagCoverageData(userTags == null ? 0 : getNumUserTags());
     		tagCoverage.put(product, data);
     	}
     	
@@ -342,7 +346,7 @@ public class CostAndUsageData {
     		public Status call() {
     			String name = product == null ? "all" : product.getServiceCode();
     			try {
-	                TagGroupWriter writer = new TagGroupWriter(name, true, workBucketConfig, accountService, productService);
+	                TagGroupWriter writer = new TagGroupWriter(name, true, workBucketConfig, accountService, productService, getNumUserTags());
 	                writer.archive(startMilli, tagGroups);
     			}
     			catch (Exception e) {
@@ -490,7 +494,7 @@ public class CostAndUsageData {
             int lastMonthDayOfYear = monthDateTime.minusMonths(1).getDayOfYear();
             int startDay = lastMonthDayOfYear + lastMonthNumDays - daysFromLastMonth - 1;
             
-            dailyData = new ReadWriteData();
+            dailyData = new ReadWriteData(getNumUserTags());
             writer = getDataWriter(prefix + "daily_" + prodName + "_" + lastMonthYear, dailyData, true);
             getPartialWeek(dailyData, startDay, daysFromLastMonth, 0, tagGroups, weekly);
             if (year != lastMonthYear) {
@@ -509,7 +513,7 @@ public class CostAndUsageData {
         	// See if we have data processed for the following month that needs to be added to the last week of this month
         	if (monthDateTime.getMonthOfYear() < 12) {
         		if (writer == null) {
-                    dailyData = new ReadWriteData();
+                    dailyData = new ReadWriteData(getNumUserTags());
                     writer = getDataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, true);
                     int monthDayOfYear = monthDateTime.plusMonths(1).getDayOfYear() - 1;
                     if (dailyData.getNum() > monthDayOfYear)
@@ -517,7 +521,7 @@ public class CostAndUsageData {
         		}
         	}
         	else {
-                ReadWriteData nextYearDailyData = new ReadWriteData();
+                ReadWriteData nextYearDailyData = new ReadWriteData(getNumUserTags());
                 DataWriter nextYearWriter = getDataWriter(prefix + "daily_" + prodName + "_" + (year + 1), nextYearDailyData, true);
                 if (nextYearDailyData.getNum() > 0)
                 	getPartialWeek(nextYearDailyData, 0, daysInNextMonth, weekly.size() - 1, tagGroups, weekly);
@@ -527,14 +531,14 @@ public class CostAndUsageData {
         
         // archive daily
         if (writer == null) {
-            dailyData = new ReadWriteData();
+            dailyData = new ReadWriteData(getNumUserTags());
             writer = getDataWriter(prefix + "daily_" + prodName + "_" + year, dailyData, true);
         }
         dailyData.setData(daily, monthDateTime.getDayOfYear() -1);
         writer.archive();
 
         // archive monthly
-        ReadWriteData monthlyData = new ReadWriteData();
+        ReadWriteData monthlyData = new ReadWriteData(getNumUserTags());
         int numMonths = Months.monthsBetween(startDate, monthDateTime).getMonths();            
         writer = getDataWriter(prefix + "monthly_" + prodName, monthlyData, true);
         monthlyData.setData(monthly, numMonths);            
@@ -547,7 +551,7 @@ public class CostAndUsageData {
             index = 0;
         else
             index = Weeks.weeksBetween(startDate, weekStart).getWeeks() + (startDate.dayOfWeek() == weekStart.dayOfWeek() ? 0 : 1);
-        ReadWriteData weeklyData = new ReadWriteData();
+        ReadWriteData weeklyData = new ReadWriteData(getNumUserTags());
         writer = getDataWriter(prefix + "weekly_" + prodName, weeklyData, true);
         weeklyData.setData(weekly, index);
         writer.archive();
@@ -606,7 +610,7 @@ public class CostAndUsageData {
     		@Override
     		public Status call() {
     			try {
-	    	        int numUserTags = userTags == null ? 0 : userTags.size();
+	    	        int numUserTags = userTags == null ? 0 : getNumUserTags();
 	                Collection<TagGroup> tagGroups = data.getTagGroups();
 	
 	                // init daily, weekly and monthly

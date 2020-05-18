@@ -223,7 +223,7 @@ public class Operand {
 			else {
 				List<UserTag> userTags = Lists.newArrayListWithCapacity(numUserTags);
 				for (int i = 0; i < numUserTags; i++)
-					userTags.add(atg == null ? null : atg.getUserTag(i));
+					userTags.add(atg == null ? UserTag.empty : atg.getUserTag(i));
 				if (userTagFilters.size() > 0) {
 					for (String key: userTagFilters.keySet()) {
 						int i = userTagFilterIndeces.get(key);

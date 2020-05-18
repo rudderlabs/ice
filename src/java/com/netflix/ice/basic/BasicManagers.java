@@ -164,7 +164,7 @@ public class BasicManagers extends Poller implements Managers {
         }
 
         for (Product product: newProducts) {
-        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true, config.workBucketConfig, config.accountService, config.productService);
+        	BasicTagGroupManager tagGroupManager = new BasicTagGroupManager(product, true, config.workBucketConfig, config.accountService, config.productService, config.userTags.size());
             tagGroupManagers.put(product, tagGroupManager);
             boolean loadTagCoverage = (product == null && config.getTagCoverage() != TagCoverage.none) || (product != null && config.getTagCoverage() == TagCoverage.withUserTags);
             for (ConsolidateType consolidateType: ConsolidateType.values()) {
@@ -296,12 +296,9 @@ public class BasicManagers extends Poller implements Managers {
 		for (Future<Collection<ResourceGroup>> f: futures) {
 			Collection<ResourceGroup> resourceGroups = f.get();
 			for (ResourceGroup rg: resourceGroups) {
-				// If no separator, it's defaulted to the product name, so skip it
-				if (rg.name.contains(ResourceGroup.separator)) {
-					UserTag[] tags = rg.getUserTags();
-					if (tags.length > index && !StringUtils.isEmpty(tags[index].name))
-						userTagValues.add(tags[index]);
-				}
+				UserTag[] tags = rg.getUserTags();
+				if (tags.length > index && !StringUtils.isEmpty(tags[index].name))
+					userTagValues.add(tags[index]);
 			}
 		}
 		

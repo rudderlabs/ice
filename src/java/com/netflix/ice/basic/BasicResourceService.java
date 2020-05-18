@@ -25,7 +25,6 @@ import java.util.Map.Entry;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -41,6 +40,7 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.ResourceGroup.ResourceException;
 
 public class BasicResourceService extends ResourceService {
     private final static Logger logger = LoggerFactory.getLogger(BasicResourceService.class);
@@ -290,6 +290,9 @@ public class BasicResourceService extends ResourceService {
 
     @Override
     public ResourceGroup getResourceGroup(Account account, Region region, Product product, LineItem lineItem, long millisStart) {
+    	if (customTags.size() == 0)
+    		return null;
+    	
         // Build the resource group based on the values of the custom tags
     	String[] tags = new String[customTags.size()];
        	for (int i = 0; i < customTags.size(); i++) {
@@ -302,13 +305,24 @@ public class BasicResourceService extends ResourceService {
         		v = getMappedUserTagValue(account, lineItem.getPayerAccountId(), customTags.get(i), tags, millisStart);
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags.get(i), millisStart);
+        	if (v == null)
+        		v = ""; // never return null entries
         	tags[i] = v;
         }
-		return ResourceGroup.getResourceGroup(tags);
+		try {
+			// We never use null entries, so should never throw
+			return ResourceGroup.getResourceGroup(tags);
+		} catch (ResourceException e) {
+			logger.error("Error creating resource group from user tags in line item" + e);
+		}
+		return null;
     }
     
     @Override
     public ResourceGroup getResourceGroup(Account account, Product product, List<Tag> reservedInstanceTags, long millisStart) {
+    	if (customTags.size() == 0)
+    		return null;
+    	
         // Build the resource group based on the values of the custom tags
     	String[] tags = new String[customTags.size()];
        	for (int i = 0; i < customTags.size(); i++) {
@@ -323,9 +337,17 @@ public class BasicResourceService extends ResourceService {
        		}
         	if (v == null || v.isEmpty())
         		v = getDefaultUserTagValue(account, customTags.get(i), millisStart);
+        	if (v == null)
+        		v = ""; // never return null entries
         	tags[i] = v;
        	}
-		return ResourceGroup.getResourceGroup(tags);
+		try {
+			// We never use null entries, so should never throw
+			return ResourceGroup.getResourceGroup(tags);
+		} catch (ResourceException e) {
+			logger.error("Error creating resource group from user tags in line item" + e);
+		}
+		return null;
     }
     
     @Override

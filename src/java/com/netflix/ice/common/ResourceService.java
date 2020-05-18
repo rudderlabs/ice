@@ -30,6 +30,7 @@ import java.util.Map;
  * Please see a sample of subclass in SampleMapDbResourceService class.
  */
 public abstract class ResourceService {
+	public static final int MAX_CUSTOM_TAGS = 32;
 
     /**
      * Subclass can choose different technologies to store the mapping of resource ids and resource group names.

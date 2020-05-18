@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -35,15 +38,28 @@ import com.netflix.ice.common.TagGroup;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer {
+    protected Logger logger = LoggerFactory.getLogger(getClass());
+    
     protected List<Map<TagGroup, T>> data;
     // Cached set of tagGroup keys used throughout the list of data maps.
     // Post processing for reservations, savings plans, savings data, post processor, and data writing
     // all need an aggregated set of tagGroups and it's very expensive to walk the maps calling addAll().
     protected Set<TagGroup> tagGroups;
-
+    
+    // number of user tags in the resourceGroups. Set to -1 when constructed for deserialization.
+    // will be initialized when read in.
+    protected int numUserTags;
+    
 	public ReadWriteGenericData() {
         data = Lists.newArrayList();
         tagGroups = Sets.newHashSet();
+		this.numUserTags = -1;
+	}
+
+	public ReadWriteGenericData(int numUserTags) {
+        data = Lists.newArrayList();
+        tagGroups = Sets.newHashSet();
+		this.numUserTags = numUserTags;
     }
 
     public int getNum() {
@@ -192,9 +208,17 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
      */
     public void serialize(DataOutput out, TagGroupFilter filter) throws IOException {
         Collection<TagGroup> keys = getTagGroups();
+        
+    	if (numUserTags == -1 && keys.size() > 0) {
+     		logger.warn("Error attempting to serialize data without setting the number of user tags. Pulling value from one of the tag groups");
+       		TagGroup first = keys.iterator().next();
+       		numUserTags = first.resourceGroup == null ? 0 : first.resourceGroup.getUserTags().length;
+    	}    	
+   		
         if (filter != null)
         	keys = filter.getTagGroups(keys);
         
+        out.writeInt(numUserTags);
         out.writeInt(keys.size());
         for (TagGroup tagGroup: keys) {
             TagGroup.Serializer.serialize(out, tagGroup);
@@ -215,11 +239,11 @@ public abstract class ReadWriteGenericData<T> implements ReadWriteDataSerializer
     abstract protected void writeValue(DataOutput out, T value) throws IOException;
 
     public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
-
+    	numUserTags = in.readInt();    	
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
         for (int j = 0; j < numKeys; j++) {
-        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, in);
+        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, numUserTags, in);
             keys.add(tg);
         	tagGroups.add(tg);
         }

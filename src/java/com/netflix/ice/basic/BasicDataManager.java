@@ -82,7 +82,7 @@ public class BasicDataManager extends CommonDataManager<ReadOnlyData, Double> im
     @Override
     protected ReadOnlyData deserializeData(DataInputStream in) throws IOException, BadZone {
 	    ReadOnlyData result = new ReadOnlyData(numUserTags);
-	    result.deserialize(accountService, productService, numUserTags, in, forReservations);
+	    result.deserialize(accountService, productService, in, forReservations);
 	    return result;
     }
             

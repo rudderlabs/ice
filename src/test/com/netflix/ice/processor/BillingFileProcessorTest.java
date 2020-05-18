@@ -61,6 +61,7 @@ import com.netflix.ice.processor.pricelist.InstancePrices.ServiceCode;
 import com.netflix.ice.processor.pricelist.PriceListService;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
+import com.netflix.ice.tag.ResourceGroup.ResourceException;
 import com.netflix.ice.tag.Zone.BadZone;
 
 public class BillingFileProcessorTest {
@@ -71,6 +72,10 @@ public class BillingFileProcessorTest {
     private static final String cauReportDir = resourcesReportDir + "Oct2017/";
 	private static PriceListService priceListService = null;
 	private static Properties properties;
+	
+	public static final String separator = "|";
+	public static final String separatorReplacement = "~";
+	private static final String separatorRegex = "\\|";
 	
 
     private static void init(String propertiesFilename) throws Exception {
@@ -276,7 +281,7 @@ public class BillingFileProcessorTest {
 		FileWriter out;
 		try {
 			out = new FileWriter(outputFile);
-	        data.serializeCsv(out);
+	        data.serializeCsv(out, null);
 	        out.close();
 		} catch (Exception e) {
 			logger.error("Error writing " + dataType + " file " + e);
@@ -307,14 +312,12 @@ public class BillingFileProcessorTest {
 			Map<TagGroup, Double> expected = expectedData.getData(i);
 			Map<TagGroup, Double> got = Maps.newHashMap();
 			for (Entry<TagGroup, Double> entry: data.getData(i).entrySet()) {
+				TagGroup tg = entry.getKey();
 				// Convert any TagGroupRIs to TagGroups since the RI version isn't reconstituted from file
-				if (entry.getKey() instanceof TagGroupRI) {
-					TagGroup tg = entry.getKey();
-					got.put(TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup), entry.getValue());					
+				if (tg instanceof TagGroupRI) {
+					tg = TagGroup.getTagGroup(tg.account, tg.region, tg.zone, tg.product, tg.operation, tg.usageType, tg.resourceGroup);
 				}
-				else {
-					got.put(entry.getKey(), entry.getValue());
-				}
+				got.put(tg, entry.getValue());
 			}
 			int expectedLen = expected.keySet().size();
 	        Set<TagGroup> keys = Sets.newTreeSet();
@@ -398,7 +401,7 @@ public class BillingFileProcessorTest {
 		}
 	}
 	
-	private Set<TagGroup> deserializeTagGroupsCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException, BadZone {
+	private Set<TagGroup> deserializeTagGroupsCsv(AccountService accountService, ProductService productService, BufferedReader in) throws IOException, BadZone, ResourceException {
         Set<TagGroup> result = Sets.newTreeSet();
 
         String line;
@@ -410,14 +413,13 @@ public class BillingFileProcessorTest {
         	String[] items = line.split(",");        	
         	TagGroup tag = TagGroup.getTagGroup(items[0], items[1], items[2], items[3], items[4], items[5],
         			items.length > 6 ? items[6] : "", 
-        			items.length > 7 ? items[7] : "", 
+        			items.length > 7 ? items[7].split(separatorRegex, -1) : null, 
         			accountService, productService);
             result.add(tag);
         }
 
         return result;
     }
-
 
 	
 	@Test

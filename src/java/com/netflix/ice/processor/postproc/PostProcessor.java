@@ -132,7 +132,7 @@ public class PostProcessor {
 			Product p = isNonResource ? null : result.getProduct(productService);
 			ReadWriteData rwd = result.getType() == OperandType.usage ? data.getUsage(p) : data.getCost(p);
 			if (rwd == null) {
-				rwd = new ReadWriteData();
+				rwd = new ReadWriteData(data.getNumUserTags());
 				if (result.getType() == OperandType.usage)
 					data.putUsage(p, rwd);
 				else

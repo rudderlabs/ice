@@ -48,6 +48,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     protected ReservationService reservationService;
 
     protected ResourceService resourceService;
+    protected final int numUserTags;
     
     public BasicLineItemProcessor(
     		AccountService accountService, 
@@ -58,6 +59,7 @@ public class BasicLineItemProcessor implements LineItemProcessor {
     	this.productService = productService;
     	this.reservationService = reservationService;
     	this.resourceService = resourceService;
+    	this.numUserTags = resourceService == null ? 0 : resourceService.getCustomTags().size();
     }
     
     protected Product getProduct(LineItem lineItem) {
@@ -321,9 +323,9 @@ public class BasicLineItemProcessor implements LineItemProcessor {
         final Product product = tagGroup.product;
 
         if (resourceService != null) {
-            if (usageDataOfProduct == null) {
-                usageDataOfProduct = new ReadWriteData();
-                costDataOfProduct = new ReadWriteData();
+            if (usageDataOfProduct == null) {            	
+                usageDataOfProduct = new ReadWriteData(numUserTags);
+                costDataOfProduct = new ReadWriteData(numUserTags);
                 costAndUsageData.putUsage(tagGroup.product, usageDataOfProduct);
                 costAndUsageData.putCost(tagGroup.product, costDataOfProduct);
             }

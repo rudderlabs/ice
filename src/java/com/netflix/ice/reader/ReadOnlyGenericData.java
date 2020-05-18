@@ -73,16 +73,19 @@ public abstract class ReadOnlyGenericData<D> {
     abstract protected D[] newDataArray(int size);
     abstract protected D readValue(DataInput in) throws IOException ;
 
-    public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in) throws IOException, BadZone {
-    	deserialize(accountService, productService, numUserTags, in, true);
+    public void deserialize(AccountService accountService, ProductService productService, DataInput in) throws IOException, BadZone {
+    	deserialize(accountService, productService, in, true);
     }
     
-    public void deserialize(AccountService accountService, ProductService productService, int numUserTags, DataInput in, boolean buildIndecies) throws IOException, BadZone {
-
+    public void deserialize(AccountService accountService, ProductService productService, DataInput in, boolean buildIndecies) throws IOException, BadZone {
+    	int numUserTags = in.readInt();
+    	if (numUserTags != this.numUserTags)
+    		logger.error("Data file has wrong number of user tags!");
+    	
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
         for (int j = 0; j < numKeys; j++) {
-        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, in);
+        	TagGroup tg = TagGroup.Serializer.deserialize(accountService, productService, numUserTags, in);
 //        	if (keys.contains(tg))
 //        		logger.error("Duplicate tag group in data file: " + tg + ", existing at index: " + keys.indexOf(tg));
         	if (tg.resourceGroup != null && tg.resourceGroup.getUserTags().length != numUserTags)
@@ -124,9 +127,7 @@ public abstract class ReadOnlyGenericData<D> {
 	    	for (int i = 0; i < numUserTags; i++)
 	    		tagGroupsByUserTag.add(Maps.<Tag, Map<TagGroup, Integer>>newHashMap());
     	}
-    	    	
-		UserTag emptyUserTag = UserTag.get("");
-		
+    	    			
     	for (int i = 0; i < tagGroups.size(); i++) {
     		TagGroup tg = tagGroups.get(i);
     		addIndex(tagGroupsByTagAndTagType.get(TagType.Account), tg.account, tg, i);
@@ -139,7 +140,7 @@ public abstract class ReadOnlyGenericData<D> {
     		if (numUserTags > 0) {
 	    		if (tg.resourceGroup == null) {
 		    		for (int j = 0; j < numUserTags; j++)
-		    			addIndex(tagGroupsByUserTag.get(j), emptyUserTag, tg, i);
+		    			addIndex(tagGroupsByUserTag.get(j), UserTag.empty, tg, i);
 	    		}
 				else {
 		    		UserTag[] userTags = tg.resourceGroup.getUserTags();

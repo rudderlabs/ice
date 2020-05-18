@@ -307,8 +307,8 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         
         if (resourceService != null) {
             if (usageDataOfProduct == null) {
-                usageDataOfProduct = new ReadWriteData();
-                costDataOfProduct = new ReadWriteData();
+                usageDataOfProduct = new ReadWriteData(numUserTags);
+                costDataOfProduct = new ReadWriteData(numUserTags);
                 costAndUsageData.putUsage(product, usageDataOfProduct);
                 costAndUsageData.putCost(product, costDataOfProduct);
             }

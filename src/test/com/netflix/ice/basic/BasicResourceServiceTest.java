@@ -44,13 +44,14 @@ import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.ResourceGroup.ResourceException;
 import com.netflix.ice.tag.UserTag;
 
 public class BasicResourceServiceTest {
     private static final String resourcesDir = "src/test/resources";
 
 	@Test
-	public void testGetResourceGroup() {
+	public void testGetResourceGroup() throws ResourceException {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
@@ -77,7 +78,10 @@ public class BasicResourceServiceTest {
 		rs.putDefaultTags("123456789012", defaultTags);
 		
 		ResourceGroup resource = rs.getResourceGroup(as.getAccountByName("123456789012"), Region.US_EAST_1, ps.getProduct(Product.Code.Ec2Instance), li, 0);
-		assertEquals("Resource name doesn't match", "Prod" + ResourceGroup.separator + "serviceAPI" + ResourceGroup.separator + "1234", resource.name);
+		UserTag[] tags = resource.getUserTags();
+		UserTag[] expected = {UserTag.get("Prod"), UserTag.get("serviceAPI"), UserTag.get("1234")};
+		for (int i = 0; i < tags.length; i++)
+			assertEquals("ResourceGroup doesn't match at index " + i, expected[i], tags[i]);
 	}
 	
 	@Test
@@ -170,7 +174,7 @@ public class BasicResourceServiceTest {
 	}
 	
 	@Test
-	public void testDefaultAccountTags() {
+	public void testDefaultAccountTags() throws ResourceException {
 		CostAndUsageReport caur = new CostAndUsageReport(new File(resourcesDir, "ResourceTest-Manifest.json"), null);
 		LineItem li = new CostAndUsageReportLineItem(false, null, caur);		
 		String[] item = {
@@ -375,37 +379,37 @@ public class BasicResourceServiceTest {
 		String[] tags = { "SrcValue1", "", "", "SrcValue4a" };
 		
 		ResourceGroup resource = getResourceGroup(yaml, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValue1" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValue1", "SrcValue4a"}), resource);
 		
 		// Test with value on resource
 		tags = new String[]{ "TagValue1", "test", "", "SrcValue4a" };
 		resource = getResourceGroup(yaml, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "test" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"test", "SrcValue4a"}), resource);
 		
 		// Test without mapped value or resource tag - should use account default
 		tags = new String[]{ "TagValue1", "", "", "" };
 		resource = getResourceGroup(yaml, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValueDefault" + ResourceGroup.separator + "", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValueDefault", null}), resource);
 		
 		// Test include filtering
 		String yamlWithFilters = yaml +
 				"    include: [123456789012]\n";
 		tags = new String[]{ "TagValue1", "", "", "SrcValue4a" };
 		resource = getResourceGroup(yamlWithFilters, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValue1" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValue1", "SrcValue4a"}), resource);
 		
 		resource = getResourceGroup(yamlWithFilters, start, tags, customTags, defaultTags, payerAccount, "234567890123");		
-		assertEquals("Resource name doesn't match", "" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{null, "SrcValue4a"}), resource);
 		
 		// Test exclude filtering
 		yamlWithFilters = yaml +
 				"    exclude: [123456789012]\n";
 		
 		resource = getResourceGroup(yamlWithFilters, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValueDefault" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValueDefault", "SrcValue4a"}), resource);
 		
 		resource = getResourceGroup(yamlWithFilters, start, tags, customTags, defaultTags, payerAccount, "234567890123");		
-		assertEquals("Resource name doesn't match", "DestValue1" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValue1", "SrcValue4a"}), resource);
 		
 		// Test start date
 		String yamlWithStart = yaml + 
@@ -416,11 +420,11 @@ public class BasicResourceServiceTest {
 				"      DestValue2a:\n" +
 				"        TagKey4: [SrcValue4b]\n";
 		resource = getResourceGroup(yamlWithStart, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValue1" + ResourceGroup.separator + "SrcValue4a", resource.name);
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValue1", "SrcValue4a"}), resource);
 		
 		start = "2020-02-01T00:00:00Z";
 		resource = getResourceGroup(yamlWithStart, start, tags, customTags, defaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", "DestValue1a" + ResourceGroup.separator + "SrcValue4a", resource.name);		
+		assertEquals("Resource name doesn't match", ResourceGroup.getResourceGroup(new String[]{"DestValue1a", "SrcValue4a"}), resource);		
 	}
 	
 	@Test
@@ -450,42 +454,42 @@ public class BasicResourceServiceTest {
 		
 		// Test default on payerAccount - should be DestValueDefault
 		String[] tags = { "", "", "", ""};
-		String[] expect = { "DestValueDefault", "", "", ""};
+		ResourceGroup expect = ResourceGroup.getResourceGroup(new String[]{ "DestValueDefault", "", "", ""});
 		ResourceGroup resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 
 		// Test default on account - should be empty
-		expect = new String[]{ "", "", "", ""};
+		expect = ResourceGroup.getResourceGroup(new String[]{ "", "", "", ""});
 		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, account);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 
 		// Test DestValue1 on payerAccount - should give DestValue1
 		tags = new String[]{ "SrcValue1", "", "", "SrcValue4"};		
-		expect = new String[]{ "DestValue1", "SrcValue4", "SrcValue1", ""};
+		expect = ResourceGroup.getResourceGroup(new String[]{ "DestValue1", "SrcValue4", "SrcValue1", ""});
 		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 		
 		// Test DestValue1 on account - should be empty
-		expect = new String[]{ "", "SrcValue4", "SrcValue1", ""};
+		expect = ResourceGroup.getResourceGroup(new String[]{ "", "SrcValue4", "SrcValue1", ""});
 		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, account);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 		
 		// Test DestValue2 on payerAccount - should give DestValueDefault
 		tags = new String[]{ "", "SrcValue2", "", "SrcValue4"};		
-		expect = new String[]{ "DestValueDefault", "SrcValue4", "", "SrcValue2"};
+		expect = ResourceGroup.getResourceGroup(new String[]{ "DestValueDefault", "SrcValue4", "", "SrcValue2"});
 		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 		
 		// Test DestValue2 on account - should give DestValue2
-		expect = new String[]{ "DestValue2", "SrcValue4", "", "SrcValue2"};
+		expect = ResourceGroup.getResourceGroup(new String[]{ "DestValue2", "SrcValue4", "", "SrcValue2"});
 		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, account);		
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		assertEquals("Resource name doesn't match", expect, resource);
 		
 		/* Possible future feature
 		// Test DestValue2 on account when mapping from tag not in customTags
 		customTags = new String[]{"DestKey", "TagKey4", "TagKey1"};
-		expect = new String[]{ "DestValue2", "SrcValue4", ""};
-		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		expect = ResourceGroup.getResourceGroup(new String[]{ "DestValue2", "SrcValue4", ""});
+		assertEquals("Resource name doesn't match", expect, resource.name);
 		*/
 	}
 }

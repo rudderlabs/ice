@@ -130,11 +130,13 @@ public class ProcessorConfig extends Config {
         this.reservationService = reservationService;
         this.priceListService = priceListService;
         
-		String customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "");
+		String[] customTags = properties.getProperty(IceOptions.CUSTOM_TAGS, "").split(",");
 		String additionalTags = properties.getProperty(IceOptions.ADDITIONAL_TAGS, "");
 		boolean includeReservationIds = properties.getProperty(IceOptions.RESERVATION_ID_TAGS) == null ? false : Boolean.parseBoolean(properties.getProperty(IceOptions.RESERVATION_ID_TAGS));
-        resourceService = customTags.isEmpty() ? null :
-        	new BasicResourceService(productService, customTags.split(","), additionalTags.split(","), includeReservationIds);
+		if (customTags.length + (includeReservationIds ? 1 : 0) > ResourceService.MAX_CUSTOM_TAGS)
+			throw new Exception("Too many custom tags, max is " + ResourceService.MAX_CUSTOM_TAGS + " including reservation IDs if enabled");
+        resourceService = customTags[0].isEmpty() ? null :
+        	new BasicResourceService(productService, customTags, additionalTags.split(","), includeReservationIds);
         
     	Map<String, AccountConfig> orgAccounts = getAccountsFromOrganizations();
         Map<String, AccountConfig> accountConfigs = overlayAccountConfigsFromProperties(properties, orgAccounts);

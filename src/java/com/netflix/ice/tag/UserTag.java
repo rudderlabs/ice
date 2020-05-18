@@ -28,6 +28,8 @@ public class UserTag extends Tag {
 	public static final String none = "(none)";
 
     private static ConcurrentMap<String, UserTag> tagsByName = Maps.newConcurrentMap();
+    
+    public static UserTag empty = UserTag.get("");
 
 	private UserTag(String name) {
 		super(name);
@@ -35,7 +37,7 @@ public class UserTag extends Tag {
 	
 	public static UserTag get(String name) {
 		if (name == null)
-			return null;
+			name = "";
         UserTag tag = tagsByName.get(name);
         if (tag == null) {
         	tagsByName.putIfAbsent(name, new UserTag(name));

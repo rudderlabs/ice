@@ -80,7 +80,7 @@ public class TagCoverageDataManager extends CommonDataManager<ReadOnlyTagCoverag
 	protected ReadOnlyTagCoverageData deserializeData(DataInputStream in)
 			throws IOException, BadZone {
 	    ReadOnlyTagCoverageData result = new ReadOnlyTagCoverageData(getUserTagsSize());
-	    result.deserialize(accountService, productService, userTags.size(), in);
+	    result.deserialize(accountService, productService, in);
 	    return result;
 	}
 
