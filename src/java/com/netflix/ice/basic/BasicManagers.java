@@ -29,6 +29,7 @@ import com.netflix.ice.processor.TagGroupWriter;
 import com.netflix.ice.reader.*;
 import com.netflix.ice.tag.Account;
 import com.netflix.ice.tag.Operation;
+import com.netflix.ice.tag.Operation.Identity.Value;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
@@ -125,13 +126,17 @@ public class BasicManagers extends Poller implements Managers {
     	// Update the reader configuration from the work bucket data configuration
     	config.update();
     	
+    	WorkBucketConfig wbc = config.workBucketConfig;
+    	if (instancesService == null) {
+            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
+            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
+    	}
+    	
     	if (lastPollMillis >= lastProcessedPoller.getLastProcessedMillis())
     		return;	// nothing to do
     	
        	lastPollMillis = lastProcessedPoller.getLastProcessedMillis();
-       	
-    	WorkBucketConfig wbc = config.workBucketConfig;
-    	
+       	    	
     	// Refresh all the data manager caches
     	refreshDataManagers(wbc);
     	    	
@@ -218,14 +223,8 @@ public class BasicManagers extends Poller implements Managers {
     		refresh(d);
     	}
     	
-    	if (instancesService == null) {
-            instanceMetricsService = new InstanceMetricsService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix);
-            instancesService = new InstancesService(wbc.localDir, wbc.workS3BucketName, wbc.workS3BucketPrefix, config.accountService, config.productService);
-    	}
-    	else {
-	    	refresh(instancesService);
-	    	refresh(instanceMetricsService);
-    	}    	
+    	refresh(instancesService);
+    	refresh(instanceMetricsService);
     }
 
     private Future<Void> refresh(final DataCache dataCache) {
@@ -328,8 +327,7 @@ public class BasicManagers extends Poller implements Managers {
     		ConsolidateType consolidateType,
     		TagType groupBy,
     		AggregateType aggregate,
-    		boolean forReservation,
-    		boolean showLent,
+    		List<Operation.Identity.Value> exclude,
     		UsageUnit usageUnit,
     		List<List<UserTag>> userTagLists,
     		int userTagGroupByIndex) throws Exception {    	
@@ -371,8 +369,7 @@ public class BasicManagers extends Poller implements Managers {
                     tagLists,
                     groupBy,
                     aggregate,
-                    forReservation,
-                    showLent,
+                    exclude,
     				usageUnit,
     				userTagGroupByIndex,
     				dataManager));            
@@ -410,8 +407,7 @@ public class BasicManagers extends Poller implements Managers {
     		final TagLists tagLists,
     		final TagType groupBy,
     		final AggregateType aggregate,
-    		final boolean forReservation,
-    		final boolean showLent,
+    		final List<Operation.Identity.Value> exclude,
     		final UsageUnit usageUnit,
     		final int userTagGroupByIndex,
     		final DataManager dataManager) {
@@ -424,8 +420,7 @@ public class BasicManagers extends Poller implements Managers {
                         tagLists,
                         groupBy,
                         aggregate,
-                        forReservation,
-                        showLent,
+                        exclude,
         				usageUnit,
         				userTagGroupByIndex
                     );
@@ -505,4 +500,38 @@ public class BasicManagers extends Poller implements Managers {
 
     	return intro + sb.toString();
     }
+
+	@Override
+	public Collection<Operation> getOperations(TagLists tagLists, Collection<Product> products, Collection<Value> exclude, boolean withUserTags) {
+		List<Operation> ops = null;
+		
+		if (withUserTags) {
+	        Set<Operation> operations = Sets.newHashSet();
+	        if (products.size() == 0) {
+	            products = Lists.newArrayList(getProducts());
+	        }
+	        for (Product product: products) {
+	            if (product == null)
+	                continue;
+
+	            List<Product> single = Lists.newArrayList(product);
+	            TagGroupManager tagGroupManager = getTagGroupManager(product);
+	            if (tagGroupManager == null)
+	            	continue;
+	            
+	            Collection<Operation> tmp = tagGroupManager.getOperationsUnsorted(tagLists.getTagListsWithProducts(single), exclude);
+	            operations.addAll(tmp);
+	        }
+	        ops = Lists.newArrayList(operations);
+			ops.sort(null);
+		}
+		else {
+			TagGroupManager tagGroupManager = getTagGroupManager(null);
+			if (tagGroupManager == null)
+				ops = Lists.newArrayList();
+			else
+				ops = Lists.newArrayList(tagGroupManager.getOperations(tagLists, exclude));
+		}
+		return ops;
+	}
 }

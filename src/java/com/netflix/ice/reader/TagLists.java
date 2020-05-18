@@ -219,6 +219,10 @@ public class TagLists {
     	return new TagLists(this.accounts, this.regions, this.zones, this.products, this.operations, this.usageTypes, null);
     }
     
+    public TagLists getTagListsWithProducts(List<Product> products) {
+    	return new TagLists(this.accounts, this.regions, this.zones, products, this.operations, this.usageTypes, this.resourceGroups);
+    }
+    
     public TagLists getTagListsWithOperations(List<Operation> operations) {
     	return new TagLists(this.accounts, this.regions, this.zones, this.products, operations, this.usageTypes, this.resourceGroups);
     }

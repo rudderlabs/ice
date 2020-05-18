@@ -208,7 +208,7 @@ public class ReaderConfig extends Config {
         }
         else {
         	if (userTagList == null)
-        		dataManager.getData(interval, new TagLists(), null, AggregateType.both, false, false, usageUnit, 0);
+        		dataManager.getData(interval, new TagLists(), null, AggregateType.both, null, usageUnit, 0);
         	else
         		dataManager.getData(interval, new TagLists(), null, AggregateType.both, 0, userTagList);
         }

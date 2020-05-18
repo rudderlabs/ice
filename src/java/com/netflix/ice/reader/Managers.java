@@ -92,8 +92,7 @@ public interface Managers {
     		ConsolidateType consolidateType,
     		TagType groupBy,
     		AggregateType aggregate,
-    		boolean forReservation,
-    		boolean showLent,
+    		List<Operation.Identity.Value> exclude,
     		UsageUnit usageUnit,
     		List<List<UserTag>> userTagLists,
     		int userTagGroupByIndex) throws Exception;
@@ -108,6 +107,13 @@ public interface Managers {
      * 
      */
     Collection<Instance> getInstances(String id);
+    
+    /**
+     * Get all operations that meet query in tagLists for the requested products from the resource-based data.
+     * @param tagLists
+     * @return collection of operations
+     */
+    Collection<Operation> getOperations(TagLists tagLists, Collection<Product> products, Collection<Operation.Identity.Value> exclude, boolean withUserTags);
     
     /**
      * shutdown all manager instances

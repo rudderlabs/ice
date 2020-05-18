@@ -25,6 +25,7 @@ import java.util.Set;
 import grails.converters.JSON
 
 import com.netflix.ice.tag.ConsolidatedOperation
+import com.netflix.ice.tag.CostType
 import com.netflix.ice.tag.FamilyTag
 import com.netflix.ice.tag.Product
 import com.netflix.ice.tag.Account
@@ -123,8 +124,10 @@ class DashboardController {
     }
 	
 	def getReservationOps = {
+		boolean showLent = params.containsKey("showLent") ? params.getBoolean("showLent") : false;
+		
 		def data = [];
-		for (Operation op: Operation.getReservationOperations()) {
+		for (Operation op: Operation.getReservationOperations(showLent)) {
 			data.add(op.name);
 		}		
 		
@@ -133,10 +136,13 @@ class DashboardController {
 	}
 	
 	def getSavingsPlanOps = {
+		boolean showLent = params.containsKey("showLent") ? params.getBoolean("showLent") : false;
+		
 		def data = [];
-		data.add(Operation.spotInstances.name);
-		data.add(Operation.ondemandInstances.name);
-		for (Operation op: Operation.getSavingsPlanOperations()) {
+		for (Operation op: Operation.getReservationOperations(showLent)) {
+			data.add(op.name);
+		}		
+		for (Operation op: Operation.getSavingsPlanOperations(showLent)) {
 			data.add(op.name);
 		}
 		def result = [status: 200, data: data]
@@ -144,7 +150,7 @@ class DashboardController {
 	}
 	
 	def getUtilizationOps = {
-		List<Operation> resOps = Operation.getReservationOperations();
+		List<Operation> resOps = Operation.getReservationOperations(false);
 		def data = [];
 		for (Operation op: resOps) {
 			if (op.isOnDemand() || op.isSpot() || op.isUsed() || op.isBorrowed()) {
@@ -252,57 +258,11 @@ class DashboardController {
         boolean forReservation = query.has("forReservation") ? query.getBoolean("forReservation") : false;
 		boolean forSavingsPlans = query.has("forSavingsPlans") ? query.getBoolean("forSavingsPlans") : false;
 		boolean showLent = query.has("showLent") ? query.getBoolean("showLent") : false;
-		
-        Collection<Operation> data;
-        if (resources) {
-            data = Sets.newTreeSet();
-            if (products.size() == 0) {
-                products = Lists.newArrayList(getManagers().getProducts());
-            }
-            for (Product product: products) {
-                if (product == null)
-                    continue;
+		boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
 
-                TagGroupManager tagGroupManager = getManagers().getTagGroupManager(product);
-                Collection<Operation> tmp = tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
-                data.addAll(tmp);
-            }
-        }
-        else {
-            TagGroupManager tagGroupManager = getManagers().getTagGroupManager(null);
-            data = tagGroupManager == null ? [] : tagGroupManager.getOperations(new TagLists(accounts, regions, zones, products, operations, null, null));
-        }
-
-        if (forReservation || forSavingsPlans) {
-			// Remove Lent or Borrowed operations
-			for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations) {
-            	data.remove(op);
-			}
-				
-			boolean isCost = query.has("usage_cost") ? query.getString("usage_cost").equals("cost") : false;
-			if (!isCost) {
-				// Remove Amortization and savings from the usage operations
-				for (Operation amortOp: Operation.amortizationOperations)
-					data.remove(amortOp);
-				for (Operation savingsOp: Operation.savingsOperations)
-					data.remove(savingsOp);
-			}
-        }
-		else {
-			// Don't show Savings operations unless it's the reservations dashboard
-			// and only show one of lent or borrowed based on query params
-            for (Operation op: showLent ? Operation.borrowedOperations : Operation.lentOperations)
-                data.remove(op);
-			for (Operation savingsOp: Operation.savingsOperations)
-				data.remove(savingsOp);
-        }
+		List<Operation.Identity.Value> exclude = Operation.exclude(listParams(query, "exclude"), showLent, isCost, forReservation || forSavingsPlans);
 		
-		logger.debug("operations: " + operations);
-		logger.debug("   accounts: " + accounts);
-		logger.debug("   regions: " + regions);
-		logger.debug("   zones: " + zones);
-		logger.debug("   products: " + products);
-		logger.debug("   data: " + data);
+        Collection<Operation> data = getManagers().getOperations(new TagLists(accounts, regions, zones, products, operations, null, null), products, exclude, resources);
 		
         def result = [status: 200, data: data]
         render result as JSON
@@ -540,6 +500,9 @@ class DashboardController {
 		boolean groupByOrgUnit = groupBy == TagType.OrgUnit;
 		if (groupByOrgUnit)
 			groupBy = TagType.Account;
+		boolean groupByCostType = groupBy == TagType.CostType;
+		if (groupByCostType)
+			groupBy = TagType.Operation;
 		
         boolean isCost = query.has("isCost") ? query.getBoolean("isCost") : true;
         boolean breakdown = query.has("breakdown") ? query.getBoolean("breakdown") : false;
@@ -565,6 +528,7 @@ class DashboardController {
         boolean elasticity = query.has("elasticity") ? query.getBoolean("elasticity") : false;
         boolean showZones = query.has("showZones") ? query.getBoolean("showZones") : false;
 		boolean consolidateGroups = query.has("consolidateGroups") ? query.getBoolean("consolidateGroups") : false;
+		List<Operation.Identity.Value> exclude = Operation.exclude(listParams(query, "exclude"), showLent, isCost, forReservation || forSavingsPlans);
 		
 		// Still support the old name "showResourceGroupTags" for new name showUserTags
         boolean showResourceGroupTags = query.has("showResourceGroupTags") ? query.getBoolean("showResourceGroupTags") : false;
@@ -686,8 +650,7 @@ class DashboardController {
 				consolidateType,
 				groupBy,
 				aggregate,
-				forReservation || forSavingsPlans,
-				showLent,
+				exclude,
 				usageUnit,
 				userTagLists,
 				userTagGroupByIndex);			
@@ -701,8 +664,7 @@ class DashboardController {
                 new TagLists(accounts, regions, zones, products, operations, usageTypes),
                 groupBy,
                 aggregate,
-				forReservation || forSavingsPlans,
-				showLent,
+				exclude,
 				usageUnit,
 				userTagGroupByIndex
             );
@@ -710,6 +672,17 @@ class DashboardController {
 			logger.debug("  -- tags: " + data.keySet());
         }
 		
+		if (groupByOrgUnit)
+			data = consolidateAccounts(data);
+		else if (groupByCostType)
+			data = consolidateToCostTypes(data);
+		else if (consolidateGroups) {
+			if (groupBy == TagType.UsageType)
+				data = consolidateFamilies(data);
+			else if (groupBy == TagType.Operation)
+				data = consolidateOperations(data);
+		}
+			
 		def stats = [:];
 		if (elasticity) {
 			// consolidate the data to daily
@@ -717,12 +690,6 @@ class DashboardController {
 			consolidateType = ConsolidateType.daily;
 		}
 		else {
-			if (groupBy == TagType.UsageType && consolidateGroups)
-				data = consolidateFamilies(data);
-			else if (groupBy == TagType.Operation && consolidateGroups)
-				data = consolidateOperations(data);
-			else if (groupByOrgUnit)
-				data = consolidateAccounts(data);
 	        stats = getStats(data);
 		}
 		
@@ -979,6 +946,35 @@ class DashboardController {
 			double[] consolidated = result[ou];
 			if (consolidated == null) {
 				result[ou] = values;
+			}
+			else {
+				for (int i = 0; i < consolidated.length; i++)
+					consolidated[i] += values[i];
+			}
+		}
+		return result;
+	}
+	
+	// consolidate operations down to cost types
+	private Map<Tag, double[]> consolidateToCostTypes(Map<Tag, double[]> data) {
+		// Run through the data reducing Operation Types to their cost types
+		Map<Tag, double[]> result = Maps.newTreeMap();
+		for (Map.Entry<Tag, double[]> entry: data.entrySet()) {
+			if (entry.getKey() == Tag.aggregated) {
+				// Don't mess with the aggregated data series.
+				result[entry.getKey()] = entry.getValue();
+				continue;
+			}
+			CostType costType = CostType.other;
+			Tag t = entry.getKey();
+			if (t instanceof Operation) {
+				Operation op = (Operation) t;
+				costType = CostType.getCostType(op);
+			}
+			double[] values = entry.getValue();
+			double[] consolidated = result[costType];
+			if (consolidated == null) {
+				result[costType] = values;
 			}
 			else {
 				for (int i = 0; i < consolidated.length; i++)

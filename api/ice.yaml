@@ -33,38 +33,9 @@ definitions:
       data:
         $ref: '#/definitions/Names'
 parameters:
-  accountParam:
-    name: account
-    in: query
-    description: Comma separated list of account names.
-    type: array
-    items:
-      type: string
-    required: false
-  regionParam:
-    name: region
-    in: query
-    type: array
-    items:
-      type: string
-    description: Comma separated list of region names.
-    required: false
-  operationParam:
-    name: operation
-    in: query
-    description: Comma separated list of operation names.
-    type: array
-    items:
-      type: string
-    required: false
-  resourcesParam:
-    name: resources
-    in: query
-    description: If true, only return product names that can have tagged resources.
-    type: boolean
-    required: false
-  showZonesParam:
-    name: showZones
+  showLentParam:
+    name: showLent
+    description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent. Default is false.
     in: query
     type: boolean
     required: false
@@ -110,11 +81,19 @@ paths:
                     tags:
                       type: object                                                
   /getRegions:
-    get:
+    post:
       description: Get the list of regions used by the supplied accounts.
       operationId: getRegions
       parameters:
-        - $ref: '#/parameters/accountParam'
+        - name: regionsRequest
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              account:
+                description: Comma separated list of account names
+                type: string
       responses:
         '200':
           description: collection of regions
@@ -122,9 +101,22 @@ paths:
             $ref: '#/definitions/NamesResponse'
 
   /getZones:
-    get:
+    post:
       description: Get the list of zones used by all accounts.
       operationId: getZones
+      parameters:
+        - name: zonesRequest
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              account:
+                description: Comma separated list of account names
+                type: string
+              region:
+                description: Comma separated list of region names
+                type: string
       responses:
         '200':
           description: collection of zones
@@ -132,28 +124,40 @@ paths:
             $ref: '#/definitions/NamesResponse'
             
   /getProducts:
-    get:
+    post:
       description: Get the list of products used by the supplied accounts in the specified regions.
       operationId: getProducts
       parameters:
-        - $ref: '#/parameters/accountParam'
-        - $ref: '#/parameters/regionParam'
-        - $ref: '#/parameters/operationParam'
-        - $ref: '#/parameters/resourcesParam'
-        - $ref: '#/parameters/showZonesParam'
+        - name: productsRequest
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              account:
+                description: Comma separated list of account names
+                type: string
+              region:
+                description: Comma separated list of region names
+                type: string
+              zone:
+                description: Comma separated list of zone names
+                type: string
+              product:
+                description: Comma separated list of product names
+                type: string
+              operation:
+                description: Comma separated list of operation names
+                type: string
+              resources:
+                description: If true, only return product names that can have tagged resources.
+                type: boolean
+              showZones:
+                description: If true and zone is null or empty, return products for all zones.
+                type: boolean
       responses:
         '200':
           description: collection of products
-          schema:
-            $ref: '#/definitions/NamesResponse'
-
-  /userTags:
-    get:
-      description: Get the list of user tag names.
-      operationId: getUserTags
-      responses:
-        '200':
-          description: collection of tag keys
           schema:
             $ref: '#/definitions/NamesResponse'
 
@@ -212,6 +216,9 @@ paths:
               product:
                 description: Comma separated list of product names
                 type: string
+              operations:
+                description: Comma separated list of operation names
+                type: string
               resources:
                 description: If true, only return product names that can have tagged resources.
                 type: boolean
@@ -220,7 +227,13 @@ paths:
               forSavingsPlans:
                 type: boolean
               usage_cost:
-                description: If "cost" remove Lent operations. If "usage" remove Amortization and Savings operations.
+                description: If "usage" remove Amortization and Savings operations.
+                type: string
+              showLent:
+                description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
+                type: boolean
+              exclude:
+                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax, savings
                 type: string
       responses:
         '200':
@@ -265,6 +278,8 @@ paths:
   /getReservationOps:
     get:
       description: Get the list of operations to use for requests in the reservations dashboard.
+      parameters:
+        - $ref: '#/parameters/showLentParam'          
       responses:
         '200':
           description: collection of operations
@@ -274,6 +289,8 @@ paths:
   /getSavingsPlanOps:
     get:
       description: Get the list of operations to use for requests in the savings plans dashboard.
+      parameters:
+        - $ref: '#/parameters/showLentParam'
       responses:
         '200':
           description: collection of operations
@@ -291,10 +308,10 @@ paths:
 
   /tags:
     get:
-      description: Get the list of custom tags for which we have coverage data
+      description: Get the list of user tag keys
       responses:
         '200':
-          description: collection of tag names
+          description: collection of user tag keys
           schema:
             $ref: '#/definitions/NamesResponse'
 
@@ -390,6 +407,12 @@ paths:
               showUserTags:
                 description: Enable filtering and/or group by user tags.
                 type: boolean
+              showLent:
+                description: If true, return Lent operations and remove Borrowed. If false return Borrowed and remove Lent.
+                type: boolean
+              exclude:
+                description: Comma separated list of operation categories to exclude. Values can be amortized, recurring, credit, tax, savings
+                type: string
             additionalProperties:
                 description: Comma separated list of values for the specified user tag. Parameter name takes the form tag-<name>
                 type: string

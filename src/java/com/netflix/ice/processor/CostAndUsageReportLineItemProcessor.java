@@ -62,7 +62,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}
    
 	@Override
-    protected boolean ignore(String fileName, DateTime reportStart, String root, Interval usageInterval, LineItem lineItem) {    	
+    protected boolean ignore(String fileName, DateTime reportStart, DateTime reportModTime, String root, Interval usageInterval, LineItem lineItem) {    	
     	BillType billType = lineItem.getBillType();
     	if (billType == BillType.Purchase || billType == BillType.Refund) {
             Product product = productService.getProduct(lineItem.getProduct(), lineItem.getProductServiceCode());
@@ -82,10 +82,15 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
     		return true;
     	}
     	
+    	if (lineItem.getLineItemType() == LineItemType.SavingsPlanRecurringFee && usageInterval.getStartMillis() >= reportModTime.getMillis()) {
+    		// Don't show unused recurring fees for future hours in the month.
+    		return true;
+    	}        
+    	
     	if (lit == LineItemType.Tax && Double.parseDouble(lineItem.getCost()) == 0)
     		return true;
     	
-    	return super.ignore(fileName, reportStart, root, usageInterval, lineItem);
+    	return super.ignore(fileName, reportStart, reportModTime, root, usageInterval, lineItem);
     }
 
 	@Override
@@ -384,15 +389,13 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
 	}		
 	
 	@Override
-    protected Result getResult(LineItem lineItem, long startMilli, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {
-        Result result = Result.hourly;
-        
+    protected Result getResult(LineItem lineItem, DateTime reportStart, DateTime reportModTime, TagGroup tg, boolean processDelayed, boolean reservationUsage, double costValue) {        
         switch (lineItem.getLineItemType()) {
         case RIFee:
             // Monthly recurring fees for EC2, RDS, and Redshift reserved instances
         	// Prior to Jan 1, 2018 we have to get cost from the RIFee record, so process as Monthly cost.
         	// As of Jan 1, 2018, we use the recurring fee and amortization values from DiscountedUsage line items.
-        	if (startMilli >= jan1_2018) {
+        	if (reportStart.getMillis() >= jan1_2018) {
 	            // We use the RIFee line items to extract the reservation info
 		        return processDelayed ? Result.ignore : Result.delay;
         	}
@@ -400,20 +403,26 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
         	
         case DiscountedUsage:
         case SavingsPlanCoveredUsage:
-        case SavingsPlanRecurringFee:	        
         	return Result.hourly;
         	
+        case SavingsPlanRecurringFee:
+        	// If within a day of the report mod date, delay and truncate, else let it through.
+        	if (!processDelayed && lineItem.getStartMillis() < reportModTime.minusDays(1).getMillis())
+        			return Result.hourly;
+
+        	return processDelayed ? Result.hourlyTruncate : Result.delay;
+        	
         case Credit:
-        	return processDelayed ? Result.hourly : Result.delay;
-        
         case Tax:
-        	break;
+        	// Taxes and Credits often end in the future. Delay and truncate
+        	return processDelayed ? Result.hourlyTruncate : Result.delay;
         	
         default:
         	break;
         		
         }
         
+        Result result = Result.hourly;
         if (tg.product.isDataTransfer()) {
             result = processDataTranfer(processDelayed, tg.usageType, costValue);
         }
@@ -428,7 +437,7 @@ public class CostAndUsageReportLineItemProcessor extends BasicLineItemProcessor 
                 result = Result.daily;
         }
         
-        if (tg.usageType.name.startsWith("TimedStorage-ByteHrs"))
+        if (tg.product.isS3() && (tg.usageType.name.startsWith("TimedStorage-") || tg.usageType.name.startsWith("IATimedStorage-")))
             result = Result.daily;
 
         return result;

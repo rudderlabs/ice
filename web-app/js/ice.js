@@ -950,7 +950,23 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["usage_cost"] = $scope.usage_cost;
       params["showLent"] = $scope.reservationSharing === "lent";
+      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax || !$scope.savings) {
+        categories = [];
+        if (!$scope.recurring)
+          categories.push("recurring");
+        if (!$scope.amortized)
+          categories.push("amortized");
+        if (!$scope.credit)
+          categories.push("credit");
+        if (!$scope.tax)
+          categories.push("tax");
+        if (!$scope.savings)
+          categories.push("savings");
+
+        params["exclude"] = categories.join(',');
+      }
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts);
       if ($scope.dimensions[$scope.REGION_INDEX])
@@ -1026,6 +1042,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       $http({
         method: "GET",
         url: "getReservationOps",
@@ -1046,6 +1063,7 @@ ice.factory('usage_db', function ($window, $http, $filter) {
       if (!params) {
         params = {};
       }
+      params["showLent"] = $scope.reservationSharing === "lent";
       $http({
         method: "GET",
         url: "getSavingsPlanOps",
@@ -1100,6 +1118,22 @@ ice.factory('usage_db', function ($window, $http, $filter) {
         tagCoverage: $scope.tagCoverage ? true : false,
         showLent: $scope.reservationSharing === "lent",
       }, params);
+      
+      if (!$scope.recurring || !$scope.amortized || !$scope.credit || !$scope.tax || !$scope.savings) {
+        categories = [];
+        if (!$scope.recurring)
+          categories.push("recurring");
+        if (!$scope.amortized)
+          categories.push("amortized");
+        if (!$scope.credit)
+          categories.push("credit");
+        if (!$scope.tax)
+          categories.push("tax");
+        if (!$scope.savings)
+          categories.push("savings");
+
+        params["exclude"] = categories.join(',');
+      }
 
       if ($scope.dimensions[$scope.ACCOUNT_INDEX])
         this.addParams(params, "account", $scope.accounts, $scope.selected_accounts, $scope.selected__accounts, $scope.filter_accounts, $scope.organizationalUnit);
@@ -1202,6 +1236,11 @@ function mainCtrl($scope, $location, $timeout, usage_db, highchart) {
     $scope.initialGroupByTag = '';
     $scope.showUserTags = false;
     $scope.predefinedQuery = null;
+    $scope.recurring = true;
+    $scope.amortized = true;
+    $scope.credit = true;
+    $scope.tax = true;
+    $scope.savings = true;
   }
 
   $scope.initUserTagVars = function ($scope) {
@@ -1409,6 +1448,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -1417,7 +1457,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.groupBy = $scope.groupBys[5];
+  $scope.groupBy = $scope.groupBys[6];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1502,6 +1542,10 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
     return usage_db.filterAccount($scope, filter_accounts);
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -1539,7 +1583,7 @@ function reservationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
+    $scope.predefinedQuery = { operation: $scope.reservationOps.join(","), forReservation: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1567,6 +1611,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.consolidate = "hourly";
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -1575,7 +1620,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ];
-  $scope.groupBy = $scope.groupBys[5];
+  $scope.groupBy = $scope.groupBys[6];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -1665,6 +1710,10 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.accountsChanged();
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -1697,7 +1746,7 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), usage_cost: $scope.usage_cost, forSavingsPlans: true };
+    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1730,6 +1779,7 @@ function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.groupBys = [
     { name: "None" },
     { name: "TagKey" },
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2014,7 +2064,7 @@ function utilizationCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function (data) {
-    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), usage_cost: $scope.usage_cost, forReservation: true };
+    $scope.predefinedQuery = { operation: $scope.utilizationOps.join(","), forReservation: true };
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
 
@@ -2043,6 +2093,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.usageUnit = "Instances";
   $scope.groupBys = [
     { name: "None" },
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2051,7 +2102,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     { name: "UsageType" },
     { name: "Tag" }
   ],
-  $scope.groupBy = $scope.groupBys[3];
+  $scope.groupBy = $scope.groupBys[4];
   var startMonth = $scope.end.getUTCMonth() - 1;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -2145,6 +2196,10 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
     $scope.accountsChanged();
   }
 
+  $scope.includeChanged = function () {
+    $scope.updateOperations($scope);
+  }
+
   $scope.reservationSharingChanged = function () {
     $scope.updateOperations($scope);
   }
@@ -2182,7 +2237,7 @@ function detailCtrl($scope, $location, $http, usage_db, highchart) {
   var fn = function () {
     usage_db.processParams($scope);
 
-    usage_db.getAccounts($scope, function (data) {
+    usage_db.getAccounts($scope, function () {
         $scope.updateRegions($scope);
     });
 
@@ -2221,6 +2276,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
   $scope.init($scope);
   $scope.usageUnit = "";
   $scope.groupBys = [
+    { name: "CostType" },
     { name: "OrgUnit" },
     { name: "Account" },
     { name: "Region" },
@@ -2228,7 +2284,7 @@ function summaryCtrl($scope, $location, usage_db, highchart) {
     { name: "Operation" },
     { name: "UsageType" }
   ],
-  $scope.groupBy = $scope.groupBys[3];
+  $scope.groupBy = $scope.groupBys[4];
   var startMonth = $scope.end.getUTCMonth() - 6;
   var startYear = $scope.end.getUTCFullYear();
   if (startMonth < 0) {
@@ -2611,6 +2667,7 @@ function tagconfigsCtrl($scope, $location, $http) {
                       destValue: destValue,
                       srcKey: srcKey,
                       srcValue: srcValues[i],
+                      start: tagConfigsForMapsItem.start,
                       filter: filter
                     });
                   }

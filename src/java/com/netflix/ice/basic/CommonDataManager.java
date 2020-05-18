@@ -42,6 +42,7 @@ import com.netflix.ice.reader.ReadOnlyGenericData;
 import com.netflix.ice.reader.TagGroupManager;
 import com.netflix.ice.reader.TagLists;
 import com.netflix.ice.reader.UsageUnit;
+import com.netflix.ice.tag.Operation;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UserTag;
@@ -191,9 +192,9 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
     abstract protected boolean hasData(D[] data);
     abstract protected Map<Tag, double[]> processResult(Map<Tag, D[]> data, TagType groupBy, AggregateType aggregate, List<UserTag> tagKeys);
 
-    protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit, int userTagGroupByIndex) {
+    protected Map<Tag, D[]> getRawData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude, UsageUnit usageUnit, int userTagGroupByIndex) {
     	//logger.info("Entered with groupBy: " + groupBy + ", userTagGroupByIndex: " + userTagGroupByIndex + ", tagLists: " + tagLists);
-    	Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, forReservation, showLent, userTagGroupByIndex);
+    	Map<Tag, TagLists> tagListsMap = tagGroupManager.getTagListsMap(interval, tagLists, groupBy, exclude, userTagGroupByIndex);
     	return getGroupedData(interval, tagListsMap, usageUnit, groupBy, userTagGroupByIndex);
     }
     
@@ -236,30 +237,30 @@ public abstract class CommonDataManager<T extends ReadOnlyGenericData<D>, D>  ex
         return rawResult;
     }
 
-    private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
+    private Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude, UsageUnit usageUnit, int userTagGroupByIndex, List<UserTag> tagKeys) {
     	StopWatch sw = new StopWatch();
     	sw.start();
-    	Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, forReservation, showLent, usageUnit, userTagGroupByIndex);
+    	Map<Tag, D[]> rawResult = getRawData(interval, tagLists, groupBy, aggregate, exclude, usageUnit, userTagGroupByIndex);
         Map<Tag, double[]> result = processResult(rawResult, groupBy, aggregate, tagKeys);
         logger.debug("getData elapsed time: " + sw);
         return result;
     }
 
 	@Override
-    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent, UsageUnit usageUnit, int userTagGroupByIndex) {
-    	return getData(interval, tagLists, groupBy, aggregate, forReservation, showLent, usageUnit, userTagGroupByIndex, null);
+    public Map<Tag, double[]> getData(Interval interval, TagLists tagLists, TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude, UsageUnit usageUnit, int userTagGroupByIndex) {
+    	return getData(interval, tagLists, groupBy, aggregate, exclude, usageUnit, userTagGroupByIndex, null);
     }
 
 	@Override
 	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
-			TagType groupBy, AggregateType aggregate, boolean forReservation, boolean showLent,
+			TagType groupBy, AggregateType aggregate, List<Operation.Identity.Value> exclude,
 			UsageUnit usageUnit) {
-		return getData(interval, tagLists, groupBy, aggregate, forReservation, showLent, usageUnit, 0);
+		return getData(interval, tagLists, groupBy, aggregate, exclude, usageUnit, 0);
 	}
 
 	@Override
 	public Map<Tag, double[]> getData(Interval interval, TagLists tagLists,
 			TagType groupBy, AggregateType aggregate, int userTagGroupByIndex, List<UserTag> tagKeys) {
-		return getData(interval, tagLists, groupBy, aggregate, false, false, null, userTagGroupByIndex, tagKeys);
+		return getData(interval, tagLists, groupBy, aggregate, null, null, userTagGroupByIndex, tagKeys);
 	}
 }

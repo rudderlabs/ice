@@ -43,4 +43,13 @@ public class RegionTest {
 		Region.US_WEST_2.getZone("eu-west-1");		
 	}
 	
+	@Test
+	public void testRegionCompareTo() {
+		assertTrue("aggregated should be before GLOBAL", Tag.aggregated.compareTo(Region.GLOBAL) < 0);
+		assertTrue("aggregated should be before GLOBAL", Region.GLOBAL.compareTo(Tag.aggregated) > 0);
+		assertTrue("GLOBAL should be equal to GLOBAL", Region.GLOBAL.compareTo(Region.GLOBAL) == 0);
+		assertTrue("GLOBAL should be before ap-northeast-1", Region.GLOBAL.compareTo(Region.AP_NORTHEAST_1) < 0);
+		assertTrue("GLOBAL should be before ap-northeast-1", Region.AP_NORTHEAST_1.compareTo(Region.GLOBAL) > 0);
+		assertTrue("ap-northeast-1 should be equal to ap-northeast-1", Region.AP_NORTHEAST_1.compareTo(Region.AP_NORTHEAST_1) == 0);
+	}
 }
