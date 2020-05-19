@@ -76,7 +76,36 @@ public class BillingFileProcessor extends Poller {
     }
 
     @Override
-    protected void poll() throws Exception {
+    protected void poll() {
+    	try {
+			processReports();
+		} catch (Exception e1) {
+			logger.error("Failed to process reports: " + e1);
+			e1.printStackTrace();
+		}
+    	
+        if (config.processOnce) {
+        	// We're done. If we're running on an AWS EC2 instance, stop the instance
+            logger.info("Stopping EC2 Instance " + config.processorInstanceId + " in region " + config.processorRegion);
+            
+            AmazonEC2 ec2 = AmazonEC2ClientBuilder.standard()
+            		.withRegion(config.processorRegion)
+            		.withCredentials(AwsUtils.awsCredentialsProvider)
+            		.withClientConfiguration(AwsUtils.clientConfig)
+            		.build();
+
+            try {
+	            StopInstancesRequest request = new StopInstancesRequest().withInstanceIds(new String[] { config.processorInstanceId });
+	            ec2.stopInstances(request);
+            }
+            catch (Exception e) {
+                logger.error("error in stopInstances", e);
+            }
+            ec2.shutdown();
+        }
+    }
+    
+    private void processReports() throws Exception {
         boolean wroteConfig = false;
         TreeMap<DateTime, List<MonthlyReport>> reportsToProcess = null;
         
@@ -184,12 +213,24 @@ public class BillingFileProcessor extends Poller {
             addSavingsData(dataTime, costAndUsageData, null, config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             addSavingsData(dataTime, costAndUsageData, config.productService.getProduct(Product.Code.Ec2Instance), config.priceListService.getPrices(dataTime, ServiceCode.AmazonEC2));
             
-            KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
-            kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
+            try {
+	            KubernetesProcessor kubernetesProcessor = new KubernetesProcessor(config, dataTime);
+	            kubernetesProcessor.downloadAndProcessReports(costAndUsageData);
+            }
+            catch (Exception e) {
+            	logger.error("Error processing Kubernetes report" + e);
+            	e.printStackTrace();
+            }
             
             // Run the post processor
-            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService, config.resourceService);
-            pp.process(costAndUsageData);
+            try {
+	            PostProcessor pp = new PostProcessor(config.postProcessorRules, config.accountService, config.productService, config.resourceService);
+	            pp.process(costAndUsageData);
+            }
+            catch (Exception e) {
+            	logger.error("Error post processing reports" + e);
+            	e.printStackTrace();
+            }
 
             if (hasTags && config.resourceService != null)
                 config.resourceService.commit();
@@ -218,25 +259,6 @@ public class BillingFileProcessor extends Poller {
         }
 
         logger.info("AWS usage processed.");
-        if (config.processOnce) {
-        	// We're done. If we're running on an AWS EC2 instance, stop the instance
-            logger.info("Stopping EC2 Instance " + config.processorInstanceId + " in region " + config.processorRegion);
-            
-            AmazonEC2 ec2 = AmazonEC2ClientBuilder.standard()
-            		.withRegion(config.processorRegion)
-            		.withCredentials(AwsUtils.awsCredentialsProvider)
-            		.withClientConfiguration(AwsUtils.clientConfig)
-            		.build();
-
-            try {
-	            StopInstancesRequest request = new StopInstancesRequest().withInstanceIds(new String[] { config.processorInstanceId });
-	            ec2.stopInstances(request);
-            }
-            catch (Exception e) {
-                logger.error("error in stopInstances", e);
-            }
-            ec2.shutdown();
-        }
     }
     
     private void addSavingsData(DateTime month, CostAndUsageData data, Product product, InstancePrices ec2Prices) throws Exception {
