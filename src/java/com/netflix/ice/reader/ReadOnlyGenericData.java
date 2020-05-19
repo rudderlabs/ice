@@ -86,7 +86,7 @@ public abstract class ReadOnlyGenericData<D> implements DataVersion {
     	}
     	int numUserTags = in.readInt();
     	if (numUserTags != this.numUserTags)
-    		logger.error("Data file has wrong number of user tags!");
+    		logger.error("Data file has wrong number of user tags, expected " + this.numUserTags + ", got " + numUserTags);
 
         int numKeys = in.readInt();
         List<TagGroup> keys = Lists.newArrayList();
