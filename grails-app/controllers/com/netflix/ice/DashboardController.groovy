@@ -139,9 +139,6 @@ class DashboardController {
 		boolean showLent = params.containsKey("showLent") ? params.getBoolean("showLent") : false;
 		
 		def data = [];
-		for (Operation op: Operation.getReservationOperations(showLent)) {
-			data.add(op.name);
-		}		
 		for (Operation op: Operation.getSavingsPlanOperations(showLent)) {
 			data.add(op.name);
 		}

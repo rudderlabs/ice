@@ -1645,7 +1645,8 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   $scope.download = function () {
-    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    var ops = $scope.savingsPlanOps.concat($scope.reservationOps);
+    var query = { operation: ops.join(","), forSavingsPlans: true };
     if ($scope.showZones)
       query.showZones = true;
     usage_db.getData($scope, null, query, true);
@@ -1654,7 +1655,8 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   $scope.getData = function () {
     $scope.loading = true;
     $scope.errorMessage = null;
-    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    var ops = $scope.savingsPlanOps.concat($scope.reservationOps);
+    var query = { operation: ops.join(","), forSavingsPlans: true };
     if ($scope.showZones)
       query.showZones = true;
     usage_db.getData($scope, function (result) {
@@ -1746,7 +1748,8 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
   }
 
   var fn = function () {
-    $scope.predefinedQuery = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+    var ops = $scope.savingsPlanOps.concat($scope.reservationOps);
+    $scope.predefinedQuery = { operation: ops.join(","), forSavingsPlans: true };
 
     usage_db.getParams($location.hash(), $scope);
     usage_db.processParams($scope);
@@ -1765,7 +1768,22 @@ function savingsPlansCtrl($scope, $location, $http, usage_db, highchart) {
     jQuery('#start').datetimepicker().val($scope.start);
   }
 
-  usage_db.getSavingsPlanOps($scope, fn);
+  $scope.updateProducts = function ($scope) {
+    var query = { operation: $scope.savingsPlanOps.join(","), forSavingsPlans: true };
+
+    usage_db.getProducts($scope, function (data) {
+      if ($scope.showUserTags)
+        $scope.updateUserTagValues($scope, 0, true);
+      else
+        $scope.updateOperations($scope);
+    }, query);
+  }
+
+  var fn1 = function () {
+    usage_db.getReservationOps($scope, fn);
+  }
+
+  usage_db.getSavingsPlanOps($scope, fn1);
 }
 
 function tagCoverageCtrl($scope, $location, $http, usage_db, highchart) {
