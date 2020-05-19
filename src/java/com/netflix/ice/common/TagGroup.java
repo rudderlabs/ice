@@ -203,6 +203,10 @@ public class TagGroup implements Comparable<TagGroup>, Serializable {
             return newOne;
         }
     }
+    
+    public TagGroup withOperation(Operation op) {
+    	return getTagGroup(account, region, zone, product, op, usageType, resourceGroup);
+    }
 
     public static class Serializer {
 

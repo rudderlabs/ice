@@ -101,7 +101,7 @@ public class SavingsPlanProcessor {
 	    	    	add(costData, hour, tg, cost * sp.normalizedAmortization);
 	    		}	    		
 	    		
-	    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, amortOp, bonusTg.usageType, bonusTg.resourceGroup);
+	    		TagGroup tg = bonusTg.withOperation(amortOp);
 	    		add(costData, hour, tg, cost * sp.normalizedAmortization);
 	    	}
 	    	
@@ -119,7 +119,7 @@ public class SavingsPlanProcessor {
     	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
     		}
     		
-    		TagGroup tg = TagGroup.getTagGroup(bonusTg.account, bonusTg.region, bonusTg.zone, bonusTg.product, op, bonusTg.usageType, bonusTg.resourceGroup);
+    		TagGroup tg = bonusTg.withOperation(op);
     		add(usageData, hour, tg, usage);
     		// Output cost for all payment types (including all upfront which is 0 so that they get into the tag db)
 	    	add(costData, hour, tg, cost * sp.normalizedRecurring);
