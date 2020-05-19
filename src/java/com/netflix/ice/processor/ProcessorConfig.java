@@ -378,7 +378,9 @@ public class ProcessorConfig extends Config {
         
     	Set<String> done = Sets.newHashSet();
     	
-    	List<String> customTags = Lists.newArrayList(resourceService.getCustomTags());
+    	List<String> customTags = Lists.newArrayList();
+    	if (resourceService != null)
+    		customTags = resourceService.getCustomTags();
     	
         for (BillingBucket bb: billingBuckets) {            
             // Only process each payer account once. Can have two if processing both DBRs and CURs

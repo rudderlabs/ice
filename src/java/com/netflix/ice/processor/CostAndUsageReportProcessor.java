@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -53,12 +54,14 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
     private ProcessorConfig config;
     private ReservationProcessor reservationProcessor = null;
     private LineItemProcessor lineItemProcessor;
+    private static int MAX_DOWNLOAD_RETRIES = 4;
 
     private Instances instances;
     private long startMilli;
     private long reportMilli;
 
 	private final ExecutorService pool;
+    private volatile boolean aborting;
 
 	// The following two keys can be added to ice.properties for debugging purposes.
 	// For example:
@@ -171,11 +174,19 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		public CostAndUsageData costAndUsageData;
 		public List<String[]> delayedItems;
 		long endMilli;
+		public Exception exception; // If not null, the file processor failed with this exception.
 		
 		FileData() {
 			costAndUsageData = new CostAndUsageData(startMilli, config.workBucketConfig, config.resourceService == null ? null : config.resourceService.getUserTags(), config.getTagCoverage(), config.accountService, config.productService);
 			delayedItems = Lists.newArrayList();
 			endMilli = startMilli;
+		}
+		
+		FileData(Exception e) {
+			costAndUsageData = null;
+			delayedItems = null;
+			endMilli = 0;
+			exception = e;
 		}
 	}
 	
@@ -183,37 +194,70 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		return pool.submit(new Callable<FileData>() {
 			@Override
 			public FileData call() throws Exception {
+				if (aborting)
+					return null;
+				
 				String prefix = fileKey.substring(0, fileKey.lastIndexOf("/") + 1);
 				String filename = fileKey.substring(prefix.length());
 		        File file = new File(localDir, filename);
 		        BillingBucket bb = report.getBillingBucket();
+		        String fileKey = report.getS3ObjectSummary().getBucketName() + "/" + prefix + file.getName();
 		        
-		        // We delete files now once processed, so if it already exists it's probably not complete, so delete it
-		        if (file.exists()) {
-		        	logger.info("delete stale data file " + file.getName());
-		        	file.delete();
+		        try {
+			        
+			        // We delete files now once processed, so if it already exists it's probably not complete, so delete it
+			        if (file.exists()) {
+			        	logger.info("delete stale data file " + file.getName());
+			        	file.delete();
+			        }
+			        
+			        int retryCount = 0;
+			        Exception error = null;
+			        boolean downloaded = false;
+			        
+			        while (!downloaded && retryCount < MAX_DOWNLOAD_RETRIES) {		        	
+				        logger.info("trying to download " + fileKey + "..." + (retryCount > 0 ? "retry " + retryCount : ""));
+			        	retryCount++;
+				        
+				        try {
+				        	downloaded = AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), bb.s3BucketRegion, prefix, file, lastProcessed,
+				                bb.accountId, bb.accessRoleName, bb.accessExternalId);
+				        }
+				        catch (com.amazonaws.SdkClientException e) {
+				        	logger.error("Error trying to download " + fileKey + ": " + e);
+				        	e.printStackTrace();
+				        	error = e;
+					        // Sleep for a while with some exponential back off
+					        Thread.sleep(5*1000 * retryCount * retryCount);
+				        }
+			        }
+			        if (error != null)
+			        	return new FileData(error);
+			        
+			        FileData data = new FileData();
+			        
+			        // process the file
+			        logger.info("processing " + file.getName() + "...");
+			        
+					CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, report);
+			        
+					if (file.getName().endsWith(".zip"))
+						data.endMilli = processReportZip(file, report.billingBucket.rootName, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
+					else
+						data.endMilli = processReportGzip(file, report.billingBucket.rootName, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
+					
+		            logger.info("done processing " + file.getName() + ", end is " + new DateTime(data.endMilli, DateTimeZone.UTC).toString() + ", " + data.costAndUsageData.getCost(null).getNum() + " hours");
+			        file.delete();
+			        return data;
 		        }
-		        
-		        logger.info("trying to download " + report.getS3ObjectSummary().getBucketName() + "/" + prefix + file.getName() + "...");
-		        AwsUtils.downloadFileIfChangedSince(report.getS3ObjectSummary().getBucketName(), bb.s3BucketRegion, prefix, file, lastProcessed,
-		                bb.accountId, bb.accessRoleName, bb.accessExternalId);
-		        
-		        FileData data = new FileData();
-		        
-		        // process the file
-		        logger.info("processing " + file.getName() + "...");
-		        
-				CostAndUsageReportLineItem lineItem = new CostAndUsageReportLineItem(config.useBlended, config.costAndUsageNetUnblendedStartDate, report);
-		        
-				if (file.getName().endsWith(".zip"))
-					data.endMilli = processReportZip(file, report.billingBucket.rootName, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
-				else
-					data.endMilli = processReportGzip(file, report.billingBucket.rootName, lineItem, data.delayedItems, data.costAndUsageData, edpDiscount);
-				
-	            logger.info("done processing " + file.getName() + ", end is " + new DateTime(data.endMilli, DateTimeZone.UTC).toString() + ", " + data.costAndUsageData.getCost(null).getNum() + " hours");
-		        file.delete();
-		        
-		        return data;
+		        catch (Exception e) {
+		        	if (!aborting) {
+		        		aborting = true;
+		        		logger.error("Error processing " + fileKey);
+		        		e.printStackTrace();
+		        	}
+		        	return new FileData(e);
+		        }		        
 			}
 		});
 	}
@@ -230,6 +274,7 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		this.instances = instances;
 		startMilli = dataTime.getMillis();
 		reportMilli = report.getLastModifiedMillis();
+		aborting = false;
 		
 		CostAndUsageReport cau = (CostAndUsageReport) report; 
         
@@ -271,6 +316,17 @@ public class CostAndUsageReportProcessor implements MonthlyReportProcessor {
 		// Wait for completion and merge the results together
 		for (Future<FileData> ffd: fileData) {
 			FileData fd = ffd.get();
+			if (fd == null)
+				continue; // we get these when aborting
+			
+			if (fd.exception != null) {
+				// We had an unrecoverable error, shut everything down
+				aborting = true;
+				logger.error("Unrecoverable error processing CUR file, abort processing the rest of the report");
+				pool.shutdownNow();
+				pool.awaitTermination(60, TimeUnit.SECONDS);
+				throw new Exception("Unrecoverable error processing CUR file, abort");
+			}
 			costAndUsageData.putAll(fd.costAndUsageData);
             endMilli = Math.max(endMilli, fd.endMilli);			
 		}
