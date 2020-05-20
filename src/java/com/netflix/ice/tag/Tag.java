@@ -70,6 +70,6 @@ public abstract class Tag implements Comparable<Tag>, Serializable {
         if (t == aggregated)
             return -t.compareTo(this);
         int result = this.getName().compareToIgnoreCase(t.getName());
-        return result;
+        return result != 0 ? result : this.getName().compareTo(t.getName());
     }
 }

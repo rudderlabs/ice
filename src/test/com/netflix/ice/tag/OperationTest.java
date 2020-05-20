@@ -120,4 +120,21 @@ public class OperationTest {
 		assertTrue("credit operation not categorized correctly", creditOp.isCredit());
 		assertEquals("credit operation has wrong name", "Credit - None", creditOp.name);
 	}
+	
+	
+    public static final Operation AATag = Operation.getOperation("AA");
+    public static final Operation BBTag = Operation.getOperation("BB");
+    public static final Operation aaTag = Operation.getOperation("aa");
+    public static final Operation bbTag = Operation.getOperation("bb");
+    
+	@Test
+	public void testCompareTo() {		
+		assertTrue("aa tag not less than bb", aaTag.compareTo(bbTag) < 0);
+		assertTrue("bb tag not greater than aa", bbTag.compareTo(aaTag) > 0);
+		assertTrue("AA tag not less than aa", AATag.compareTo(aaTag) < 0);
+		assertTrue("aa tag not greater than AA", aaTag.compareTo(AATag) > 0);
+		assertTrue("aa tag not less than BB", aaTag.compareTo(BBTag) < 0);
+		assertTrue("BB tag not greater than aa", BBTag.compareTo(aaTag) > 0);
+	}
+
 }
