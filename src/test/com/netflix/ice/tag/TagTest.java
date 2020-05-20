@@ -27,7 +27,19 @@ public class TagTest {
 		private static final long serialVersionUID = 1L;
     };
     
-    public static final Tag aaaTag = new Tag("aaa") {
+    public static final Tag aaTag = new Tag("aa") {
+		private static final long serialVersionUID = 1L;
+    };
+    
+    public static final Tag AATag = new Tag("AA") {
+		private static final long serialVersionUID = 1L;
+    };
+    
+    public static final Tag bbTag = new Tag("bb") {
+		private static final long serialVersionUID = 1L;
+    };
+    
+    public static final Tag BBTag = new Tag("BB") {
 		private static final long serialVersionUID = 1L;
     };
     
@@ -47,13 +59,20 @@ public class TagTest {
 		assertTrue("aggregated not less than test tag", t.compareTo(testTag) < 0);
 		assertTrue("test tag not greater than aggregated", testTag.compareTo(t) > 0);
 		
-		assertEquals("aaa not equal to itself", 0, aaaTag.compareTo(aaaTag));
-		assertTrue("aggregated not less than test tag", t.compareTo(aaaTag) < 0);
-		assertTrue("test tag not greater than aggregated", aaaTag.compareTo(t) > 0);
+		assertEquals("aaa not equal to itself", 0, aaTag.compareTo(aaTag));
+		assertTrue("aggregated not less than test tag", t.compareTo(aaTag) < 0);
+		assertTrue("test tag not greater than aggregated", aaTag.compareTo(t) > 0);
 		
 		assertTrue("null tag not greater than aggregated", t.compareTo(nullTag) < 0);
 		assertTrue("null tag not equal to empty tag", nullTag.compareTo(emptyTag) == 0);
-		assertTrue("null tag not set to empty string", nullTag.name.isEmpty());		
+		assertTrue("null tag not set to empty string", nullTag.name.isEmpty());
+		
+		assertTrue("aa tag not less than bb", aaTag.compareTo(bbTag) < 0);
+		assertTrue("bb tag not greater than aa", bbTag.compareTo(aaTag) > 0);
+		assertTrue("AA tag not less than aa", AATag.compareTo(aaTag) < 0);
+		assertTrue("aa tag not greater than AA", aaTag.compareTo(AATag) > 0);
+		assertTrue("aa tag not less than BB", aaTag.compareTo(BBTag) < 0);
+		assertTrue("BB tag not greater than aa", BBTag.compareTo(aaTag) > 0);
 	}
 
 }

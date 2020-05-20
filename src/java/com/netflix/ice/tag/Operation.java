@@ -651,7 +651,8 @@ public class Operation extends Tag {
         if (t instanceof Operation) {
             Operation o = (Operation)t;
             int result = this.seq - o.seq;
-            return result == 0 ? this.getName().compareToIgnoreCase(t.getName()) : result;
+            result = result != 0 ? result : this.getName().compareToIgnoreCase(t.getName());
+            return result != 0 ? result : this.getName().compareTo(t.getName());
         }
         else
             return super.compareTo(t);
