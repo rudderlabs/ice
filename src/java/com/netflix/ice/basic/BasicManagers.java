@@ -33,6 +33,7 @@ import com.netflix.ice.tag.Operation.Identity.Value;
 import com.netflix.ice.tag.Product;
 import com.netflix.ice.tag.Region;
 import com.netflix.ice.tag.ResourceGroup;
+import com.netflix.ice.tag.ResourceGroup.ResourceException;
 import com.netflix.ice.tag.Tag;
 import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
@@ -533,5 +534,42 @@ public class BasicManagers extends Poller implements Managers {
 				ops = Lists.newArrayList(tagGroupManager.getOperations(tagLists, exclude));
 		}
 		return ops;
+	}
+
+	@Override
+	public UserTagStatistics getUserTagStatistics() throws ResourceException {
+		List<UserTagStats> stats = Lists.newArrayList();
+		
+		// Build the full set of unique tagGroups across across all products and time
+		Set<TagGroup> tagGroups = Sets.newHashSet();
+		
+		for (Product p: products) {
+			if (p == null)
+				continue;			
+			tagGroups.addAll(tagGroupManagers.get(p).getTagGroupsWithResourceGroups());
+		}
+		
+		// Extract the uniqe set of resource Groups
+		Set<ResourceGroup> resourceGroups = Sets.newHashSet();
+		for (TagGroup tg: tagGroups) {
+			resourceGroups.add(tg.resourceGroup);
+		}
+		
+		// Walk the list gathering stats for each user tag
+		for (int i = 0; i < config.userTags.size(); i++) {
+			Set<String> values = Sets.newHashSet();
+			Set<String> caseInsensitiveValues = Sets.newHashSet();
+			Set<ResourceGroup> resourceGroupsWithoutCurrentTag = Sets.newHashSet();
+			for (ResourceGroup rg: resourceGroups) {
+				String v = rg.getUserTags()[i].name;
+            	values.add(v);
+            	caseInsensitiveValues.add(v.toLowerCase());
+            	UserTag[] ut = rg.getUserTags().clone();
+            	ut[i] = UserTag.empty;
+            	resourceGroupsWithoutCurrentTag.add(ResourceGroup.getUncached(ut));
+			}
+			stats.add(new UserTagStats(config.userTags.get(i), values.size(), values.size() - caseInsensitiveValues.size(), resourceGroups.size() - resourceGroupsWithoutCurrentTag.size()));
+		}	
+		return new UserTagStatistics(tagGroupManagers.get(null).getTagGroups().size(), tagGroups.size(), stats);
 	}
 }

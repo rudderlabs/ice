@@ -86,6 +86,22 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
     	this.file = null;
     	this.totalInterval = totalInterval;
     }
+ 
+    public Collection<TagGroup> getTagGroups() {
+    	Set<TagGroup> uniqueTagGroups = Sets.newHashSet();
+    	for (Collection<TagGroup> tgs: tagGroups.values()) {
+    		uniqueTagGroups.addAll(tgs);
+    	}
+    	return uniqueTagGroups;
+    }
+    
+    public Collection<TagGroup> getTagGroupsWithResourceGroups() {
+    	Set<TagGroup> uniqueTagGroups = Sets.newHashSet();
+    	for (Collection<TagGroup> tgs: tagGroupsWithResourceGroups.values()) {
+    		uniqueTagGroups.addAll(tgs);
+    	}
+    	return uniqueTagGroups;
+    }
     
     public TreeMap<Long, Integer> getSizes() {
     	TreeMap<Long, Integer> sizes = Maps.newTreeMap();
@@ -300,7 +316,7 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
         Set<ResourceGroup> groups = Sets.newHashSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
 
-        // Add ResourceGroup tags that are non-null, just the product name, or userTag CSVs.
+        // Add ResourceGroup tags that are non-nulls.
         for (TagGroup tagGroup: tagGroupsInRange) {
             if (tagLists.contains(tagGroup) && tagGroup.resourceGroup != null) {
                 groups.add(tagGroup.resourceGroup);
@@ -314,7 +330,7 @@ public class BasicTagGroupManager implements TagGroupManager, DataCache {
         Set<UserTag> userTags = Sets.newHashSet();
         Set<TagGroup> tagGroupsInRange = getTagGroupsWithResourceGroupsInRange(getMonthMillis(interval));
         
-        // Add ResourceGroup tags that are null, just the product name, or userTag CSVs.
+        // Add ResourceGroup tags that are null.
         for (TagGroup tagGroup: tagGroupsInRange) {
         	//logger.info("tag group <" + tagLists.contains(tagGroup) + ">: " + tagGroup);
             if (tagLists.contains(tagGroup)) {

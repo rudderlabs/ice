@@ -481,6 +481,8 @@ class DashboardController {
 	def accounts = {}
 	
 	def tagconfigs = {}
+	
+	def statistics = {}
 
     private Map doGetData(JSONObject query) {
 		logger.debug("******** doGetData: called");

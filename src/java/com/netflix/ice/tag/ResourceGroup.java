@@ -103,6 +103,18 @@ public class ResourceGroup  implements Comparable<ResourceGroup>, Serializable {
     	return getResourceGroup(userTags);
     }
     
+    /**
+     * Get a resource group that is not cached in the global ResourceGroup cache. This should
+     * only be used for statistics processing.
+     * 
+     * @param tags
+     * @return
+     * @throws ResourceException
+     */
+    public static ResourceGroup getUncached(UserTag[] tags) throws ResourceException {
+    	return new ResourceGroup(tags);
+    }
+    
     public static ResourceGroup getResourceGroup(UserTag[] tags) throws ResourceException {
     	if (tags == null)
     		return null;

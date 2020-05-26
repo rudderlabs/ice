@@ -27,6 +27,7 @@ import com.netflix.ice.tag.TagType;
 import com.netflix.ice.tag.UsageType;
 import com.netflix.ice.tag.UserTag;
 import com.netflix.ice.tag.Zone;
+import com.netflix.ice.tag.ResourceGroup.ResourceException;
 
 import java.util.Collection;
 import java.util.List;
@@ -121,5 +122,33 @@ public interface Managers {
     void shutdown();
     
     String getStatistics(boolean csv) throws ExecutionException;
+    
+    public class UserTagStats {
+    	public String key;
+    	public int values;
+    	public int caseVariations;
+    	public int permutationContribution;
+    	
+    	public UserTagStats(String key, int values, int caseVariations, int permutationContribution) {
+    		this.key = key;
+    		this.values = values;
+    		this.caseVariations = caseVariations;
+    		this.permutationContribution = permutationContribution;
+    	}
+    };
+
+    public class UserTagStatistics {
+    	public int nonResourceTagGroups;
+    	public int resourceTagGroups;
+    	public List<UserTagStats> userTagStats;
+    	
+        public UserTagStatistics(int nonResourceTagGroups, int resourceTagGroups, List<UserTagStats> userTagStats) {
+        	this.nonResourceTagGroups = nonResourceTagGroups;
+        	this.resourceTagGroups = resourceTagGroups;
+        	this.userTagStats = userTagStats;
+        }
+    }
+    
+    UserTagStatistics getUserTagStatistics() throws ResourceException;
 
 }

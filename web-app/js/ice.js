@@ -2721,4 +2721,7 @@ function tagconfigsCtrl($scope, $location, $http) {
       $scope.order(values, 'destKey');
     });
   });
+
+  getTagconfigs($scope, function (data) {
+  });
 }
