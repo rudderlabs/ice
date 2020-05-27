@@ -33,6 +33,8 @@ import java.util.Map;
  * <pre>
  * include: [123456789012]
  * start: 2020-02
+ * suspend:
+ *   Application: [webServerTest]
  * maps:
  *   NonProd:
  *     Application: [webServerTest, webServerStage]
@@ -45,6 +47,7 @@ public class TagMappings {
 	public List<String> include;
 	public List<String> exclude;
 	public String start;
+	public Map<String, List<String>> suspend;
 	
 	public Map<String, Map<String, List<String>>> getMaps() {
 		return maps;

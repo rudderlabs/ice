@@ -68,6 +68,7 @@ public class BasicResourceService extends ResourceService {
     private static final String reservationIdsKeyName = "RI/SP ID";
     private static final String defaultTagSeparator = "/";
     private static final String defaultTagEffectiveDateSeparator = "=";
+    private static final String suspend = "<suspend>";
     
     /**
      *  Map containing values to assign to destination tags based on a match with a value
@@ -85,7 +86,7 @@ public class BasicResourceService extends ResourceService {
      *        start: YYYY-MM
      *        maps:
      *          srcTagIndex:
-     *            srcTagValue:
+     *            srcTagValue: destTagValue -or- "<suspend>"
      *      destTagKey2:
      *        ...
      *      destTagKey3:
@@ -124,6 +125,24 @@ public class BasicResourceService extends ResourceService {
 					}
 					for (String target: configValueMaps.get(sourceTag)) {
 						mappedValues.put(target.toLowerCase(), mappedValue);
+					}
+				}
+			}
+			// Add the suspended source tag values
+			if (config.suspend != null) {
+				for (String sourceTag: config.suspend.keySet()) {
+					Integer sourceTagIndex = tagResourceGroupIndeces.get(sourceTag);
+					if (sourceTagIndex == null) {
+						logger.error("Tag mapping rule references invalid source tag: " + sourceTag);
+						continue;
+					}
+					Map<String, String> mappedValues = maps.get(sourceTagIndex);
+					if (mappedValues == null) {
+						mappedValues = Maps.newHashMap();
+						maps.put(sourceTagIndex, mappedValues);
+					}
+					for (String target: config.suspend.get(sourceTag)) {
+						mappedValues.put(target.toLowerCase(), suspend);
 					}
 				}
 			}
@@ -379,9 +398,11 @@ public class BasicResourceService extends ResourceService {
 	        		if (have == null)
 	        			continue;
 	        		Map<String, String> values = sourceTags.get(sourceTagIndex);
-	        		value = values.get(have.toLowerCase());
-	        		if (value != null)
+	        		String v = values.get(have.toLowerCase());
+	        		if (v != null) {
+	        			value = v.equals(suspend) ? null : v;
 	        			break; // done processing this rule set. Move on to any later rule sets
+	        		}
 	        	}
     		}
     	}
