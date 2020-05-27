@@ -542,4 +542,75 @@ public class BasicResourceServiceTest {
 		assertEquals("Resource name doesn't match", expect, resource.name);
 		*/
 	}
+	
+	@Test
+	public void testGetTagGroupMappedMultipleStarts() throws Exception {
+		String payerAccount = "123456789012";
+		
+		// Mapping rules for new virtual tag
+		String yaml = "" +
+		"name: DestKey\n" +
+		"mapped:\n" +
+		"  - include: [" + payerAccount + "]\n" +
+		"    maps:\n" +
+		"      DestValue1:\n" +
+		"        TagKey1: [SrcValue1a]\n" +
+		"      DestValue2:\n" +
+		"        TagKey1: [SrcValue1b]\n" +
+		"      DestValue3:\n" +
+		"        TagKey1: [SrcValue1c]\n" +
+		"  - include: [" + payerAccount + "]\n" +
+		"    start: 2020-02\n" +
+		"    suspend:\n" +
+		"      TagKey1: [SrcValue1c]\n" +
+		"    maps:\n" +
+		"      DestValue2:\n" +
+		"        TagKey1: [SrcValue1d]\n";
+		
+		String start = "2020-01-01T00:00:00Z";
+		String[] customTags = new String[]{"DestKey", "TagKey4", "TagKey1", "TagKey2"};
+		Map<String, String> payerDefaultTags = Maps.newHashMap();
+		
+		//
+		// Check that items processed before 2020-02 are correct
+		//
+		// Test DestValue1
+		String[] tags = new String[]{ "SrcValue1a", "", "", ""};		
+		String[] expect = new String[]{ "DestValue1", "", "SrcValue1a", ""};
+		ResourceGroup resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test DestValue2
+		tags = new String[]{ "SrcValue1b", "", "", ""};		
+		expect = new String[]{ "DestValue2", "", "SrcValue1b", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test DestValue3
+		tags = new String[]{ "SrcValue1c", "", "", ""};		
+		expect = new String[]{ "DestValue3", "", "SrcValue1c", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		//
+		// Check that items processed afger 2020-02 are correct
+		start = "2020-02-01T00:00:00Z";
+		// Test DestValue1 - should give DestValue1
+		tags = new String[]{ "SrcValue1a", "", "", ""};		
+		expect = new String[]{ "DestValue1", "", "SrcValue1a", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test DestValue2 - should give DestValue2
+		tags = new String[]{ "SrcValue1d", "", "", ""};		
+		expect = new String[]{ "DestValue2", "", "SrcValue1d", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+		
+		// Test DestValue3
+		tags = new String[]{ "SrcValue1c", "", "", ""};		
+		expect = new String[]{ "", "", "SrcValue1c", ""};
+		resource = getResourceGroup(yaml, start, tags, customTags, payerDefaultTags, payerAccount, payerAccount);		
+		assertEquals("Resource name doesn't match", String.join(ResourceGroup.separator, expect), resource.name);
+	}
 }
