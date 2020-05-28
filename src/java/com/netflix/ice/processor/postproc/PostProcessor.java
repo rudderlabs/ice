@@ -469,7 +469,7 @@ public class PostProcessor {
 			int maxNum) throws Exception {
 
 		int maxHours = inValues == null ? maxNum : inValues.length;
-		TagGroup creditTagGroup = null; 
+		TagGroup creditTagGroup = outTagGroup.operation.isCredit() ? outTagGroup : null; 
 		
 		// Process each hour of data - we'll only have one if 'in' is a monthly operand
 		for (int hour = 0; hour < maxHours; hour++) {
