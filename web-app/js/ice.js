@@ -83,22 +83,27 @@ ice.factory('highchart', function () {
         var s = '<span style="font-size: x-small;">' + Highcharts.dateFormat('%A, %b %e, %l%P, %Y', this.x) + '</span>';
 
         var total = 0;
-        if (showsps) {
-          for (var i = 0; i < this.points.length - (showsps ? 1 : 0); i++) {
-            total += this.points[i].y;
-          }
+        for (var i = 0; i < this.points.length - (showsps ? 1 : 0); i++) {
+          total += this.points[i].y;
         }
 
         var precision = currencySign === "" ? 0 : (currencySign === "¢" ? 4 : 2);
         for (var i = 0; i < this.points.length - (showsps ? 1 : 0); i++) {
           var point = this.points[i];
           if (i == 0) {
-            s += '<br/><span>aggregated : ' + currencySign + Highcharts.numberFormat(showsps ? total : point.total, precision, '.') + ' / ' + (factorsps ? metricunitname : consolidate);
+            s += '<br/><span>aggregated : ' + currencySign + Highcharts.numberFormat(total, precision, '.') + ' / ' + (factorsps ? metricunitname : consolidate);
           }
           var perc = showsps ? point.y * 100 / total : point.percentage;
           s += '<br/><span style="color: ' + point.series.color + '">' + point.series.name + '</span> : ' + currencySign + Highcharts.numberFormat(point.y, precision, '.') + ' / ' + (factorsps ? metricunitname : consolidate) + ' (' + Highcharts.numberFormat(perc, 1) + '%)';
-          if (i > 40 && point)
+          if (i > 25 && point) {
+            // total up the rest and label as 'other'
+            var otherTotal = 0;
+            for (var j = i + 1; j < this.points.length - (showsps ? 1 : 0); j++) {
+              otherTotal += this.points[j].y;
+            }
+            s += '<br/><span>other : ' + currencySign + Highcharts.numberFormat(otherTotal, precision, '.') + ' / ' + (factorsps ? metricunitname : consolidate) + ' (' + Highcharts.numberFormat(perc, 1) + '%)';
             break;
+          }
         }
 
         return s;
@@ -137,14 +142,17 @@ ice.factory('highchart', function () {
             data[j] = [result.time[j], data[j]];
           }
         }
+        var name = result.data[i].name;
         var serie = {
-          name: result.data[i].name,
+          name: name,
           data: data,
           pointStart: result.start,
           pointInterval: result.interval,
           //step: true,
           type: plotType
         };
+        if (name.startsWith("Credit"))
+          serie['stack'] = 'credit';
 
         hc_options.series.push(serie);
       }
@@ -173,7 +181,7 @@ ice.factory('highchart', function () {
       unitType = '% Tag Coverage';
     else
       unitType = isCost ? 'Cost' : 'Usage' + unitStr;
-    var yAxis = { title: { text: unitType + ' per ' + (factorsps ? metricunitname : consolidate) }, min: 0, lineWidth: 2 };
+    var yAxis = { title: { text: unitType + ' per ' + (factorsps ? metricunitname : consolidate) }, lineWidth: 2 };
     if (isCost)
       yAxis.labels = {
         formatter: function () {
