@@ -32,6 +32,7 @@
 		<th>Month</th>
 		<th>Last Processed</th>
 		<th>Reprocess</th>
+		<th>Account</th>
 		<th>Report</th>
 		<th>Last Modified</th>
 	  </tr>
@@ -48,6 +49,7 @@
 		      <td rowspan="${status.reports.size()}">${status.lastProcessed}</td>
 		      <td rowspan="${status.reports.size()}">${status.reprocess}</td>
 	        </g:if>
+	        <td>${report.accountName}</td>
 		    <td>${report.key}</td>
 		    <td>${report.lastModified}</td>
 	      </tr>
