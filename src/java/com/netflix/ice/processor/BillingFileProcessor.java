@@ -23,6 +23,7 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.netflix.ice.basic.BasicReservationService;
 import com.netflix.ice.common.*;
@@ -147,8 +148,9 @@ public class BillingFileProcessor extends Poller {
         startMilli = endMilli = month.getMillis();
         init(startMilli);
         
-        long lastProcessed = lastProcessTime(AwsUtils.monthDateFormat.print(month));
-        long processTime = new DateTime(DateTimeZone.UTC).getMillis();
+        ProcessorStatus ps = getProcessorStatus(AwsUtils.monthDateFormat.print(month));
+        long lastProcessed = ps == null || ps.reprocess ? 0 : ps.getLastProcessed().getMillis();
+        DateTime processTime = new DateTime(DateTimeZone.UTC);
 
         boolean hasTags = false;
         boolean hasNewFiles = false;
@@ -275,7 +277,14 @@ public class BillingFileProcessor extends Poller {
         // Write out a new config each time we process a report. We may have added accounts or zones while processing.
         config.saveWorkBucketDataConfig();
 
-        updateProcessTime(AwsUtils.monthDateFormat.print(month), processTime);
+        List<ProcessorStatus.Report> statusReports = Lists.newArrayList();
+        for (MonthlyReport report: reports) {
+        	String accountId = report.getBillingBucket().accountId;
+        	String accountName = config.accountService.getAccountById(accountId).getIceName();
+        	statusReports.add(new ProcessorStatus.Report(accountName, accountId, report.getReportKey(), new DateTime(report.getLastModifiedMillis(), DateTimeZone.UTC).toString()));
+        }
+        String monthStr = AwsUtils.monthDateFormat.print(month);
+        saveProcessorStatus(monthStr, new ProcessorStatus(monthStr, statusReports, processTime.toString()));
         
         return true;
     }
@@ -318,21 +327,14 @@ public class BillingFileProcessor extends Poller {
         instances.archive(startMilli); 	
     }
 
-    private void updateLastMillis(long millis, String filename) {
-        AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
-        String millisStr = millis + "";
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(millisStr.length());
-
-        s3Client.putObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename, IOUtils.toInputStream(millisStr, StandardCharsets.UTF_8), metadata);
-    }
-
-    private Long getLastMillis(String filename) {
+    private ProcessorStatus getProcessorStatus(String timeStr) {
+    	String filename = "processorStatus_" + timeStr;
+    	
         AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
         InputStream in = null;
         try {
             in = s3Client.getObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename).getObjectContent();
-            return Long.parseLong(IOUtils.toString(in, StandardCharsets.UTF_8));
+            return new ProcessorStatus(IOUtils.toString(in, StandardCharsets.UTF_8));
         }
         catch (AmazonServiceException ase) {
         	if (ase.getStatusCode() == 404) {
@@ -341,11 +343,11 @@ public class BillingFileProcessor extends Poller {
         	else {
                 logger.error("Error reading from file " + filename, ase);
         	}
-            return 0L;
+            return null;
         }
         catch (Exception e) {
             logger.error("Error reading from file " + filename, e);
-            return 0L;
+            return null;
         }
         finally {
             if (in != null)
@@ -353,12 +355,15 @@ public class BillingFileProcessor extends Poller {
         }
     }
 
-    private Long lastProcessTime(String timeStr) {
-        return getLastMillis("lastProcessMillis_" + timeStr);
-    }
+    private void saveProcessorStatus(String timeStr, ProcessorStatus status) {
+    	String filename = "processorStatus_" + timeStr;
+    	
+        AmazonS3Client s3Client = AwsUtils.getAmazonS3Client();
+        String statusStr = status.toJSON();
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(statusStr.length());
 
-    private void updateProcessTime(String timeStr, long millis) {
-        updateLastMillis(millis, "lastProcessMillis_" + timeStr);
+        s3Client.putObject(workBucketConfig.workS3BucketName, workBucketConfig.workS3BucketPrefix + filename, IOUtils.toInputStream(statusStr, StandardCharsets.UTF_8), metadata);
     }
 }
 

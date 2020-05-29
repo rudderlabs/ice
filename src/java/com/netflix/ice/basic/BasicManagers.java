@@ -572,4 +572,8 @@ public class BasicManagers extends Poller implements Managers {
 		}	
 		return new UserTagStatistics(tagGroupManagers.get(null).getTagGroups().size(), tagGroups.size(), stats);
 	}
+	
+	public Collection<ProcessorStatus> getProcessorStatus() {
+		return lastProcessedPoller.getStatus();
+	}
 }

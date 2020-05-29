@@ -150,5 +150,7 @@ public interface Managers {
     }
     
     UserTagStatistics getUserTagStatistics() throws ResourceException;
+    
+    Collection<ProcessorStatus> getProcessorStatus();
 
 }
