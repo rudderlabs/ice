@@ -73,6 +73,9 @@ public class LastProcessedPoller extends Poller {
 		this.status = Lists.newArrayList();
         for (DateTime month = startDate; month.isBefore(DateTime.now()); month = month.plusMonths(1)) {
         	ProcessorStatus ps = getProcessorStatusForMonth(month);
+        	if (ps == null)
+        		continue;
+        	
         	status.add(ps);
         	DateTime lastProcessedForMonth = ps.getLastProcessed();
         	if (lastProcessedForMonth.isAfter(lastProcessed))
