@@ -115,7 +115,7 @@ public abstract class LineItem {
     }
     
     public String getResource() {
-    	return items[resourceIndex];
+    	return resourceIndex >= 0 ? items[resourceIndex] : null;
     }
     
     public void setResource(String resourceId) {
@@ -123,7 +123,7 @@ public abstract class LineItem {
     }
     
     public boolean hasResources() {
-    	return items.length > resourceIndex;
+    	return resourceIndex >= 0 && items.length > resourceIndex;
     }
 
     public long getStartMillis() {
