@@ -87,13 +87,19 @@ import java.util.regex.Pattern;
  * Utility class to handle interactions with aws.
  */
 public class AwsUtils {
-    private final static Logger logger = LoggerFactory.getLogger(AwsUtils.class);
-    private static Pattern billingFileWithTagsPattern = Pattern.compile(".+-aws-billing-detailed-line-items-with-resources-and-tags-(\\d\\d\\d\\d-\\d\\d).csv.zip");
-    private static Pattern billingFileWithMonitoringPattern = Pattern.compile(".+-aws-billing-detailed-line-items-with-monitoring-(\\d\\d\\d\\d-\\d\\d).csv");
-    private static Pattern billingFilePattern = Pattern.compile(".+-aws-billing-detailed-line-items-(\\d\\d\\d\\d-\\d\\d).csv.zip");
-    public static final DateTimeFormatter monthDateFormat = DateTimeFormat.forPattern("yyyy-MM").withZone(DateTimeZone.UTC);
-    public static final DateTimeFormatter dayDateFormat = DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC);
-    public static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HHa").withZone(DateTimeZone.UTC);
+    private final static jdk.internal.instrumentation.Logger logger = LoggerFactory.getLogger(AwsUtils.class);
+    private static Pattern billingFileWithTagsPattern = Pattern
+            .compile(".+-aws-billing-detailed-line-items-with-resources-and-tags-(\\d\\d\\d\\d-\\d\\d).csv.zip");
+    private static Pattern billingFileWithMonitoringPattern = Pattern
+            .compile(".+-aws-billing-detailed-line-items-with-monitoring-(\\d\\d\\d\\d-\\d\\d).csv");
+    private static Pattern billingFilePattern = Pattern
+            .compile(".+-aws-billing-detailed-line-items-(\\d\\d\\d\\d-\\d\\d).csv.zip");
+    public static final DateTimeFormatter monthDateFormat = DateTimeFormat.forPattern("yyyy-MM")
+            .withZone(DateTimeZone.UTC);
+    public static final DateTimeFormatter dayDateFormat = DateTimeFormat.forPattern("yyyy-MM-dd")
+            .withZone(DateTimeZone.UTC);
+    public static final DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HHa")
+            .withZone(DateTimeZone.UTC);
     public static long hourMillis = 3600000L;
 
     public static String workS3BucketRegion;
@@ -107,11 +113,13 @@ public class AwsUtils {
 
     /**
      * Get assumes IAM credentials.
+     * 
      * @param accountId
      * @param assumeRole
      * @return assumes IAM credentials
      */
-    public static AWSCredentialsProvider getAssumedCredentialsProvider(String accountId, String assumeRole, String externalId) {
+    public static AWSCredentialsProvider getAssumedCredentialsProvider(String accountId, String assumeRole,
+            String externalId) {
         AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
                 .withRoleArn("arn:aws:iam::" + accountId + ":role/" + assumeRole)
                 .withRoleSessionName(assumeRole.substring(0, Math.min(assumeRole.length(), 32)));
@@ -119,11 +127,11 @@ public class AwsUtils {
             assumeRoleRequest.setExternalId(externalId);
         AssumeRoleResult roleResult = securityClient.assumeRole(assumeRoleRequest);
 
-        
         final Credentials credentials = roleResult.getCredentials();
         AWSCredentialsProvider credentialsProvider = new AWSCredentialsProvider() {
             public AWSCredentials getCredentials() {
-                return new BasicSessionCredentials(credentials.getAccessKeyId(), credentials.getSecretAccessKey(), credentials.getSessionToken());
+                return new BasicSessionCredentials(credentials.getAccessKeyId(), credentials.getSecretAccessKey(),
+                        credentials.getSessionToken());
             }
 
             public void refresh() {
@@ -132,53 +140,60 @@ public class AwsUtils {
 
         return credentialsProvider;
     }
-    
+
     /**
      * This method must be called before all methods can be used.
+     * 
      * @param credentialsProvider
      */
-    public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion, String metricsNamespace) {
+    public static void init(AWSCredentialsProvider credentialsProvider, String workS3BucketRegion,
+            String metricsNamespace) {
         awsCredentialsProvider = credentialsProvider;
         clientConfig = new ClientConfiguration();
         clientConfigOrganizationsTags = new ClientConfiguration();
         String proxyHost = System.getProperty("https.proxyHost");
         String proxyPort = System.getProperty("https.proxyPort");
-        if(proxyHost != null && proxyPort != null) {
+        if (proxyHost != null && proxyPort != null) {
             clientConfig.setProxyHost(proxyHost);
             clientConfig.setProxyPort(Integer.parseInt(proxyPort));
             clientConfigOrganizationsTags.setProxyHost(proxyHost);
             clientConfigOrganizationsTags.setProxyPort(Integer.parseInt(proxyPort));
         }
         AwsUtils.workS3BucketRegion = workS3BucketRegion;
-        s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
-        securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+        s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(workS3BucketRegion)
+                .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+        securityClient = AWSSecurityTokenServiceClientBuilder.standard().withRegion(workS3BucketRegion)
+                .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
 
-    	class OrgRetryCondition extends SDKDefaultRetryCondition {
-    		@Override
-    		public boolean shouldRetry(AmazonWebServiceRequest originalRequest,
-                    					AmazonClientException exception,
-                    					int retriesAttempted) {
-    			boolean ret = super.shouldRetry(originalRequest, exception, retriesAttempted);
-    			//logger.info("retry: " + retriesAttempted + ", " + ret + ", " + exception.getMessage());
-    			return ret;
-    		}
-    	}
-    	
-    	// The Organizations API listTagsForResource() returns a lot of the following error when called from an EC2 instance:
-    	//   AWS Organizations can't complete your request because another request is already in progress. Try again later.
-    	//    (Service: AWSOrganizations; Status Code: 400; Error Code: TooManyRequestsException
-    	// The DynamoDB retry policy with 10 retries seems to ride through the worst delays. Max retries I saw were 6 or 7
-    	clientConfigOrganizationsTags.setMaxErrorRetry(PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY);
-    	clientConfigOrganizationsTags.setRetryPolicy(
-    			new RetryPolicy(new OrgRetryCondition(),
-    				PredefinedRetryPolicies.DYNAMODB_DEFAULT_BACKOFF_STRATEGY,
-    				PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY, false));
-    	
-    	if (!StringUtils.isEmpty(metricsNamespace)) {
-    		AwsSdkMetrics.enableDefaultMetrics();
-    		AwsSdkMetrics.setCredentialProvider(awsCredentialsProvider);
-    		AwsSdkMetrics.setMetricNameSpace(metricsNamespace);
-    	}
+        class OrgRetryCondition extends SDKDefaultRetryCondition {
+            @Override
+            public boolean shouldRetry(AmazonWebServiceRequest originalRequest, AmazonClientException exception,
+                    int retriesAttempted) {
+                boolean ret = super.shouldRetry(originalRequest, exception, retriesAttempted);
+                // logger.info("retry: " + retriesAttempted + ", " + ret + ", " +
+                // exception.getMessage());
+                return ret;
+            }
+        }
+
+        // The Organizations API listTagsForResource() returns a lot of the following
+        // error when called from an EC2 instance:
+        // AWS Organizations can't complete your request because another request is
+        // already in progress. Try again later.
+        // (Service: AWSOrganizations; Status Code: 400; Error Code:
+        // TooManyRequestsException
+        // The DynamoDB retry policy with 10 retries seems to ride through the worst
+        // delays. Max retries I saw were 6 or 7
+        clientConfigOrganizationsTags.setMaxErrorRetry(PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY);
+        clientConfigOrganizationsTags.setRetryPolicy(
+                new RetryPolicy(new OrgRetryCondition(), PredefinedRetryPolicies.DYNAMODB_DEFAULT_BACKOFF_STRATEGY,
+                        PredefinedRetryPolicies.DYNAMODB_DEFAULT_MAX_ERROR_RETRY, false));
+
+        if (!StringUtils.isEmpty(metricsNamespace)) {
+            AwsSdkMetrics.enableDefaultMetrics();
+            AwsSdkMetrics.setCredentialProvider(awsCredentialsProvider);
+            AwsSdkMetrics.setMetricNameSpace(metricsNamespace);
+        }
     }
 
     public static AmazonS3Client getAmazonS3Client() {
@@ -187,67 +202,66 @@ public class AwsUtils {
 
     public static AmazonSimpleEmailServiceClient getAmazonSimpleEmailServiceClient() {
         if (emailServiceClient == null)
-            emailServiceClient = (AmazonSimpleEmailServiceClient) AmazonSimpleEmailServiceClientBuilder.standard().withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            emailServiceClient = (AmazonSimpleEmailServiceClient) AmazonSimpleEmailServiceClientBuilder.standard()
+                    .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
         return emailServiceClient;
     }
 
     public static AmazonSimpleDBClient getAmazonSimpleDBClient() {
         if (simpleDBClient == null) {
-            simpleDBClient = (AmazonSimpleDBClient) AmazonSimpleDBClientBuilder.standard().withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
+            simpleDBClient = (AmazonSimpleDBClient) AmazonSimpleDBClientBuilder.standard()
+                    .withRegion(workS3BucketRegion).withCredentials(awsCredentialsProvider)
+                    .withClientConfiguration(clientConfig).build();
         }
         return simpleDBClient;
     }
-    
+
     private static AWSOrganizations getOrganizationsClient(String accountId, String assumeRole, String externalId) {
         if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-        	return AWSOrganizationsClientBuilder.standard()
-        						.withRegion(AwsUtils.workS3BucketRegion)
-        						.withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
-        						.withClientConfiguration(clientConfigOrganizationsTags)
-        						.build();
-        }
-        else {
-        	return AWSOrganizationsClientBuilder.standard()
-        						.withRegion(AwsUtils.workS3BucketRegion)
-        						.withCredentials(awsCredentialsProvider)
-        						.withClientConfiguration(clientConfigOrganizationsTags)
-        						.build();
+            return AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion)
+                    .withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+                    .withClientConfiguration(clientConfigOrganizationsTags).build();
+        } else {
+            return AWSOrganizationsClientBuilder.standard().withRegion(AwsUtils.workS3BucketRegion)
+                    .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfigOrganizationsTags)
+                    .build();
         }
     }
-    
+
     /**
-     * See if an account is a master account so we know whether or not we can query the organizations service
+     * See if an account is a master account so we know whether or not we can query
+     * the organizations service
      */
     public static boolean isMasterAccount(String accountId, String assumeRole, String externalId) {
-    	AWSOrganizations organizations = null;
-    	boolean isMaster = false;
+        AWSOrganizations organizations = null;
+        boolean isMaster = false;
         try {
-        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
-        	
-        	DescribeOrganizationRequest request = new DescribeOrganizationRequest();
-        	DescribeOrganizationResult result = organizations.describeOrganization(request);
-        	isMaster = result.getOrganization().getMasterAccountId().equals(accountId);
-        }
-        finally {
-        	if (organizations != null)
-        		organizations.shutdown();
+            organizations = getOrganizationsClient(accountId, assumeRole, externalId);
+
+            DescribeOrganizationRequest request = new DescribeOrganizationRequest();
+            DescribeOrganizationResult result = organizations.describeOrganization(request);
+            isMaster = result.getOrganization().getMasterAccountId().equals(accountId);
+        } finally {
+            if (organizations != null)
+                organizations.shutdown();
         }
         return isMaster;
     }
-    
+
     /**
      * List all accounts in the organization.
+     * 
      * @param accountId
      * @param assumeRole
      * @param externalId
      * @return
      */
     public static List<Account> listAccounts(String accountId, String assumeRole, String externalId) {
-    	AWSOrganizations organizations = null;
+        AWSOrganizations organizations = null;
 
         try {
-        	organizations = getOrganizationsClient(accountId, assumeRole, externalId);
-            
+            organizations = getOrganizationsClient(accountId, assumeRole, externalId);
+
             ListAccountsRequest request = new ListAccountsRequest();
             List<Account> results = Lists.newLinkedList();
             ListAccountsResult page = null;
@@ -258,29 +272,29 @@ public class AwsUtils {
                 results.addAll(page.getAccounts());
 
             } while (page.getNextToken() != null);
-            
-        	return results;
-        }
-        finally {
-        	if (organizations != null)
-        		organizations.shutdown();
+
+            return results;
+        } finally {
+            if (organizations != null)
+                organizations.shutdown();
         }
     }
-    
 
     /**
      * List all tags for the account.
+     * 
      * @param accountId
      * @param assumeRole
      * @param externalId
      * @return
      */
-    public static List<com.amazonaws.services.organizations.model.Tag> listAccountTags(String accountId, String payerAccountId, String assumeRole, String externalId) {
-    	AWSOrganizations organizations = null;
-    	
+    public static List<com.amazonaws.services.organizations.model.Tag> listAccountTags(String accountId,
+            String payerAccountId, String assumeRole, String externalId) {
+        AWSOrganizations organizations = null;
+
         try {
-        	organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
-                        
+            organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
+
             ListTagsForResourceRequest request = new ListTagsForResourceRequest().withResourceId(accountId);
             List<com.amazonaws.services.organizations.model.Tag> results = Lists.newLinkedList();
             ListTagsForResourceResult page = null;
@@ -291,123 +305,122 @@ public class AwsUtils {
                 results.addAll(page.getTags());
 
             } while (page.getNextToken() != null);
-        	return results;           
-        }
-        finally {
-        	if (organizations != null)
-        		organizations.shutdown();
+            return results;
+        } finally {
+            if (organizations != null)
+                organizations.shutdown();
         }
     }
-    
+
     /**
      * Get a map which holds the parent organizational unit list for each account.
      */
-    public static Map<String, List<String>> getAccountParents(String payerAccountId, String assumeRole, String externalId, String rootName) {
-    	AWSOrganizations organizations = null;
+    public static Map<String, List<String>> getAccountParents(String payerAccountId, String assumeRole,
+            String externalId, String rootName) {
+        AWSOrganizations organizations = null;
         try {
-        	organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
-            
-        	Map<String, List<String>> accountParents = Maps.newHashMap();
-        	
-        	// Get the roots for the account (should be one)
-        	ListRootsRequest request = new ListRootsRequest();
-        	ListRootsResult page = null;
-        	List<Root> roots = Lists.newArrayList();
-        	do {
-        		if (page != null)
-        			request.setNextToken(page.getNextToken());
-	        	page = organizations.listRoots(request);
-	        	roots.addAll(page.getRoots());
-        	} while (page.getNextToken() != null);
-        	
-        	for (Root r: roots) {
-        		
-            	// Recursively walk the tree of organizational Units to find all the accounts
-        		List<String> parents = Lists.newArrayList();
-        		if (rootName != null && !rootName.isEmpty())
-        			parents.add(rootName);
-        		processOrgNode(accountParents, organizations, r.getId(), parents);           	
-        	}
-        	        	
-        	return accountParents;
-        }
-        finally {
-        	if (organizations != null)
-        		organizations.shutdown();
+            organizations = getOrganizationsClient(payerAccountId, assumeRole, externalId);
+
+            Map<String, List<String>> accountParents = Maps.newHashMap();
+
+            // Get the roots for the account (should be one)
+            ListRootsRequest request = new ListRootsRequest();
+            ListRootsResult page = null;
+            List<Root> roots = Lists.newArrayList();
+            do {
+                if (page != null)
+                    request.setNextToken(page.getNextToken());
+                page = organizations.listRoots(request);
+                roots.addAll(page.getRoots());
+            } while (page.getNextToken() != null);
+
+            for (Root r : roots) {
+
+                // Recursively walk the tree of organizational Units to find all the accounts
+                List<String> parents = Lists.newArrayList();
+                if (rootName != null && !rootName.isEmpty())
+                    parents.add(rootName);
+                processOrgNode(accountParents, organizations, r.getId(), parents);
+            }
+
+            return accountParents;
+        } finally {
+            if (organizations != null)
+                organizations.shutdown();
         }
     }
-    
-    private static void processOrgNode(Map<String, List<String>> accountParents, AWSOrganizations organizations, String orgId, List<String> parents) {
-    	// Add the accounts for this node
-    	ListAccountsForParentRequest request = new ListAccountsForParentRequest().withParentId(orgId);
-    	ListAccountsForParentResult page = null;
+
+    private static void processOrgNode(Map<String, List<String>> accountParents, AWSOrganizations organizations,
+            String orgId, List<String> parents) {
+        // Add the accounts for this node
+        ListAccountsForParentRequest request = new ListAccountsForParentRequest().withParentId(orgId);
+        ListAccountsForParentResult page = null;
         do {
             if (page != null)
                 request.setNextToken(page.getNextToken());
             page = organizations.listAccountsForParent(request);
-        	for (Account a: page.getAccounts()) {
-        		accountParents.put(a.getId(), parents);
-        	}
+            for (Account a : page.getAccounts()) {
+                accountParents.put(a.getId(), parents);
+            }
 
         } while (page.getNextToken() != null);
-        
-    	// Process each of the OUs
-        ListOrganizationalUnitsForParentRequest ouRequest = new ListOrganizationalUnitsForParentRequest().withParentId(orgId);
+
+        // Process each of the OUs
+        ListOrganizationalUnitsForParentRequest ouRequest = new ListOrganizationalUnitsForParentRequest()
+                .withParentId(orgId);
         ListOrganizationalUnitsForParentResult ouPage = null;
         do {
-        	if (ouPage != null)
-        		ouRequest.setNextToken(ouPage.getNextToken());
-        	ouPage = organizations.listOrganizationalUnitsForParent(ouRequest);
-        	for (OrganizationalUnit ou: ouPage.getOrganizationalUnits()) {
-            	List<String> newParents = Lists.newArrayList(parents);
-            	newParents.add(ou.getName());
-            	processOrgNode(accountParents, organizations, ou.getId(), newParents);
-        	}
+            if (ouPage != null)
+                ouRequest.setNextToken(ouPage.getNextToken());
+            ouPage = organizations.listOrganizationalUnitsForParent(ouRequest);
+            for (OrganizationalUnit ou : ouPage.getOrganizationalUnits()) {
+                List<String> newParents = Lists.newArrayList(parents);
+                newParents.add(ou.getName());
+                processOrgNode(accountParents, organizations, ou.getId(), newParents);
+            }
         } while (ouPage.getNextToken() != null);
     }
-    
+
     /*
      * Return a map of the AWS Service names using the serviceCode as the map keys
      */
     public static Map<String, String> getAwsServiceNames() {
-    	// Pricing API gets throttled, so use the Organizations retry policy here as well.
-    	AWSPricing pricing = AWSPricingClientBuilder.standard()
-    			.withClientConfiguration(AwsUtils.clientConfig)
-    			.withRegion(Region.US_EAST_1.name)
-    			.withCredentials(AwsUtils.awsCredentialsProvider)
-    			.withClientConfiguration(clientConfigOrganizationsTags)
-    			.build();
-    	
-    	DescribeServicesRequest request = new DescribeServicesRequest();
-    	List<Service> services = Lists.newLinkedList();
-    	DescribeServicesResult page = null;
-    	do {
+        // Pricing API gets throttled, so use the Organizations retry policy here as
+        // well.
+        AWSPricing pricing = AWSPricingClientBuilder.standard().withClientConfiguration(AwsUtils.clientConfig)
+                .withRegion(Region.US_EAST_1.name).withCredentials(AwsUtils.awsCredentialsProvider)
+                .withClientConfiguration(clientConfigOrganizationsTags).build();
+
+        DescribeServicesRequest request = new DescribeServicesRequest();
+        List<Service> services = Lists.newLinkedList();
+        DescribeServicesResult page = null;
+        do {
             if (page != null)
                 request.setNextToken(page.getNextToken());
-    		page = pricing.describeServices(request);
-    		services.addAll(page.getServices());
-    	} while (page.getNextToken() != null);
-     	
-    	Map<String, String> serviceNames = Maps.newHashMap();
-    	final String servicename = "servicename";
-		GetAttributeValuesRequest req = new GetAttributeValuesRequest();
-    	for (Service s: services) {
-    		String name = null;
-    		if (s.getAttributeNames().contains(servicename)) {
-	    		req.setServiceCode(s.getServiceCode());
-	    		req.setAttributeName(servicename);
-	    		GetAttributeValuesResult result = pricing.getAttributeValues(req);
-	    		if (!result.getAttributeValues().isEmpty())
-	    			name = result.getAttributeValues().get(0).getValue();
-    		}
-    		serviceNames.put(s.getServiceCode(), name);
-    	}
-    	return serviceNames;
+            page = pricing.describeServices(request);
+            services.addAll(page.getServices());
+        } while (page.getNextToken() != null);
+
+        Map<String, String> serviceNames = Maps.newHashMap();
+        final String servicename = "servicename";
+        GetAttributeValuesRequest req = new GetAttributeValuesRequest();
+        for (Service s : services) {
+            String name = null;
+            if (s.getAttributeNames().contains(servicename)) {
+                req.setServiceCode(s.getServiceCode());
+                req.setAttributeName(servicename);
+                GetAttributeValuesResult result = pricing.getAttributeValues(req);
+                if (!result.getAttributeValues().isEmpty())
+                    name = result.getAttributeValues().get(0).getValue();
+            }
+            serviceNames.put(s.getServiceCode(), name);
+        }
+        return serviceNames;
     }
-    
 
     /**
      * List all object summary with given prefix in the s3 bucket.
+     * 
      * @param bucket
      * @param prefix
      * @return
@@ -429,21 +442,25 @@ public class AwsUtils {
 
     /**
      * List all object summary with given prefix in the s3 bucket.
+     * 
      * @param bucket
      * @param prefix
      * @return
      */
-    public static List<S3ObjectSummary> listAllObjects(String bucket, String bucketRegion, String prefix, String accountId,
-                                                       String assumeRole, String externalId) {
+    public static List<S3ObjectSummary> listAllObjects(String bucket, String bucketRegion, String prefix,
+            String accountId, String assumeRole, String externalId) {
+        logger.info("===inside listAllObjects===", bucket, bucketRegion, prefix);
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+                        .withClientConfiguration(clientConfig).build();
+            } else if (!s3Client.getRegionName().equals(bucketRegion)) {
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
             }
-            else if (!s3Client.getRegionName().equals(bucketRegion)) {
-            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
-            }            
 
             ListObjectsRequest request = new ListObjectsRequest().withBucketName(bucket).withPrefix(prefix);
             List<S3ObjectSummary> result = Lists.newLinkedList();
@@ -458,27 +475,29 @@ public class AwsUtils {
             } while (page.isTruncated());
 
             return result;
-        }
-        finally {
+        } finally {
             if (s3Client != AwsUtils.s3Client)
                 s3Client.shutdown();
         }
     }
-    
+
     /**
      * Read a cost and usage report manifest file
      */
-	public static byte[] readManifest(String bucket, String bucketRegion, String fileKey, String accountId, String assumeRole, String externalId) {
+    public static byte[] readManifest(String bucket, String bucketRegion, String fileKey, String accountId,
+            String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
 
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+                        .withClientConfiguration(clientConfig).build();
+            } else if (!s3Client.getRegionName().equals(bucketRegion)) {
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
             }
-            else if (!s3Client.getRegionName().equals(bucketRegion)) {
-            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
-            }            
 
             S3Object s3Object = s3Client.getObject(bucket, fileKey);
             long targetSize = 0;
@@ -488,40 +507,51 @@ public class AwsUtils {
             try {
                 targetSize = s3Object.getObjectMetadata().getContentLength();
                 if (targetSize > Integer.MAX_VALUE) {
-                    try { s3Object.close(); } catch (Exception e) {}
-                	logger.error("manifest file too large: " + fileKey + ", " + targetSize);
-                	return null;
+                    try {
+                        s3Object.close();
+                    } catch (Exception e) {
+                    }
+                    logger.error("manifest file too large: " + fileKey + ", " + targetSize);
+                    return null;
                 }
-                
+
                 input = s3Object.getObjectContent();
                 output = new ByteArrayOutputStream((int) targetSize);
-                byte buf[]=new byte[1024000];
+                byte buf[] = new byte[1024000];
                 int len;
-                while ((len=input.read(buf)) > 0) {
+                while ((len = input.read(buf)) > 0) {
                     output.write(buf, 0, len);
                 }
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 logger.error("error in downloading " + fileKey, e);
+            } finally {
+                if (input != null)
+                    try {
+                        input.close();
+                    } catch (IOException e) {
+                    }
+                if (output != null)
+                    try {
+                        output.close();
+                    } catch (IOException e) {
+                    }
             }
-            finally {
-                if (input != null) try {input.close();} catch (IOException e){}
-                if (output != null) try {output.close();} catch (IOException e){}
+
+            try {
+                s3Object.close();
+            } catch (Exception e) {
             }
-            
-            try { s3Object.close(); } catch (Exception e) {}
-            
+
             return output.toByteArray();
-        }
-        finally {
+        } finally {
             if (s3Client != AwsUtils.s3Client)
                 s3Client.shutdown();
         }
-	}
+    }
 
-    
     /**
      * Get list of months in from the file names.
+     * 
      * @param bucket
      * @param prefix
      * @return
@@ -560,7 +590,7 @@ public class AwsUtils {
         else
             return null;
     }
-    
+
     public static void upload(String bucketName, String prefix, File file) {
         s3Client.putObject(bucketName, prefix + file.getName(), file);
     }
@@ -573,64 +603,68 @@ public class AwsUtils {
                 return fileName.startsWith(filePrefix);
             }
         });
-        for (File file: files)
+        for (File file : files)
             s3Client.putObject(bucketName, prefix + file.getName(), file);
     }
 
     public static long getLastModified(String bucketName, String fileKey) {
         try {
-            long result = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified().getTime();
+            long result = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified()
+                    .getTime();
             return result;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error("failed to find " + fileKey);
             return 0;
         }
     }
 
-    public static boolean downloadFileIfChangedSince(String bucketName, String bucketRegion, String bucketFilePrefix, File file,
-                                                     long milles, String accountId, String assumeRole, String externalId) {
+    public static boolean downloadFileIfChangedSince(String bucketName, String bucketRegion, String bucketFilePrefix,
+            File file, long milles, String accountId, String assumeRole, String externalId) {
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {
             if (!StringUtils.isEmpty(accountId) && !StringUtils.isEmpty(assumeRole)) {
-                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId)).withClientConfiguration(clientConfig).build();
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(getAssumedCredentialsProvider(accountId, assumeRole, externalId))
+                        .withClientConfiguration(clientConfig).build();
+            } else if (!s3Client.getRegionName().equals(bucketRegion)) {
+                s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion)
+                        .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
             }
-            else if (!s3Client.getRegionName().equals(bucketRegion)) {
-            	s3Client = (AmazonS3Client) AmazonS3ClientBuilder.standard().withRegion(bucketRegion).withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
-            }
-            
+
             ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());
             boolean download = !file.exists() || metadata.getLastModified().getTime() > milles;
 
             if (download) {
                 return download(s3Client, bucketName, bucketFilePrefix + file.getName(), file);
-            }
-            else
+            } else
                 return download;
-        }
-        finally {
+        } finally {
             if (s3Client != AwsUtils.s3Client)
                 s3Client.shutdown();
         }
     }
 
-    public static boolean downloadFileIfChangedSince(String bucketName, String bucketFilePrefix, File file, long milles) {
+    public static boolean downloadFileIfChangedSince(String bucketName, String bucketFilePrefix, File file,
+            long milles) {
         ObjectMetadata metadata = s3Client.getObjectMetadata(bucketName, bucketFilePrefix + file.getName());
         boolean download = !file.exists() || metadata.getLastModified().getTime() > milles;
 
         if (download) {
             return download(bucketName, bucketFilePrefix + file.getName(), file);
         }
-        
+
         return false;
     }
 
     /**
-     * Download the specified file from S3 if it doesn't exist locally or the local copy is not current.
-     * @param bucketName The S3 bucket name to pull from.
+     * Download the specified file from S3 if it doesn't exist locally or the local
+     * copy is not current.
+     * 
+     * @param bucketName       The S3 bucket name to pull from.
      * @param bucketFilePrefix The bucket prefix for the file
-     * @param file The local path for the file. The filename is appended to the prefix to get the S3 key.
+     * @param file             The local path for the file. The filename is appended
+     *                         to the prefix to get the S3 key.
      * @return True if a fresh copy was downloaded.
      */
     public static boolean downloadFileIfChanged(String bucketName, String bucketFilePrefix, File file) {
@@ -638,10 +672,11 @@ public class AwsUtils {
         boolean download = !file.exists() || metadata.getLastModified().getTime() > file.lastModified();
 
         if (download) {
-            logger.info("downloadFileIfChanged " + file + " " + metadata.getLastModified().getTime() + " " + file.lastModified());
+            logger.info("downloadFileIfChanged " + file + " " + metadata.getLastModified().getTime() + " "
+                    + file.lastModified());
             return download(bucketName, bucketFilePrefix + file.getName(), file);
         }
-            
+
         return false;
     }
 
@@ -650,8 +685,7 @@ public class AwsUtils {
         if (download) {
             try {
                 return download(bucketName, bucketFilePrefix + file.getName(), file);
-            }
-            catch (AmazonS3Exception e) {
+            } catch (AmazonS3Exception e) {
                 if (e.getStatusCode() != 404)
                     throw e;
                 logger.info("file not found in s3 " + file);
@@ -673,43 +707,54 @@ public class AwsUtils {
             long lastModified = 0;
             boolean downloaded = false;
             long size = 0;
-            try {                
+            try {
                 input = s3Object.getObjectContent();
                 targetSize = s3Object.getObjectMetadata().getContentLength();
-                lastModified = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified().getTime();
+                lastModified = s3Client.listObjects(bucketName, fileKey).getObjectSummaries().get(0).getLastModified()
+                        .getTime();
 
                 output = new FileOutputStream(file);
-                byte buf[]=new byte[1024000];
+                byte buf[] = new byte[1024000];
                 int len;
-                while ((len=input.read(buf)) > 0) {
+                while ((len = input.read(buf)) > 0) {
                     output.write(buf, 0, len);
                     size += len;
                 }
                 downloaded = true;
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 logger.error("error in downloading " + file, e);
+            } finally {
+                if (input != null)
+                    try {
+                        input.close();
+                    } catch (IOException e) {
+                    }
+                if (output != null)
+                    try {
+                        output.close();
+                    } catch (IOException e) {
+                    }
+                try {
+                    s3Object.close();
+                } catch (Exception e) {
+                }
             }
-            finally {
-                if (input != null) try {input.close();} catch (IOException e){}
-                if (output != null) try {output.close();} catch (IOException e){}
-                try { s3Object.close(); } catch (Exception e) {}
-            }
-            
+
             if (downloaded) {
-            	// Set modified time of local file to match the time of the file in S3
-            	file.setLastModified(lastModified);
-            	
+                // Set modified time of local file to match the time of the file in S3
+                file.setLastModified(lastModified);
+
                 long contentLenth = s3Client.getObjectMetadata(bucketName, fileKey).getContentLength();
                 if (contentLenth != size) {
-                    logger.warn("size does not match contentLenth=" + contentLenth +
-                            " downloadSize=" + size + "targetSize=" + targetSize + " ... re-downlaoding " + fileKey);
-                }
-                else
+                    logger.warn("size does not match contentLenth=" + contentLenth + " downloadSize=" + size
+                            + "targetSize=" + targetSize + " ... re-downlaoding " + fileKey);
+                } else
                     return true;
             }
-            try {Thread.sleep(2000L);}catch (Exception e){}
-        }
-        while (true);
+            try {
+                Thread.sleep(2000L);
+            } catch (Exception e) {
+            }
+        } while (true);
     }
 }
