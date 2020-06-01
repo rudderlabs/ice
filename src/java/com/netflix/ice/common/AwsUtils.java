@@ -449,7 +449,7 @@ public class AwsUtils {
      */
     public static List<S3ObjectSummary> listAllObjects(String bucket, String bucketRegion, String prefix,
             String accountId, String assumeRole, String externalId) {
-        logger.info("===inside listAllObjects===", bucket, bucketRegion, prefix);
+        logger.info("===inside listAllObjects===" + bucket + " " + bucketRegion + " " + prefix);
         AmazonS3Client s3Client = AwsUtils.s3Client;
 
         try {

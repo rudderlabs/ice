@@ -565,12 +565,12 @@ public class ProcessorConfig extends Config {
         // Make sure prefix ends with /
         String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
         String basename = bb.configBasename.isEmpty() ? billingDataConfigBasename : bb.configBasename;
-        logger.info("basename= ", basename);
+        logger.info("basename= " + basename);
         logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + basename
                 + ", " + bb.accountId);
         List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion,
                 prefix + basename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
-        logger.info("configFiles= ", configFiles.size());
+        logger.info("configFiles= " + configFiles.size());
         if (configFiles.size() == 0 && !basename.equals(billingDataConfigBasename)) {
             // Default baseName was overridden but we didn't find it. Fall back to the
             // default config file basename
