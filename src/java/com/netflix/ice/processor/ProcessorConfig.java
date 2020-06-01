@@ -570,7 +570,7 @@ public class ProcessorConfig extends Config {
                 + ", " + bb.accountId);
         List<S3ObjectSummary> configFiles = AwsUtils.listAllObjects(bb.s3BucketName, bb.s3BucketRegion,
                 prefix + basename + ".", bb.accountId, bb.accessRoleName, bb.accessExternalId);
-        logger.info("configFiles= ", conigFiles.size());
+        logger.info("configFiles= ", configFiles.size());
         if (configFiles.size() == 0 && !basename.equals(billingDataConfigBasename)) {
             // Default baseName was overridden but we didn't find it. Fall back to the
             // default config file basename

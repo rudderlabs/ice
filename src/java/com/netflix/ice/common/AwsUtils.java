@@ -87,7 +87,7 @@ import java.util.regex.Pattern;
  * Utility class to handle interactions with aws.
  */
 public class AwsUtils {
-    private final static jdk.internal.instrumentation.Logger logger = LoggerFactory.getLogger(AwsUtils.class);
+    private final static Logger logger = LoggerFactory.getLogger(AwsUtils.class);
     private static Pattern billingFileWithTagsPattern = Pattern
             .compile(".+-aws-billing-detailed-line-items-with-resources-and-tags-(\\d\\d\\d\\d-\\d\\d).csv.zip");
     private static Pattern billingFileWithMonitoringPattern = Pattern
