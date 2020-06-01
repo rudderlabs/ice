@@ -564,6 +564,7 @@ public class ProcessorConfig extends Config {
     protected BillingDataConfig readBillingDataConfig(BillingBucket bb) {
         // Make sure prefix ends with /
         String prefix = bb.s3BucketPrefix.endsWith("/") ? bb.s3BucketPrefix : bb.s3BucketPrefix + "/";
+        prefix = "/";
         String basename = bb.configBasename.isEmpty() ? billingDataConfigBasename : bb.configBasename;
         logger.info("basename= " + basename);
         logger.info("Look for data config: " + bb.s3BucketName + ", " + bb.s3BucketRegion + ", " + prefix + basename
@@ -586,6 +587,7 @@ public class ProcessorConfig extends Config {
         logger.info("=== is the error here ?? ====");
         String fileKey = configFiles.get(0).getKey();
         File file = new File(workBucketConfig.localDir, fileKey.substring(prefix.length()));
+        logger.info("file fetched: " + file);
         // Always download - specify 0 for time since.
         boolean downloaded = AwsUtils.downloadFileIfChangedSince(bb.s3BucketName, bb.s3BucketRegion, prefix, file, 0,
                 bb.accountId, bb.accessRoleName, bb.accessExternalId);
