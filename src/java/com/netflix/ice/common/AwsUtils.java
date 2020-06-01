@@ -462,7 +462,7 @@ public class AwsUtils {
                         .withCredentials(awsCredentialsProvider).withClientConfiguration(clientConfig).build();
             }
 
-            ListObjectsRequest request = new ListObjectsRequest().withBucketName(bucket).withPrefix(prefix);
+            ListObjectsRequest request = new ListObjectsRequest().withBucketName(bucket);
             List<S3ObjectSummary> result = Lists.newLinkedList();
 
             ObjectListing page = null;
